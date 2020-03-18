@@ -1,0 +1,16 @@
+[package]
+name = "zkp"
+version = "0.1.0"
+authors = []
+edition = "2018"
+
+members = [
+    "math",
+    "curve",
+    "proofsystem",
+]
+
+[dependencies]
+math = { path = "math" }
+curve = { path = "curve" }
+proofsystem = { path = "proofsystem" }
