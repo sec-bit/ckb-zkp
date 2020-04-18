@@ -1,16 +1,17 @@
 [package]
 name = "zkp"
 version = "0.1.0"
-authors = []
+authors = ["sun"]
 edition = "2018"
 
+[workspace]
 members = [
     "math",
     "curve",
-    "proofsystem",
+    "scheme"
 ]
 
 [dependencies]
 math = { path = "math" }
 curve = { path = "curve" }
-proofsystem = { path = "proofsystem" }
+scheme = { path = "scheme" }
