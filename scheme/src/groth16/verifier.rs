@@ -1,10 +1,9 @@
-use algebra_core::{AffineCurve, PairingEngine, PrimeField, ProjectiveCurve};
+use core::ops::{AddAssign, Neg};
+use math::{AffineCurve, PairingEngine, PrimeField, ProjectiveCurve};
+
+use crate::r1cs::SynthesisError;
 
 use super::{PreparedVerifyingKey, Proof, VerifyingKey};
-
-use crate::SynthesisError;
-
-use core::ops::{AddAssign, Neg};
 
 pub fn prepare_verifying_key<E: PairingEngine>(vk: &VerifyingKey<E>) -> PreparedVerifyingKey<E> {
     PreparedVerifyingKey {

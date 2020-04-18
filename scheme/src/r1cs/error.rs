@@ -1,5 +1,5 @@
-use algebra_core::io;
 use core::fmt;
+use math::io;
 
 /// This is an error that could occur during circuit synthesis contexts,
 /// such as CRS generation, proving or verification.

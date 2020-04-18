@@ -16,10 +16,9 @@ smallvec = "1.1.0"
 
 [dev-dependencies]
 csv = { version = "1" }
-curve = { path = "../curve", default-features = false, features = [ "bls12_381", "bn_256" ] }
+curve = { path = "../curve", default-features = false, features = [ "bls12_381", "bn_256", "sw6" ] }
 
 [features]
 default = ["parallel"]
 std = ["math/std"]
 parallel = ["std", "math/parallel", "rayon"]
-#print-trace = [ "bench-utils/print-trace" ]

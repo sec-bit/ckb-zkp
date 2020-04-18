@@ -1,9 +1,11 @@
-use algebra_core::{One, PairingEngine, Zero};
-use ff_fft::{cfg_iter, cfg_iter_mut, EvaluationDomain};
-
-use crate::{generator::KeypairAssembly, prover::ProvingAssignment, Vec};
 use core::ops::AddAssign;
-use r1cs_core::{ConstraintSystem, Index, SynthesisError};
+use math::fft::EvaluationDomain;
+use math::{One, PairingEngine, Zero};
+
+use crate::r1cs::{ConstraintSystem, Index, SynthesisError};
+use crate::Vec;
+
+use super::{generator::KeypairAssembly, prover::ProvingAssignment};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -63,9 +65,7 @@ impl R1CStoQAP {
         let zt = domain.evaluate_vanishing_polynomial(*t);
 
         // Evaluate all Lagrange polynomials
-        let coefficients_time = start_timer!(|| "Evaluate Lagrange coefficients");
         let u = domain.evaluate_all_lagrange_coefficients(*t);
-        end_timer!(coefficients_time);
 
         let qap_num_variables = (assembly.num_inputs - 1) + assembly.num_aux;
 

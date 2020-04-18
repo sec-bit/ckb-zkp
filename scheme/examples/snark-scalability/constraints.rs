@@ -1,5 +1,5 @@
-use algebra::Field;
-use r1cs_core::{ConstraintSynthesizer, ConstraintSystem, LinearCombination, SynthesisError};
+use math::Field;
+use scheme::r1cs::{ConstraintSynthesizer, ConstraintSystem, LinearCombination, SynthesisError};
 use std::marker::PhantomData;
 
 pub struct Benchmark<F: Field> {

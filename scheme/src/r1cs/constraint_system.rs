@@ -1,8 +1,9 @@
-use crate::String;
-use algebra_core::Field;
 use core::marker::PhantomData;
+use math::Field;
 
-use crate::{Index, LinearCombination, SynthesisError, Variable};
+use crate::String;
+
+use super::{Index, LinearCombination, SynthesisError, Variable};
 
 /// Represents a constraint system which can have new variables
 /// allocated and constrains between them formed.

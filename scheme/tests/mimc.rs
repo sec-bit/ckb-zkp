@@ -1,30 +1,3 @@
-#![deny(
-    unused_import_braces,
-    unused_qualifications,
-    trivial_casts,
-    trivial_numeric_casts
-)]
-#![deny(unused_qualifications, variant_size_differences, stable_features)]
-#![deny(
-    non_shorthand_field_patterns,
-    unused_attributes,
-    unused_imports,
-    unused_extern_crates
-)]
-#![deny(
-    renamed_and_removed_lints,
-    stable_features,
-    unused_allocation,
-    unused_comparisons
-)]
-#![deny(
-    unused_must_use,
-    unused_mut,
-    unused_unsafe,
-    private_in_public,
-    unsafe_code
-)]
-
 // For randomness (during paramgen and proof generation)
 use rand::Rng;
 
@@ -32,18 +5,18 @@ use rand::Rng;
 use std::time::{Duration, Instant};
 
 // Bring in some tools for using pairing-friendly curves
-use algebra::bls12_381::{Bls12_381, Fr};
-use algebra_core::{test_rng, Field};
+use curve::bn_256::{Bn_256, Fr};
+use math::{test_rng, Field};
 
-// We're going to use the BLS12-381 pairing-friendly elliptic curve.
+// We're going to use the BN-256 pairing-friendly elliptic curve.
 
 // We'll use these interfaces to construct our circuit.
-use r1cs_core::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
+use scheme::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
 const MIMC_ROUNDS: usize = 322;
 
 /// This is an implementation of MiMC, specifically a
-/// variant named `LongsightF322p3` for BLS12-381.
+/// variant named `LongsightF322p3` for BN-256.
 /// See http://eprint.iacr.org/2016/492 for more
 /// information about this construction.
 ///
@@ -173,7 +146,7 @@ impl<'a, F: Field> ConstraintSynthesizer<F> for MiMCDemo<'a, F> {
 #[test]
 fn test_mimc_groth_16() {
     // We're going to use the Groth16 proving system.
-    use groth16::{
+    use scheme::groth16::{
         create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
     };
 
@@ -194,7 +167,7 @@ fn test_mimc_groth_16() {
             constants: &constants,
         };
 
-        generate_random_parameters::<Bls12_381, _, _>(c, rng).unwrap()
+        generate_random_parameters::<Bn_256, _, _>(c, rng).unwrap()
     };
 
     // Prepare the verification key (for proof verification)
@@ -203,7 +176,7 @@ fn test_mimc_groth_16() {
     println!("Creating proofs...");
 
     // Let's benchmark stuff!
-    const SAMPLES: u32 = 50;
+    const SAMPLES: u32 = 10;
     let mut total_proving = Duration::new(0, 0);
     let mut total_verifying = Duration::new(0, 0);
 

@@ -1,5 +1,7 @@
-use algebra_core::Field;
-use r1cs_core::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
+use math::Field;
+
+use crate::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
+
 struct MySillyCircuit<F: Field> {
     a: Option<F>,
     b: Option<F>,
@@ -34,25 +36,25 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for MySillyCircuit<C
     }
 }
 
-mod bls12_377 {
+mod bn_256 {
     use super::*;
-    use crate::{
+    use crate::groth16::{
         create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
     };
 
-    use algebra::bls12_377::{Bls12_377, Fr};
-    use algebra_core::{test_rng, UniformRand};
     use core::ops::MulAssign;
+    use curve::bn_256::{Bn_256, Fr};
+    use math::{test_rng, UniformRand};
 
     #[test]
     fn prove_and_verify() {
         let rng = &mut test_rng();
 
         let params =
-            generate_random_parameters::<Bls12_377, _, _>(MySillyCircuit { a: None, b: None }, rng)
+            generate_random_parameters::<Bn_256, _, _>(MySillyCircuit { a: None, b: None }, rng)
                 .unwrap();
 
-        let pvk = prepare_verifying_key::<Bls12_377>(&params.vk);
+        let pvk = prepare_verifying_key::<Bn_256>(&params.vk);
 
         for _ in 0..100 {
             let a = Fr::rand(rng);
@@ -78,12 +80,12 @@ mod bls12_377 {
 
 mod sw6 {
     use super::*;
-    use crate::{
+    use crate::groth16::{
         create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
     };
 
-    use algebra::sw6::{Fr, SW6};
-    use algebra_core::{test_rng, UniformRand, Zero};
+    use curve::sw6::{Fr, SW6};
+    use math::{test_rng, UniformRand, Zero};
 
     #[test]
     fn prove_and_verify() {

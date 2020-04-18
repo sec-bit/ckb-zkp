@@ -1,6 +1,7 @@
-use crate::{ConstraintVar, ConstraintVar::*, LinearCombination, Variable};
-use algebra_core::Field;
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub};
+use math::Field;
+
+use super::{ConstraintVar, ConstraintVar::*, LinearCombination, Variable};
 
 impl<F: Field> From<Variable> for ConstraintVar<F> {
     #[inline]

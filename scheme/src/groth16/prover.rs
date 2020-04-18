@@ -1,17 +1,15 @@
-use rand::Rng;
-
-use algebra_core::{
+use math::{
     msm::VariableBaseMSM, AffineCurve, One, PairingEngine, PrimeField, ProjectiveCurve,
     UniformRand, Zero,
 };
+use rand::Rng;
 
-use crate::{push_constraints, r1cs_to_qap::R1CStoQAP, Parameters, Proof, String, Vec};
-
-use r1cs_core::{
+use crate::r1cs::{
     ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable,
 };
+use crate::{String, Vec};
 
-use ff_fft::cfg_into_iter;
+use super::{push_constraints, r1cs_to_qap::R1CStoQAP, Parameters, Proof};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -134,7 +132,6 @@ where
     E: PairingEngine,
     C: ConstraintSynthesizer<E::Fr>,
 {
-    let prover_time = start_timer!(|| "Prover");
     let mut prover = ProvingAssignment {
         at: vec![],
         bt: vec![],
@@ -147,13 +144,9 @@ where
     prover.alloc_input(|| "", || Ok(E::Fr::one()))?;
 
     // Synthesize the circuit.
-    let synthesis_time = start_timer!(|| "Constraint synthesis");
     circuit.generate_constraints(&mut prover)?;
-    end_timer!(synthesis_time);
 
-    let witness_map_time = start_timer!(|| "R1CS to QAP witness map");
     let h = R1CStoQAP::witness_map::<E>(&prover)?;
-    end_timer!(witness_map_time);
 
     let input_assignment = prover.input_assignment[1..]
         .into_iter()
@@ -169,23 +162,17 @@ where
     let h_assignment = cfg_into_iter!(h).map(|s| s.into_repr()).collect::<Vec<_>>();
 
     // Compute A
-    let a_acc_time = start_timer!(|| "Compute A");
     let a_query = params.get_a_query_full()?;
     let r_g1 = params.delta_g1.mul(r);
 
     let g_a = calculate_coeff(r_g1, a_query, params.vk.alpha_g1, &assignment);
 
-    end_timer!(a_acc_time);
-
     // Compute B in G1 if needed
     let g1_b = if r != E::Fr::zero() {
-        let b_g1_acc_time = start_timer!(|| "Compute B in G1");
         let s_g1 = params.delta_g1.mul(s);
         let b_query = params.get_b_g1_query_full()?;
 
         let g1_b = calculate_coeff(s_g1, b_query, params.beta_g1, &assignment);
-
-        end_timer!(b_g1_acc_time);
 
         g1_b
     } else {
@@ -193,15 +180,9 @@ where
     };
 
     // Compute B in G2
-    let b_g2_acc_time = start_timer!(|| "Compute B in G2");
     let b_query = params.get_b_g2_query_full()?;
     let s_g2 = params.vk.delta_g2.mul(s);
     let g2_b = calculate_coeff(s_g2, b_query, params.vk.beta_g2, &assignment);
-
-    end_timer!(b_g2_acc_time);
-
-    // Compute C
-    let c_acc_time = start_timer!(|| "Compute C");
 
     let h_query = params.get_h_query_full()?;
     let h_acc = VariableBaseMSM::multi_scalar_mul(&h_query, &h_assignment);
@@ -218,9 +199,6 @@ where
     g_c -= &r_s_delta_g1;
     g_c += &l_aux_acc;
     g_c += &h_acc;
-    end_timer!(c_acc_time);
-
-    end_timer!(prover_time);
 
     Ok(Proof {
         a: g_a.into_affine(),

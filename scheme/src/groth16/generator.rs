@@ -1,17 +1,18 @@
-use algebra_core::{
-    msm::FixedBaseMSM, Field, One, PairingEngine, PrimeField, ProjectiveCurve, UniformRand, Zero,
-};
-use ff_fft::{cfg_into_iter, cfg_iter, EvaluationDomain};
-
-use r1cs_core::{
-    ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable,
+use math::{
+    fft::EvaluationDomain, msm::FixedBaseMSM, Field, One, PairingEngine, PrimeField,
+    ProjectiveCurve, UniformRand, Zero,
 };
 use rand::Rng;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-use crate::{push_constraints, r1cs_to_qap::R1CStoQAP, Parameters, String, Vec, VerifyingKey};
+use crate::r1cs::{
+    ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable,
+};
+use crate::{String, Vec};
+
+use super::{push_constraints, r1cs_to_qap::R1CStoQAP, Parameters, VerifyingKey};
 
 /// Generates a random common reference string for
 /// a circuit.
@@ -157,25 +158,19 @@ where
     assembly.alloc_input(|| "", || Ok(E::Fr::one()))?;
 
     // Synthesize the circuit.
-    let synthesis_time = start_timer!(|| "Constraint synthesis");
     circuit.generate_constraints(&mut assembly)?;
-    end_timer!(synthesis_time);
 
     ///////////////////////////////////////////////////////////////////////////
-    let domain_time = start_timer!(|| "Constructing evaluation domain");
 
     let domain_size = assembly.num_constraints + (assembly.num_inputs - 1) + 1;
     let domain = EvaluationDomain::<E::Fr>::new(domain_size)
         .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
     let t = domain.sample_element_outside_domain(rng);
 
-    end_timer!(domain_time);
     ///////////////////////////////////////////////////////////////////////////
 
-    let reduction_time = start_timer!(|| "R1CS to QAP Instance Map with Evaluation");
     let (a, b, c, zt, qap_num_variables, m_raw) =
         R1CStoQAP::instance_map_with_evaluation::<E>(&assembly, &t)?;
-    end_timer!(reduction_time);
 
     // Compute query densities
     let non_zero_a: usize = cfg_into_iter!(0..qap_num_variables)
@@ -207,16 +202,12 @@ where
     let g2_generator = E::G2Projective::rand(rng);
 
     // Compute G window table
-    let g1_window_time = start_timer!(|| "Compute G1 window table");
     let g1_window =
         FixedBaseMSM::get_mul_window_size(non_zero_a + non_zero_b + qap_num_variables + m_raw + 1);
     let g1_table =
         FixedBaseMSM::get_window_table::<E::G1Projective>(scalar_bits, g1_window, g1_generator);
-    end_timer!(g1_window_time);
 
     // Generate the R1CS proving key
-    let proving_key_time = start_timer!(|| "Generate the R1CS proving key");
-
     let alpha_g1 = g1_generator.mul(alpha);
     let beta_g1 = g1_generator.mul(beta);
     let beta_g2 = g2_generator.mul(beta);
@@ -224,32 +215,23 @@ where
     let delta_g2 = g2_generator.mul(delta);
 
     // Compute the A-query
-    let a_time = start_timer!(|| "Calculate A");
     let mut a_query =
         FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(scalar_bits, g1_window, &g1_table, &a);
-    end_timer!(a_time);
 
     // Compute the B-query in G1
-    let b_g1_time = start_timer!(|| "Calculate B G1");
     let mut b_g1_query =
         FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(scalar_bits, g1_window, &g1_table, &b);
-    end_timer!(b_g1_time);
 
     // Compute B window table
-    let g2_time = start_timer!(|| "Compute G2 table");
     let g2_window = FixedBaseMSM::get_mul_window_size(non_zero_b);
     let g2_table =
         FixedBaseMSM::get_window_table::<E::G2Projective>(scalar_bits, g2_window, g2_generator);
-    end_timer!(g2_time);
 
     // Compute the B-query in G2
-    let b_g2_time = start_timer!(|| "Calculate B G2");
     let mut b_g2_query =
         FixedBaseMSM::multi_scalar_mul::<E::G2Projective>(scalar_bits, g2_window, &g2_table, &b);
-    end_timer!(b_g2_time);
 
     // Compute the H-query
-    let h_time = start_timer!(|| "Calculate H");
     let mut h_query = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(
         scalar_bits,
         g1_window,
@@ -259,19 +241,12 @@ where
             .collect::<Vec<_>>(),
     );
 
-    end_timer!(h_time);
-
     // Compute the L-query
-    let l_time = start_timer!(|| "Calculate L");
     let l_query =
         FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(scalar_bits, g1_window, &g1_table, &l);
     let mut l_query = l_query[assembly.num_inputs..].to_vec();
-    end_timer!(l_time);
-
-    end_timer!(proving_key_time);
 
     // Generate R1CS verification key
-    let verifying_key_time = start_timer!(|| "Generate the R1CS verification key");
     let gamma_g2 = g2_generator.mul(gamma);
     let gamma_abc_g1 = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(
         scalar_bits,
@@ -281,8 +256,6 @@ where
     );
 
     drop(g1_table);
-
-    end_timer!(verifying_key_time);
 
     let vk = VerifyingKey::<E> {
         alpha_g1: alpha_g1.into_affine(),
@@ -294,13 +267,11 @@ where
             .collect::<Vec<_>>(),
     };
 
-    let batch_normalization_time = start_timer!(|| "Convert proving key elements to affine");
     E::G1Projective::batch_normalization(a_query.as_mut_slice());
     E::G1Projective::batch_normalization(b_g1_query.as_mut_slice());
     E::G2Projective::batch_normalization(b_g2_query.as_mut_slice());
     E::G1Projective::batch_normalization(h_query.as_mut_slice());
     E::G1Projective::batch_normalization(l_query.as_mut_slice());
-    end_timer!(batch_normalization_time);
 
     Ok(Parameters {
         vk,
