@@ -23,12 +23,16 @@ pub extern crate alloc;
 #[cfg(not(feature = "std"))]
 #[allow(unused_imports)]
 #[doc(hidden)]
-pub use alloc::{boxed::Box, format, string::String, vec, vec::Vec};
+pub use alloc::{
+    borrow::Cow, boxed::Box, collections::BTreeMap, format, string::String, vec, vec::Vec,
+};
 
 #[cfg(feature = "std")]
 #[allow(unused_imports)]
 #[doc(hidden)]
-pub use std::{boxed::Box, format, string::String, vec, vec::Vec};
+pub use std::{
+    borrow::Cow, boxed::Box, collections::BTreeMap, format, string::String, vec, vec::Vec,
+};
 
 #[macro_use]
 extern crate derivative;
@@ -67,6 +71,8 @@ pub mod msm;
 pub use self::msm::*;
 
 pub use num_traits::{One, Zero};
+
+pub mod fft;
 
 pub mod prelude {
     pub use crate::biginteger::BigInteger;

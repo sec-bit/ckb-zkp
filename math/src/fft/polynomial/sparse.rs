@@ -2,10 +2,8 @@
 
 use core::fmt;
 
-use crate::{
-    BTreeMap, DenseOrSparsePolynomial, DensePolynomial, EvaluationDomain, Evaluations, Vec,
-};
-use algebra_core::{Field, PrimeField};
+use crate::fft::{DenseOrSparsePolynomial, DensePolynomial, EvaluationDomain, Evaluations};
+use crate::{BTreeMap, Field, PrimeField, Vec};
 
 /// Stores a sparse polynomial in coefficient form.
 #[derive(Clone, PartialEq, Eq, Hash, Default)]
@@ -131,29 +129,5 @@ impl<F: Field> Into<DensePolynomial<F>> for SparsePolynomial<F> {
             other[i] = coeff;
         }
         DensePolynomial::from_coefficients_vec(other)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::{DensePolynomial, EvaluationDomain, SparsePolynomial};
-    use algebra::bls12_381::fr::Fr;
-    use algebra_core::One;
-
-    #[test]
-    fn evaluate_over_domain() {
-        for size in 2..10 {
-            let domain_size = 1 << size;
-            let domain = EvaluationDomain::new(domain_size).unwrap();
-            let two = Fr::one() + &Fr::one();
-            let sparse_poly = SparsePolynomial::from_coefficients_vec(vec![(0, two), (1, two)]);
-            let evals1 = sparse_poly.evaluate_over_domain_by_ref(domain);
-
-            let dense_poly: DensePolynomial<Fr> = sparse_poly.into();
-            let evals2 = dense_poly.clone().evaluate_over_domain(domain);
-            assert_eq!(evals1.clone().interpolate(), evals2.clone().interpolate());
-            assert_eq!(evals1.interpolate(), dense_poly);
-            assert_eq!(evals2.interpolate(), dense_poly);
-        }
     }
 }

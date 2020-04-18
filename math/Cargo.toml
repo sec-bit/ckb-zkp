@@ -19,6 +19,7 @@ unroll = "0.1.4"
 
 [dev-dependencies]
 rand_xorshift = "0.2"
+curve = { path = "../curve", default-features = false, features = [ "bls12_381", "bn_256" ] }
 
 [features]
 default = [ "std" ]

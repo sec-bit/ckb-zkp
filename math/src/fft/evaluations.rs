@@ -1,7 +1,7 @@
 //! A polynomial represented in evaluations form.
 
-use crate::{DensePolynomial, EvaluationDomain, Vec};
-use algebra_core::PrimeField;
+use crate::fft::{DensePolynomial, EvaluationDomain};
+use crate::{PrimeField, Vec};
 use core::ops::{Add, AddAssign, Div, DivAssign, Index, Mul, MulAssign, Sub, SubAssign};
 
 /// Stores a polynomial in evaluation form.

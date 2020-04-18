@@ -2,7 +2,6 @@
 name = "scheme"
 version = "0.1.0"
 authors = ["Sun <huachuang20@gmail.com>"]
-edition = "2018"
 description = "implementation of the different zero-knowledge proof system schemes"
 keywords = ["zero knowledge", "cryptography", "zkSNARK", "SNARK", "Groth"]
 categories = ["cryptography"]

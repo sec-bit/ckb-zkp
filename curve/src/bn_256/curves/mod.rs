@@ -17,6 +17,7 @@ pub use self::{
     g2::{G2Affine, G2Projective},
 };
 
+#[allow(non_camel_case_types)]
 pub type Bn_256 = Bn<Parameters>;
 
 pub struct Parameters;

@@ -11,7 +11,7 @@
 //! by performing an O(n log n) FFT over such a domain.
 
 use crate::Vec;
-use algebra_core::{FpParameters, PrimeField};
+use crate::{FpParameters, PrimeField};
 use core::fmt;
 use rand::Rng;
 #[cfg(feature = "parallel")]
@@ -51,7 +51,7 @@ pub trait DomainCoeff<F: PrimeField>:
     + Sync
     + core::ops::AddAssign
     + core::ops::SubAssign
-    + algebra_core::Zero
+    + crate::Zero
     + core::ops::MulAssign<F>
 {
 }
@@ -64,7 +64,7 @@ where
         + Sync
         + core::ops::AddAssign
         + core::ops::SubAssign
-        + algebra_core::Zero
+        + crate::Zero
         + core::ops::MulAssign<F>,
 {
 }
@@ -211,7 +211,7 @@ impl<F: PrimeField> EvaluationDomain<F> {
             }
             u
         } else {
-            use algebra_core::fields::batch_inversion;
+            use crate::fields::batch_inversion;
 
             let mut l = (t_size - &one) * &self.size_inv;
             let mut r = one;
@@ -235,9 +235,9 @@ impl<F: PrimeField> EvaluationDomain<F> {
     }
 
     /// Return the sparse vanishing polynomial.
-    pub fn vanishing_polynomial(&self) -> crate::SparsePolynomial<F> {
+    pub fn vanishing_polynomial(&self) -> crate::fft::SparsePolynomial<F> {
         let coeffs = vec![(0, -F::one()), (self.size(), F::one())];
-        crate::SparsePolynomial::from_coefficients_vec(coeffs)
+        crate::fft::SparsePolynomial::from_coefficients_vec(coeffs)
     }
 
     /// This evaluates the vanishing polynomial for this domain at tau.
@@ -446,62 +446,6 @@ impl<F: PrimeField> Iterator for Elements<F> {
             self.cur_elem *= &self.domain.group_gen;
             self.cur_pow += 1;
             Some(cur_elem)
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::EvaluationDomain;
-    use algebra::bls12_381::Fr;
-    use algebra_core::{test_rng, Field, Zero};
-    use rand::Rng;
-
-    #[test]
-    fn vanishing_polynomial_evaluation() {
-        let rng = &mut test_rng();
-        for coeffs in 0..10 {
-            let domain = EvaluationDomain::<Fr>::new(coeffs).unwrap();
-            let z = domain.vanishing_polynomial();
-            for _ in 0..100 {
-                let point = rng.gen();
-                assert_eq!(
-                    z.evaluate(point),
-                    domain.evaluate_vanishing_polynomial(point)
-                )
-            }
-        }
-    }
-
-    #[test]
-    fn vanishing_polynomial_vanishes_on_domain() {
-        for coeffs in 0..1000 {
-            let domain = EvaluationDomain::<Fr>::new(coeffs).unwrap();
-            let z = domain.vanishing_polynomial();
-            for point in domain.elements() {
-                assert!(z.evaluate(point).is_zero())
-            }
-        }
-    }
-
-    #[test]
-    fn size_of_elements() {
-        for coeffs in 1..10 {
-            let size = 1 << coeffs;
-            let domain = EvaluationDomain::<Fr>::new(size).unwrap();
-            let domain_size = domain.size();
-            assert_eq!(domain_size, domain.elements().count());
-        }
-    }
-
-    #[test]
-    fn elements_contents() {
-        for coeffs in 1..10 {
-            let size = 1 << coeffs;
-            let domain = EvaluationDomain::<Fr>::new(size).unwrap();
-            for (i, element) in domain.elements().enumerate() {
-                assert_eq!(element, domain.group_gen.pow([i as u64]));
-            }
         }
     }
 }

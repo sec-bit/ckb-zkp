@@ -1,14 +1,13 @@
 //! A polynomial represented in coefficient form.
 
-use crate::Vec;
 use core::{
     fmt,
     ops::{Add, AddAssign, Deref, DerefMut, Div, Mul, Neg, Sub, SubAssign},
 };
-
-use crate::{DenseOrSparsePolynomial, EvaluationDomain, Evaluations};
-use algebra_core::{Field, PrimeField};
 use rand::Rng;
+
+use crate::fft::{DenseOrSparsePolynomial, EvaluationDomain, Evaluations};
+use crate::{Field, PrimeField, Vec};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -340,175 +339,5 @@ impl<'a, 'b, F: PrimeField> Mul<&'a DensePolynomial<F>> for &'b DensePolynomial<
             self_evals *= &other_evals;
             self_evals.interpolate()
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::polynomial::*;
-    use algebra::bls12_381::fr::Fr;
-    use algebra_core::{test_rng, Field, One, UniformRand, Zero};
-
-    #[test]
-    fn double_polynomials_random() {
-        let rng = &mut test_rng();
-        for degree in 0..70 {
-            let p = DensePolynomial::<Fr>::rand(degree, rng);
-            let p_double = &p + &p;
-            let p_quad = &p_double + &p_double;
-            assert_eq!(&(&(&p + &p) + &p) + &p, p_quad);
-        }
-    }
-
-    #[test]
-    fn add_polynomials() {
-        let rng = &mut test_rng();
-        for a_degree in 0..70 {
-            for b_degree in 0..70 {
-                let p1 = DensePolynomial::<Fr>::rand(a_degree, rng);
-                let p2 = DensePolynomial::<Fr>::rand(b_degree, rng);
-                let res1 = &p1 + &p2;
-                let res2 = &p2 + &p1;
-                assert_eq!(res1, res2);
-            }
-        }
-    }
-
-    #[test]
-    fn add_polynomials_with_mul() {
-        let rng = &mut test_rng();
-        for a_degree in 0..70 {
-            for b_degree in 0..70 {
-                let mut p1 = DensePolynomial::rand(a_degree, rng);
-                let p2 = DensePolynomial::rand(b_degree, rng);
-                let f = Fr::rand(rng);
-                let f_p2 = DensePolynomial::from_coefficients_vec(
-                    p2.coeffs.iter().map(|c| f * c).collect(),
-                );
-                let res2 = &f_p2 + &p1;
-                p1 += (f, &p2);
-                let res1 = p1;
-                assert_eq!(res1, res2);
-            }
-        }
-    }
-
-    #[test]
-    fn sub_polynomials() {
-        let rng = &mut test_rng();
-        let p1 = DensePolynomial::<Fr>::rand(5, rng);
-        let p2 = DensePolynomial::<Fr>::rand(3, rng);
-        let res1 = &p1 - &p2;
-        let res2 = &p2 - &p1;
-        assert_eq!(
-            &res1 + &p2,
-            p1,
-            "Subtraction should be inverse of addition!"
-        );
-        assert_eq!(res1, -res2, "p2 - p1 = -(p1 - p2)");
-    }
-
-    #[test]
-    fn divide_polynomials_fixed() {
-        let dividend = DensePolynomial::from_coefficients_slice(&[
-            "4".parse().unwrap(),
-            "8".parse().unwrap(),
-            "5".parse().unwrap(),
-            "1".parse().unwrap(),
-        ]);
-        let divisor = DensePolynomial::from_coefficients_slice(&[Fr::one(), Fr::one()]); // Construct a monic linear polynomial.
-        let result = &dividend / &divisor;
-        let expected_result = DensePolynomial::from_coefficients_slice(&[
-            "4".parse().unwrap(),
-            "4".parse().unwrap(),
-            "1".parse().unwrap(),
-        ]);
-        assert_eq!(expected_result, result);
-    }
-
-    #[test]
-    fn divide_polynomials_random() {
-        let rng = &mut test_rng();
-
-        for a_degree in 0..70 {
-            for b_degree in 0..70 {
-                let dividend = DensePolynomial::<Fr>::rand(a_degree, rng);
-                let divisor = DensePolynomial::<Fr>::rand(b_degree, rng);
-                if let Some((quotient, remainder)) = DenseOrSparsePolynomial::divide_with_q_and_r(
-                    &(&dividend).into(),
-                    &(&divisor).into(),
-                ) {
-                    assert_eq!(dividend, &(&divisor * &quotient) + &remainder)
-                }
-            }
-        }
-    }
-
-    #[test]
-    fn evaluate_polynomials() {
-        let rng = &mut test_rng();
-        for a_degree in 0..70 {
-            let p = DensePolynomial::rand(a_degree, rng);
-            let point: Fr = Fr::from(10u64);
-            let mut total = Fr::zero();
-            for (i, coeff) in p.coeffs.iter().enumerate() {
-                total += &(point.pow(&[i as u64]) * coeff);
-            }
-            assert_eq!(p.evaluate(point), total);
-        }
-    }
-
-    #[test]
-    fn mul_polynomials_random() {
-        let rng = &mut test_rng();
-        for a_degree in 0..70 {
-            for b_degree in 0..70 {
-                let a = DensePolynomial::<Fr>::rand(a_degree, rng);
-                let b = DensePolynomial::<Fr>::rand(b_degree, rng);
-                assert_eq!(&a * &b, a.naive_mul(&b))
-            }
-        }
-    }
-
-    #[test]
-    fn mul_by_vanishing_poly() {
-        let rng = &mut test_rng();
-        for size in 1..10 {
-            let domain = EvaluationDomain::new(1 << size).unwrap();
-            for degree in 0..70 {
-                let p = DensePolynomial::<Fr>::rand(degree, rng);
-                let ans1 = p.mul_by_vanishing_poly(domain);
-                let ans2 = &p * &domain.vanishing_polynomial().into();
-                assert_eq!(ans1, ans2);
-            }
-        }
-    }
-
-    #[test]
-    fn test_leading_zero() {
-        let n = 10;
-        let rand_poly = DensePolynomial::rand(n, &mut test_rng());
-        let coefficients = rand_poly.coeffs.clone();
-        let leading_coefficient: Fr = coefficients[n];
-
-        let negative_leading_coefficient = -leading_coefficient;
-        let inverse_leading_coefficient = leading_coefficient.inverse().unwrap();
-
-        let mut inverse_coefficients = coefficients.clone();
-        inverse_coefficients[n] = inverse_leading_coefficient;
-
-        let mut negative_coefficients = coefficients;
-        negative_coefficients[n] = negative_leading_coefficient;
-
-        let negative_poly = DensePolynomial::from_coefficients_vec(negative_coefficients);
-        let inverse_poly = DensePolynomial::from_coefficients_vec(inverse_coefficients);
-
-        let x = &inverse_poly * &rand_poly;
-        assert_eq!(x.degree(), 2 * n);
-        assert!(!x.coeffs.last().unwrap().is_zero());
-
-        let y = &negative_poly + &rand_poly;
-        assert_eq!(y.degree(), n - 1);
-        assert!(!y.coeffs.last().unwrap().is_zero());
     }
 }
