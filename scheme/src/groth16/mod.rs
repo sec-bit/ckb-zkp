@@ -6,6 +6,7 @@ use math::{
 };
 
 use crate::r1cs::{Index, LinearCombination, SynthesisError};
+use crate::Vec;
 
 /// Reduce an R1CS instance to a *Quadratic Arithmetic Program* instance.
 pub mod r1cs_to_qap;

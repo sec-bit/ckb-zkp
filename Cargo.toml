@@ -12,6 +12,11 @@ members = [
 ]
 
 [dependencies]
-math = { path = "math" }
-curve = { path = "curve" }
-scheme = { path = "scheme" }
+math = { path = "math", default-features = false }
+scheme = { path = "scheme", default-features = false }
+curve = { path = "curve", default-features = false, features = [ "bls12_381", "bn_256"] }
+
+[features]
+default = ["parallel"]
+std = ["math/std", "curve/std", "scheme/std"]
+parallel = ["std", "math/parallel", "curve/parallel", "scheme/parallel"]
