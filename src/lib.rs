@@ -15,16 +15,26 @@ use curve::{Bls12_381, Bn_256};
 mod prove;
 mod verify;
 
+pub mod gadget;
+
 use verify::{bulletproofs_verify, groth16_verify};
 
+pub use verify::Groth16Proof;
+
+#[derive(Copy, Clone)]
 pub enum Scheme {
     Groth16,
 }
 
 #[allow(non_camel_case_types)]
+#[derive(Copy, Clone)]
 pub enum Curve {
     Bls12_381,
     Bn_256,
+}
+
+pub fn prove(s: Scheme, c: Curve, bytes: Vec<u8>) -> Vec<u8> {
+    vec![]
 }
 
 pub fn verify(s: Scheme, c: Curve, bytes: Vec<u8>) -> bool {

@@ -1,5 +1,5 @@
 use math::{
-    bytes::ToBytes,
+    bytes::{FromBytes, ToBytes},
     io::{self, Result as IoResult},
     serialize::*,
     Field, PairingEngine,
@@ -42,6 +42,16 @@ impl<E: PairingEngine> ToBytes for Proof<E> {
     }
 }
 
+impl<E: PairingEngine> FromBytes for Proof<E> {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let a = E::G1Affine::read(&mut reader)?;
+        let b = E::G2Affine::read(&mut reader)?;
+        let c = E::G1Affine::read(reader)?;
+        Ok(Self { a, b, c })
+    }
+}
+
 impl<E: PairingEngine> Default for Proof<E> {
     fn default() -> Self {
         Self {
@@ -49,21 +59,6 @@ impl<E: PairingEngine> Default for Proof<E> {
             b: E::G2Affine::default(),
             c: E::G1Affine::default(),
         }
-    }
-}
-
-impl<E: PairingEngine> Proof<E> {
-    /// Serialize the proof into bytes, for storage on disk or transmission
-    /// over the network.
-    pub fn write<W: Write>(&self, mut _writer: W) -> io::Result<()> {
-        // TODO: implement serialization
-        unimplemented!()
-    }
-
-    /// Deserialize the proof from bytes.
-    pub fn read<R: Read>(mut _reader: R) -> io::Result<Self> {
-        // TODO: implement serialization
-        unimplemented!()
     }
 }
 
@@ -83,10 +78,35 @@ impl<E: PairingEngine> ToBytes for VerifyingKey<E> {
         self.beta_g2.write(&mut writer)?;
         self.gamma_g2.write(&mut writer)?;
         self.delta_g2.write(&mut writer)?;
+        (self.gamma_abc_g1.len() as u64).write(&mut writer)?;
         for q in &self.gamma_abc_g1 {
             q.write(&mut writer)?;
         }
         Ok(())
+    }
+}
+
+impl<E: PairingEngine> FromBytes for VerifyingKey<E> {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let alpha_g1 = E::G1Affine::read(&mut reader)?;
+        let beta_g2 = E::G2Affine::read(&mut reader)?;
+        let gamma_g2 = E::G2Affine::read(&mut reader)?;
+        let delta_g2 = E::G2Affine::read(&mut reader)?;
+        let g_len = u64::read(&mut reader).unwrap();
+        let mut gamma_abc_g1 = vec![];
+        for _ in 0..g_len {
+            let v = E::G1Affine::read(&mut reader)?;
+            gamma_abc_g1.push(v);
+        }
+
+        Ok(Self {
+            alpha_g1,
+            beta_g2,
+            gamma_g2,
+            delta_g2,
+            gamma_abc_g1,
+        })
     }
 }
 
@@ -99,21 +119,6 @@ impl<E: PairingEngine> Default for VerifyingKey<E> {
             delta_g2: E::G2Affine::default(),
             gamma_abc_g1: Vec::new(),
         }
-    }
-}
-
-impl<E: PairingEngine> VerifyingKey<E> {
-    /// Serialize the verification key into bytes, for storage on disk
-    /// or transmission over the network.
-    pub fn write<W: Write>(&self, mut _writer: W) -> io::Result<()> {
-        // TODO: implement serialization
-        unimplemented!()
-    }
-
-    /// Deserialize the verification key from bytes.
-    pub fn read<R: Read>(mut _reader: R) -> io::Result<Self> {
-        // TODO: implement serialization
-        unimplemented!()
     }
 }
 
@@ -189,6 +194,13 @@ impl<E: PairingEngine> ToBytes for PreparedVerifyingKey<E> {
             q.write(&mut writer)?;
         }
         Ok(())
+    }
+}
+
+impl<E: PairingEngine> FromBytes for PreparedVerifyingKey<E> {
+    #[inline]
+    fn read<R: Read>(mut _reader: R) -> IoResult<Self> {
+        unimplemented!()
     }
 }
 
