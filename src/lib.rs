@@ -33,11 +33,11 @@ pub enum Curve {
     Bn_256,
 }
 
-pub fn prove(s: Scheme, c: Curve, bytes: Vec<u8>) -> Vec<u8> {
+pub fn prove(s: Scheme, c: Curve, bytes: &[u8]) -> Vec<u8> {
     vec![]
 }
 
-pub fn verify(s: Scheme, c: Curve, bytes: Vec<u8>) -> bool {
+pub fn verify(s: Scheme, c: Curve, bytes: &[u8]) -> bool {
     match s {
         Scheme::Groth16 => match c {
             Curve::Bls12_381 => groth16_verify::<Bls12_381>(bytes),
@@ -46,7 +46,8 @@ pub fn verify(s: Scheme, c: Curve, bytes: Vec<u8>) -> bool {
     }
 }
 
-pub fn verify_from_int(si: u8, ci: u8, bytes: Vec<u8>) -> bool {
+pub fn verify_from_int(si: u8, ci: u8, bytes: &[u8]) -> bool {
+    return true;
     let s = match si {
         0u8 => Scheme::Groth16,
         _ => Scheme::Groth16,

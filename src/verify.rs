@@ -5,8 +5,8 @@ use scheme::groth16::{prepare_verifying_key, PreparedVerifyingKey, Proof, Verify
 
 use crate::Vec;
 
-pub fn groth16_verify<E: PairingEngine>(bytes: Vec<u8>) -> bool {
-    let proof_result = Groth16Proof::<E>::from_all_bytes(&bytes);
+pub fn groth16_verify<E: PairingEngine>(bytes: &[u8]) -> bool {
+    let proof_result = Groth16Proof::<E>::from_all_bytes(bytes);
     if proof_result.is_err() {
         return false;
     }
