@@ -1,13 +1,9 @@
 use curve::bls12_381::{Bls12_381, Fr as Bls12_381Fr};
-use curve::bn_256::{Bn_256, Fr as Bn256Fr, Parameters as Bn256Parameters};
-use math::curves::models::bn::BnParameters;
+use curve::bn_256::{Bn_256, Fr as Bn256Fr};
 use math::test_rng;
 use math::PairingEngine;
 use rand::Rng;
-use scheme::groth16::{
-    create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
-    Parameters, PreparedVerifyingKey,
-};
+use scheme::groth16::{create_random_proof, generate_random_parameters, prepare_verifying_key};
 use zkp::{
     gadget::mimc::{mimc, MiMC},
     prove, verify, Curve, Groth16Proof, Scheme,
@@ -111,13 +107,7 @@ fn groth16_bn256_verify() {
 
     let verify_proof_bytes = read("./groth16_proof").unwrap();
 
-    let verify_groth16_proof = Groth16Proof::<Bn_256>::from_bytes(&verify_proof_bytes);
-
-    let (pvk, proof, public_inputs) = verify_groth16_proof.unwrap().destruct();
-
-    println!("Verifying proofs...");
-
-    let result = verify_proof(&pvk, &proof, &public_inputs).unwrap_or(false);
+    let result = verify(Scheme::Groth16, Curve::Bn_256, &verify_proof_bytes);
 
     println!("Groth16 Verify: {}", result);
 }

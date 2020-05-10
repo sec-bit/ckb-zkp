@@ -1,19 +1,20 @@
 use math::PairingEngine;
 use math::{FromBytes, ToBytes};
-use scheme::groth16::verify_proof as groth16_verify_proof;
-use scheme::groth16::{prepare_verifying_key, PreparedVerifyingKey, Proof, VerifyingKey};
+use scheme::groth16::{
+    prepare_verifying_key, verify_proof, PreparedVerifyingKey, Proof, VerifyingKey,
+};
 
 use crate::Vec;
 
 pub fn groth16_verify<E: PairingEngine>(bytes: &[u8]) -> bool {
-    let proof_result = Groth16Proof::<E>::from_all_bytes(bytes);
-    if proof_result.is_err() {
+    let verify_groth16_proof = Groth16Proof::<E>::from_bytes(&bytes);
+
+    if verify_groth16_proof.is_err() {
         return false;
     }
+    let (pvk, proof, public_inputs) = verify_groth16_proof.unwrap().destruct();
 
-    let (pvk, proof, public_inputs) = proof_result.unwrap().destruct();
-
-    groth16_verify_proof(&pvk, &proof, &public_inputs).unwrap_or(false)
+    verify_proof(&pvk, &proof, &public_inputs).unwrap_or(false)
 }
 
 pub fn bulletproofs_verify() -> bool {

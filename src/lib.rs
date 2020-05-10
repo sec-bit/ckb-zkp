@@ -47,7 +47,6 @@ pub fn verify(s: Scheme, c: Curve, bytes: &[u8]) -> bool {
 }
 
 pub fn verify_from_int(si: u8, ci: u8, bytes: &[u8]) -> bool {
-    return true;
     let s = match si {
         0u8 => Scheme::Groth16,
         _ => Scheme::Groth16,
