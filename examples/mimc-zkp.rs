@@ -1,31 +1,28 @@
-use curve::bls12_381::{Bls12_381, Fr as Bls12_381Fr};
-use curve::bn_256::{Bn_256, Fr as Bn256Fr};
-use math::test_rng;
+use curve::bls12_381::Bls12_381;
+use curve::bn_256::Bn_256;
 use math::PairingEngine;
-use rand::Rng;
+use rand::prelude::*;
 use scheme::groth16::{create_random_proof, generate_random_parameters, prepare_verifying_key};
 use zkp::{
-    gadget::mimc::{mimc, MiMC},
-    prove, verify, Curve, Groth16Proof, Scheme,
+    gadget::mimc::{mimc_hash, MiMC},
+    verify, Curve, Groth16Proof, Scheme,
 };
 
 use std::env;
-use std::fs::read;
-use std::fs::File;
-use std::io::Write;
+use std::path::PathBuf;
 
 const MIMC_ROUNDS: usize = 322;
 
 fn main() {
     let args: Vec<_> = env::args().collect();
-    if args.len() != 4 {
+    if args.len() != 5 {
         println!("Args. like: mimc-zkp groth16 bn256 prove --file=./groth16_proof");
         println!("            mimc-zkp groth16 bn256 prove --string=iamscretvalue");
         println!("            mimc-zkp groth16 bn256 verify --file=./groth16_proof");
         return;
     }
 
-    let _s = match args[1].as_str() {
+    let s = match args[1].as_str() {
         "groth16" => Scheme::Groth16,
         _ => Scheme::Groth16,
     };
@@ -36,47 +33,62 @@ fn main() {
         _ => Curve::Bn_256,
     };
 
+    let f = args[4].as_str();
+    println!("Starting prove {}", f);
+    let (bytes, filename) = if f.starts_with("--file=") {
+        let path = PathBuf::from(&f[7..]);
+        (
+            std::fs::read(&path).expect("file not found!"),
+            path.file_name()
+                .map(|s| s.to_str())
+                .flatten()
+                .map(|s| format!("{}.proof", s))
+                .unwrap_or(String::from("mimc_proof")),
+        )
+    } else if f.starts_with("--string=") {
+        (f[9..].as_bytes().to_vec(), String::from("mimc_proof"))
+    } else {
+        panic!("unimplemented other file type.")
+    };
+
     match args[3].as_str() {
         "prove" => match c {
             Curve::Bn_256 => {
-                groth16_bn256_prove();
+                groth16_prove::<Bn_256>(&bytes, filename);
             }
             Curve::Bls12_381 => {
-                groth16_prove::<Bls12_381>();
+                groth16_prove::<Bls12_381>(&bytes, filename);
             }
         },
-        "verify" => match c {
-            Curve::Bn_256 => {
-                groth16_bn256_verify();
-            }
-            Curve::Bls12_381 => {
-                groth16_verify::<Bls12_381>();
-            }
-        },
+        "verify" => {
+            let verify_proof_bytes = std::fs::read("./groth16_proof").unwrap();
+            let result = verify(s, c, &verify_proof_bytes);
+            println!("Verify Result: {}", result);
+        }
         _ => println!("not implemented!"),
     }
 }
 
-fn groth16_prove<E: PairingEngine>() {}
-
-fn groth16_bn256_prove() {
+fn groth16_prove<E: PairingEngine>(bytes: &[u8], filename: String)
+where
+    rand::distributions::Standard: rand::distributions::Distribution<E::Fr>,
+{
     println!("Prepareing...");
 
-    let rng = &mut test_rng();
+    let mut rng = rand::thread_rng();
 
-    let constants: Vec<Bn256Fr> = (0..MIMC_ROUNDS).map(|_| rng.gen()).collect::<Vec<_>>();
+    let constants: Vec<E::Fr> = (0..MIMC_ROUNDS).map(|_| rng.gen()).collect::<Vec<_>>();
 
-    let xl = rng.gen();
-    let xr = rng.gen();
-    let image = mimc(xl, xr, &constants);
+    let (xl, xr, image) = mimc_hash(bytes, &constants);
+    println!("Mimc hash: {}", image);
 
-    let c = MiMC::<Bn256Fr> {
+    let c = MiMC::<E::Fr> {
         xl: None,
         xr: None,
         constants: &constants,
     };
 
-    let params = generate_random_parameters::<Bn_256, _, _>(c, rng).unwrap();
+    let params = generate_random_parameters::<E, _, _>(c, &mut rng).unwrap();
 
     let mc = MiMC {
         xl: Some(xl),
@@ -90,24 +102,16 @@ fn groth16_bn256_prove() {
     println!("Creating proofs...");
 
     // Create a groth16 proof with our parameters.
-    let proof = create_random_proof(mc, &params, rng).unwrap();
+    let proof = create_random_proof(mc, &params, &mut rng).unwrap();
 
     let groth16_proof = Groth16Proof::new(pvk.clone(), proof, vec![image]).to_bytes(&params.vk);
 
-    let mut f = File::create("./groth16_proof").unwrap();
-    f.write(&groth16_proof).unwrap();
+    let mut path = PathBuf::from("./proofs");
+    if !path.exists() {
+        std::fs::create_dir_all(&path).unwrap();
+    }
+    path.push(filename);
+    println!("Proof file: {:?}", path);
 
-    println!("Groth16 Proof: {:?}", groth16_proof.len());
-}
-
-fn groth16_verify<E: PairingEngine>() {}
-
-fn groth16_bn256_verify() {
-    println!("Prepareing...");
-
-    let verify_proof_bytes = read("./groth16_proof").unwrap();
-
-    let result = verify(Scheme::Groth16, Curve::Bn_256, &verify_proof_bytes);
-
-    println!("Groth16 Verify: {}", result);
+    std::fs::write(path, groth16_proof).unwrap();
 }

@@ -1,5 +1,8 @@
 use math::Field;
+use math::FromBytes;
 use scheme::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
+
+use crate::Vec;
 
 const MIMC_ROUNDS: usize = 322;
 
@@ -17,8 +20,6 @@ const MIMC_ROUNDS: usize = 322;
 /// }
 /// ```
 pub fn mimc<F: Field>(mut xl: F, mut xr: F, constants: &[F]) -> F {
-    assert_eq!(constants.len(), MIMC_ROUNDS);
-
     for i in 0..MIMC_ROUNDS {
         let mut tmp1 = xl;
         tmp1.add_assign(&constants[i]);
@@ -31,6 +32,37 @@ pub fn mimc<F: Field>(mut xl: F, mut xr: F, constants: &[F]) -> F {
     }
 
     xl
+}
+
+/// mimc hash function.
+pub fn mimc_hash<F: math::fields::PrimeField + Field>(b: &[u8], constants: &[F]) -> (F, F, F) {
+    assert_eq!(constants.len(), MIMC_ROUNDS);
+
+    let mut v: Vec<F> = Vec::new();
+    let n = <F::BigInt as math::BigInteger>::NUM_LIMBS * 8;
+    for i in 0..(b.len() / n) {
+        let repr = F::BigInt::read(&b[i * n..(i + 1) * n]).unwrap_or(Default::default());
+        v.push(F::from_repr(repr));
+    }
+
+    if b.len() % n != 0 {
+        let repr = F::BigInt::read(&b[(b.len() / n) * n..]).unwrap_or(Default::default());
+        v.push(F::from_repr(repr));
+    }
+
+    let mut h: F = F::zero();
+    let xr = v[v.len() - 1].clone();
+    let mut xl = F::zero();
+
+    for i in 0..v.len() {
+        if i == v.len() - 1 {
+            xl = h.clone();
+        }
+
+        h = mimc(h, v[i], constants);
+    }
+
+    (xl, xr, h)
 }
 
 /// This is our demo circuit for proving knowledge of the

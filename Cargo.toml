@@ -22,4 +22,4 @@ scheme = { path = "scheme", default-features = false }
 curve = { path = "curve", default-features = false, features = [ "bls12_381", "bn_256"] }
 
 [dev-dependencies]
-rand = { version = "0.7", default-features = false }
+rand = { version = "0.7" }
