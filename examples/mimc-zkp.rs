@@ -12,13 +12,17 @@ use std::env;
 use std::path::PathBuf;
 
 const MIMC_ROUNDS: usize = 322;
+const PROOFS_DIR: &'static str = "./proofs_files";
 
 fn main() {
     let args: Vec<_> = env::args().collect();
     if args.len() != 5 {
-        println!("Args. like: mimc-zkp groth16 bn256 prove --file=./groth16_proof");
+        println!("Args. like: mimc-zkp groth16 bn256 prove --file=./README.md");
         println!("            mimc-zkp groth16 bn256 prove --string=iamscretvalue");
-        println!("            mimc-zkp groth16 bn256 verify --file=./groth16_proof");
+        println!(
+            "            mimc-zkp groth16 bn256 verify --file={}/mimc_proof",
+            PROOFS_DIR
+        );
         return;
     }
 
@@ -34,7 +38,6 @@ fn main() {
     };
 
     let f = args[4].as_str();
-    println!("Starting prove {}", f);
     let (bytes, filename) = if f.starts_with("--file=") {
         let path = PathBuf::from(&f[7..]);
         (
@@ -51,6 +54,8 @@ fn main() {
         panic!("unimplemented other file type.")
     };
 
+    println!("Starting {} {}", args[3].as_str(), f);
+
     match args[3].as_str() {
         "prove" => match c {
             Curve::Bn_256 => {
@@ -61,8 +66,7 @@ fn main() {
             }
         },
         "verify" => {
-            let verify_proof_bytes = std::fs::read("./groth16_proof").unwrap();
-            let result = verify(s, c, &verify_proof_bytes);
+            let result = verify(s, c, &bytes);
             println!("Verify Result: {}", result);
         }
         _ => println!("not implemented!"),
@@ -106,7 +110,7 @@ where
 
     let groth16_proof = Groth16Proof::new(pvk.clone(), proof, vec![image]).to_bytes(&params.vk);
 
-    let mut path = PathBuf::from("./proofs");
+    let mut path = PathBuf::from(PROOFS_DIR);
     if !path.exists() {
         std::fs::create_dir_all(&path).unwrap();
     }
