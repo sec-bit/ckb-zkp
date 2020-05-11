@@ -5,10 +5,10 @@
 extern crate alloc;
 
 #[cfg(not(feature = "std"))]
-use alloc::{string::String, vec::Vec};
+use alloc::vec::Vec;
 
 #[cfg(feature = "std")]
-use std::{string::String, vec::Vec};
+use std::vec::Vec;
 
 use curve::{Bls12_381, Bn_256};
 
@@ -17,7 +17,7 @@ mod verify;
 
 pub mod gadget;
 
-use verify::{bulletproofs_verify, groth16_verify};
+use verify::groth16_verify;
 
 pub use verify::Groth16Proof;
 
@@ -33,7 +33,7 @@ pub enum Curve {
     Bn_256,
 }
 
-pub fn prove(s: Scheme, c: Curve, bytes: &[u8]) -> Vec<u8> {
+pub fn _prove(_s: Scheme, _c: Curve, _bytes: &[u8]) -> Vec<u8> {
     vec![]
 }
 

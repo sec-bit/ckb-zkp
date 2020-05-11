@@ -17,7 +17,7 @@ pub fn groth16_verify<E: PairingEngine>(bytes: &[u8]) -> bool {
     verify_proof(&pvk, &proof, &public_inputs).unwrap_or(false)
 }
 
-pub fn bulletproofs_verify() -> bool {
+pub fn _bulletproofs_verify() -> bool {
     true
 }
 
