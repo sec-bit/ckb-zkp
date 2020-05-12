@@ -353,7 +353,7 @@ fn bitreverse(mut n: u32, l: u32) -> u32 {
     r
 }
 
-pub(crate) fn serial_fft<T: DomainCoeff<F>, F: PrimeField>(a: &mut [T], omega: F, log_n: u32) {
+pub fn serial_fft<T: DomainCoeff<F>, F: PrimeField>(a: &mut [T], omega: F, log_n: u32) {
     let n = a.len() as u32;
     assert_eq!(n, 1 << log_n);
 
@@ -389,7 +389,7 @@ pub(crate) fn serial_fft<T: DomainCoeff<F>, F: PrimeField>(a: &mut [T], omega: F
 }
 
 #[cfg(feature = "parallel")]
-pub(crate) fn parallel_fft<T: DomainCoeff<F>, F: PrimeField>(
+pub fn parallel_fft<T: DomainCoeff<F>, F: PrimeField>(
     a: &mut [T],
     omega: F,
     log_n: u32,

@@ -1,20 +1,12 @@
-use core::{
-    cmp::Ordering,
-    ops::{AddAssign, MulAssign, SubAssign},
-};
 use math::{
-    biginteger::{BigInteger, BigInteger256},
-    fields::{
-        Field, Fp12Parameters, Fp2Parameters, Fp6Parameters, FpParameters, PrimeField,
-        SquareRootField,
-    },
-    One, UniformRand, Zero,
+    fields::{Field, Fp2Parameters, Fp6Parameters},
+    One, UniformRand,
 };
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
 
 use crate::{
-    bn_256::{Fq, Fq12, Fq12Parameters, Fq2, Fq2Parameters, Fq6, Fq6Parameters, FqParameters, Fr},
+    bn_256::{Fq, Fq12, Fq2, Fq2Parameters, Fq6, Fq6Parameters, Fr},
     tests::fields::{field_test, frobenius_test, primefield_test, sqrt_field_test},
 };
 
@@ -79,17 +71,6 @@ fn test_fq12() {
     frobenius_test::<Fq12, _>(Fq::characteristic(), 13);
 }
 
-//#[test]
-fn test_negative_one() {
-    let neg_one = Fq::new(BigInteger256([
-        4332616871279656262u64,
-        10917124144477883021u64,
-        13281191951274694749u64,
-        3486998266802970665u64,
-    ]));
-    assert_eq!(neg_one, -Fq::one());
-}
-
 #[test]
 fn test_frob_coeffs() {
     let nqr = -Fq::one();
@@ -105,7 +86,7 @@ fn test_frob_coeffs() {
         ])
     );
 
-    let nqr = Fq2::new(Fq::one(), Fq::one());
+    let _nqr = Fq2::new(Fq::one(), Fq::one());
 
     assert_eq!(Fq6Parameters::FROBENIUS_COEFF_FP6_C1[0], Fq2::one());
 }

@@ -281,10 +281,9 @@ fn fft_composition() {
 #[cfg(feature = "parallel")]
 fn parallel_fft_consistency() {
     use core::cmp::min;
-    use curve::bls12_381::{Bls12_381, Fr, G1Projective};
+    use curve::bls12_381::Bls12_381;
     use math::fft::domain::*;
-    use math::{test_rng, Field, PairingEngine, PrimeField, UniformRand, Vec};
-    use rand::Rng;
+    use math::{test_rng, PairingEngine, UniformRand, Vec};
 
     fn test_consistency<E: PairingEngine, R: rand::Rng>(rng: &mut R) {
         for _ in 0..5 {

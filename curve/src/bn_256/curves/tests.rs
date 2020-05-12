@@ -1,14 +1,13 @@
-#![allow(unused_imports)]
 use core::ops::{AddAssign, MulAssign};
 use math::{
-    curves::{models::SWModelParameters, AffineCurve, PairingEngine, ProjectiveCurve},
-    fields::{Field, FpParameters, PrimeField, SquareRootField},
+    curves::{models::SWModelParameters, AffineCurve, PairingEngine},
+    fields::{Field, PrimeField, SquareRootField},
     test_rng, CanonicalSerialize, One, Zero,
 };
 use rand::Rng;
 
 use crate::{
-    bn_256::{g1, g2, Bn_256, Fq, Fq12, Fq2, Fr, G1Affine, G1Projective, G2Affine, G2Projective},
+    bn_256::{g1, g2, Bn_256, Fq, Fq12, Fr, G1Affine, G1Projective, G2Affine, G2Projective},
     tests::{
         curves::{curve_tests, sw_curve_serialization_test},
         groups::group_test,
