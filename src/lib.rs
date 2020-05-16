@@ -10,7 +10,7 @@ use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-use curve::{Bls12_381, Bn_256};
+use curve::Bn_256;
 
 mod prove;
 mod verify;
@@ -40,8 +40,9 @@ pub fn _prove(_s: Scheme, _c: Curve, _bytes: &[u8]) -> Vec<u8> {
 pub fn verify(s: Scheme, c: Curve, bytes: &[u8]) -> bool {
     match s {
         Scheme::Groth16 => match c {
-            Curve::Bls12_381 => groth16_verify::<Bls12_381>(bytes),
+            //Curve::Bls12_381 => groth16_verify::<Bls12_381>(bytes),
             Curve::Bn_256 => groth16_verify::<Bn_256>(bytes),
+            _ => groth16_verify::<Bn_256>(bytes),
         },
     }
 }

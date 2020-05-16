@@ -1,4 +1,4 @@
-use curve::bls12_381::Bls12_381;
+//use curve::bls12_381::Bls12_381;
 use curve::bn_256::Bn_256;
 use math::PairingEngine;
 use rand::prelude::*;
@@ -62,7 +62,8 @@ fn main() {
                 groth16_prove::<Bn_256>(&bytes, filename);
             }
             Curve::Bls12_381 => {
-                groth16_prove::<Bls12_381>(&bytes, filename);
+                //groth16_prove::<Bls12_381>(&bytes, filename);
+                groth16_prove::<Bn_256>(&bytes, filename);
             }
         },
         "verify" => {

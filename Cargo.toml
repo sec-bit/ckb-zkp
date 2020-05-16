@@ -12,14 +12,16 @@ members = [
 ]
 
 [features]
-default = ["parallel"]
+default = ["parallel", "bn_256"]
 std = ["math/std", "curve/std", "scheme/std"]
 parallel = ["std", "math/parallel", "curve/parallel", "scheme/parallel"]
+bn_256 = ["curve/bn_256"]
+bls12_381 = ["curve/bls12_381"]
 
 [dependencies]
 math = { path = "math", default-features = false }
 scheme = { path = "scheme", default-features = false }
-curve = { path = "curve", default-features = false, features = [ "bls12_381", "bn_256"] }
+curve = { path = "curve", default-features = false }
 
 [dev-dependencies]
 rand = { version = "0.7" }
