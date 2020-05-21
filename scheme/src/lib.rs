@@ -21,6 +21,8 @@ use std::{string::String, vec::Vec};
 
 #[macro_use]
 extern crate math;
+extern crate curve;
 
 pub mod groth16;
 pub mod r1cs;
+pub mod bulletproofs;

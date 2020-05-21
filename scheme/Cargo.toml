@@ -8,11 +8,17 @@ categories = ["cryptography"]
 license = "MIT/Apache-2.0"
 edition = "2018"
 
+[[bin]]
+path = "src/bulletproofs/protocol2.rs"
+name = "p2"
+
 [dependencies]
 math = { path = "../math", default-features = false, features = [ "derive" ] }
+curve = { path = "../curve", features = [ "bls12_381", "bn_256", "sw6" ] }
 rand = { version = "0.7", default-features = false }
 rayon = { version = "1", optional = true }
 smallvec = "1.1.0"
+merlin = "2.0.0"
 
 [dev-dependencies]
 csv = { version = "1" }
