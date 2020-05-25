@@ -2,59 +2,18 @@
 use curve::bls12_381::Bls12_381;
 use curve::bn_256::Bn_256;
 use math::{
-    bytes::ToBytes, msm::VariableBaseMSM, AffineCurve, Field, One, PairingEngine, PrimeField,
-    ProjectiveCurve, UniformRand, Zero,
+    bytes::ToBytes, AffineCurve, One, PairingEngine,
+    ProjectiveCurve, UniformRand, Field,
 };
 use merlin::Transcript;
 use std::time::Instant;
+use super::{inner_product, quick_multiexp, random_bytes_to_fr};
 
 pub struct Proof<E: PairingEngine> {
     L_vec: Vec<E::G1Affine>,
     R_vec: Vec<E::G1Affine>,
     a: E::Fr,
     b: E::Fr,
-}
-
-fn naive_multiexp<E>(exponents: Vec<E::Fr>, bases: Vec<E::G1Affine>) -> E::G1Projective
-where
-    E: PairingEngine,
-{
-    let t1 = Instant::now();
-    assert_eq!(bases.len(), exponents.len());
-
-    let mut acc = E::G1Projective::zero();
-
-    for (base, exp) in bases.iter().zip(exponents.iter()) {
-        acc += &base.mul(*exp);
-    }
-
-    let duration = t1.elapsed();
-    println!(
-        "len = {}, Time elapsed in naive_multiexp is: {:?}",
-        exponents.len(),
-        duration
-    );
-    acc
-}
-
-fn quick_multiexp<E>(exponents: Vec<E::Fr>, bases: Vec<E::G1Affine>) -> E::G1Projective
-where
-    E: PairingEngine,
-{
-    let t1 = Instant::now();
-    let scalars = exponents[..]
-        .into_iter()
-        .map(|s| s.into_repr())
-        .collect::<Vec<_>>();
-
-    let result = VariableBaseMSM::multi_scalar_mul(&bases, &scalars);
-    let duration = t1.elapsed();
-    println!(
-        "len = {}, Time elapsed in quick_multiexp is: {:?}",
-        exponents.len(),
-        duration
-    );
-    result
 }
 
 pub fn prove<E: PairingEngine>(
@@ -149,14 +108,6 @@ pub fn prove<E: PairingEngine>(
     Proof { L_vec, R_vec, a, b }
 }
 
-fn random_bytes_to_fr<E: PairingEngine>(bytes: &[u8]) -> E::Fr {
-    let mut r_bytes = [0u8; 31];
-    // only use the first 31 bytes, to avoid value over modulus
-    // we could mod modulus here too to keep value in range
-    r_bytes.copy_from_slice(&bytes[0..31]);
-    let r = <E::Fr as Field>::from_random_bytes(&r_bytes);
-    r.unwrap()
-}
 
 pub fn verify<E: PairingEngine>(
     g_vec: Vec<E::G1Affine>,
@@ -296,7 +247,7 @@ pub fn run_protocol2_helper<E: PairingEngine>(n: usize) {
 }
 
 #[cfg(test)]
-mod tests {
+mod bn_256_tests {
     use super::*;
     use curve::bn_256::Bn_256;
 
@@ -331,18 +282,38 @@ mod tests {
     }
 }
 
-/// Computes an inner product of two vectors
-/// \\[
-///    {\langle {\mathbf{a}}, {\mathbf{b}} \rangle} = \sum\_{i=0}^{n-1} a\_i \cdot b\_i.
-/// \\]
-/// Panics if the lengths of \\(\mathbf{a}\\) and \\(\mathbf{b}\\) are not equal.
-pub fn inner_product<E: PairingEngine>(a: &[E::Fr], b: &[E::Fr]) -> E::Fr {
-    let mut out = E::Fr::zero();
-    if a.len() != b.len() {
-        panic!("inner_product(a,b): lengths of vectors do not match");
+#[cfg(test)]
+mod bls12_381_tests {
+    use super::*;
+    use curve::bls12_381::Bls12_381;
+
+    #[test]
+    fn run_ipp_256() {
+        run_protocol2_helper::<Bls12_381>(256);
     }
-    for i in 0..a.len() {
-        out += &(a[i] * &b[i]);
+
+    #[test]
+    fn run_ipp_128() {
+        run_protocol2_helper::<Bls12_381>(128);
     }
-    out
+
+    #[test]
+    fn run_ipp_64() {
+        run_protocol2_helper::<Bls12_381>(64);
+    }
+
+    #[test]
+    fn run_ipp_32() {
+        run_protocol2_helper::<Bls12_381>(32);
+    }
+
+    #[test]
+    fn run_ipp_2() {
+        run_protocol2_helper::<Bls12_381>(2);
+    }
+
+    #[test]
+    fn run_ipp_1() {
+        run_protocol2_helper::<Bls12_381>(1);
+    }
 }
