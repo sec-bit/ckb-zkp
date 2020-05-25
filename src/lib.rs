@@ -5,10 +5,16 @@
 extern crate alloc;
 
 #[cfg(not(feature = "std"))]
-use alloc::vec::Vec;
+use alloc::{
+    collections::{BTreeMap, HashMap},
+    vec::Vec,
+};
 
 #[cfg(feature = "std")]
-use std::vec::Vec;
+use std::{
+    collections::{BTreeMap, HashMap},
+    vec::Vec,
+};
 
 use curve::Bn_256;
 
