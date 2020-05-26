@@ -1,5 +1,4 @@
 //! Helpers for testing circuit implementations.
-
 use math::PrimeField;
 use math::ToBytes;
 use scheme::r1cs::{ConstraintSystem, Index, LinearCombination, SynthesisError, Variable};
@@ -62,6 +61,7 @@ impl Ord for OrderedVariable {
     }
 }
 
+#[allow(dead_code)]
 fn proc_lc<F: PrimeField>(terms: &[(Variable, F)]) -> BTreeMap<OrderedVariable, F> {
     let mut map = BTreeMap::new();
     for &(var, coeff) in terms {
@@ -85,6 +85,7 @@ fn proc_lc<F: PrimeField>(terms: &[(Variable, F)]) -> BTreeMap<OrderedVariable, 
     map
 }
 
+#[allow(dead_code)]
 fn hash_lc<F: PrimeField>(terms: &[(Variable, F)], h: &mut Blake2sState) {
     let map = proc_lc::<F>(terms);
 
@@ -110,6 +111,7 @@ fn hash_lc<F: PrimeField>(terms: &[(Variable, F)], h: &mut Blake2sState) {
     }
 }
 
+#[allow(dead_code)]
 fn eval_lc<F: PrimeField>(
     terms: &[(Variable, F)],
     inputs: &[(F, String)],
@@ -130,6 +132,7 @@ fn eval_lc<F: PrimeField>(
     acc
 }
 
+#[allow(dead_code)]
 impl<F: PrimeField> TestConstraintSystem<F> {
     pub fn new() -> TestConstraintSystem<F> {
         let mut map = HashMap::new();

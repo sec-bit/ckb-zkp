@@ -11,6 +11,7 @@ pub struct AllocatedBit {
     value: Option<bool>,
 }
 
+#[allow(dead_code)]
 impl AllocatedBit {
     pub fn get_value(&self) -> Option<bool> {
         self.value
@@ -302,6 +303,7 @@ pub fn u64_into_boolean_vec_le<F: PrimeField, CS: ConstraintSystem<F>>(
     Ok(bits)
 }
 
+#[allow(dead_code)]
 pub fn field_into_boolean_vec_le<F: PrimeField, CS: ConstraintSystem<F>>(
     cs: CS,
     value: Option<F>,
@@ -363,6 +365,7 @@ pub enum Boolean {
     Constant(bool),
 }
 
+#[allow(dead_code)]
 impl Boolean {
     pub fn is_constant(&self) -> bool {
         match *self {
