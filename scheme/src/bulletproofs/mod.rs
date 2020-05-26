@@ -1,8 +1,6 @@
 pub mod arithmetic_circuit;
 pub mod inner_product_proof;
 
-// use digest::{ExtendableOutput, Input, XofReader};
-// use sha3::{Sha3XofReader, Shake256};
 use math::{msm::VariableBaseMSM, Field, PairingEngine, PrimeField, Zero};
 use std::time::Instant;
 

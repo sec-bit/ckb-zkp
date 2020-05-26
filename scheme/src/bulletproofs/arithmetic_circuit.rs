@@ -1,13 +1,8 @@
 #![allow(non_snake_case)]
 #![allow(non_snake_case)]
-// use curve25519_dalek::ristretto::E::G1Affine;
-// use curve25519_dalek::scalar::Scalar;
-// use curve25519_dalek::traits::MultiscalarMul;
-// use digest::{ExtendableOutput, Input, XofReader};
 use merlin::Transcript;
-use std::cmp;
-// use sha3::{Sha3XofReader, Shake256};
 use rand::Rng;
+use std::cmp;
 
 use super::{
     hadamard_product, inner_product, inner_product_proof, quick_multiexp, random_bytes_to_fr,
