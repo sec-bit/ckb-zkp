@@ -10,6 +10,7 @@ use crate::Vec;
 struct RangeProof<F: PrimeField> {
     lhs: Option<F>,
     rhs: Option<F>,
+    n: u64,
     // less: Option<bool>,
     // lessOrEqual: Option<E::Fr>,
     // n: Option<u32>,
@@ -23,7 +24,8 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for RangeProof<F> {
         self,
         cs: &mut CS,
     ) -> Result<(), SynthesisError> {
-        let n: u64 = 10;
+        let n: u64 = self.n;
+
         let mut coeff = F::one();
         let lhs_value = self.lhs;
         let lhs = cs.alloc(
@@ -46,7 +48,7 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for RangeProof<F> {
         /* alpha_packed = 2^n + B - A */
         let alpha_packed_value = match (&self.rhs, &self.lhs) {
             (Some(_r), Some(_l)) => {
-                let mut tmp = F::from(2u32).pow(&[n as u64]);
+                let mut tmp = F::from(2u32).pow(&[n]);
                 tmp.add_assign(&self.rhs.unwrap());
                 tmp.sub_assign(&self.lhs.unwrap());
                 Some(tmp)
@@ -77,7 +79,6 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for RangeProof<F> {
 
         let mut alpha: Vec<Variable> = Vec::new();
 
-        //let i: u64 = 0;
         for i in 0..n {
             let alpha_i = cs.alloc(
                 || format!("alpha[{}]", i),
@@ -224,11 +225,14 @@ fn test_rangeproof() {
     };
 
     let mut rng = &mut test_rng();
+    let n = 10u64; // range 0 ~ 2^10
+
     println!("Creating parameters...");
     let params = {
         let c = RangeProof::<Fr> {
             lhs: None,
             rhs: None,
+            n: n,
         };
 
         generate_random_parameters::<Bn_256, _, _>(c, &mut rng).unwrap()
@@ -241,10 +245,11 @@ fn test_rangeproof() {
     let c1 = RangeProof::<Fr> {
         lhs: Some(Fr::from(24u32)),
         rhs: Some(Fr::from(25u32)),
+        n: n,
     };
 
     let proof = create_random_proof(c1, &params, &mut rng).unwrap();
     println!("Proofs ok, start verify...");
 
-    assert!(verify_proof(&pvk, &proof, &[Fr::from(2u32).pow(&[10])]).unwrap());
+    assert!(verify_proof(&pvk, &proof, &[Fr::from(2u32).pow(&[n])]).unwrap());
 }
