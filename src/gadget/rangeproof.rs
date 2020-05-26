@@ -188,7 +188,7 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for RangeProof<F> {
         let mut lc2 = LinearCombination::<F>::zero();
         for b in &alpha {
             lc2 = lc2 + (coeff, *b);
-            coeff.double();
+            coeff = coeff.double();
         }
         cs.enforce(
             || " packing_constraint",
@@ -221,6 +221,7 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for RangeProof<F> {
 fn test_rangeproof() {
     use curve::bn_256::{Bn_256, Fr};
     use math::test_rng;
+    use math::fields::Field;
     use scheme::groth16::{
         create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
     };
@@ -248,5 +249,5 @@ fn test_rangeproof() {
     let proof = create_random_proof(c1, &params, &mut rng).unwrap();
     println!("Proofs ok, start verify...");
 
-    assert!(verify_proof(&pvk, &proof, &[]).unwrap());
+    assert!(verify_proof(&pvk, &proof, &[Fr::from(2u32).pow(&[10])]).unwrap());
 }
