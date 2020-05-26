@@ -1,44 +1,34 @@
-use bellman::gadgets::boolean::{Boolean, AllocatedBit};
-use bellman::gadgets::Assignment;
-use ff::{Field, PrimeField, ScalarEngine};
-use pairing::bls12_381::Bls12;
-use pairing::Engine;
-use rand::thread_rng;
-
-// We'll use these interfaces to construct our circuit.
-use bellman::gadgets::boolean;
-use bellman::gadgets::test::TestConstraintSystem;
-use bellman::{Circuit, ConstraintSystem, LinearCombination, SynthesisError, Variable};
-
-// We're going to use the Groth16 proving system.
-use bellman::groth16::{
-    create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
+use math::PrimeField;
+use scheme::r1cs::{
+    ConstraintSynthesizer, ConstraintSystem, LinearCombination, SynthesisError, Variable,
 };
+
+use super::test_constraint_system::TestConstraintSystem;
 
 // use bellman::gadgets::Assignment;
 
-struct lookup3bitDemo<E: Engine> {
-    in_bit: Vec<Option<E::Fr>>,
-    in_constants: Vec<Option<E::Fr>>,
+struct lookup3bitDemo<E: PrimeField> {
+    in_bit: Vec<Option<E>>,
+    in_constants: Vec<Option<E>>,
 }
 
-impl<E: Engine> Circuit<E> for lookup3bitDemo<E> {
-    fn synthesize<CS: ConstraintSystem<E>>(self, cs: &mut CS) -> Result<(), SynthesisError> {
+impl<E: PrimeField> ConstraintSynthesizer<E> for lookup3bitDemo<E> {
+    fn generate_constraints<CS: ConstraintSystem<E>>(self, cs: &mut CS) -> Result<(), SynthesisError> {
         assert!(self.in_constants.len() == 8);
         assert!(self.in_bit.len() == 3);
-        // assert!(self.in_bit == Some(E::Fr::zero()) || self.in_bit == Some(E::Fr::one()));
+        // assert!(self.in_bit == Some(E::zero()) || self.in_bit == Some(E::one()));
         let mut index = match (self.in_bit[0], self.in_bit[1], self.in_bit[2]) {
             (Some(a_value), Some(b_value), Some(c_value)) => {
                 let mut tmp: usize = 0;
-                if a_value == E::Fr::one(){
+                if a_value == E::one(){
                     tmp += 1;
                 }
 
-                if b_value == E::Fr::one(){
+                if b_value == E::one(){
                     tmp += 2;
                 }
 
-                if c_value == E::Fr::one(){
+                if c_value == E::one(){
                     tmp += 4;
                 }
                 Some(tmp)
@@ -46,7 +36,7 @@ impl<E: Engine> Circuit<E> for lookup3bitDemo<E> {
             _ => None, 
         };
 
-        let mut res: Option<E::Fr>;
+        let mut res: Option<E>;
         if index.is_some() {
             res = self.in_constants[index.unwrap()];
         } else {
@@ -164,7 +154,7 @@ impl<E: Engine> Circuit<E> for lookup3bitDemo<E> {
 
                     // b[0]*-c[0]
                     let mut tmp = self.in_constants[0].unwrap();
-                    tmp.negate();
+                    tmp = -tmp;
                     tmp.mul_assign(&self.in_bit[0].unwrap());
                     res.add_assign(&tmp);
 
@@ -175,7 +165,7 @@ impl<E: Engine> Circuit<E> for lookup3bitDemo<E> {
 
                     // b[1]*-c[0]
                     tmp = self.in_constants[0].unwrap();
-                    tmp.negate();
+                    tmp = -tmp;
                     tmp.mul_assign(&self.in_bit[1].unwrap());
                     res.add_assign(&tmp);
 
@@ -186,9 +176,9 @@ impl<E: Engine> Circuit<E> for lookup3bitDemo<E> {
 
                     // (precomp01 * (-c[1] + -c[2] + c[0] + c[3]))
                     tmp = self.in_constants[1].unwrap();
-                    tmp.negate();
+                    tmp = -tmp;
                     let mut tmp1 = self.in_constants[2].unwrap();
-                    tmp1.negate();
+                    tmp1 = -tmp1;
                     tmp.add_assign(&tmp1);
                     tmp.add_assign(&self.in_constants[0].unwrap());
                     tmp.add_assign(&self.in_constants[3].unwrap());
@@ -198,16 +188,16 @@ impl<E: Engine> Circuit<E> for lookup3bitDemo<E> {
 
                     // (b[2] * (-c[0] + c[4]))
                     tmp = self.in_constants[0].unwrap();
-                    tmp.negate();
+                    tmp = -tmp;
                     tmp.add_assign(&self.in_constants[4].unwrap());
                     tmp.mul_assign(&self.in_bit[2].unwrap());
                     res.add_assign(&tmp);
 
                     // (precomp02 * (c[0] - c[1] -c[4] + c[5]))
                     tmp = self.in_constants[1].unwrap();
-                    tmp.negate();
+                    tmp = -tmp;
                     tmp1 = self.in_constants[4].unwrap();
-                    tmp1.negate();
+                    tmp1 = -tmp1;
                     tmp.add_assign(&tmp1);
                     tmp.add_assign(&self.in_constants[0].unwrap());
                     tmp.add_assign(&self.in_constants[5].unwrap());
@@ -217,9 +207,9 @@ impl<E: Engine> Circuit<E> for lookup3bitDemo<E> {
 
                     // (precomp12 * (c[0] - c[2] - c[4] + c[6]))
                     tmp = self.in_constants[2].unwrap();
-                    tmp.negate();
+                    tmp = -tmp;
                     tmp1 = self.in_constants[4].unwrap();
-                    tmp1.negate();
+                    tmp1 = -tmp1;
                     tmp.add_assign(&tmp1);
                     tmp.add_assign(&self.in_constants[0].unwrap());
                     tmp.add_assign(&self.in_constants[6].unwrap());
@@ -229,18 +219,18 @@ impl<E: Engine> Circuit<E> for lookup3bitDemo<E> {
 
                     // precomp012 * (-c[0] + c[1] + c[2] - c[3] + c[4] - c[5] -c[6] + c[7])
                     tmp = self.in_constants[0].unwrap();
-                    tmp.negate();
+                    tmp = -tmp;
                     tmp.add_assign(&self.in_constants[1].unwrap());
                     tmp.add_assign(&self.in_constants[2].unwrap());
                     tmp1 = self.in_constants[3].unwrap();
-                    tmp1.negate();
+                    tmp1 = -tmp1;
                     tmp.add_assign(&tmp1);
                     tmp.add_assign(&self.in_constants[4].unwrap());
                     tmp1 = self.in_constants[5].unwrap();
-                    tmp1.negate();
+                    tmp1 = -tmp1;
                     tmp.add_assign(&tmp1);
                     tmp1 = self.in_constants[6].unwrap();
-                    tmp1.negate();
+                    tmp1 = -tmp1;
                     tmp.add_assign(&tmp1);
                     tmp.add_assign(&self.in_constants[7].unwrap());
                     tmp.mul_assign(&self.in_bit[0].unwrap());
@@ -267,35 +257,42 @@ impl<E: Engine> Circuit<E> for lookup3bitDemo<E> {
 
 #[test]
 fn test_lookup3bitDemo() {
-    let rng = &mut thread_rng();
+    use curve::bn_256::{Bn_256, Fr};
+    use math::test_rng;
+    use math::fields::Field;
+    use scheme::groth16::{
+        create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
+    };
+
+    let mut rng = &mut test_rng();
     println!("Creating parameters...");
     let params = {
-        let c = lookup3bitDemo::<Bls12> {
+        let c = lookup3bitDemo::<Fr> {
             in_bit: vec![None; 3],
             in_constants: vec![None; 8],
         };
-        generate_random_parameters(c, rng).unwrap()
+        generate_random_parameters::<Bn_256, _, _>(c, &mut rng).unwrap()
     };
 
     let pvk = prepare_verifying_key(&params.vk);
 
     println!("Creating proofs...");
-    let mut in_constants_value: Vec<Option<<Bls12 as ScalarEngine>::Fr>> = Vec::with_capacity(4);
-    in_constants_value.push(<Bls12 as ScalarEngine>::Fr::from_str("9"));
-    in_constants_value.push(<Bls12 as ScalarEngine>::Fr::from_str("10"));
-    in_constants_value.push(<Bls12 as ScalarEngine>::Fr::from_str("11"));
-    in_constants_value.push(<Bls12 as ScalarEngine>::Fr::from_str("12"));
-    in_constants_value.push(<Bls12 as ScalarEngine>::Fr::from_str("13"));
-    in_constants_value.push(<Bls12 as ScalarEngine>::Fr::from_str("14"));
-    in_constants_value.push(<Bls12 as ScalarEngine>::Fr::from_str("15"));
-    in_constants_value.push(<Bls12 as ScalarEngine>::Fr::from_str("16"));
+    let mut in_constants_value: Vec<Option<Fr>> = Vec::with_capacity(4);
+    in_constants_value.push(Some(Fr::from(9u32)));
+    in_constants_value.push(Some(Fr::from(10u32)));
+    in_constants_value.push(Some(Fr::from(11u32)));
+    in_constants_value.push(Some(Fr::from(12u32)));
+    in_constants_value.push(Some(Fr::from(13u32)));
+    in_constants_value.push(Some(Fr::from(14u32)));
+    in_constants_value.push(Some(Fr::from(15u32)));
+    in_constants_value.push(Some(Fr::from(16u32)));
 
-    let mut in_bits_value: Vec<Option<<Bls12 as ScalarEngine>::Fr>> = Vec::with_capacity(2);
-    in_bits_value.push(<Bls12 as ScalarEngine>::Fr::from_str("1"));
-    in_bits_value.push(<Bls12 as ScalarEngine>::Fr::from_str("1"));
-    in_bits_value.push(<Bls12 as ScalarEngine>::Fr::from_str("1"));
+    let mut in_bits_value: Vec<Option<Fr>> = Vec::with_capacity(2);
+    in_bits_value.push(Some(Fr::from(1u32)));
+    in_bits_value.push(Some(Fr::from(1u32)));
+    in_bits_value.push(Some(Fr::from(1u32)));
 
-    let mut c1 = lookup3bitDemo::<Bls12> {
+    let mut c1 = lookup3bitDemo::<Fr> {
         in_bit: in_bits_value.clone(),
         in_constants: in_constants_value.clone(),
     };

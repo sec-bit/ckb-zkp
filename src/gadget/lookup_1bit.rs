@@ -1,35 +1,27 @@
-use bellman::gadgets::boolean::{Boolean, AllocatedBit};
-use bellman::gadgets::Assignment;
-use ff::{Field, PrimeField, ScalarEngine};
-use pairing::bls12_381::Bls12;
-use pairing::Engine;
-use rand::thread_rng;
 
-// We'll use these interfaces to construct our circuit.
-use bellman::gadgets::boolean;
-use bellman::gadgets::test::TestConstraintSystem;
-use bellman::{Circuit, ConstraintSystem, LinearCombination, SynthesisError, Variable};
-
-// We're going to use the Groth16 proving system.
-use bellman::groth16::{
-    create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
+use math::PrimeField;
+use scheme::r1cs::{
+    ConstraintSynthesizer, ConstraintSystem, LinearCombination, SynthesisError, Variable,
 };
+use math::fields::Field;
+
+use super::test_constraint_system::TestConstraintSystem;
 
 // use bellman::gadgets::Assignment;
 
-struct lookup1bitDemo<E: Engine> {
-    in_bit: Option<E::Fr>,
-    in_constants: Vec<Option<E::Fr>>,
+struct lookup1bitDemo<E: PrimeField> {
+    in_bit: Option<E>,
+    in_constants: Vec<Option<E>>,
 }
 
-impl<E: Engine> Circuit<E> for lookup1bitDemo<E> {
-    fn synthesize<CS: ConstraintSystem<E>>(self, cs: &mut CS) -> Result<(), SynthesisError> {
+impl<E: PrimeField> ConstraintSynthesizer<E> for lookup1bitDemo<E> {
+    fn generate_constraints<CS: ConstraintSystem<E>>(self, cs: &mut CS) -> Result<(), SynthesisError> {
         assert!(self.in_constants.len() == 2);
-        // assert!(self.in_bit == Some(E::Fr::zero()) || self.in_bit == Some(E::Fr::one()));
+        // assert!(self.in_bit == Some(E::zero()) || self.in_bit == Some(E::one()));
         let mut index = match self.in_bit {
             Some(a_value) => {
                 let mut tmp: usize = 0;
-                if a_value == E::Fr::one(){
+                if a_value == E::one(){
                     tmp += 1;
                 }
                 Some(tmp)
@@ -37,7 +29,7 @@ impl<E: Engine> Circuit<E> for lookup1bitDemo<E> {
             _ => None, 
         };
 
-        let mut res: Option<E::Fr>;
+        let mut res: Option<E>;
         if index.is_some() {
             res = self.in_constants[index.unwrap()];
         } else {
@@ -76,8 +68,8 @@ impl<E: Engine> Circuit<E> for lookup1bitDemo<E> {
             || "tmp1_var=b*c[1]",
             || {
                 if self.in_bit.is_some() && self.in_constants[0].is_some() {
-                    let mut in_constants_one_value = E::Fr::one();
-                    in_constants_one_value.negate();
+                    let mut in_constants_one_value = E::one();
+                    in_constants_one_value = -in_constants_one_value;
                     let mut tmp = self.in_bit.unwrap();
                     tmp.mul_assign(&self.in_constants[0].unwrap());
                     tmp.mul_assign(&in_constants_one_value);
@@ -100,26 +92,32 @@ impl<E: Engine> Circuit<E> for lookup1bitDemo<E> {
 
 #[test]
 fn test_lookup1bitDemo() {
-    let rng = &mut thread_rng();
+    use curve::bn_256::{Bn_256, Fr};
+    use math::test_rng;
+    use math::fields::Field;
+    use scheme::groth16::{
+        create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
+    };
+    let mut rng = &mut test_rng();
     println!("Creating parameters...");
     let params = {
-        let c = lookup1bitDemo::<Bls12> {
+        let c = lookup1bitDemo::<Fr> {
             in_bit: None,
             in_constants: vec![None; 2],
         };
-        generate_random_parameters(c, rng).unwrap()
+        generate_random_parameters::<Bn_256, _, _>(c, &mut rng).unwrap()
     };
 
     let pvk = prepare_verifying_key(&params.vk);
 
     println!("Creating proofs...");
-    let mut in_constants_value: Vec<Option<<Bls12 as ScalarEngine>::Fr>> = Vec::with_capacity(2);
-    // <Bls12 as ScalarEngine>::Fr::from_str("9") 返回的是Option变量
-    in_constants_value.push(<Bls12 as ScalarEngine>::Fr::from_str("9"));
-    in_constants_value.push(<Bls12 as ScalarEngine>::Fr::from_str("10"));
+    let mut in_constants_value: Vec<Option<Fr>> = Vec::with_capacity(2);
+    // Fr::from_str("9") 返回的是Option变量
+    in_constants_value.push(Some(Fr::from(9u32)));
+    in_constants_value.push(Some(Fr::from(10u32)));
 
-    let mut c1 = lookup1bitDemo::<Bls12> {
-        in_bit: <Bls12 as ScalarEngine>::Fr::from_str("1"),
+    let mut c1 = lookup1bitDemo::<Fr> {
+        in_bit: Some(Fr::from(1u32)),
         in_constants: in_constants_value.clone(),
     };
     let proof = create_random_proof(c1, &params, rng).unwrap();

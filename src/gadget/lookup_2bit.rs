@@ -1,40 +1,28 @@
-use bellman::gadgets::boolean::{Boolean, AllocatedBit};
-use bellman::gadgets::Assignment;
-use ff::{Field, PrimeField, ScalarEngine};
-use pairing::bls12_381::Bls12;
-use pairing::Engine;
-use rand::thread_rng;
-
-// We'll use these interfaces to construct our circuit.
-use bellman::gadgets::boolean;
-use bellman::gadgets::test::TestConstraintSystem;
-use bellman::{Circuit, ConstraintSystem, LinearCombination, SynthesisError, Variable};
-
-// We're going to use the Groth16 proving system.
-use bellman::groth16::{
-    create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
+use math::PrimeField;
+use scheme::r1cs::{
+    ConstraintSynthesizer, ConstraintSystem, LinearCombination, SynthesisError, Variable,
 };
 
-// use bellman::gadgets::Assignment;
+use super::test_constraint_system::TestConstraintSystem;
 
-struct lookup2bitDemo<E: Engine> {
-    in_bit: Vec<Option<E::Fr>>,
-    in_constants: Vec<Option<E::Fr>>,
+struct lookup2bitDemo<E: PrimeField> {
+    in_bit: Vec<Option<E>>,
+    in_constants: Vec<Option<E>>,
 }
 
-impl<E: Engine> Circuit<E> for lookup2bitDemo<E> {
-    fn synthesize<CS: ConstraintSystem<E>>(self, cs: &mut CS) -> Result<(), SynthesisError> {
+impl<E: PrimeField> ConstraintSynthesizer<E> for lookup2bitDemo<E> {
+    fn generate_constraints<CS: ConstraintSystem<E>>(self, cs: &mut CS) -> Result<(), SynthesisError> {
         assert!(self.in_constants.len() == 4);
         assert!(self.in_bit.len() == 2);
-        // assert!(self.in_bit == Some(E::Fr::zero()) || self.in_bit == Some(E::Fr::one()));
+        // assert!(self.in_bit == Some(E::zero()) || self.in_bit == Some(E::one()));
         let mut index = match (self.in_bit[0], self.in_bit[1]) {
             (Some(a_value), Some(b_value)) => {
                 let mut tmp: usize = 0;
-                if a_value == E::Fr::one(){
+                if a_value == E::one(){
                     tmp += 1;
                 }
 
-                if b_value == E::Fr::one(){
+                if b_value == E::one(){
                     tmp += 2;
                 }
                 Some(tmp)
@@ -42,7 +30,7 @@ impl<E: Engine> Circuit<E> for lookup2bitDemo<E> {
             _ => None, 
         };
 
-        let mut res: Option<E::Fr>;
+        let mut res: Option<E>;
         if index.is_some() {
             res = self.in_constants[index.unwrap()];
         } else {
@@ -57,10 +45,10 @@ impl<E: Engine> Circuit<E> for lookup2bitDemo<E> {
                 if self.in_bit[0].is_some() && self.in_bit[1].is_some() {
                     let mut res = self.in_constants[3].unwrap();
                     let mut tmp = self.in_constants[2].unwrap();
-                    tmp.negate();
+                    tmp = -tmp;
                     res.add_assign(&tmp);
                     tmp = self.in_constants[1].unwrap();
-                    tmp.negate();
+                    tmp = -tmp;
                     res.add_assign(&tmp);
                     tmp = self.in_constants[0].unwrap();
                     res.add_assign(&tmp);
@@ -68,7 +56,7 @@ impl<E: Engine> Circuit<E> for lookup2bitDemo<E> {
 
                     res.add_assign(&self.in_constants[1].unwrap());
                     tmp = self.in_constants[0].unwrap();
-                    tmp.negate();
+                    tmp = -tmp;
                     res.add_assign(&tmp);
                     
                     res.mul_assign(&self.in_bit[0].unwrap());
@@ -87,7 +75,7 @@ impl<E: Engine> Circuit<E> for lookup2bitDemo<E> {
             || {
                 if self.in_constants[0].is_some() {
                     let mut tmp = self.in_constants[0].unwrap();
-                    tmp.negate();
+                    tmp = -tmp;
 
                     Ok(tmp)
                 } else {
@@ -109,7 +97,7 @@ impl<E: Engine> Circuit<E> for lookup2bitDemo<E> {
                 if self.in_bit[0].is_some() && self.in_bit[1].is_some() {
                     let mut res = self.in_constants[0].unwrap();
                     let mut tmp = self.in_constants[2].unwrap();
-                    tmp.negate();
+                    tmp = -tmp;
                     res.add_assign(&tmp);
                     res.mul_assign(&self.in_bit[1].unwrap());
 
@@ -133,30 +121,37 @@ impl<E: Engine> Circuit<E> for lookup2bitDemo<E> {
 
 #[test]
 fn test_lookup2bitDemo() {
-    let rng = &mut thread_rng();
+    use curve::bn_256::{Bn_256, Fr};
+    use math::test_rng;
+    use math::fields::Field;
+    use scheme::groth16::{
+        create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
+    };
+
+    let mut rng = &mut test_rng();
     println!("Creating parameters...");
     let params = {
-        let c = lookup2bitDemo::<Bls12> {
+        let c = lookup2bitDemo::<Fr> {
             in_bit: vec![None; 2],
             in_constants: vec![None; 4],
         };
-        generate_random_parameters(c, rng).unwrap()
+        generate_random_parameters::<Bn_256, _, _>(c, &mut rng).unwrap()
     };
 
     let pvk = prepare_verifying_key(&params.vk);
 
     println!("Creating proofs...");
-    let mut in_constants_value: Vec<Option<<Bls12 as ScalarEngine>::Fr>> = Vec::with_capacity(4);
-    in_constants_value.push(<Bls12 as ScalarEngine>::Fr::from_str("9"));
-    in_constants_value.push(<Bls12 as ScalarEngine>::Fr::from_str("10"));
-    in_constants_value.push(<Bls12 as ScalarEngine>::Fr::from_str("11"));
-    in_constants_value.push(<Bls12 as ScalarEngine>::Fr::from_str("12"));
+    let mut in_constants_value: Vec<Option<Fr>> = Vec::with_capacity(4);
+    in_constants_value.push(Some(Fr::from(9u32)));
+    in_constants_value.push(Some(Fr::from(10u32)));
+    in_constants_value.push(Some(Fr::from(11u32)));
+    in_constants_value.push(Some(Fr::from(12u32)));
 
-    let mut in_bits_value: Vec<Option<<Bls12 as ScalarEngine>::Fr>> = Vec::with_capacity(2);
-    in_bits_value.push(<Bls12 as ScalarEngine>::Fr::from_str("1"));
-    in_bits_value.push(<Bls12 as ScalarEngine>::Fr::from_str("1"));
+    let mut in_bits_value: Vec<Option<Fr>> = Vec::with_capacity(2);
+    in_bits_value.push(Some(Fr::from(1u32)));
+    in_bits_value.push(Some(Fr::from(1u32)));
 
-    let mut c1 = lookup2bitDemo::<Bls12> {
+    let mut c1 = lookup2bitDemo::<Fr> {
         in_bit: in_bits_value.clone(),
         in_constants: in_constants_value.clone(),
     };

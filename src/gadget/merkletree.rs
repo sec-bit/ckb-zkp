@@ -1,46 +1,25 @@
-// For randomness (during paramgen and proof generation)
-use rand::Rng;
-use ff::PrimeField;
-use rand::thread_rng;
-
-// For benchmarking
-use std::time::{Duration, Instant};
-
-// Bring in some tools for using pairing-friendly curves
-use ff::{Field, ScalarEngine};
-use pairing::Engine;
-
-// We're going to use the BLS12-381 pairing-friendly elliptic curve.
-use pairing::bls12_381::Bls12;
-
-// We'll use these interfaces to construct our circuit.
-use bellman::{SynthesisError};
-use bellman::gadgets::boolean;
-use bellman::gadgets::test::TestConstraintSystem;
-use bellman::{Circuit, ConstraintSystem, Variable, LinearCombination};
-use bellman::gadgets::num::AllocatedNum;
-use bellman::gadgets::sha256::sha256;
-use bellman::gadgets::boolean::Boolean;
-
-// We're going to use the Groth16 proving system.
-use bellman::groth16::{
-    create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof, Proof,
+use math::PrimeField;
+use scheme::r1cs::{
+    ConstraintSynthesizer, ConstraintSystem, LinearCombination, SynthesisError, Variable,
 };
+use super::boolean::Boolean;
 
-struct MerkletreeDemo<E: Engine> {
+use super::test_constraint_system::TestConstraintSystem;
+
+struct MerkletreeDemo<E: PrimeField> {
     // 树的深度，为树高的索引值
     tree_depth: u64,
     digest_size: u64,
-    address_bits: Vec<Option<E::Fr>>,
-    leaf_digest: Vec<Option<E::Fr>>,
-    root_digest: Vec<Option<E::Fr>>,
-    path: Vec<Vec<Option<E::Fr>>>,
+    address_bits: Vec<Option<E>>,
+    leaf_digest: Vec<Option<E>>,
+    root_digest: Vec<Option<E>>,
+    path: Vec<Vec<Option<E>>>,
 }
 
-impl<E: Engine> Circuit<E> for MerkletreeDemo<E> {
-    fn synthesize<CS: ConstraintSystem<E>>(self, cs: &mut CS) -> Result<(), SynthesisError> {
-        let mut left_digests: Vec<Vec<Option<E::Fr>>> = vec![vec![Some(E::Fr::zero()); self.digest_size as usize]; self.tree_depth as usize];
-        let mut right_digests: Vec<Vec<Option<E::Fr>>> = vec![vec![Some(E::Fr::zero()); self.digest_size as usize]; self.tree_depth as usize];
+impl<E: PrimeField> ConstraintSynthesizer<E> for MerkletreeDemo<E> {
+    fn generate_constraints<CS: ConstraintSystem<E>>(self, cs: &mut CS) -> Result<(), SynthesisError> {
+        let mut left_digests: Vec<Vec<Option<E>>> = vec![vec![Some(E::from(0u32)); self.digest_size as usize]; self.tree_depth as usize];
+        let mut right_digests: Vec<Vec<Option<E>>> = vec![vec![Some(E::from(0u32)); self.digest_size as usize]; self.tree_depth as usize];
         println!("tree_depth: {}", self.tree_depth);
         println!("digest_size: {}", self.digest_size);
         assert!(self.tree_depth > 0);
@@ -62,7 +41,7 @@ impl<E: Engine> Circuit<E> for MerkletreeDemo<E> {
         // merkle_authentication_path_variable_withness
         for i in 0..self.tree_depth as usize {
             // address_bits一定为0或者为1，这里不需要添加约束
-            if Some(E::Fr::one()) == self.address_bits[self.tree_depth as usize -1-i] {
+            if Some(E::one()) == self.address_bits[self.tree_depth as usize -1-i] {
                 for j in 0..self.digest_size as usize {
                     left_digests[i][j] = self.path[i][j];
                 }
@@ -74,17 +53,17 @@ impl<E: Engine> Circuit<E> for MerkletreeDemo<E> {
         }
 
         // merkle_tree_check_read_gadget_withness
-        let mut internal_output: Vec<Vec<Option<E::Fr>>> = vec![vec![Some(E::Fr::zero()); self.digest_size as usize]; self.tree_depth as usize - 1];
+        let mut internal_output: Vec<Vec<Option<E>>> = vec![vec![Some(E::zero()); self.digest_size as usize]; self.tree_depth as usize - 1];
         let mut internal_output_var: Vec<Vec<Variable>> = vec![vec![]; self.tree_depth as usize];
-        // let mut pre_hash: Vec<Option<E::Fr>> = Vec::with_capacity(256);
-        let mut computed_root: Vec<Option<E::Fr>> = vec![Some(E::Fr::zero()); self.digest_size as usize];
+        // let mut pre_hash: Vec<Option<E>> = Vec::with_capacity(256);
+        let mut computed_root: Vec<Option<E>> = vec![Some(E::zero()); self.digest_size as usize];
         let mut root_digest_var: Vec<Variable> = Vec::new();
         let mut computed_root_var: Vec<Variable> = Vec::new();
 
         for i in (0..self.tree_depth as usize).rev() {
             // hash contraint TODO
             if i == self.tree_depth as usize -1 {
-                if self.address_bits[self.tree_depth as usize-1-i] == Some(E::Fr::one()) {
+                if self.address_bits[self.tree_depth as usize-1-i] == Some(E::one()) {
                     for j in 0..self.digest_size as usize {
                         right_digests[i][j] = self.leaf_digest[j];
                     }
@@ -105,7 +84,7 @@ impl<E: Engine> Circuit<E> for MerkletreeDemo<E> {
                 // }
 
             } else {
-                if self.address_bits[self.tree_depth as usize-1-i] == Some(E::Fr::one()) {
+                if self.address_bits[self.tree_depth as usize-1-i] == Some(E::one()) {
                     for j in 0..self.digest_size as usize {
                         right_digests[i][j] = internal_output[i][j];
                     }
@@ -138,27 +117,27 @@ impl<E: Engine> Circuit<E> for MerkletreeDemo<E> {
             let mut tmp_right = right_digests[i].clone();
             if i == 0 {
                 // sha256Hash(left_digests[i], right_digests[i], computed_root);
-                let mut content: Vec<Option<E::Fr>> = Vec::new();
+                let mut content: Vec<Option<E>> = Vec::new();
                 content.append(&mut tmp_left);
                 content.append(&mut tmp_right);
                 assert!(512 == content.len());
                 let mut input_bits: Vec<_> = (0..512).map(|_| Boolean::Constant(false)).collect();
                 for (i, x) in content.iter().enumerate() {
-                    if Some(E::Fr::one()) == *x {
+                    if Some(E::one()) == *x {
                         input_bits[i] = Boolean::Constant(true);
                     }
                 }
 
                 // sha256的接口cs的接口不是一个引用类型，如果直接传入cs，会造成cs的所有权转移。
-                let mut cs1 = TestConstraintSystem::<Bls12>::new();
+                let mut cs1 = TestConstraintSystem::<E>::new();
                 let mut r = sha256(cs1, &input_bits)?;
                 assert!(r.len() == 256);
 
                 for (j, x) in r.iter().enumerate() {
                     if Some(false) == x.get_value() {
-                        computed_root[j] = Some(E::Fr::zero());
+                        computed_root[j] = Some(E::zero());
                     }else {
-                        computed_root[j] = Some(E::Fr::one());
+                        computed_root[j] = Some(E::one());
                     }
                 }
 
@@ -182,25 +161,25 @@ impl<E: Engine> Circuit<E> for MerkletreeDemo<E> {
                 assert!(256 == computed_root.len());
             }else {
                 // sha256Hash(left_digests[i], right_digests[i], internal_output[i]);
-                let mut content: Vec<Option<E::Fr>> = Vec::new();
+                let mut content: Vec<Option<E>> = Vec::new();
                 content.append(&mut tmp_left);
                 content.append(&mut tmp_right);
                 assert!(512 == content.len());
                 let mut input_bits: Vec<_> = (0..512).map(|_| Boolean::Constant(false)).collect();
                 for (i, x) in content.iter().enumerate() {
-                    if Some(E::Fr::one()) == *x {
+                    if Some(E::one()) == *x {
                         input_bits[i] = Boolean::Constant(true);
                     }
                 }
-                let mut cs1 = TestConstraintSystem::<Bls12>::new();
+                let mut cs1 = TestConstraintSystem::<E>::new();
                 let mut r = sha256(cs1, &input_bits)?;
                 assert!(r.len() == 256);
 
                 for (j, x) in r.iter().enumerate() {
                     if Some(false) == x.get_value() {
-                        internal_output[i-1][j] = Some(E::Fr::zero());
+                        internal_output[i-1][j] = Some(E::zero());
                     }else {
-                        internal_output[i-1][j] = Some(E::Fr::one());
+                        internal_output[i-1][j] = Some(E::one());
                     }
                 }
 
@@ -226,7 +205,7 @@ impl<E: Engine> Circuit<E> for MerkletreeDemo<E> {
         }
 
         // merkle_authentication_path_variable_constraint
-        // 上述变量E::Fr值在CS上分配Variable，便于后续在CS上通过Variable添加约束
+        // 上述变量E值在CS上分配Variable，便于后续在CS上通过Variable添加约束
         for i in 0..self.tree_depth as usize {
             let mut tmp = cs.alloc(
                 || format!("address_bits[{}]", i),
@@ -360,22 +339,29 @@ impl<E: Engine> Circuit<E> for MerkletreeDemo<E> {
 
 #[test]
 fn test_merkletree() {
+    use curve::bn_256::{Bn_256, Fr};
+    use math::test_rng;
+    use math::fields::Field;
+    use scheme::groth16::{
+        create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
+    };
+    use rand::Rng;
     /*prepare test*/
     // 构造withness的过程
-    type EFr = Option<<Bls12 as ScalarEngine>::Fr>;
-    let mut cs = TestConstraintSystem::<Bls12>::new();
+    type EFr = Option<Fr>;
+    let mut cs = TestConstraintSystem::<Fr>::new();
     let mut digest_len: u64 = 256;
     let mut tree_depth: u64 = 16;
     // Vec::with_capacity(digest_len as usize); 只是申明最大容量，优化扩容过程
-    let mut path: Vec<Vec<EFr>> = vec![vec![Some(<Bls12 as ScalarEngine>::Fr::zero()); digest_len as usize]; tree_depth as usize];
+    let mut path: Vec<Vec<EFr>> = vec![vec![Some(Fr::from(0u32)); digest_len as usize]; tree_depth as usize];
 
-    let mut pre_hash: Vec<Option<<Bls12 as ScalarEngine>::Fr>> = vec![Some(<Bls12 as ScalarEngine>::Fr::zero()); digest_len as usize];
+    let mut pre_hash: Vec<Option<Fr>> = vec![Some(Fr::from(0u32)); digest_len as usize];
     for i in 0..digest_len {
-        let mut randNum = rand::thread_rng().gen_range(0, 2);
+        let mut randNum = test_rng().gen_range(0, 2);
         if 0 == randNum {
-            pre_hash[i as usize] = Some(<Bls12 as ScalarEngine>::Fr::zero());
+            pre_hash[i as usize] = Some(Fr::from(0u32));
         }else {
-            pre_hash[i as usize] = Some(<Bls12 as ScalarEngine>::Fr::one());
+            pre_hash[i as usize] = Some(Fr::from(1u32));
         }
     }
 
@@ -384,21 +370,21 @@ fn test_merkletree() {
     let mut address: u64 = 0;
 
     for i in (0..tree_depth).rev() {
-        let randNum = rand::thread_rng().gen_range(0, 2);
+        let randNum = test_rng().gen_range(0,2);
         let mut computed_is_right: bool = if randNum == 0 {false} else {true};
         address |= if computed_is_right == true {1 << (tree_depth-1- i as u64)} else {0};
-        address_bits.push(if computed_is_right {Some(<Bls12 as ScalarEngine>::Fr::one())} else {Some(<Bls12 as ScalarEngine>::Fr::zero())});
+        address_bits.push(if computed_is_right {Some(Fr::from(1u32))} else {Some(Fr::from(0u32))});
 
-        let mut other: Vec<EFr> = vec![Some(<Bls12 as ScalarEngine>::Fr::zero()); digest_len as usize];
+        let mut other: Vec<EFr> = vec![Some(Fr::from(0u32)); digest_len as usize];
         for i in 0..digest_len {
-            let mut randNum = rand::thread_rng().gen_range(0, 2);
+            let mut randNum = test_rng().gen_range(0, 2);
             if 0 == randNum {
-                other[i as usize] = Some(<Bls12 as ScalarEngine>::Fr::zero());
+                other[i as usize] = Some(Fr::from(0u32));
             }else {
-                other[i as usize] = Some(<Bls12 as ScalarEngine>::Fr::one());
+                other[i as usize] = Some(Fr::from(1u32));
             }
         }
-        let mut h: Vec<EFr> = vec![Some(<Bls12 as ScalarEngine>::Fr::zero()); digest_len as usize];
+        let mut h: Vec<EFr> = vec![Some(Fr::from(0u32)); digest_len as usize];
         let mut content: Vec<EFr> = Vec::new();
         let mut tmp1 = other.clone();
         let mut tmp2 = pre_hash.clone();
@@ -419,20 +405,20 @@ fn test_merkletree() {
         assert!(512 == content.len());
         let mut input_bits: Vec<_> = (0..512).map(|_| Boolean::Constant(false)).collect();
         for (i, x) in content.iter().enumerate() {
-            if !x.unwrap().is_zero() {
+            if x.unwrap() == Fr::from(1u32) {
                 input_bits[i] = Boolean::Constant(true);
             }
         }
         // cs1 仅仅用来求hash值
-        let mut cs1 = TestConstraintSystem::<Bls12>::new();
+        let mut cs1 = TestConstraintSystem::<Fr>::new();
         let mut r = sha256(& mut cs1, &input_bits).unwrap();
         assert!(r.len() == 256);
 
         for (i, x) in r.iter().enumerate() {
             if false == x.get_value().unwrap() {
-                h[i] = Some(<Bls12 as ScalarEngine>::Fr::zero());
+                h[i] = Some(Fr::from(0u32));
             }else {
-                h[i] = Some(<Bls12 as ScalarEngine>::Fr::one());
+                h[i] = Some(Fr::from(1u32));
             }
         }
         assert!(digest_len as usize == h.len());
@@ -443,12 +429,12 @@ fn test_merkletree() {
     let mut root_digest: Vec<EFr> = pre_hash;
 
     /*execute test*/
-    let rng = &mut thread_rng();
+    let rng = &mut test_rng();
     println!("Creating parameters...");
 
     // 构造空电路生成pk和vk
     let params = {
-        let c = MerkletreeDemo::<Bls12> {
+        let c = MerkletreeDemo::<Fr> {
             // tree_depth: tree_depth,
             // digest_size: digest_len,
             // address_bits: Vec::new(),
@@ -470,7 +456,7 @@ fn test_merkletree() {
 
     println!("Create proofs...");
     println!("tree_depth: {}", tree_depth);
-    let c1 = MerkletreeDemo::<Bls12> {
+    let c1 = MerkletreeDemo::<Fr> {
         tree_depth: tree_depth,
         digest_size: digest_len,
         address_bits: address_bits,
