@@ -1,13 +1,10 @@
 #![allow(non_snake_case)]
+use super::{inner_product, quick_multiexp, random_bytes_to_fr};
 use curve::bls12_381::Bls12_381;
 use curve::bn_256::Bn_256;
-use math::{
-    bytes::ToBytes, AffineCurve, One, PairingEngine,
-    ProjectiveCurve, UniformRand, Field,
-};
+use math::{bytes::ToBytes, AffineCurve, Field, One, PairingEngine, ProjectiveCurve, UniformRand};
 use merlin::Transcript;
 use std::time::Instant;
-use super::{inner_product, quick_multiexp, random_bytes_to_fr};
 
 pub struct Proof<E: PairingEngine> {
     L_vec: Vec<E::G1Affine>,
@@ -55,11 +52,11 @@ pub fn prove<E: PairingEngine>(
         let (gL, gR) = g_vec.split_at(n);
         let (hL, hR) = h_vec.split_at(n);
 
-        let L: E::G1Projective = quick_multiexp::<E>(aL.to_vec(), gR.to_vec())
-            + &(quick_multiexp::<E>(bR.to_vec(), hL.to_vec()))
+        let L: E::G1Projective = quick_multiexp::<E>(&aL.to_vec(), &gR.to_vec())
+            + &(quick_multiexp::<E>(&bR.to_vec(), &hL.to_vec()))
             + &(u.mul(cL));
-        let R: E::G1Projective = quick_multiexp::<E>(aR.to_vec(), gL.to_vec())
-            + &(quick_multiexp::<E>(bL.to_vec(), hR.to_vec()))
+        let R: E::G1Projective = quick_multiexp::<E>(&aR.to_vec(), &gL.to_vec())
+            + &(quick_multiexp::<E>(&bL.to_vec(), &hR.to_vec()))
             + &(u.mul(cR));
 
         // P -> V: L, R
@@ -107,7 +104,6 @@ pub fn prove<E: PairingEngine>(
 
     Proof { L_vec, R_vec, a, b }
 }
-
 
 pub fn verify<E: PairingEngine>(
     g_vec: Vec<E::G1Affine>,
@@ -163,17 +159,18 @@ pub fn verify<E: PairingEngine>(
     let b_s: Vec<E::Fr> = (0..n).map(|i| proof.b * &inv_s[i]).collect();
 
     let c_final = proof.a * &proof.b;
-    let CheckP_lhs: E::G1Projective = quick_multiexp::<E>(a_s, g_vec.to_vec())
-        + &(quick_multiexp::<E>(b_s, h_vec.to_vec()))
+    let CheckP_lhs: E::G1Projective = quick_multiexp::<E>(&a_s, &g_vec.to_vec())
+        + &(quick_multiexp::<E>(&b_s, &h_vec.to_vec()))
         + &(u.mul(c_final));
-    let CheckP_rhs: E::G1Projective = quick_multiexp::<E>(x_sq_vec, proof.L_vec.clone())
-        + &(quick_multiexp::<E>(x_inv_sq_vec, proof.R_vec.clone()))
+    let CheckP_rhs: E::G1Projective = quick_multiexp::<E>(&x_sq_vec, &proof.L_vec)
+        + &(quick_multiexp::<E>(&x_inv_sq_vec, &proof.R_vec))
         + P;
     assert_eq!(CheckP_lhs, CheckP_rhs);
     println!("succeed!");
 }
 
 fn main() {
+    // for benchmark
     println!("Bn_256!");
     run_protocol2_helper::<Bn_256>(256);
     run_protocol2_helper::<Bn_256>(128);
@@ -220,9 +217,8 @@ pub fn run_protocol2_helper<E: PairingEngine>(n: usize) {
     let a_vec: Vec<E::Fr> = (0..n).map(|_| E::Fr::rand(&mut rng)).collect();
     let b_vec: Vec<E::Fr> = (0..n).map(|_| E::Fr::rand(&mut rng)).collect();
     let c: E::Fr = inner_product::<E>(&a_vec, &b_vec);
-    let P = quick_multiexp::<E>(a_vec.clone(), g_vec.clone())
-        + &(quick_multiexp::<E>(b_vec.clone(), h_vec.clone()))
-        + &(u.mul(c));
+    let P =
+        quick_multiexp::<E>(&a_vec, &g_vec) + &(quick_multiexp::<E>(&b_vec, &h_vec)) + &(u.mul(c));
     let duration = t2.elapsed();
     println!("Time elapsed in a_vec b_vec is: {:?}", duration);
 

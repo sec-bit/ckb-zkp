@@ -1,8 +1,9 @@
-pub mod protocol2;
+pub mod arithmetic_circuit;
+pub mod inner_product_proof;
 
 // use digest::{ExtendableOutput, Input, XofReader};
 // use sha3::{Sha3XofReader, Shake256};
-use math::{PairingEngine, Zero, msm::VariableBaseMSM, PrimeField, AffineCurve, Field};
+use math::{msm::VariableBaseMSM, Field, PairingEngine, PrimeField, Zero};
 use std::time::Instant;
 
 // Q (vector, zQ) * Qxn (matrix, WL, WR, WO) = n (vector, zQW)
@@ -25,7 +26,10 @@ pub fn vector_matrix_product<E: PairingEngine>(v: &Vec<E::Fr>, m: &Vec<Vec<E::Fr
 }
 
 // n (vector, aL/aR/aO) * Qxn (matrix, WL, WR, WO) = Q (vector, wLaL)
-pub fn vector_matrix_product_T<E: PairingEngine>(v: &Vec<E::Fr>, m: &Vec<Vec<E::Fr>>) -> Vec<E::Fr> {
+pub fn vector_matrix_product_T<E: PairingEngine>(
+    v: &Vec<E::Fr>,
+    m: &Vec<Vec<E::Fr>>,
+) -> Vec<E::Fr> {
     let Q = m.len();
     let mut out = vec![E::Fr::zero(); Q];
 
@@ -178,7 +182,9 @@ pub struct Poly6<E: PairingEngine> {
 
 impl<E: PairingEngine> Poly6<E> {
     pub fn eval(&self, x: E::Fr) -> E::Fr {
-        x * &(self.t1 + &(x * &(self.t2 + &(x * &(self.t3 + &(x * &(self.t4 + &(x * &(self.t5 + &(x * &self.t6))))))))))
+        x * &(self.t1
+            + &(x * &(self.t2
+                + &(x * &(self.t3 + &(x * &(self.t4 + &(x * &(self.t5 + &(x * &self.t6))))))))))
     }
 }
 
@@ -211,7 +217,8 @@ impl<E: PairingEngine> VecPoly5<E> {
         for i in 0..n {
             out[i] = self.0[i]
                 + &(x * &(self.1[i]
-                    + &(x * &(self.2[i] + &(x * &(self.3[i] + &(x * &(self.4[i] + &(x * &(self.5[i]))))))))));
+                    + &(x * &(self.2[i]
+                        + &(x * &(self.3[i] + &(x * &(self.4[i] + &(x * &(self.5[i]))))))))));
         }
         out
     }
@@ -263,40 +270,40 @@ pub struct Poly10<E: PairingEngine> {
 impl<E: PairingEngine> Poly10<E> {
     pub fn eval(&self, x: E::Fr) -> E::Fr {
         // x * (self.t1 + x * (self.t2
-        x * &(x
-            * &(self.t2
-                + &(x * &(self.t3
-                    + &(x * &(self.t4
-                        + &(x * &(self.t5
-                            + &(x * &(self.t6
-                                + &(x * &(self.t7
-                                    + &(x * &(self.t8 + &(x * &(self.t9 + &(x * &(self.t10))))))))))))))))))
+        x * &(x * &(self.t2
+            + &(x * &(self.t3
+                + &(x * &(self.t4
+                    + &(x * &(self.t5
+                        + &(x * &(self.t6
+                            + &(x * &(self.t7
+                                + &(x * &(self.t8
+                                    + &(x * &(self.t9 + &(x * &(self.t10))))))))))))))))))
     }
 }
 
-fn naive_multiexp<E>(exponents: Vec<E::Fr>, bases: Vec<E::G1Affine>) -> E::G1Projective
-where
-    E: PairingEngine,
-{
-    let t1 = Instant::now();
-    assert_eq!(bases.len(), exponents.len());
+// fn naive_multiexp<E>(exponents: Vec<E::Fr>, bases: Vec<E::G1Affine>) -> E::G1Projective
+// where
+//     E: PairingEngine,
+// {
+//     let t1 = Instant::now();
+//     assert_eq!(bases.len(), exponents.len());
 
-    let mut acc = E::G1Projective::zero();
+//     let mut acc = E::G1Projective::zero();
 
-    for (base, exp) in bases.iter().zip(exponents.iter()) {
-        acc += &base.mul(*exp);
-    }
+//     for (base, exp) in bases.iter().zip(exponents.iter()) {
+//         acc += &base.mul(*exp);
+//     }
 
-    let duration = t1.elapsed();
-    println!(
-        "len = {}, Time elapsed in naive_multiexp is: {:?}",
-        exponents.len(),
-        duration
-    );
-    acc
-}
+//     let duration = t1.elapsed();
+//     println!(
+//         "len = {}, Time elapsed in naive_multiexp is: {:?}",
+//         exponents.len(),
+//         duration
+//     );
+//     acc
+// }
 
-fn quick_multiexp<E>(exponents: Vec<E::Fr>, bases: Vec<E::G1Affine>) -> E::G1Projective
+fn quick_multiexp<E>(exponents: &Vec<E::Fr>, bases: &Vec<E::G1Affine>) -> E::G1Projective
 where
     E: PairingEngine,
 {
@@ -306,7 +313,7 @@ where
         .map(|s| s.into_repr())
         .collect::<Vec<_>>();
 
-    let result = VariableBaseMSM::multi_scalar_mul(&bases, &scalars);
+    let result = VariableBaseMSM::multi_scalar_mul(bases, &scalars);
     let duration = t1.elapsed();
     println!(
         "len = {}, Time elapsed in quick_multiexp is: {:?}",
