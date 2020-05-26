@@ -46,11 +46,14 @@ pub fn handle_args() -> Result<(Gadget, Scheme, Curve, Vec<u8>, String), ()> {
             path.file_name()
                 .map(|s| s.to_str())
                 .flatten()
-                .map(|s| format!("{}.proof", s))
-                .unwrap_or(String::from("mimc_proof")),
+                .map(|s| format!("{}.{}_proof", s, args[1].as_str()))
+                .unwrap_or(format!("{}_proof", args[1].as_str())),
         )
     } else if f.starts_with("--string=") {
-        (f[9..].as_bytes().to_vec(), String::from("mimc_proof"))
+        (
+            f[9..].as_bytes().to_vec(),
+            format!("{}_proof", args[1].as_str()),
+        )
     } else {
         panic!("unimplemented other file type.")
     };
