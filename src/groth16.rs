@@ -17,10 +17,6 @@ pub fn groth16_verify<E: PairingEngine>(bytes: &[u8]) -> bool {
     verify_proof(&pvk, &proof, &public_inputs).unwrap_or(false)
 }
 
-pub fn _bulletproofs_verify() -> bool {
-    true
-}
-
 pub struct Groth16Proof<E: PairingEngine> {
     pvk: PreparedVerifyingKey<E>,
     proof: Proof<E>,
@@ -30,31 +26,6 @@ pub struct Groth16Proof<E: PairingEngine> {
 impl<E: PairingEngine> Groth16Proof<E> {
     pub fn new(pvk: PreparedVerifyingKey<E>, proof: Proof<E>, vk: Vec<E::Fr>) -> Self {
         Self { pvk, proof, vk }
-    }
-
-    pub fn from_all_bytes(mut bytes: &[u8]) -> Result<Groth16Proof<E>, ()> {
-        let pvk = PreparedVerifyingKey::<E>::read(&mut bytes).unwrap();
-        let proof = Proof::<E>::read(&mut bytes).unwrap();
-        let vk_len = u64::read(&mut bytes).unwrap();
-        let mut vk = vec![];
-        for _ in 0..vk_len {
-            let v = <E::Fr>::read(&mut bytes).unwrap();
-            vk.push(v);
-        }
-
-        Ok(Self { pvk, proof, vk })
-    }
-
-    pub fn to_all_bytes(&self) -> Vec<u8> {
-        let mut bytes = vec![];
-        self.pvk.write(&mut bytes).unwrap();
-        self.proof.write(&mut bytes).unwrap();
-        (self.vk.len() as u64).write(&mut bytes).unwrap();
-        for i in &self.vk {
-            i.write(&mut bytes).unwrap();
-        }
-
-        bytes
     }
 
     pub fn from_bytes(mut bytes: &[u8]) -> Result<Groth16Proof<E>, ()> {
