@@ -22,17 +22,17 @@ mod groth16;
 #[cfg(feature = "groth16")]
 pub use groth16::{groth16_verify, Groth16Proof};
 
-#[cfg(feature = "bolletproofs")]
-mod bolletproofs;
-#[cfg(feature = "bolletproofs")]
-pub use bolletproofs::{bolletproofs_verify, BolletproofsProof};
+#[cfg(feature = "bulletproofs")]
+mod bulletproofs;
+#[cfg(feature = "bulletproofs")]
+pub use bulletproofs::{bulletproofs_verify, BulletproofsProof};
 
 #[derive(Copy, Clone)]
 pub enum Scheme {
     #[cfg(feature = "groth16")]
     Groth16,
-    #[cfg(feature = "bolletproofs")]
-    Bolletproofs,
+    #[cfg(feature = "bulletproofs")]
+    Bulletproofs,
 }
 
 #[allow(non_camel_case_types)]
@@ -59,8 +59,8 @@ pub fn verify(s: Scheme, c: Curve, bytes: &[u8]) -> bool {
     match s {
         #[cfg(feature = "groth16")]
         Scheme::Groth16 => handle_curve!(groth16_verify, c, bytes),
-        #[cfg(feature = "bolletproofs")]
-        Scheme::Bolletproofs => handle_curve!(bolletproofs_verify, c, bytes),
+        #[cfg(feature = "bulletproofs")]
+        Scheme::Bulletproofs => handle_curve!(bulletproofs_verify, c, bytes),
     }
 }
 
@@ -68,8 +68,8 @@ pub fn verify_from_int(si: u8, ci: u8, bytes: &[u8]) -> bool {
     let s = match si {
         #[cfg(feature = "groth16")]
         0u8 => Scheme::Groth16,
-        #[cfg(feature = "bolletproofs")]
-        1u8 => Scheme::Bolletproofs,
+        #[cfg(feature = "bulletproofs")]
+        1u8 => Scheme::Bulletproofs,
         #[cfg(feature = "groth16")]
         _ => Scheme::Groth16,
     };

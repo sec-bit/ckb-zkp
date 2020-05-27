@@ -13,14 +13,13 @@ members = [
 
 [features]
 default = ["full"]
-full = ["parallel", "bn_256", "bls12_381", "groth16", "bolletproofs"]
+full = ["parallel", "bn_256", "bls12_381", "groth16", "bulletproofs"]
 parallel = ["std", "math/parallel", "curve/parallel", "scheme/parallel"]
 std = ["math/std", "curve/std", "scheme/std"]
 bn_256 = ["curve/bn_256"]
 bls12_381 = ["curve/bls12_381"]
-#groth16 = ["scheme/groth16"]
-groth16 = []
-bolletproofs = []
+groth16 = ["scheme/groth16"]
+bulletproofs = ["scheme/bulletproofs"]
 
 [dependencies]
 math = { path = "math", default-features = false }
