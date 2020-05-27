@@ -1,24 +1,21 @@
 
 use math::PrimeField;
 use scheme::r1cs::{
-    ConstraintSynthesizer, ConstraintSystem, LinearCombination, SynthesisError, Variable,
+    ConstraintSynthesizer, ConstraintSystem, SynthesisError,
 };
-use math::fields::Field;
-
-use super::test_constraint_system::TestConstraintSystem;
 
 // use bellman::gadgets::Assignment;
 
-struct lookup1bitDemo<E: PrimeField> {
+struct Lookup1bitDemo<E: PrimeField> {
     in_bit: Option<E>,
     in_constants: Vec<Option<E>>,
 }
 
-impl<E: PrimeField> ConstraintSynthesizer<E> for lookup1bitDemo<E> {
+impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup1bitDemo<E> {
     fn generate_constraints<CS: ConstraintSystem<E>>(self, cs: &mut CS) -> Result<(), SynthesisError> {
         assert!(self.in_constants.len() == 2);
         // assert!(self.in_bit == Some(E::zero()) || self.in_bit == Some(E::one()));
-        let mut index = match self.in_bit {
+        let index = match self.in_bit {
             Some(a_value) => {
                 let mut tmp: usize = 0;
                 if a_value == E::one(){
@@ -29,18 +26,18 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for lookup1bitDemo<E> {
             _ => None, 
         };
 
-        let mut res: Option<E>;
+        let res: Option<E>;
         if index.is_some() {
             res = self.in_constants[index.unwrap()];
         } else {
             res = None;
         }
-        let mut res_var = cs.alloc(
+        let res_var = cs.alloc(
             || "res_var",
             || res.ok_or(SynthesisError::AssignmentMissing),
         ).unwrap();
 
-        let mut in_constants_var0 = cs.alloc(
+        let in_constants_var0 = cs.alloc(
             || "in_constants_var_0",
             || self.in_constants[0].ok_or(SynthesisError::AssignmentMissing),
         ).unwrap();
@@ -91,17 +88,16 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for lookup1bitDemo<E> {
 }
 
 #[test]
-fn test_lookup1bitDemo() {
+fn test_lookup1bit_demo() {
     use curve::bn_256::{Bn_256, Fr};
     use math::test_rng;
-    use math::fields::Field;
     use scheme::groth16::{
         create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
     };
     let mut rng = &mut test_rng();
     println!("Creating parameters...");
     let params = {
-        let c = lookup1bitDemo::<Fr> {
+        let c = Lookup1bitDemo::<Fr> {
             in_bit: None,
             in_constants: vec![None; 2],
         };
@@ -116,7 +112,7 @@ fn test_lookup1bitDemo() {
     in_constants_value.push(Some(Fr::from(9u32)));
     in_constants_value.push(Some(Fr::from(10u32)));
 
-    let mut c1 = lookup1bitDemo::<Fr> {
+    let c1 = Lookup1bitDemo::<Fr> {
         in_bit: Some(Fr::from(1u32)),
         in_constants: in_constants_value.clone(),
     };

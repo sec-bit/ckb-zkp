@@ -1,6 +1,6 @@
 use math::PrimeField;
 use scheme::r1cs::{
-    ConstraintSynthesizer, ConstraintSystem, LinearCombination, SynthesisError, Variable,
+    ConstraintSynthesizer, ConstraintSystem, SynthesisError, Variable,
 };
 use super::boolean::Boolean;
 
@@ -339,9 +339,8 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for MerkletreeDemo<E> {
 
 #[test]
 fn test_merkletree() {
-    use curve::bn_256::{Bn_256, Fr};
+    use curve::bn_256::{Fr};
     use math::test_rng;
-    use math::fields::Field;
     use scheme::groth16::{
         create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
     };

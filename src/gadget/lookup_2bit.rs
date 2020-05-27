@@ -1,21 +1,19 @@
 use math::PrimeField;
 use scheme::r1cs::{
-    ConstraintSynthesizer, ConstraintSystem, LinearCombination, SynthesisError, Variable,
+    ConstraintSynthesizer, ConstraintSystem, SynthesisError,
 };
 
-use super::test_constraint_system::TestConstraintSystem;
-
-struct lookup2bitDemo<E: PrimeField> {
+struct Lookup2bitDemo<E: PrimeField> {
     in_bit: Vec<Option<E>>,
     in_constants: Vec<Option<E>>,
 }
 
-impl<E: PrimeField> ConstraintSynthesizer<E> for lookup2bitDemo<E> {
+impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup2bitDemo<E> {
     fn generate_constraints<CS: ConstraintSystem<E>>(self, cs: &mut CS) -> Result<(), SynthesisError> {
         assert!(self.in_constants.len() == 4);
         assert!(self.in_bit.len() == 2);
         // assert!(self.in_bit == Some(E::zero()) || self.in_bit == Some(E::one()));
-        let mut index = match (self.in_bit[0], self.in_bit[1]) {
+        let index = match (self.in_bit[0], self.in_bit[1]) {
             (Some(a_value), Some(b_value)) => {
                 let mut tmp: usize = 0;
                 if a_value == E::one(){
@@ -30,7 +28,7 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for lookup2bitDemo<E> {
             _ => None, 
         };
 
-        let mut res: Option<E>;
+        let res: Option<E>;
         if index.is_some() {
             res = self.in_constants[index.unwrap()];
         } else {
@@ -39,7 +37,7 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for lookup2bitDemo<E> {
 
         // 构建约束 lhs = c[1] - c[0] + (b[1] * (c[3] - c[2] - c[1] + c[0]))
         // lhs*b[0]
-        let mut lhs_tmp1_var = cs.alloc(
+        let lhs_tmp1_var = cs.alloc(
             || "lhs_tmp1_var = b[1] * (c[3] - c[2] - c[1] + c[0])",
             || {
                 if self.in_bit[0].is_some() && self.in_bit[1].is_some() {
@@ -70,7 +68,7 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for lookup2bitDemo<E> {
 
         // rhs = -c[0] + r + (b[1] * (-c[2] + c[0]))
         // -c[0]
-        let mut rhs_tmp1_var = cs.alloc(
+        let rhs_tmp1_var = cs.alloc(
             || "rhs_tmp1_var = -c[0]",
             || {
                 if self.in_constants[0].is_some() {
@@ -85,13 +83,13 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for lookup2bitDemo<E> {
         )?;
 
         // r
-        let mut rhs_tmp2_var = cs.alloc(
+        let rhs_tmp2_var = cs.alloc(
             || "rhs_tmp2_var = res",
             || res.ok_or(SynthesisError::AssignmentMissing),
         )?;
 
         // b[1] * (-c[2] + c[0])
-        let mut rhs_tmp3_var = cs.alloc(
+        let rhs_tmp3_var = cs.alloc(
             || "rhs_tmp3_var = b[1] * (-c[2] + c[0])",
             || {
                 if self.in_bit[0].is_some() && self.in_bit[1].is_some() {
@@ -120,10 +118,9 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for lookup2bitDemo<E> {
 }
 
 #[test]
-fn test_lookup2bitDemo() {
+fn test_lookup2bit_demo() {
     use curve::bn_256::{Bn_256, Fr};
     use math::test_rng;
-    use math::fields::Field;
     use scheme::groth16::{
         create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
     };
@@ -131,7 +128,7 @@ fn test_lookup2bitDemo() {
     let mut rng = &mut test_rng();
     println!("Creating parameters...");
     let params = {
-        let c = lookup2bitDemo::<Fr> {
+        let c = Lookup2bitDemo::<Fr> {
             in_bit: vec![None; 2],
             in_constants: vec![None; 4],
         };
@@ -151,7 +148,7 @@ fn test_lookup2bitDemo() {
     in_bits_value.push(Some(Fr::from(1u32)));
     in_bits_value.push(Some(Fr::from(1u32)));
 
-    let mut c1 = lookup2bitDemo::<Fr> {
+    let c1 = Lookup2bitDemo::<Fr> {
         in_bit: in_bits_value.clone(),
         in_constants: in_constants_value.clone(),
     };

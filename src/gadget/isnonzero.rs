@@ -1,19 +1,19 @@
-use super::test_constraint_system::TestConstraintSystem;
+
 use math::PrimeField;
 use scheme::r1cs::{
-    ConstraintSynthesizer, ConstraintSystem, LinearCombination, SynthesisError, Variable,
+    ConstraintSynthesizer, ConstraintSystem, SynthesisError,
 };
 
-struct isnonzeroDemo<F: PrimeField> {
+struct IsnonzeroDemo<F: PrimeField> {
     check_num: Option<F>,
 }
 
-impl<E: PrimeField> ConstraintSynthesizer<E> for isnonzeroDemo<E> {
+impl<E: PrimeField> ConstraintSynthesizer<E> for IsnonzeroDemo<E> {
     fn generate_constraints<CS: ConstraintSystem<E>>(self, cs: &mut CS) -> Result<(), SynthesisError> {
         let inv_var = cs.alloc(
             || "elhemeral inverse",
             || {
-                let mut tmp = self.check_num.clone();
+                let tmp = self.check_num.clone();
                 if tmp.unwrap() == E::zero() {
                     Err(SynthesisError::DivisionByZero)
                 } else {
@@ -43,10 +43,9 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for isnonzeroDemo<E> {
 }
 
 #[test]
-fn test_isnonzeroDemo() {
+fn test_isnonzero_demo() {
     use curve::bn_256::{Bn_256, Fr};
     use math::test_rng;
-    use math::fields::Field;
     use scheme::groth16::{
         create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
     };
@@ -54,7 +53,7 @@ fn test_isnonzeroDemo() {
     let mut rng = &mut test_rng();
     println!("Creating parameters...");
     let params = {
-        let c = isnonzeroDemo::<Fr> {
+        let c = IsnonzeroDemo::<Fr> {
             check_num: None,
         };
 
@@ -65,7 +64,7 @@ fn test_isnonzeroDemo() {
 
     println!("Creating proofs...");
 
-    let c1 = isnonzeroDemo::<Fr> {
+    let c1 = IsnonzeroDemo::<Fr> {
         check_num: Some(Fr::from(1u32)),
     };
     let proof = create_random_proof(c1, &params, rng).unwrap();
