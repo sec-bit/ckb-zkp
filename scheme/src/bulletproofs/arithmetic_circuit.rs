@@ -1,8 +1,7 @@
 #![allow(non_snake_case)]
-#![allow(non_snake_case)]
+use core::cmp;
 use merlin::Transcript;
 use rand::Rng;
-use std::cmp;
 
 use super::{
     hadamard_product, inner_product, inner_product_proof, quick_multiexp, random_bytes_to_fr,
@@ -68,18 +67,16 @@ pub struct Proof<E: PairingEngine> {
     IPP_P: E::G1Projective,
 }
 
-fn main() {
-    // vitalik_problem_succeed();
-    // shuffle_circuit_succeed();
-    // mul_circuit_1_succeed();
-}
-
 // bulletproofs arithmetic circuit proof with R1CS format
-pub fn prove<E: PairingEngine>(
+pub fn prove<E: PairingEngine, R>(
     gens: &Generators<E>,
     r1cs_circuit: &R1CS_Circuit<E>,
     input: &Assignment<E>,
-) -> (BP_Circuit<E>, Proof<E>) {
+    rng: &mut R,
+) -> (BP_Circuit<E>, Proof<E>)
+where
+    R: Rng,
+{
     let mut transcript = Transcript::new(b"protocol3");
 
     let n = input.aL.len();
@@ -106,19 +103,17 @@ pub fn prove<E: PairingEngine>(
     let mut g_vec_w: Vec<E::G1Affine> = vec![E::G1Affine::default(); n_w];
     g_vec_w.copy_from_slice(&gens.g_vec_N[0..n_w]);
 
-    let mut rng = rand::thread_rng();
-
     // choose blinding vectors sL, sR
     let n_max = cmp::max(n, n_w);
     println!("n_max = {}, n = {}, n_w = {}", n_max, n, n_w);
-    let mut sL: Vec<E::Fr> = (0..n_max).map(|_| E::Fr::rand(&mut rng)).collect();
-    let mut sR: Vec<E::Fr> = (0..n_max).map(|_| E::Fr::rand(&mut rng)).collect();
+    let mut sL: Vec<E::Fr> = (0..n_max).map(|_| E::Fr::rand(rng)).collect();
+    let mut sR: Vec<E::Fr> = (0..n_max).map(|_| E::Fr::rand(rng)).collect();
 
     // alpha, beta, rou, gamma
-    let aIBlinding: E::Fr = E::Fr::rand(&mut rand::thread_rng());
-    let aOBlinding: E::Fr = E::Fr::rand(&mut rand::thread_rng());
-    let sBlinding: E::Fr = E::Fr::rand(&mut rand::thread_rng());
-    let gamma: E::Fr = E::Fr::rand(&mut rand::thread_rng()); // w blinding
+    let aIBlinding: E::Fr = E::Fr::rand(rng);
+    let aOBlinding: E::Fr = E::Fr::rand(rng);
+    let sBlinding: E::Fr = E::Fr::rand(rng);
+    let gamma: E::Fr = E::Fr::rand(rng); // w blinding
 
     // commit aL, aR, aO, sL, sR
     // A_I = h^alpha g_vec^aL h_vec^aR
@@ -255,14 +250,14 @@ pub fn prove<E: PairingEngine>(
     let t_poly = VecPoly5::<E>::special_inner_product(&l_poly, &r_poly);
 
     // generate blinding factors for ti
-    let tau_2: E::Fr = E::Fr::rand(&mut rand::thread_rng());
-    let tau_3: E::Fr = E::Fr::rand(&mut rand::thread_rng());
-    let tau_5: E::Fr = E::Fr::rand(&mut rand::thread_rng());
-    let tau_6: E::Fr = E::Fr::rand(&mut rand::thread_rng());
-    let tau_7: E::Fr = E::Fr::rand(&mut rand::thread_rng());
-    let tau_8: E::Fr = E::Fr::rand(&mut rand::thread_rng());
-    let tau_9: E::Fr = E::Fr::rand(&mut rand::thread_rng());
-    let tau_10: E::Fr = E::Fr::rand(&mut rand::thread_rng());
+    let tau_2: E::Fr = E::Fr::rand(rng);
+    let tau_3: E::Fr = E::Fr::rand(rng);
+    let tau_5: E::Fr = E::Fr::rand(rng);
+    let tau_6: E::Fr = E::Fr::rand(rng);
+    let tau_7: E::Fr = E::Fr::rand(rng);
+    let tau_8: E::Fr = E::Fr::rand(rng);
+    let tau_9: E::Fr = E::Fr::rand(rng);
+    let tau_10: E::Fr = E::Fr::rand(rng);
 
     // commit t_i
     let T_2 = quick_multiexp::<E>(&vec![t_poly.t2, tau_2], &vec![g, h]).into_affine();
@@ -509,62 +504,61 @@ pub fn create_generators<E: PairingEngine, R: Rng>(rng: &mut R, len: usize) -> V
     generators
 }
 
-pub fn run_protocol3_r1cs_helper<E: PairingEngine>(
-    CL: Vec<Vec<E::Fr>>,
-    CR: Vec<Vec<E::Fr>>,
-    CO: Vec<Vec<E::Fr>>,
-    statement: Vec<E::Fr>,
-    witness: Vec<E::Fr>,
-) {
-    let mut rng = rand::thread_rng();
-    let r1cs_circuit = R1CS_Circuit::<E> { CL, CR, CO };
-
-    let f = [&statement[..], &witness[..]].concat();
-    let aL = vector_matrix_product_T::<E>(&f, &r1cs_circuit.CL);
-    let aR = vector_matrix_product_T::<E>(&f, &r1cs_circuit.CR);
-    let aO = vector_matrix_product_T::<E>(&f, &r1cs_circuit.CO);
-
-    let input = Assignment {
-        aL: aL,
-        aR: aR,
-        aO: aO,
-        s: statement,
-        w: witness,
-    };
-
-    // create generators
-    // n_max
-    let n_max = cmp::max(input.aL.len(), input.w.len());
-    let N = n_max.next_power_of_two(); // N must be greater than or equal to n & n_w
-    let g_vec_N = create_generators::<E, _>(&mut rng, N);
-    let h_vec_N = create_generators::<E, _>(&mut rng, N);
-    let gh = create_generators::<E, _>(&mut rng, 2);
-    let g = gh[0];
-    let h = gh[1];
-    let g_vec_ipp = create_generators::<E, _>(&mut rng, N);
-    let h_vec_ipp = create_generators::<E, _>(&mut rng, N);
-    let u = E::G1Projective::rand(&mut rng).into_affine();
-
-    let generators = Generators {
-        g_vec_N,
-        h_vec_N,
-        g,
-        h,
-        g_vec_ipp,
-        h_vec_ipp,
-        u,
-    };
-
-    let (bp_circuit, proof) = prove(&generators, &r1cs_circuit, &input);
-
-    verify(&generators, &bp_circuit, &proof);
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use curve::bls12_381::Bls12_381;
-    use curve::bn_256::Bn_256;
+    use curve::{Bls12_381, Bn_256};
+
+    fn run_protocol3_r1cs_helper<E: PairingEngine>(
+        CL: Vec<Vec<E::Fr>>,
+        CR: Vec<Vec<E::Fr>>,
+        CO: Vec<Vec<E::Fr>>,
+        statement: Vec<E::Fr>,
+        witness: Vec<E::Fr>,
+    ) {
+        let mut rng = rand::thread_rng();
+        let r1cs_circuit = R1CS_Circuit::<E> { CL, CR, CO };
+
+        let f = [&statement[..], &witness[..]].concat();
+        let aL = vector_matrix_product_T::<E>(&f, &r1cs_circuit.CL);
+        let aR = vector_matrix_product_T::<E>(&f, &r1cs_circuit.CR);
+        let aO = vector_matrix_product_T::<E>(&f, &r1cs_circuit.CO);
+
+        let input = Assignment {
+            aL: aL,
+            aR: aR,
+            aO: aO,
+            s: statement,
+            w: witness,
+        };
+
+        // create generators
+        // n_max
+        let n_max = cmp::max(input.aL.len(), input.w.len());
+        let N = n_max.next_power_of_two(); // N must be greater than or equal to n & n_w
+        let g_vec_N = create_generators::<E, _>(&mut rng, N);
+        let h_vec_N = create_generators::<E, _>(&mut rng, N);
+        let gh = create_generators::<E, _>(&mut rng, 2);
+        let g = gh[0];
+        let h = gh[1];
+        let g_vec_ipp = create_generators::<E, _>(&mut rng, N);
+        let h_vec_ipp = create_generators::<E, _>(&mut rng, N);
+        let u = E::G1Projective::rand(&mut rng).into_affine();
+
+        let generators = Generators {
+            g_vec_N,
+            h_vec_N,
+            g,
+            h,
+            g_vec_ipp,
+            h_vec_ipp,
+            u,
+        };
+
+        let (bp_circuit, proof) = prove(&generators, &r1cs_circuit, &input, &mut rng);
+
+        verify(&generators, &bp_circuit, &proof);
+    }
 
     #[test]
     fn run_vitalik_problem_r1cs_bn256() {
@@ -716,9 +710,11 @@ mod tests {
     // a_L[0] * a_R[0] = a_O[0]
     // a_L[1] * a_R[1] = a_O[1]
     fn shuffle_circuit_r1cs_succeed<E: PairingEngine>() {
+        let rng = &mut rand::thread_rng();
+
         let zer = E::Fr::zero();
         let one = E::Fr::one();
-        let zx: E::Fr = E::Fr::rand(&mut rand::thread_rng());
+        let zx: E::Fr = E::Fr::rand(rng);
         // (a - x)(b - x) = (c - x)(d - x)
         let CL: Vec<Vec<E::Fr>> = vec![
             vec![-zx, one, zer, zer, zer, zer, zer],

@@ -23,6 +23,10 @@ use std::{string::String, vec::Vec};
 extern crate math;
 extern crate curve;
 
-pub mod groth16;
 pub mod r1cs;
+
+#[cfg(feature = "groth16")]
+pub mod groth16;
+
+#[cfg(feature = "bulletproofs")]
 pub mod bulletproofs;

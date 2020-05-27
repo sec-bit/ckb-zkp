@@ -1,10 +1,8 @@
 #![allow(non_snake_case)]
-use super::{inner_product, quick_multiexp, random_bytes_to_fr};
-use curve::bls12_381::Bls12_381;
-use curve::bn_256::Bn_256;
-use math::{bytes::ToBytes, AffineCurve, Field, One, PairingEngine, ProjectiveCurve, UniformRand};
+use math::{bytes::ToBytes, AffineCurve, Field, One, PairingEngine, ProjectiveCurve};
 use merlin::Transcript;
-use std::time::Instant;
+
+use super::{inner_product, quick_multiexp, random_bytes_to_fr};
 
 pub struct Proof<E: PairingEngine> {
     L_vec: Vec<E::G1Affine>,
@@ -169,147 +167,110 @@ pub fn verify<E: PairingEngine>(
     println!("succeed!");
 }
 
-fn main() {
-    // for benchmark
-    println!("Bn_256!");
-    run_protocol2_helper::<Bn_256>(256);
-    run_protocol2_helper::<Bn_256>(128);
-    run_protocol2_helper::<Bn_256>(64);
-    println!("Bls12_381!");
-    run_protocol2_helper::<Bls12_381>(256);
-    run_protocol2_helper::<Bls12_381>(128);
-    run_protocol2_helper::<Bls12_381>(64);
-}
-
-pub fn run_protocol2_helper<E: PairingEngine>(n: usize) {
-    let t1 = Instant::now();
-    assert!(n.is_power_of_two());
-
-    let mut rng = rand::thread_rng();
-    // generators
-    // let g_vec: Vec<E::G1Affine> = GeneratorsChain::new(b"g_vec_ipp").take(n).collect();
-    // let h_vec: Vec<E::G1Affine> = GeneratorsChain::new(b"h_vec_ipp").take(n).collect();
-    // let us: Vec<E::G1Affine> = GeneratorsChain::new(b"u").take(1).collect();
-    // let u: E::G1Affine = us[0];
-    // g_vec: Vec<E::G1Affine>
-    // .into_affine()
-
-    // generators
-    let mut g_vec: Vec<E::G1Affine> = Vec::with_capacity(n);
-    for _ in 0..n {
-        g_vec.push(E::G1Projective::rand(&mut rng).into_affine());
-    }
-
-    let mut h_vec: Vec<E::G1Affine> = Vec::with_capacity(n);
-    for _ in 0..n {
-        h_vec.push(E::G1Projective::rand(&mut rng).into_affine());
-    }
-    let u: E::G1Affine = E::G1Projective::rand(&mut rng).into_affine();
-
-    let duration = t1.elapsed();
-    println!(
-        "<<<<<<<<<<<<<<<<<<<<<<<< \n n = {}, Time elapsed in generators is: {:?}",
-        n, duration
-    );
-
-    let t2 = Instant::now();
-    // generate a_vec/b_vec for test
-    let a_vec: Vec<E::Fr> = (0..n).map(|_| E::Fr::rand(&mut rng)).collect();
-    let b_vec: Vec<E::Fr> = (0..n).map(|_| E::Fr::rand(&mut rng)).collect();
-    let c: E::Fr = inner_product::<E>(&a_vec, &b_vec);
-    let P =
-        quick_multiexp::<E>(&a_vec, &g_vec) + &(quick_multiexp::<E>(&b_vec, &h_vec)) + &(u.mul(c));
-    let duration = t2.elapsed();
-    println!("Time elapsed in a_vec b_vec is: {:?}", duration);
-
-    let t3 = Instant::now();
-    let proof = prove::<E>(
-        g_vec.clone(),
-        h_vec.clone(),
-        u,
-        a_vec.clone(),
-        b_vec.clone(),
-    );
-    let duration = t3.elapsed();
-    println!("Time elapsed in prove is: {:?}", duration);
-
-    let t4 = Instant::now();
-    verify::<E>(g_vec.clone(), h_vec.clone(), u, &P, &proof);
-    let duration = t4.elapsed();
-    println!(
-        "Time elapsed in verify is: {:?} \n >>>>>>>>>>>>>>>>>>>",
-        duration
-    );
-}
-
 #[cfg(test)]
-mod bn_256_tests {
+mod tests {
+    use curve::{Bls12_381, Bn_256};
+    use math::UniformRand;
+    use std::time::Instant;
+
     use super::*;
-    use curve::bn_256::Bn_256;
+
+    #[cfg(test)]
+    fn run_protocol2_helper<E: PairingEngine>(n: usize) {
+        let t1 = Instant::now();
+        assert!(n.is_power_of_two());
+
+        let mut rng = rand::thread_rng();
+        // generators
+        // let g_vec: Vec<E::G1Affine> = GeneratorsChain::new(b"g_vec_ipp").take(n).collect();
+        // let h_vec: Vec<E::G1Affine> = GeneratorsChain::new(b"h_vec_ipp").take(n).collect();
+        // let us: Vec<E::G1Affine> = GeneratorsChain::new(b"u").take(1).collect();
+        // let u: E::G1Affine = us[0];
+        // g_vec: Vec<E::G1Affine>
+        // .into_affine()
+
+        // generators
+        let mut g_vec: Vec<E::G1Affine> = Vec::with_capacity(n);
+        for _ in 0..n {
+            g_vec.push(E::G1Projective::rand(&mut rng).into_affine());
+        }
+
+        let mut h_vec: Vec<E::G1Affine> = Vec::with_capacity(n);
+        for _ in 0..n {
+            h_vec.push(E::G1Projective::rand(&mut rng).into_affine());
+        }
+        let u: E::G1Affine = E::G1Projective::rand(&mut rng).into_affine();
+
+        let duration = t1.elapsed();
+        println!(
+            "<<<<<<<<<<<<<<<<<<<<<<<< \n n = {}, Time elapsed in generators is: {:?}",
+            n, duration
+        );
+
+        let t2 = Instant::now();
+        // generate a_vec/b_vec for test
+        let a_vec: Vec<E::Fr> = (0..n).map(|_| E::Fr::rand(&mut rng)).collect();
+        let b_vec: Vec<E::Fr> = (0..n).map(|_| E::Fr::rand(&mut rng)).collect();
+        let c: E::Fr = inner_product::<E>(&a_vec, &b_vec);
+        let P = quick_multiexp::<E>(&a_vec, &g_vec)
+            + &(quick_multiexp::<E>(&b_vec, &h_vec))
+            + &(u.mul(c));
+        let duration = t2.elapsed();
+        println!("Time elapsed in a_vec b_vec is: {:?}", duration);
+
+        let t3 = Instant::now();
+        let proof = prove::<E>(
+            g_vec.clone(),
+            h_vec.clone(),
+            u,
+            a_vec.clone(),
+            b_vec.clone(),
+        );
+        let duration = t3.elapsed();
+        println!("Time elapsed in prove is: {:?}", duration);
+
+        let t4 = Instant::now();
+        verify::<E>(g_vec.clone(), h_vec.clone(), u, &P, &proof);
+        let duration = t4.elapsed();
+        println!(
+            "Time elapsed in verify is: {:?} \n >>>>>>>>>>>>>>>>>>>",
+            duration
+        );
+    }
 
     #[test]
     fn run_ipp_256() {
         run_protocol2_helper::<Bn_256>(256);
-    }
-
-    #[test]
-    fn run_ipp_128() {
-        run_protocol2_helper::<Bn_256>(128);
-    }
-
-    #[test]
-    fn run_ipp_64() {
-        run_protocol2_helper::<Bn_256>(64);
-    }
-
-    #[test]
-    fn run_ipp_32() {
-        run_protocol2_helper::<Bn_256>(32);
-    }
-
-    #[test]
-    fn run_ipp_2() {
-        run_protocol2_helper::<Bn_256>(2);
-    }
-
-    #[test]
-    fn run_ipp_1() {
-        run_protocol2_helper::<Bn_256>(1);
-    }
-}
-
-#[cfg(test)]
-mod bls12_381_tests {
-    use super::*;
-    use curve::bls12_381::Bls12_381;
-
-    #[test]
-    fn run_ipp_256() {
         run_protocol2_helper::<Bls12_381>(256);
     }
 
     #[test]
     fn run_ipp_128() {
+        run_protocol2_helper::<Bn_256>(128);
         run_protocol2_helper::<Bls12_381>(128);
     }
 
     #[test]
     fn run_ipp_64() {
+        run_protocol2_helper::<Bn_256>(64);
         run_protocol2_helper::<Bls12_381>(64);
     }
 
     #[test]
     fn run_ipp_32() {
+        run_protocol2_helper::<Bn_256>(32);
         run_protocol2_helper::<Bls12_381>(32);
     }
 
     #[test]
     fn run_ipp_2() {
+        run_protocol2_helper::<Bn_256>(2);
         run_protocol2_helper::<Bls12_381>(2);
     }
 
     #[test]
     fn run_ipp_1() {
+        run_protocol2_helper::<Bn_256>(1);
         run_protocol2_helper::<Bls12_381>(1);
     }
 }

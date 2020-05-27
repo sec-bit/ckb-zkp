@@ -2,7 +2,6 @@ pub mod arithmetic_circuit;
 pub mod inner_product_proof;
 
 use math::{msm::VariableBaseMSM, Field, PairingEngine, PrimeField, Zero};
-use std::time::Instant;
 
 // Q (vector, zQ) * Qxn (matrix, WL, WR, WO) = n (vector, zQW)
 pub fn vector_matrix_product<E: PairingEngine>(v: &Vec<E::Fr>, m: &Vec<Vec<E::Fr>>) -> Vec<E::Fr> {
@@ -305,19 +304,20 @@ fn quick_multiexp<E>(exponents: &Vec<E::Fr>, bases: &Vec<E::G1Affine>) -> E::G1P
 where
     E: PairingEngine,
 {
-    let t1 = Instant::now();
+    // use std::time::Instant;
+    // let t1 = Instant::now();
     let scalars = exponents[..]
         .into_iter()
         .map(|s| s.into_repr())
         .collect::<Vec<_>>();
 
     let result = VariableBaseMSM::multi_scalar_mul(bases, &scalars);
-    let duration = t1.elapsed();
-    println!(
-        "len = {}, Time elapsed in quick_multiexp is: {:?}",
-        exponents.len(),
-        duration
-    );
+    // let duration = t1.elapsed();
+    // println!(
+    //     "len = {}, Time elapsed in quick_multiexp is: {:?}",
+    //     exponents.len(),
+    //     duration
+    // );
     result
 }
 
