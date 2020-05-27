@@ -8,17 +8,24 @@ categories = ["cryptography"]
 license = "MIT/Apache-2.0"
 edition = "2018"
 
+[features]
+default = ["full"]
+full = ["parallel", "groth16", "bulletproofs"]
+std = ["math/std"]
+parallel = ["std", "rayon", "math/parallel"]
+groth16 = []
+bulletproofs = ["merlin", "sha3", "digest"]
+
 [dependencies]
 math = { path = "../math", default-features = false, features = [ "derive" ] }
-rand = { version = "0.7", default-features = false }
+curve = { path = "../curve", default-features = false }
+rand = { version = "0.7" }
 rayon = { version = "1", optional = true }
 smallvec = "1.1.0"
+merlin = { version = "2.0.0", default-features = false, features = ["nightly"], optional = true }
+sha3 = { version = "0.8", default-features = false, optional = true }
+digest = { version = "0.8", default-features = false, optional = true }
 
 [dev-dependencies]
 csv = { version = "1" }
 curve = { path = "../curve", features = [ "bls12_381", "bn_256", "sw6" ] }
-
-[features]
-default = ["parallel"]
-std = ["math/std"]
-parallel = ["std", "rayon", "math/parallel"]
