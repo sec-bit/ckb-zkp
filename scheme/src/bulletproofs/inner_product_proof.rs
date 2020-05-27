@@ -13,6 +13,7 @@ pub struct Proof<E: PairingEngine> {
     b: E::Fr,
 }
 
+// protocol2 should not be used independently
 pub fn prove<E: PairingEngine>(
     mut g_vec: Vec<E::G1Affine>,
     mut h_vec: Vec<E::G1Affine>,
@@ -20,19 +21,10 @@ pub fn prove<E: PairingEngine>(
     mut a_vec: Vec<E::Fr>,
     mut b_vec: Vec<E::Fr>,
 ) -> Proof<E> {
-    // let mut G = &mut g_vec[..];
-    // let mut H = &mut h_vec[..];
-
     let mut transcript = Transcript::new(b"protocol2");
     let mut n = a_vec.len();
     assert!(n.is_power_of_two());
     assert_eq!(n, b_vec.len());
-
-    // generators
-    // let mut g_vec: Vec<E::G1Affine> = GeneratorsChain::new(b"g_vec_ipp").take(n).collect();
-    // let mut h_vec: Vec<E::G1Affine> = GeneratorsChain::new(b"h_vec_ipp").take(n).collect();
-    // let us: Vec<E::G1Affine> = GeneratorsChain::new(b"u").take(1).collect();
-    // let u: E::G1Affine = us[0];
 
     let lg_n = n.trailing_zeros() as usize;
     let mut L_vec: Vec<E::G1Affine> = Vec::with_capacity(lg_n);
@@ -117,12 +109,6 @@ pub fn verify<E: PairingEngine>(
     let n = 1 << lg_n;
     assert_eq!(lg_n, proof.R_vec.len());
 
-    // generators
-    // let g_vec: Vec<E::G1Affine> = GeneratorsChain::new(b"g_vec_ipp").take(n).collect();
-    // let h_vec: Vec<E::G1Affine> = GeneratorsChain::new(b"h_vec_ipp").take(n).collect();
-    // let us: Vec<E::G1Affine> = GeneratorsChain::new(b"u").take(1).collect();
-    // let u: E::G1Affine = us[0];
-
     let mut x_sq_vec = Vec::with_capacity(lg_n);
     let mut x_inv_sq_vec = Vec::with_capacity(lg_n);
     let mut allinv = E::Fr::one();
@@ -133,7 +119,6 @@ pub fn verify<E: PairingEngine>(
         // V challenge x
         let mut buf_x = [0u8; 32];
         transcript.challenge_bytes(b"x", &mut buf_x);
-        // let x = <E::Fr as PrimeField>::from_random_bytes(&buf_x).unwrap();
         let x = random_bytes_to_fr::<E>(&buf_x);
         let x_inv = x.inverse().unwrap();
         x_sq_vec.push(x * &x);
@@ -186,13 +171,6 @@ pub fn run_protocol2_helper<E: PairingEngine>(n: usize) {
     assert!(n.is_power_of_two());
 
     let mut rng = rand::thread_rng();
-    // generators
-    // let g_vec: Vec<E::G1Affine> = GeneratorsChain::new(b"g_vec_ipp").take(n).collect();
-    // let h_vec: Vec<E::G1Affine> = GeneratorsChain::new(b"h_vec_ipp").take(n).collect();
-    // let us: Vec<E::G1Affine> = GeneratorsChain::new(b"u").take(1).collect();
-    // let u: E::G1Affine = us[0];
-    // g_vec: Vec<E::G1Affine>
-    // .into_affine()
 
     // generators
     let mut g_vec: Vec<E::G1Affine> = Vec::with_capacity(n);

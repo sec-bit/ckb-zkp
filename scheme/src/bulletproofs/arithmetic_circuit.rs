@@ -17,8 +17,6 @@ pub struct Generators<E: PairingEngine> {
     h_vec_N: Vec<E::G1Affine>,
     g: E::G1Affine,
     h: E::G1Affine,
-    g_vec_ipp: Vec<E::G1Affine>,
-    h_vec_ipp: Vec<E::G1Affine>,
     u: E::G1Affine,
 }
 
@@ -90,13 +88,6 @@ pub fn prove<E: PairingEngine>(
     let n_w = input.w.len();
 
     // generators
-    // let g_vec: Vec<E::G1Affine> = GeneratorsChain::new(b"g_vec").take(n).collect();
-    // let h_vec: Vec<E::G1Affine> = GeneratorsChain::new(b"h_vec").take(n).collect();
-    // let gh: Vec<E::G1Affine> = GeneratorsChain::new(b"gh").take(2).collect();
-    // let g: E::G1Affine = gh[0];
-    // let h: E::G1Affine = gh[1];
-    // let g_vec_w: Vec<E::G1Affine> = GeneratorsChain::new(b"g_vec").take(n_w).collect();
-
     let mut g_vec: Vec<E::G1Affine> = vec![E::G1Affine::default(); n];
     let mut h_vec: Vec<E::G1Affine> = vec![E::G1Affine::default(); n];
     g_vec.copy_from_slice(&gens.g_vec_N[0..n]);
@@ -110,15 +101,18 @@ pub fn prove<E: PairingEngine>(
 
     // choose blinding vectors sL, sR
     let n_max = cmp::max(n, n_w);
-    println!("n_max = {}, n = {}, n_w = {}", n_max, n, n_w);
+    let N = n_max.next_power_of_two(); // N must be greater than or equal to n & n_w
+    transcript.append_u64(b"n", n as u64);
+    transcript.append_u64(b"N", N as u64);
+
     let mut sL: Vec<E::Fr> = (0..n_max).map(|_| E::Fr::rand(&mut rng)).collect();
     let mut sR: Vec<E::Fr> = (0..n_max).map(|_| E::Fr::rand(&mut rng)).collect();
 
     // alpha, beta, rou, gamma
-    let aIBlinding: E::Fr = E::Fr::rand(&mut rand::thread_rng());
-    let aOBlinding: E::Fr = E::Fr::rand(&mut rand::thread_rng());
-    let sBlinding: E::Fr = E::Fr::rand(&mut rand::thread_rng());
-    let gamma: E::Fr = E::Fr::rand(&mut rand::thread_rng()); // w blinding
+    let aIBlinding: E::Fr = E::Fr::rand(&mut rng);
+    let aOBlinding: E::Fr = E::Fr::rand(&mut rng);
+    let sBlinding: E::Fr = E::Fr::rand(&mut rng);
+    let gamma: E::Fr = E::Fr::rand(&mut rng); // w blinding
 
     // commit aL, aR, aO, sL, sR
     // A_I = h^alpha g_vec^aL h_vec^aR
@@ -132,8 +126,7 @@ pub fn prove<E: PairingEngine>(
     let A_I: E::G1Affine = A_I_projective.into_affine();
     let A_O: E::G1Affine = A_O_projective.into_affine();
     let A_W: E::G1Affine = A_W_projective.into_affine();
-    // let g_vec_max: Vec<E::G1Affine> = GeneratorsChain::new(b"g_vec").take(n_max).collect();
-    // let h_vec_max: Vec<E::G1Affine> = GeneratorsChain::new(b"h_vec").take(n_max).collect();
+
     let mut g_vec_max: Vec<E::G1Affine> = vec![E::G1Affine::default(); n_max];
     let mut h_vec_max: Vec<E::G1Affine> = vec![E::G1Affine::default(); n_max];
     g_vec_max.copy_from_slice(&gens.g_vec_N[0..n_max]);
@@ -150,17 +143,14 @@ pub fn prove<E: PairingEngine>(
     transcript.append_message(b"S", &math::to_bytes!(S).unwrap());
 
     // V challenge y, z
-    let mut buf_y = [0u8; 32];
-    let mut buf_z = [0u8; 32];
+    let mut buf_y = [0u8; 31];
+    let mut buf_z = [0u8; 31];
     transcript.challenge_bytes(b"y", &mut buf_y);
     transcript.challenge_bytes(b"z", &mut buf_z);
     let y = random_bytes_to_fr::<E>(&buf_y);
     let z = random_bytes_to_fr::<E>(&buf_z);
 
     // padding
-    // let N = n.next_power_of_two();
-    let N = n_max.next_power_of_two(); // N must be greater than or equal to n & n_w
-    println!("N = {}, n_max = {}", N, n_max);
     let mut aL = input.aL.clone();
     let mut aR = input.aR.clone();
     let mut aO = input.aO.clone();
@@ -255,14 +245,14 @@ pub fn prove<E: PairingEngine>(
     let t_poly = VecPoly5::<E>::special_inner_product(&l_poly, &r_poly);
 
     // generate blinding factors for ti
-    let tau_2: E::Fr = E::Fr::rand(&mut rand::thread_rng());
-    let tau_3: E::Fr = E::Fr::rand(&mut rand::thread_rng());
-    let tau_5: E::Fr = E::Fr::rand(&mut rand::thread_rng());
-    let tau_6: E::Fr = E::Fr::rand(&mut rand::thread_rng());
-    let tau_7: E::Fr = E::Fr::rand(&mut rand::thread_rng());
-    let tau_8: E::Fr = E::Fr::rand(&mut rand::thread_rng());
-    let tau_9: E::Fr = E::Fr::rand(&mut rand::thread_rng());
-    let tau_10: E::Fr = E::Fr::rand(&mut rand::thread_rng());
+    let tau_2: E::Fr = E::Fr::rand(&mut rng);
+    let tau_3: E::Fr = E::Fr::rand(&mut rng);
+    let tau_5: E::Fr = E::Fr::rand(&mut rng);
+    let tau_6: E::Fr = E::Fr::rand(&mut rng);
+    let tau_7: E::Fr = E::Fr::rand(&mut rng);
+    let tau_8: E::Fr = E::Fr::rand(&mut rng);
+    let tau_9: E::Fr = E::Fr::rand(&mut rng);
+    let tau_10: E::Fr = E::Fr::rand(&mut rng);
 
     // commit t_i
     let T_2 = quick_multiexp::<E>(&vec![t_poly.t2, tau_2], &vec![g, h]).into_affine();
@@ -284,7 +274,7 @@ pub fn prove<E: PairingEngine>(
     transcript.append_message(b"T_10", &math::to_bytes!(T_10).unwrap());
 
     // V challenge x
-    let mut buf_x = [0u8; 32];
+    let mut buf_x = [0u8; 31];
     transcript.challenge_bytes(b"x", &mut buf_x);
     let x = random_bytes_to_fr::<E>(&buf_x);
 
@@ -293,21 +283,6 @@ pub fn prove<E: PairingEngine>(
     let r_x: Vec<E::Fr> = r_poly.eval(x);
 
     let t_x = inner_product::<E>(&l_x, &r_x);
-
-    // IPP
-    // generators
-    // let g_vec_ipp: Vec<E::G1Affine> = GeneratorsChain::new(b"g_vec_ipp").take(N).collect();
-    // let h_vec_ipp: Vec<E::G1Affine> = GeneratorsChain::new(b"h_vec_ipp").take(N).collect();
-    // let us: Vec<E::G1Affine> = GeneratorsChain::new(b"u").take(1).collect();
-    // let u: E::G1Affine = us[0];
-    let g_vec_ipp: Vec<E::G1Affine> = gens.g_vec_ipp.clone();
-    let h_vec_ipp: Vec<E::G1Affine> = gens.h_vec_ipp.clone();
-    let u: E::G1Affine = gens.u.clone();
-    let IPP_P = quick_multiexp::<E>(&l_x, &g_vec_ipp)
-        + &quick_multiexp::<E>(&r_x, &h_vec_ipp)
-        + &u.mul(t_x);
-
-    let IPP = inner_product_proof::prove(g_vec_ipp, h_vec_ipp, u, l_x.clone(), r_x.clone());
 
     let xx = x * &x;
     let xxxx = xx * &xx;
@@ -326,6 +301,28 @@ pub fn prove<E: PairingEngine>(
         + &(aOBlinding * &(xx * &x))
         + &(gamma * &xxxx)
         + &(sBlinding * &(xxxx * &x));
+
+    // IPP
+    transcript.append_message(b"t_x", &math::to_bytes!(t_x).unwrap());
+    transcript.append_message(b"tau_x", &math::to_bytes!(tau_x).unwrap());
+    transcript.append_message(b"mu", &math::to_bytes!(mu).unwrap());
+
+    let mut buf_x_1 = [0u8; 31];
+    transcript.challenge_bytes(b"x_1", &mut buf_x_1); // notice: challenge x in protocol1 to avoid cheating from prover
+    let x_1 = random_bytes_to_fr::<E>(&buf_x_1);
+    let ux = (gens.u.mul(x_1)).into_affine();
+
+    let IPP_P = quick_multiexp::<E>(&l_x, &gens.g_vec_N)
+        + &quick_multiexp::<E>(&r_x, &gens.h_vec_N)
+        + &ux.mul(t_x);
+
+    let IPP = inner_product_proof::prove(
+        gens.g_vec_N.clone(),
+        gens.h_vec_N.clone(),
+        ux,
+        l_x.clone(),
+        r_x.clone(),
+    );
 
     let bp_circuit = BP_Circuit {
         n,
@@ -367,24 +364,21 @@ pub fn verify<E: PairingEngine>(gens: &Generators<E>, circuit: &BP_Circuit<E>, p
     let mut transcript = Transcript::new(b"protocol3");
 
     // generators
-    // let g_vec: Vec<E::G1Affine> = GeneratorsChain::new(b"g_vec").take(circuit.N).collect();
-    // let h_vec: Vec<E::G1Affine> = GeneratorsChain::new(b"h_vec").take(circuit.N).collect();
-    // let gh: Vec<E::G1Affine> = GeneratorsChain::new(b"gh").take(2).collect();
-    // let g: E::G1Affine = gh[0];
-    // let h: E::G1Affine = gh[1];
     let g_vec: Vec<E::G1Affine> = gens.g_vec_N.clone();
     let h_vec: Vec<E::G1Affine> = gens.h_vec_N.clone();
     let g = gens.g.clone();
     let h = gens.h.clone();
 
+    transcript.append_u64(b"n", circuit.n as u64);
+    transcript.append_u64(b"N", circuit.N as u64);
     transcript.append_message(b"A_I", &math::to_bytes!(proof.A_I).unwrap());
     transcript.append_message(b"A_O", &math::to_bytes!(proof.A_O).unwrap());
     transcript.append_message(b"A_W", &math::to_bytes!(proof.A_W).unwrap());
     transcript.append_message(b"S", &math::to_bytes!(proof.S).unwrap());
 
     // V challenge y, z
-    let mut buf_y = [0u8; 32];
-    let mut buf_z = [0u8; 32];
+    let mut buf_y = [0u8; 31];
+    let mut buf_z = [0u8; 31];
     transcript.challenge_bytes(b"y", &mut buf_y);
     transcript.challenge_bytes(b"z", &mut buf_z);
     let y = random_bytes_to_fr::<E>(&buf_y);
@@ -436,7 +430,7 @@ pub fn verify<E: PairingEngine>(gens: &Generators<E>, circuit: &BP_Circuit<E>, p
     transcript.append_message(b"T_10", &math::to_bytes!(proof.T_10).unwrap());
 
     // V challenge x
-    let mut buf_x = [0u8; 32];
+    let mut buf_x = [0u8; 31];
     transcript.challenge_bytes(b"x", &mut buf_x);
     let x = random_bytes_to_fr::<E>(&buf_x);
 
@@ -450,13 +444,21 @@ pub fn verify<E: PairingEngine>(gens: &Generators<E>, circuit: &BP_Circuit<E>, p
     let wO: E::G1Projective = quick_multiexp::<E>(&zQ_WO, &h_vec_inv);
     let wV: E::G1Projective = quick_multiexp::<E>(&zQ_neg_WV, &h_vec_inv);
 
+    transcript.append_message(b"t_x", &math::to_bytes!(proof.t_x).unwrap());
+    transcript.append_message(b"tau_x", &math::to_bytes!(proof.tau_x).unwrap());
+    transcript.append_message(b"mu", &math::to_bytes!(proof.mu).unwrap());
+    let mut buf_x_1 = [0u8; 31];
+    transcript.challenge_bytes(b"x_1", &mut buf_x_1); // notice: challenge x in protocol1 to avoid cheating from prover
+    let x_1 = random_bytes_to_fr::<E>(&buf_x_1);
+    let ux = (gens.u.mul(x_1)).into_affine();
+
     // check tx ?= <lx, rx>
     // USE IPP here
     // assert_eq!(proof.t_x, inner_product::<E>(&proof.l_x, &proof.r_x));
     inner_product_proof::verify(
-        gens.g_vec_ipp.clone(),
-        gens.h_vec_ipp.clone(),
-        gens.u,
+        gens.g_vec_N.clone(),
+        gens.h_vec_N.clone(),
+        ux,
         &proof.IPP_P,
         &proof.IPP,
     );
@@ -541,8 +543,6 @@ pub fn run_protocol3_r1cs_helper<E: PairingEngine>(
     let gh = create_generators::<E, _>(&mut rng, 2);
     let g = gh[0];
     let h = gh[1];
-    let g_vec_ipp = create_generators::<E, _>(&mut rng, N);
-    let h_vec_ipp = create_generators::<E, _>(&mut rng, N);
     let u = E::G1Projective::rand(&mut rng).into_affine();
 
     let generators = Generators {
@@ -550,8 +550,6 @@ pub fn run_protocol3_r1cs_helper<E: PairingEngine>(
         h_vec_N,
         g,
         h,
-        g_vec_ipp,
-        h_vec_ipp,
         u,
     };
 
