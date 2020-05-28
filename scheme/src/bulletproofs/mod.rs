@@ -70,57 +70,6 @@ pub fn inner_product<E: PairingEngine>(a: &[E::Fr], b: &[E::Fr]) -> E::Fr {
     out
 }
 
-// // copied from bulletproofs' internal code, so that we don't need to modify the original code
-// pub struct GeneratorsChain<E: PairingEngine> {
-//     reader: Sha3XofReader,
-//     dummy: E::Fr,
-// }
-
-// impl<E: PairingEngine> GeneratorsChain<E> {
-//     /// Creates a chain of generators, determined by the hash of `label`.
-//     pub fn new(label: &[u8]) -> Self {
-//         let mut shake = Shake256::default();
-//         shake.input(b"GeneratorsChain");
-//         shake.input(label);
-//         println!("label= {:?}", label);
-
-//         GeneratorsChain {
-//             reader: shake.xof_result(),
-//             dummy: E::Fr::zero(),
-//         }
-//     }
-// }
-
-// impl<E: PairingEngine> Default for GeneratorsChain<E> {
-//     fn default() -> Self {
-//         Self::new(&[])
-//     }
-// }
-
-// impl<E: PairingEngine> Iterator for GeneratorsChain<E> {
-//     // type Item = E::Fr;
-//     type Item = E::G1Affine;
-
-//     fn next(&mut self) -> Option<Self::Item> {
-//         let mut bytes = [0u8; 32];
-//         self.reader.read(&mut bytes);
-//         // E::Fr::from_random_bytes(&bytes)
-
-//         let mut r_bytes = [0u8; 31];
-//         // only use the first 31 bytes, to avoid value over modulus
-//         // we could mod modulus here too to keep value in range
-//         r_bytes.copy_from_slice(&bytes[0..31]);
-
-//         let point = <E::G1Affine as AffineCurve>::from_random_bytes(&r_bytes);
-//         println!("next>bytes={:?}, point={:?}", r_bytes, point);
-//         point
-//     }
-
-//     fn size_hint(&self) -> (usize, Option<usize>) {
-//         (usize::max_value(), None)
-//     }
-// }
-
 /// Represents a degree-3 vector polynomial
 /// \\(\mathbf{a} + \mathbf{b} \cdot x + \mathbf{c} \cdot x^2 + \mathbf{d} \cdot x^3 \\).
 pub struct VecPoly3<E: PairingEngine>(
