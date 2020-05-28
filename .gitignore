@@ -1,0 +1,6 @@
+build/*
+**/target/*
+.cache/.cargo/*
+!.gitkeep
+Cargo.lock
+contracts/ckb-zkp/zkp-toolkit

@@ -1,0 +1,16 @@
+[package]
+name = "ckb-zkp"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+ckb-std = "0.2.1"
+ckb-types = { package = "ckb-standalone-types", version = "0.0.1-pre.1", default-features = false }
+zkp = { path = "zkp-toolkit", default-features = false }
+
+[profile.release]
+overflow-checks = true
+
+[workspace]
+exclude = ["zkp-toolkit"]
