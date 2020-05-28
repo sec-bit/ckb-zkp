@@ -11,7 +11,7 @@
 
     ```sh
     # docker imaged needing
-    docker pull jjy0/ckb-capsule-recipe-rust
+    docker pull jjy0/ckb-capsule-recipe-rust:2020-5-9
     ```
 
 2. Dependencies: as now, the dependency `zkp-toolkit` is not available via a public git url, this dependency should reside under the root of the contract folder, whose path looks like this: *./contracts/ckb-zkp/zkp-toolkit*. Besides, ckb contracts is written with `no_std`, remember to use features with `no_std`.
