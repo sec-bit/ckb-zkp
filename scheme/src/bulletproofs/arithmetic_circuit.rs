@@ -1,14 +1,16 @@
 #![allow(non_snake_case)]
 use core::cmp;
+use math::{
+    bytes::ToBytes, AffineCurve, Field, One, PairingEngine, ProjectiveCurve, UniformRand, Zero,
+};
 use merlin::Transcript;
 use rand::Rng;
+
+use crate::Vec;
 
 use super::{
     hadamard_product, inner_product, inner_product_proof, quick_multiexp, random_bytes_to_fr,
     vector_matrix_product, vector_matrix_product_T, VecPoly5,
-};
-use math::{
-    bytes::ToBytes, AffineCurve, Field, One, PairingEngine, ProjectiveCurve, UniformRand, Zero,
 };
 
 pub struct Generators<E: PairingEngine> {
@@ -32,17 +34,17 @@ pub struct BP_Circuit<E: PairingEngine> {
 }
 
 pub struct R1CS_Circuit<E: PairingEngine> {
-    CL: Vec<Vec<E::Fr>>,
-    CR: Vec<Vec<E::Fr>>,
-    CO: Vec<Vec<E::Fr>>,
+    pub CL: Vec<Vec<E::Fr>>,
+    pub CR: Vec<Vec<E::Fr>>,
+    pub CO: Vec<Vec<E::Fr>>,
 }
 
 pub struct Assignment<E: PairingEngine> {
-    aL: Vec<E::Fr>,
+    pub aL: Vec<E::Fr>,
     aR: Vec<E::Fr>,
     aO: Vec<E::Fr>,
     s: Vec<E::Fr>,
-    w: Vec<E::Fr>,
+    pub w: Vec<E::Fr>,
 }
 
 pub struct Proof<E: PairingEngine> {

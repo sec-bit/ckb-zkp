@@ -3,6 +3,8 @@ pub mod inner_product_proof;
 
 use math::{msm::VariableBaseMSM, Field, PairingEngine, PrimeField, Zero};
 
+use crate::Vec;
+
 // Q (vector, zQ) * Qxn (matrix, WL, WR, WO) = n (vector, zQW)
 pub fn vector_matrix_product<E: PairingEngine>(v: &Vec<E::Fr>, m: &Vec<Vec<E::Fr>>) -> Vec<E::Fr> {
     let n = m[0].len();

@@ -2,6 +2,8 @@
 use math::{bytes::ToBytes, AffineCurve, Field, One, PairingEngine, ProjectiveCurve};
 use merlin::Transcript;
 
+use crate::Vec;
+
 use super::{inner_product, quick_multiexp, random_bytes_to_fr};
 
 pub struct Proof<E: PairingEngine> {
