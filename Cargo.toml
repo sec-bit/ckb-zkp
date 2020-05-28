@@ -1,7 +1,11 @@
 [package]
 name = "zkp"
 version = "0.1.0"
-authors = ["sun"]
+authors = ["SECBIT Labs"]
+description = "A library for better use zero-knowledge proof"
+keywords = ["cryptography", "zero-knowledge", "zkp", "gadget", "r1cs"]
+categories = ["cryptography"]
+license = "MIT/Apache-2.0"
 edition = "2018"
 
 [workspace]
