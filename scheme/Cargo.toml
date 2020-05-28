@@ -22,10 +22,11 @@ curve = { path = "../curve", default-features = false }
 rand = { version = "0.7", default-features = false }
 rayon = { version = "1", optional = true }
 smallvec = "1.1.0"
-merlin = { version = "2.0.0", default-features = false, features = ["nightly"], optional = true }
+merlin = { version = "2.0.0", default-features = false, optional = true }
 sha3 = { version = "0.8", default-features = false, optional = true }
 digest = { version = "0.8", default-features = false, optional = true }
 
 [dev-dependencies]
 csv = { version = "1" }
+rand = { version = "0.7" }
 curve = { path = "../curve", default-features = false, features = [ "bls12_381", "bn_256", "sw6" ] }
