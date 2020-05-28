@@ -44,6 +44,10 @@ pub enum Curve {
     Bn_256,
 }
 
+#[cfg(all(
+    any(feature = "groth16", feature = "bulletproofs"),
+    any(feature = "bn_256", feature = "bls12_381")
+))]
 macro_rules! handle_curve {
     ($func_name:ident, $c:expr, $bytes:expr) => {
         match $c {
@@ -55,6 +59,10 @@ macro_rules! handle_curve {
     };
 }
 
+#[cfg(all(
+    any(feature = "groth16", feature = "bulletproofs"),
+    any(feature = "bn_256", feature = "bls12_381")
+))]
 pub fn verify(s: Scheme, c: Curve, bytes: &[u8]) -> bool {
     match s {
         #[cfg(feature = "groth16")]
@@ -64,6 +72,10 @@ pub fn verify(s: Scheme, c: Curve, bytes: &[u8]) -> bool {
     }
 }
 
+#[cfg(all(
+    any(feature = "groth16", feature = "bulletproofs"),
+    any(feature = "bn_256", feature = "bls12_381")
+))]
 pub fn verify_from_int(si: u8, ci: u8, bytes: &[u8]) -> bool {
     let s = match si {
         #[cfg(feature = "groth16")]
@@ -79,8 +91,8 @@ pub fn verify_from_int(si: u8, ci: u8, bytes: &[u8]) -> bool {
         0u8 => Curve::Bls12_381,
         #[cfg(feature = "bn_256")]
         1u8 => Curve::Bn_256,
-        #[cfg(feature = "bls12_381")]
-        _ => Curve::Bls12_381,
+        #[cfg(feature = "bn_256")]
+        _ => Curve::Bn_256,
     };
 
     verify(s, c, bytes)

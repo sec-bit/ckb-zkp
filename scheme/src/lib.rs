@@ -14,13 +14,21 @@
 extern crate alloc;
 
 #[cfg(not(feature = "std"))]
-use alloc::{string::String, vec::Vec};
+use alloc::string::String;
+
+#[cfg(all(
+    not(feature = "std"),
+    any(feature = "groth16", feature = "bulletproofs")
+))]
+use alloc::vec::Vec;
 
 #[cfg(feature = "std")]
 use std::{string::String, vec::Vec};
 
+#[cfg(feature = "groth16")]
 #[macro_use]
 extern crate math;
+
 extern crate curve;
 
 pub mod r1cs;

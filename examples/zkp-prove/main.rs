@@ -27,7 +27,7 @@ macro_rules! handle_gadget {
                 use $gadget::groth16_prove;
                 handle_curve!(groth16_prove, $c, $bytes)
             }
-            Scheme::Bolletproofs => {
+            Scheme::Bulletproofs => {
                 use $gadget::groth16_prove;
                 handle_curve!(groth16_prove, $c, $bytes)
             }
