@@ -62,7 +62,7 @@ pub fn prove<E: PairingEngine>(
         transcript.append_message(b"R", &math::to_bytes![r_aff].unwrap());
 
         // V challenge x
-        let mut buf_x = [0u8; 32];
+        let mut buf_x = [0u8; 31];
         transcript.challenge_bytes(b"x", &mut buf_x);
         // let x = <E::Fr as PrimeField>::from_random_bytes(&buf_x).unwrap();
         let x = random_bytes_to_fr::<E>(&buf_x);
@@ -117,7 +117,7 @@ pub fn verify<E: PairingEngine>(
         transcript.append_message(b"R", &math::to_bytes![proof.R_vec[i]].unwrap());
 
         // V challenge x
-        let mut buf_x = [0u8; 32];
+        let mut buf_x = [0u8; 31];
         transcript.challenge_bytes(b"x", &mut buf_x);
         let x = random_bytes_to_fr::<E>(&buf_x);
         let x_inv = x.inverse().unwrap();
