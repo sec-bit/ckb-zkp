@@ -1,12 +1,6 @@
----
-title: "Zkp Toolkit_gadget汇总"
-date: 2020-05-28T11:06:43+08:00
-draft: true
----
-
 # zkp-toolkit Gadget list
 
-> 本文主要列出了zkp-toolkit库在第一阶段已经实现的gadget，实现过程中参照了bellman，libsnark以及ethsnarkgadget的代码。各个gadget的代码位于zkp-toolkit/src/gadget文件夹下，本文主要简略分析了各个gadget的实现。
+> This article mainly lists the gadgets that the zkp-toolkit library has implemented in the first stage. In the implementation process, the code of bellman, libsnark and ethsnarkgadget is referenced. The code of each gadget is located in the `zkp-toolkit/src/gadget` folder. This article mainly briefly analyzes the implementation of each gadget.
 
 ## gadget list
 
@@ -19,11 +13,11 @@ draft: true
 - [x] boolean
 - [x] mimc
 
-## gadget详解
+## gadget detailed design
 
-### zkp-toolkit gadget写法
+### zkp-toolkit gadget writing
 
-在 zkp-toolkit里面，有一个叫 ConstraintSynthesizer 的 trait，要在 groth16 中完成验证，就要继承这个 trait，在这个 trait 下，有一个函数 `generate_constraints`，这里面实现了电路的构造，代入或者不代入 witness 构造电路都是通过这个函数实现的，因此它会在被用到两次，一次是setup构造电路的时候，这里witness被置为 None，一次是生成证明,代入witness计算的时候。
+In zkp-toolkit, there is a trait called ConstraintSynthesizer. To complete the verification in groth16, it is necessary to inherit this trait. Under this trait, there is a function `generate_constraints`, which implements the structure of the circuit, with or without substitution The witness construction circuit is implemented by this function, so it will be used twice, once when the setup construction circuit, the witness is set to None, and once when the proof is generated and substituted into the witness calculation.
 
 ```rust
 /// Computations are expressed in terms of rank-1 constraint systems (R1CS).
@@ -38,9 +32,9 @@ pub trait ConstraintSynthesizer<F: Field> {
 }
 ```
 
-在上面实现的`generate_constraints`函数中实现好电路之后，需要对已有的电路进行测试，一般的测试步骤如下：
+After implementing the circuit in the `generate_constraints` function implemented above, you need to test the existing circuit. The general test steps are as follows:
 
-1. 通过生成的随机值以及空电路来生成pvk。
+1. Generate pvk from the generated random value and empty circuit.
 
 ```rust
 let mut rng = &mut test_rng();
@@ -60,7 +54,7 @@ let mut rng = &mut test_rng();
     let pvk = prepare_verifying_key(&params.vk);
 ```
 
-2. 将withness带入电路实例生成proof。
+2. Bring withness into the circuit instance to generate proof.
 
 ```rust
     println!("Creating proofs...");
@@ -74,7 +68,7 @@ let mut rng = &mut test_rng();
     let proof = create_random_proof(c1, &params, &mut rng).unwrap();
 ```
 
-3. 通过vk，proof，以及public input验证生成proof是否正确。
+3. Use vk, proof, and public input to verify that the proof is correct.
 
 ```rust
     println!("Proofs ok, start verify...");
@@ -82,7 +76,7 @@ let mut rng = &mut test_rng();
     assert!(verify_proof(&pvk, &proof, &[Fr::from(2u32).pow(&[n])]).unwrap());
 ```
 
-rangeproof的测试样例如下:
+The rangeproof test sample is as follows:
 
 ```rust
 #[test]
@@ -125,184 +119,182 @@ fn test_rangeproof() {
 }
 ```
 
-
-
 ### rangeproof
 
-#### 功能
+#### Features
 
-比较两个变量的大小(lhs,rhs)
+Compare the size of two variables (lhs, rhs)
 
-#### 约束
+#### Constraint
 
-- 计算 alpha_packed = 2^n + B - A，为了验证者两者相等，增加电路
+- Calculate alpha_packed = 2 ^ n + B-A, in order to verify that the two are equal, add a circuit
 
-  `1 * (2^n + B - A) = alpha_packed`
+  `1 * (2 ^ n + B-A) = alpha_packed`
 
-- alpha 数组表示 alpha_packed 的二进制表示方式，为了验证两者相等，增加电路
+- The alpha array represents the binary representation of alpha_packed, in order to verify that the two are equal, add a circuit
 
-  `1 * sum(bits) = alpha_packed`
+  `1 * sum (bits) = alpha_packed`
 
-- 为了验证 alpha 数组每一位都是二进制
+- In order to verify that each bit of the alpha array is binary
 
-  `(1 - bits_i) * bits_i = 0`
+  `(1-bits_i) * bits_i = 0`
 
-计算 sum = ∑ bits_i （i=0..n-1）
+  Calculate sum = ∑ bits_i (i = 0..n-1)
 
-当sum=0 时候，说明 lhs = rhs，令 output = 0，inv = 0
+  When sum = 0, it means that lhs = rhs, let output = 0, inv = 0
 
-当sum != 0时候，说明 lhs ！= rhs，令 output = 1 ，inv = 1/sum，output （也就是not_all_zeros）表示了两个数是否相等的关系。
+  When sum! = 0, it means lhs! = rhs, let output = 1, inv = 1 / sum, output (that is, not_all_zeros) indicates whether   two numbers are equal.
 
-- 为了保证 output 为二进制数，验证 
+- To ensure that the output is a binary number, verify
 
-  `(1 - output) * output = 0`
+  `(1-output) * output = 0`
 
-- 约束 output 和 sum 的关系，有两个等式约束，当 sum 不为 0 时，output 必然为 1
+- Constrain the relationship between output and sum, there are two equality constraints, when sum is not 0, output must be 1
 
   `(1-output) * sum = 0`
 
-- 当 sum = 0 时，output 也必须为 0
+- When sum = 0, output must also be 0
 
   `inv * sum = output`
 
-- less_or_eq 就是 alpha[n] ，因而 less_or_eq 和 less 的关系可以表示为
+- less_or_eq is alpha [n], so the relationship between less_or_eq and less can be expressed as
 
-  `less_or_eq  * output = less`
+  `less_or_eq * output = less`
 
-- 验证 < 关系是否成立：`less * 1 = 1`
+- Verify whether the relationship is established: `less * 1 = 1`
 
-#### 代码实现
+#### Code
 
-![](../rangeproof.rs#L1)
+![](./rangeproof.rs#L1)
 
 ### isnonezero
 
-#### 功能
+#### Features
 
-判断变量值是否为非零
+Determine if variable value is non-zero
 
-#### 约束
+#### Constraint
 
-ethsnark中该gadget一共有两个约束X是输入值，Y是输出值。两个约束分别为:
+There are two constraints in the gadget in ethsnark. X is the input value and Y is the output value. The two constraints are:
 
-X*(1-Y)=0
+X * (1-Y) = 0
 
-X*(1/X)=0
+X * (1 / X) = 0
 
-zkp-toolkit中没有结果输出变量Y，因此约束为：
+There is no result output variable Y in zkp-toolkit, so the constraints are:
 
-$X*(1/X)=0$
+$ X * (1 / X) = 0 $
 
-#### 代码实现
+#### Code
 
-![](../isnonzero.rs#L1)
+![](./isnonzero.rs#L1)
 
-###  lookup_1bit
+### lookup_1bit
 
-#### 功能
+#### Features
 
-通过b的一位bit位的二进制值作为下标范围数组C中的值，并且将结果值赋值给r。
+The binary value of one bit of b is used as the value in the subscript range array C, and the result value is assigned to r.
 
-#### 约束
+#### Constraint
 
-输入bit位b，变量数组c，结果值r
+Input bit b, variable array c, result value r
 
-$(c[0] + b*c[1]-(b*c[0])) * 1 = r$
+$ (c [0] + b * c [1]-(b * c [0])) * 1 = r $
 
-当b为0时c[0] = r
+When b is 0, c [0] = r
 
-当b为1时c[1] = r
+When b is 1, c [1] = r
 
-#### 代码实现
+#### Code
 
-![](../lookup_1bit.rs#L1)
+![](./lookup_1bit.rs#L1)
 
 ### lookup_2bit
 
-#### 功能
+#### Features
 
-通过b的二位bit位的二进制值作为下标范围数组C中的值，并且将结果值赋值给r。
+The binary value of the two bits of b is used as the value in the subscript range array C, and the resulting value is assigned to r.
 
-#### 约束
+#### Constraint
 
-输入2bit位b，变量数组c，结果值r
+Input 2bit b, variable array c, result value r
 
-$(c[1] - c[0] + (b[1] * (c[3] - c[2] - c[1] + c[0])))*b[0]=-c[0] + r + (b[1] * (-c[2] + c[0]))$
+$ (c [1]-c [0] + (b [1] * (c [3]-c [2]-c [1] + c [0]))) * b [0] =-c [ 0] + r + (b [1] * (-c [2] + c [0])) $
 
-上述约束参考了ethsnark中的写法，如果上面的约束等式成立必须要满足：
+The above constraints refer to the wording in ethsnark. If the above constraint equation holds, it must be satisfied:
 
-b: 00   r = c[0]
+b: 00 r = c [0]
 
-b: 01   r = c[1]
+b: 01 r = c [1]
 
-b: 10   r = c[2]
+b: 10 r = c [2]
 
-b: 11   r = c[3]
+b: 11 r = c [3]
 
-#### 代码实现
+#### Code
 
-![](../lookup_2bit.rs#L1)
+![](./lookup_2bit.rs#L1)
 
 ### lookup_3bit
 
-#### 功能
+#### Features
 
-通过b的三位bit位的二进制值作为下标范围数组C中的值，并且将结果值赋值给r。
+The binary value of the three bits of b is used as the value in the subscript range array C, and the result value is assigned to r.
 
-#### 约束
+#### Constraint
 
-$(c[0]+(b[0]*-c[0])+(b[0]*c[1])+(b[1]*-c[0])+(b[1]*c[2])+(b[0]*b[1]*(-c[1] + -c[2] + c[0]+c[3]))+(b[2]*(-c[0]+c[4])) + (b[0]*b[2]*(c[0]-c[1]-c[4]+c[5])) + (b[1]*b[2]*(c[0]-c[2]-c[4]+c[6])) + (b[0]*b[1]*b[2]*(-c[0]+c[1]+c[2]-c[3]+c[4]-c[5]-c[6]+c[7]))) * 1 = r$
+$ (c [0] + \\ (b [0] *-c [0]) + \\(b [0] * c [1]) + \\(b [1] *-c [0]) + \\(b [1] * c [2]) + \\(b [0] * b [1] * (-c [1] + -c [2] + c [0] + c [3])) + \\(b [2] * ( -c [0] + c [4])) + \\(b [0] * b [2] * (c [0] -c [1] -c [4] + c [5])) + \\(b [ 1] * b [2] * (c [0] -c [2] -c [4] + c [6])) + \\(b [0] * b [1] * b [2] * (-c [0] + c [1] + c [2] -c [3] + c [4] -c [5] -c [6] + c [7])))) * 1 = r $
 
-上述约束参考了ethsnark中的写法，如果上面的约束等式成立必须要满足：
+The above constraints refer to the implementation of ethsnark. If the above constraint equation holds, it must be satisfied:
 
-b: 000   r = c[0]
+b: 000 r = c [0]
 
-b: 001   r = c[1]
+b: 001 r = c [1]
 
-b: 010   r = c[2]
+b: 010 r = c [2]
 
-b: 011   r = c[3]
+b: 011 r = c [3]
 
-b: 100   r = c[4]
+b: 100 r = c [4]
 
-b: 101   r = c[5]
+b: 101 r = c [5]
 
-b: 110   r = c[6]
+b: 110 r = c [6]
 
-b: 111   r = c[7]
+b: 111 r = c [7]
 
-#### 代码实现
+#### Code
 
-![](../lookup_3bit.rs#L1)
+![](./lookup_3bit.rs#L1)
 
 ### merkletree
 
-#### 功能
+#### Features
 
-通过给定一条merkletree的验证路径，以及一个叶子节点和根节点。验证叶子节点在该条验证路径之上计算的结果是否预期的根节点相同。
+Given a verification path of a merkletree, and a leaf node and root node. Verify that the leaf node's calculation result on the verification path is the same as the expected root node.
 
-#### 约束
+#### Constraint
 
-merkletree一共有3类约束
+There are 3 types of constraints in merkletree
 
-* merkletree计算路径上各个left_digests和right_digests的约束。哈希上的每一位都需要满足$digests[i]*(1-digests[i]) = 0$ 因此这里的约束总数为 $(2*digest\_size-1)*tree\_depth$。
-* 从merkletree最底层到根节点tree_depth(这里的tree_depth为实际树高减去1)个哈希的约束。假设每个哈希约束x，总约束为$tree\_depth*x$
-* 通过address_bit的bit位来确定leaf哈希节点以及internal_output内部哈希节点的左右位置。每个哈希位的约束为：$is\_right * (right.bits[i] - left.bits[i]) = (input.bits[i] - left.bits[i])$  digest_size次该条约束，一共循环tree_depth 。 约束数量: $digest\_size*tree\_depth$。
-* 最后是对电路计算的哈希结果和预期哈希结果相互比较，其电路约束为: $root\_digest[i] * 1 = computed\_root[i]$  一共digests_size个约束。
+- merkletree calculates the constraints of each left_digests and right_digests on the path. Every bit on the hash needs to satisfy $ digests [i] * (1-digests [i]) = 0 $ so the total number of constraints here is $ (2 * digest\_size-1) * tree\_depth $.
+- A hash constraint from the lowest level of merkletree to the root node tree_depth (where tree_depth is the actual tree height minus 1). Assuming each hash constraint x, the total constraint is $ tree \ _depth * x $
+- Determine the left and right positions of the leaf hash node and the internal hash node by the bit of address_bit. The constraint of each hash bit is: $ is\_right * (right.bits [i]-left.bits [i]) = (input.bits [i]-left.bits [i]) $ digest_size Constraint, looping tree_depth altogether. Numer of constraints: $ digest\_size * tree\_depth $.
+- Finally, the hash result calculated by the circuit is compared with the expected hash result. The circuit constraints are: $ root\_digest [i] * 1 = computed\_root [i] $ digests_size constraints.
 
-#### 代码实现
+#### Code
 
-![](../merkletree.rs#L1)
+![](./merkletree.rs#L1)
 
 ### boolean
 
-#### 功能
+#### Features
 
-boolean逻辑gadget(这部分主要参考bellman/gadget/boolean.rs)，里面有各种关于boolean变量的gadget运算，Boolean是对AllocatedBit的封装。
+boolean logic gadget (this part mainly refers to bellman / gadget / boolean.rs), there are various gadget operations on boolean variables, Boolean is the encapsulation of AllocatedBit.
 
-#### 约束
+#### Constraint
 
-一共实现了一下bool 操作的 gadget:
+A total of gadgets for bool operations are implemented:
 
 ```rust
 AllocatedBit:
@@ -318,32 +310,30 @@ field_into_allocated_bits_le: Vec<AllocatedBit>
 
 
 
-#### 代码实现
+#### Code
 
-![](../boolean.rs#L1)
+![](./boolean.rs#L1)
 
 ### mimc
 
-#### 功能
+#### Features
 
-mimc哈希函数
+mimc hash function
 
-#### 约束
+#### Constraint
 
-xL, xR := xR + (xL + Ci)^3, xL
+xL, xR: = xR + (xL + Ci) ^ 3, xL
 
-tmp = (xL + Ci)^2
+tmp = (xL + Ci) ^ 2
 
-new_xL = xR + (xL + Ci)^3
+new_xL = xR + (xL + Ci) ^ 3
 
 new_xL = xR + tmp * (xL + Ci)
 
-new_xL - xR = tmp * (xL + Ci)
+new_xL-xR = tmp * (xL + Ci)
 
-MIMC_ROUNDS轮new_xL = xR + (xL + Ci)^3 个约束
+Constraint: MIMC_ROUNDS round `new_xL = xR + (xL + Ci) ^ 3` constraints
 
-#### 代码实现
+#### Code
 
-![](../mimc.rs#L1)
-
-
+![](./mimc.rs#L1)
