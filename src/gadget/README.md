@@ -165,7 +165,7 @@ Compare the size of two variables (lhs, rhs)
 
 #### Code
 
-![](./rangeproof.rs#L1)
+[rangeproof](./rangeproof.rs#L1)
 
 ### isnonezero
 
@@ -187,7 +187,7 @@ $ X * (1 / X) = 0 $
 
 #### Code
 
-![](./isnonzero.rs#L1)
+[isnonzero](./isnonzero.rs#L1)
 
 ### lookup_1bit
 
@@ -207,7 +207,7 @@ When b is 1, c [1] = r
 
 #### Code
 
-![](./lookup_1bit.rs#L1)
+[lookup_1bit](./lookup_1bit.rs#L1)
 
 ### lookup_2bit
 
@@ -233,7 +233,7 @@ b: 11 r = c [3]
 
 #### Code
 
-![](./lookup_2bit.rs#L1)
+[lookup_2bit](./lookup_2bit.rs#L1)
 
 ### lookup_3bit
 
@@ -265,7 +265,7 @@ b: 111 r = c [7]
 
 #### Code
 
-![](./lookup_3bit.rs#L1)
+[lookup_3bit.rs](./lookup_3bit.rs#L1)
 
 ### merkletree
 
@@ -284,7 +284,7 @@ There are 3 types of constraints in merkletree
 
 #### Code
 
-![](./merkletree.rs#L1)
+[merkletree.rs](./merkletree.rs#L1)
 
 ### boolean
 
@@ -312,7 +312,7 @@ field_into_allocated_bits_le: Vec<AllocatedBit>
 
 #### Code
 
-![](./boolean.rs#L1)
+[boolean.rs](./boolean.rs#L1)
 
 ### mimc
 
@@ -336,4 +336,4 @@ Constraint: MIMC_ROUNDS round `new_xL = xR + (xL + Ci) ^ 3` constraints
 
 #### Code
 
-![](./mimc.rs#L1)
+[mimc.rs](./mimc.rs#L1)
