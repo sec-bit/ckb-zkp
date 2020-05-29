@@ -4,7 +4,7 @@
 #![feature(alloc_error_handler)]
 #![feature(panic_info_message)]
 
-use ckb_std::{ckb_constants, debug, default_alloc, entry, syscalls};
+use ckb_std::{ckb_constants, debug, default_alloc, entry, syscalls, error::SysError};
 use zkp::verify_from_int;
 
 #[no_mangle]
@@ -34,7 +34,7 @@ pub fn main() -> i8 {
             }
             Err(err) => {
                 debug!("{:?}", err);
-                if err == ckb_constants::SysError::IndexOutOfBound {
+                if err == SysError::IndexOutOfBound {
                     break;
                 }
             }
