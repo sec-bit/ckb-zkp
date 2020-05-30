@@ -5,38 +5,40 @@
   - [Build contracts](#build-contracts)
   - [Run tests](#run-tests)
   - [Binary Optimization](#binary-optimization)
+  - [Deployment](#deployment)
 
 ## Prerequisites
 
 1. Install the development framework [`capsule`](https://github.com/nervosnetwork/capsule)
 
-   ```sh
-   cargo install capsule --git https://github.com/nervosnetwork/capsule.git --tag v0.0.1-pre.2
-   ```
+    ```sh
+    cargo install capsule --git https://github.com/nervosnetwork/capsule.git --tag v0.0.1-pre.2
+    ```
 
 2. Pull the docker image used to build contracts.
 
-   ```sh
-   # docker imaged needing
-   docker pull jjy0/ckb-capsule-recipe-rust:2020-5-9
-   ```
+    ```sh
+    # docker imaged needing
+    docker pull jjy0/ckb-capsule-recipe-rust:2020-5-9
+    ```
 
-3. Add dependencies.
+3. Add dependencies.(Workaround)
 
-   Add the dependency `zkp-toolkit` under the root of the contract folder, whose path looks like this: _./contracts/ckb-zkp/zkp-toolkit_, and exclude the dependency folders in cargo manifest as follow:
+    Add the dependency `zkp-toolkit` under the root of the contract folder, whose path looks like this: _./contracts/ckb-zkp/zkp-toolkit_, and exclude the dependency folders in cargo manifest as follow:
 
-   ```toml
+    ```toml
+    # contracts/ckb-zkp/Cargo.toml
     [workspace]
     exclude = ["zkp-toolkit"]
-   ```
+    ```
 
-   Reason: By now, the dependency `zkp-toolkit` is not available via a public git url, and we can only add this dependency from local file. However, `capsule` did not support using local files as dependencies. So as workaround, we put dependencies into the contract folder and exclude them.
+    Reason: By now, the dependency `zkp-toolkit` is not available via a public git url, and we can only add this dependency from local file. However, `capsule` did not support using local files as dependencies. So as workaround, we put dependencies into the contract folder and exclude them.
 
 4. Generate a proof file
 
-   Generate a proof file and put it into the contract folder _./contracts/ckb-zkp/_, and assign the position of the proof file in ./tests/src/tests.rs, the constant PROOF_FILE.
+    Generate a proof file and put it into the contract folder _./contracts/ckb-zkp/_, and assign the position of the proof file in ./tests/src/tests.rs, the constant PROOF_FILE.
 
-   Attention: If you want to build and run `zkp-toolkit` at _./contracts/ckb-zkp/zkp-toolkit_, you should explicitly pass `target` parameter to cargo.
+    Attention: If you want to build and run `zkp-toolkit` at _./contracts/ckb-zkp/zkp-toolkit_, you should explicitly pass `target` parameter to cargo.
 
 ## Build contracts
 
@@ -67,6 +69,7 @@ In ckb, the costs comes from the size of the built transaction. Heavier in size 
 To use LTO, `opt-level` and `codegen-units`, modify *Cargo.toml*:
 
 ```toml
+# contracts/ckb-zkp/Cargo.toml
 [profile.release]
 overflow-checks = true
 # lto: true, "thin", false(default)
@@ -91,3 +94,7 @@ Condition: Release mode, stripped, using `capsule` to build and test and measure
 | false | “z”         | not set         | 99104       | failed to run |
 | true  | “z”         | 1               | 74456       | 290196835     |
 | true  | “s”         | 1               | 86744       | 203553832     |
+
+## Deployment
+
+TODO
