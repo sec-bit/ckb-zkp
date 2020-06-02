@@ -2,6 +2,8 @@
 name = "ckb-zkp"
 version = "0.1.0"
 edition = "2018"
+license = "MIT/Apache-2.0"
+authors = ["SECBIT Labs"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
@@ -17,6 +19,14 @@ overflow-checks = true
 lto = true
 opt-level = "s"
 codegen-units = 1
+# debug-assertions = true
+
+[profile.dev]
+overflow-checks = true
+lto = true
+opt-level = "s"
+codegen-units = 1
+debug = 0
 
 [workspace]
 exclude = ["zkp-toolkit"]
