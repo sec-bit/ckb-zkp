@@ -29,6 +29,7 @@ bulletproofs = ["scheme/bulletproofs"]
 math = { path = "math", default-features = false }
 scheme = { path = "scheme", default-features = false }
 curve = { path = "curve", default-features = false }
+rand = { version = "0.7", default-features = false }
 
 [dev-dependencies]
 rand = { version = "0.7" }

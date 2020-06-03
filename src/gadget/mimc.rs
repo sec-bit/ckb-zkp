@@ -4,8 +4,6 @@ use scheme::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
 use crate::Vec;
 
-const MIMC_ROUNDS: usize = 322;
-
 /// This is an implementation of MiMC, specifically a
 /// variant named `LongsightF322p3` for BN-256.
 /// See http://eprint.iacr.org/2016/492 for more
@@ -36,8 +34,6 @@ pub fn mimc<F: Field>(mut xl: F, mut xr: F, constants: &[F]) -> F {
 
 /// mimc hash function.
 pub fn mimc_hash<F: math::fields::PrimeField + Field>(b: &[u8], constants: &[F]) -> (F, F, F) {
-    assert_eq!(constants.len(), MIMC_ROUNDS);
-
     let mut v: Vec<F> = Vec::new();
     let n = <F::BigInt as math::BigInteger>::NUM_LIMBS * 8;
     for i in 0..(b.len() / n) {
@@ -81,8 +77,6 @@ impl<'a, F: Field> ConstraintSynthesizer<F> for MiMC<'a, F> {
         self,
         cs: &mut CS,
     ) -> Result<(), SynthesisError> {
-        assert_eq!(self.constants.len(), MIMC_ROUNDS);
-
         // Allocate the first component of the preimage.
         let mut xl_value = self.xl;
         let mut xl = cs.alloc(
@@ -161,4 +155,44 @@ impl<'a, F: Field> ConstraintSynthesizer<F> for MiMC<'a, F> {
 
         Ok(())
     }
+}
+
+pub const MIMC_ROUNDS: usize = 322;
+pub const SEED: [u8; 32] = [0; 32];
+pub const GROTH16_SEED: [u8; 32] = [0; 32];
+
+pub fn constants<F: Field>() -> [F; MIMC_ROUNDS] {
+    use rand::{Rng, SeedableRng};
+    let rng = &mut rand::rngs::StdRng::from_seed(SEED);
+
+    let mut constants = [F::zero(); MIMC_ROUNDS];
+
+    let mut i = 0;
+    loop {
+        let new_seed: [u8; 32] = rng.gen();
+        if let Some(f) = F::from_random_bytes(&new_seed) {
+            constants[i] = f;
+            i += 1;
+            if i == MIMC_ROUNDS {
+                break;
+            }
+        }
+    }
+
+    constants
+}
+
+#[cfg(feature = "groth16")]
+pub fn groth16_params<E: math::PairingEngine>(
+    constants: &[E::Fr],
+) -> Result<scheme::groth16::Parameters<E>, SynthesisError> {
+    let c = MiMC::<E::Fr> {
+        xl: None,
+        xr: None,
+        constants: constants,
+    };
+    use rand::SeedableRng;
+    let rng = &mut rand::rngs::StdRng::from_seed(GROTH16_SEED);
+
+    scheme::groth16::generate_random_parameters::<E, _, _>(c, rng)
 }
