@@ -25,14 +25,14 @@ pub fn vector_matrix_product<E: PairingEngine>(v: &Vec<E::Fr>, m: &Vec<Vec<E::Fr
 }
 
 // n (vector, aL/aR/aO) * Qxn (matrix, WL, WR, WO) = Q (vector, wLaL)
-pub fn vector_matrix_product_T<E: PairingEngine>(
+pub fn vector_matrix_product_t<E: PairingEngine>(
     v: &Vec<E::Fr>,
     m: &Vec<Vec<E::Fr>>,
 ) -> Vec<E::Fr> {
-    let Q = m.len();
-    let mut out = vec![E::Fr::zero(); Q];
+    let q = m.len();
+    let mut out = vec![E::Fr::zero(); q];
 
-    for row in 0..Q {
+    for row in 0..q {
         if m[row].len() != v.len() {
             panic!("matrix_vector_product_T(v,m): lengths of vectors do not match");
         }

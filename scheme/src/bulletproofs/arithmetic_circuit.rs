@@ -10,7 +10,7 @@ use crate::Vec;
 
 use super::{
     hadamard_product, inner_product, inner_product_proof, quick_multiexp, random_bytes_to_fr,
-    vector_matrix_product, vector_matrix_product_T, VecPoly5,
+    vector_matrix_product, vector_matrix_product_t, VecPoly5,
 };
 
 pub struct Generators<E: PairingEngine> {
@@ -21,7 +21,7 @@ pub struct Generators<E: PairingEngine> {
     u: E::G1Affine,
 }
 
-pub struct BP_Circuit<E: PairingEngine> {
+pub struct BpCircuit<E: PairingEngine> {
     n: usize,
     N: usize,
     WL: Vec<Vec<E::Fr>>,
@@ -31,7 +31,7 @@ pub struct BP_Circuit<E: PairingEngine> {
     c: Vec<E::Fr>,
 }
 
-pub struct R1CS_Circuit<E: PairingEngine> {
+pub struct R1csCircuit<E: PairingEngine> {
     pub CL: Vec<Vec<E::Fr>>,
     pub CR: Vec<Vec<E::Fr>>,
     pub CO: Vec<Vec<E::Fr>>,
@@ -70,10 +70,10 @@ pub struct Proof<E: PairingEngine> {
 // bulletproofs arithmetic circuit proof with R1CS format
 pub fn prove<E: PairingEngine, R>(
     gens: &Generators<E>,
-    r1cs_circuit: &R1CS_Circuit<E>,
+    r1cs_circuit: &R1csCircuit<E>,
     input: &Assignment<E>,
     rng: &mut R,
-) -> (BP_Circuit<E>, Proof<E>)
+) -> (BpCircuit<E>, Proof<E>)
 where
     R: Rng,
 {
@@ -210,7 +210,7 @@ where
                 + &(zn_sq * &r1cs_circuit.CO[i][j]);
         }
     }
-    let c = vector_matrix_product_T::<E>(&input.s, &C1);
+    let c = vector_matrix_product_t::<E>(&input.s, &C1);
 
     // zQ * WL, zQ * WR
     let zQ_WL: Vec<E::Fr> = vector_matrix_product::<E>(&z_Q, &WL);
@@ -320,7 +320,7 @@ where
         r_x.clone(),
     );
 
-    let bp_circuit = BP_Circuit {
+    let bp_circuit = BpCircuit {
         n,
         N,
         WL,
@@ -356,7 +356,7 @@ where
     (bp_circuit, proof)
 }
 
-pub fn verify<E: PairingEngine>(gens: &Generators<E>, circuit: &BP_Circuit<E>, proof: &Proof<E>) {
+pub fn verify<E: PairingEngine>(gens: &Generators<E>, circuit: &BpCircuit<E>, proof: &Proof<E>) {
     let mut transcript = Transcript::new(b"protocol3");
 
     // generators
@@ -520,12 +520,12 @@ mod tests {
         witness: Vec<E::Fr>,
     ) {
         let mut rng = rand::thread_rng();
-        let r1cs_circuit = R1CS_Circuit::<E> { CL, CR, CO };
+        let r1cs_circuit = R1csCircuit::<E> { CL, CR, CO };
 
         let f = [&statement[..], &witness[..]].concat();
-        let aL = vector_matrix_product_T::<E>(&f, &r1cs_circuit.CL);
-        let aR = vector_matrix_product_T::<E>(&f, &r1cs_circuit.CR);
-        let aO = vector_matrix_product_T::<E>(&f, &r1cs_circuit.CO);
+        let aL = vector_matrix_product_t::<E>(&f, &r1cs_circuit.CL);
+        let aR = vector_matrix_product_t::<E>(&f, &r1cs_circuit.CR);
+        let aO = vector_matrix_product_t::<E>(&f, &r1cs_circuit.CO);
 
         let input = Assignment {
             aL: aL,
