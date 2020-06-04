@@ -23,6 +23,10 @@ name = "zkp-prove"
 path = "src/bin/zkp_verify.rs"
 name = "zkp-verify"
 
+[[bin]]
+path = "src/bin/trusted_setup/main.rs"
+name = "trusted-setup"
+
 [features]
 default = ["full"]
 full = ["parallel", "bn_256", "bls12_381", "groth16", "bulletproofs"]
