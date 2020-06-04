@@ -1,6 +1,6 @@
 use zkp::{
     gadget::mimc::{constants, groth16_params, mimc_hash, MiMC},
-    math::PairingEngine,
+    math::{PairingEngine, ToBytes},
     scheme::groth16::{create_random_proof, prepare_verifying_key},
     Groth16Proof,
 };
@@ -24,6 +24,11 @@ where
     };
 
     println!("Creating proofs...");
+
+    let mut vk_bytes = vec![];
+    params.vk.write(&mut vk_bytes).unwrap();
+
+    println!("{:?}", vk_bytes);
 
     // Create a groth16 proof with our parameters.
     let proof = create_random_proof(mc, &params, &mut rand::thread_rng()).unwrap();

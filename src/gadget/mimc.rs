@@ -160,10 +160,15 @@ impl<'a, F: Field> ConstraintSynthesizer<F> for MiMC<'a, F> {
 pub const MIMC_ROUNDS: usize = 322;
 pub const SEED: [u8; 32] = [0; 32];
 pub const GROTH16_SEED: [u8; 32] = [0; 32];
+pub const GROTH16_VK: [u8; 32] = [0; 32];
 
 pub fn constants<F: Field>() -> [F; MIMC_ROUNDS] {
+    constants_with_seed(SEED)
+}
+
+pub fn constants_with_seed<F: Field>(seed: [u8; 32]) -> [F; MIMC_ROUNDS] {
     use rand::{Rng, SeedableRng};
-    let rng = &mut rand::rngs::StdRng::from_seed(SEED);
+    let rng = &mut rand::rngs::StdRng::from_seed(seed);
 
     let mut constants = [F::zero(); MIMC_ROUNDS];
 
@@ -186,13 +191,21 @@ pub fn constants<F: Field>() -> [F; MIMC_ROUNDS] {
 pub fn groth16_params<E: math::PairingEngine>(
     constants: &[E::Fr],
 ) -> Result<scheme::groth16::Parameters<E>, SynthesisError> {
+    groth16_params_with_seed(constants, GROTH16_SEED)
+}
+
+#[cfg(feature = "groth16")]
+pub fn groth16_params_with_seed<E: math::PairingEngine>(
+    constants: &[E::Fr],
+    seed: [u8; 32],
+) -> Result<scheme::groth16::Parameters<E>, SynthesisError> {
     let c = MiMC::<E::Fr> {
         xl: None,
         xr: None,
         constants: constants,
     };
     use rand::SeedableRng;
-    let rng = &mut rand::rngs::StdRng::from_seed(GROTH16_SEED);
+    let rng = &mut rand::rngs::StdRng::from_seed(seed);
 
     scheme::groth16::generate_random_parameters::<E, _, _>(c, rng)
 }

@@ -24,4 +24,11 @@ pub fn setup(_p: Option<PathBuf>) {
     let groth16_seed: [u8; 32] = rng.gen();
 
     println!("GROTH16 SEED: {:?}", groth16_seed);
+
+    //let constants = constants_with_seed::<E::Fr>();
+    //let params = groth16_params_with_seed::<E>(&constants).unwrap();
+
+    //let mut vk_bytes = vec![];
+    //params.vk.write(&mut vk_bytes).unwrap();
+    //println!("{:?}", vk_bytes);
 }
