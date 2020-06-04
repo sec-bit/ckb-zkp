@@ -1,11 +1,8 @@
 use std::env;
 use std::path::PathBuf;
+use zkp::{prove_to_bytes, Curve, Gadget, Scheme};
 
-use zkp::{Curve, Scheme};
-
-pub enum Gadget {
-    Mimc,
-}
+const PROOFS_DIR: &'static str = "./proofs_files";
 
 pub fn handle_args() -> Result<(Gadget, Scheme, Curve, Vec<u8>, String), ()> {
     let args: Vec<_> = env::args().collect();
@@ -17,8 +14,8 @@ pub fn handle_args() -> Result<(Gadget, Scheme, Curve, Vec<u8>, String), ()> {
     }
 
     let g = match args[1].as_str() {
-        "mimc" => Gadget::Mimc,
-        _ => Gadget::Mimc,
+        "mimc" => Gadget::MiMC,
+        _ => Gadget::MiMC,
     };
 
     let (s, c) = if args.len() == 3 {
@@ -59,4 +56,20 @@ pub fn handle_args() -> Result<(Gadget, Scheme, Curve, Vec<u8>, String), ()> {
     };
 
     Ok((g, s, c, bytes, filename))
+}
+
+fn main() -> Result<(), ()> {
+    let (g, s, c, bytes, filename) = handle_args()?;
+    let proof = prove_to_bytes(g, s, c, &bytes).unwrap();
+
+    let mut path = PathBuf::from(PROOFS_DIR);
+    if !path.exists() {
+        std::fs::create_dir_all(&path).unwrap();
+    }
+    path.push(filename);
+    println!("Proof file: {:?}", path);
+
+    std::fs::write(path, proof).unwrap();
+
+    Ok(())
 }

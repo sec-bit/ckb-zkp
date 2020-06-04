@@ -15,6 +15,14 @@ members = [
     "scheme"
 ]
 
+[[bin]]
+path = "src/bin/zkp_prove.rs"
+name = "zkp-prove"
+
+[[bin]]
+path = "src/bin/zkp_verify.rs"
+name = "zkp-verify"
+
 [features]
 default = ["full"]
 full = ["parallel", "bn_256", "bls12_381", "groth16", "bulletproofs"]
