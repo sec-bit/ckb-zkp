@@ -60,7 +60,7 @@ pub fn handle_args() -> Result<(Gadget, Scheme, Curve, Vec<u8>, String), ()> {
 
 fn main() -> Result<(), ()> {
     let (g, s, c, bytes, filename) = handle_args()?;
-    let proof = prove_to_bytes(g, s, c, &bytes).unwrap();
+    let proof = prove_to_bytes(g, s, c, &bytes, rand::thread_rng()).unwrap();
 
     let mut path = PathBuf::from(PROOFS_DIR);
     if !path.exists() {

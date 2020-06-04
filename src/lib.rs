@@ -86,32 +86,44 @@ impl Gadget {
     }
 }
 
-pub fn prove<E: PairingEngine>(g: Gadget, s: Scheme, c: Curve, b: &[u8]) -> Result<Proof<E>, ()> {
+pub fn prove<E: PairingEngine, R: rand::Rng>(
+    g: Gadget,
+    s: Scheme,
+    c: Curve,
+    b: &[u8],
+    mut rng: R,
+) -> Result<Proof<E>, ()> {
     match s {
         Scheme::Groth16 => {
-            use scheme::groth16::create_random_proof;
-            // TODO
-            match g {
-                Gadget::MiMC => {
-                    use gadget::mimc::{constants, groth16_params, mimc_hash, MiMC};
-                    let constants = constants::<E::Fr>();
-                    let params = groth16_params::<E>(&constants).unwrap();
+            #[cfg(not(feature = "groth16"))]
+            return Err(());
 
-                    let (xl, xr, image) = mimc_hash(b, &constants);
+            #[cfg(feature = "groth16")]
+            {
+                use scheme::groth16::create_random_proof;
+                // TODO
+                match g {
+                    Gadget::MiMC => {
+                        use gadget::mimc::{constants, groth16_params, mimc_hash, MiMC};
+                        let constants = constants::<E::Fr>();
+                        let params = groth16_params::<E>(&constants).unwrap();
 
-                    let mc = MiMC {
-                        xl: Some(xl),
-                        xr: Some(xr),
-                        constants: &constants,
-                    };
+                        let (xl, xr, image) = mimc_hash(b, &constants);
 
-                    let proof = create_random_proof(mc, &params, &mut rand::thread_rng()).unwrap();
-                    Ok(Proof {
-                        g,
-                        s,
-                        c,
-                        p: GadgetProof::MiMC(image, SchemeProof::Groth16(proof, vec![image])),
-                    })
+                        let mc = MiMC {
+                            xl: Some(xl),
+                            xr: Some(xr),
+                            constants: &constants,
+                        };
+
+                        let proof = create_random_proof(mc, &params, &mut rng).unwrap();
+                        Ok(Proof {
+                            g,
+                            s,
+                            c,
+                            p: GadgetProof::MiMC(image, SchemeProof::Groth16(proof, vec![image])),
+                        })
+                    }
                 }
             }
         }
@@ -122,15 +134,33 @@ pub fn prove<E: PairingEngine>(g: Gadget, s: Scheme, c: Curve, b: &[u8]) -> Resu
     }
 }
 
-pub fn prove_to_bytes(g: Gadget, s: Scheme, c: Curve, b: &[u8]) -> Result<Vec<u8>, ()> {
+pub fn prove_to_bytes<R: rand::Rng>(
+    g: Gadget,
+    s: Scheme,
+    c: Curve,
+    b: &[u8],
+    rng: R,
+) -> Result<Vec<u8>, ()> {
     match c {
         Curve::Bls12_381 => {
-            let p = prove::<curve::Bls12_381>(g, s, c, b)?;
-            Ok(p.to_bytes())
+            #[cfg(not(feature = "bls12_381"))]
+            return Err(());
+
+            #[cfg(feature = "bls12_381")]
+            {
+                let p = prove::<curve::Bls12_381, R>(g, s, c, b, rng)?;
+                Ok(p.to_bytes())
+            }
         }
         Curve::Bn_256 => {
-            let p = prove::<curve::Bn_256>(g, s, c, b)?;
-            Ok(p.to_bytes())
+            #[cfg(not(feature = "bn_256"))]
+            return Err(());
+
+            #[cfg(feature = "bn_256")]
+            {
+                let p = prove::<curve::Bn_256, R>(g, s, c, b, rng)?;
+                Ok(p.to_bytes())
+            }
         }
     }
 }
@@ -138,17 +168,24 @@ pub fn prove_to_bytes(g: Gadget, s: Scheme, c: Curve, b: &[u8]) -> Result<Vec<u8
 pub fn verify<E: PairingEngine>(proof: &Proof<E>) -> bool {
     match proof.s {
         Scheme::Groth16 => {
-            use scheme::groth16::{prepare_verifying_key, verify_proof};
-            match &proof.p {
-                GadgetProof::MiMC(_, p) => match p {
-                    SchemeProof::Groth16(proof, public_inputs) => {
-                        use gadget::mimc::{constants, groth16_params};
-                        let constants = constants::<E::Fr>();
-                        let params = groth16_params::<E>(&constants).unwrap();
-                        let pvk = prepare_verifying_key(&params.vk);
-                        verify_proof(&pvk, &proof, &public_inputs).unwrap_or(false)
-                    }
-                },
+            #[cfg(not(feature = "groth16"))]
+            return false;
+
+            #[cfg(feature = "groth16")]
+            {
+                use scheme::groth16::{prepare_verifying_key, verify_proof};
+                match &proof.p {
+                    GadgetProof::MiMC(_, p) => match p {
+                        SchemeProof::Groth16(proof, public_inputs) => {
+                            use gadget::mimc::{constants, groth16_params};
+                            let constants = constants::<E::Fr>();
+                            let params = groth16_params::<E>(&constants).unwrap();
+                            let pvk = prepare_verifying_key(&params.vk);
+                            verify_proof(&pvk, &proof, &public_inputs).unwrap_or(false)
+                        }
+                        _ => false,
+                    },
+                }
             }
         }
         Scheme::Bulletproofs => {
@@ -170,18 +207,30 @@ pub fn verify_from_bytes(bytes: &[u8]) -> bool {
 
     match c.unwrap() {
         Curve::Bls12_381 => {
-            let proof = Proof::<curve::Bls12_381>::from_bytes(bytes);
-            if proof.is_err() {
-                return false;
+            #[cfg(not(feature = "bls12_381"))]
+            return false;
+
+            #[cfg(feature = "bls12_381")]
+            {
+                let proof = Proof::<curve::Bls12_381>::from_bytes(bytes);
+                if proof.is_err() {
+                    return false;
+                }
+                verify(&proof.unwrap())
             }
-            verify(&proof.unwrap())
         }
         Curve::Bn_256 => {
-            let proof = Proof::<curve::Bn_256>::from_bytes(bytes);
-            if proof.is_err() {
-                return false;
+            #[cfg(not(feature = "bn_256"))]
+            return false;
+
+            #[cfg(feature = "bn_256")]
+            {
+                let proof = Proof::<curve::Bn_256>::from_bytes(bytes);
+                if proof.is_err() {
+                    return false;
+                }
+                verify(&proof.unwrap())
             }
-            verify(&proof.unwrap())
         }
     }
 }
@@ -251,10 +300,13 @@ impl<E: PairingEngine> GadgetProof<E> {
     }
 }
 
+#[cfg(feature = "groth16")]
 use scheme::groth16::Proof as Groth16Proof;
 
 pub enum SchemeProof<E: PairingEngine> {
+    #[cfg(feature = "groth16")]
     Groth16(Groth16Proof<E>, Vec<E::Fr>),
+    None(core::marker::PhantomData<E>),
 }
 
 impl<E: PairingEngine> SchemeProof<E> {
@@ -262,6 +314,7 @@ impl<E: PairingEngine> SchemeProof<E> {
         let mut bytes = vec![];
 
         match self {
+            #[cfg(feature = "groth16")]
             SchemeProof::Groth16(p, i) => {
                 bytes.push(0u8);
                 p.write(&mut bytes).unwrap();
@@ -270,6 +323,7 @@ impl<E: PairingEngine> SchemeProof<E> {
                     f.write(&mut bytes).unwrap();
                 }
             }
+            _ => (),
         }
 
         bytes
@@ -280,6 +334,7 @@ impl<E: PairingEngine> SchemeProof<E> {
             return Err(());
         }
         match bytes.split_at(1) {
+            #[cfg(feature = "groth16")]
             ([0u8], mut bytes) => {
                 let p = Groth16Proof::<E>::read(&mut bytes).map_err(|_| ())?;
                 let public_inputs_len = u64::read(&mut bytes).map_err(|_| ())?;
