@@ -4,13 +4,13 @@
 #![feature(alloc_error_handler)]
 #![feature(panic_info_message)]
 
-use ckb_std::{ckb_constants, debug, default_alloc, entry, syscalls, error::SysError};
-use zkp::verify_from_int;
+use ckb_std::{ckb_constants, debug, default_alloc, entry, error::SysError, syscalls};
+use zkp::verify_from_bytes;
 
 #[no_mangle]
 pub fn main() -> i8 {
     let mut index = 0;
-    const LEN: usize = 889; // MIMC test size
+    const LEN: usize = 336; // MIMC groth16 bn256 size
     let offset = 0;
 
     loop {
@@ -24,7 +24,7 @@ pub fn main() -> i8 {
             Ok(_) => {
                 debug!("idx: {}, data length: {}", index, buffer.len());
                 // debug!("{:?}", buffer);
-                if verify_from_int(0, 1, &buffer) {
+                if verify_from_bytes(&buffer) {
                     debug!("Verification succeeded.");
                 // return 0;
                 } else {
