@@ -157,15 +157,24 @@ impl<'a, F: Field> ConstraintSynthesizer<F> for MiMC<'a, F> {
     }
 }
 
+/// This is we used MiMC rounds constant.
 pub const MIMC_ROUNDS: usize = 322;
+
+/// This is we used MiMC constants's seed, it can derived constants with different pairing curve.
 pub const SEED: [u8; 32] = [0; 32];
+
+/// This is we used groth16 seed, it can derived parameters with different pairing curve.
 pub const GROTH16_SEED: [u8; 32] = [0; 32];
+
+/// Not used now.
 pub const GROTH16_VK: [u8; 32] = [0; 32];
 
+/// it will return MiMC's constants, when use pairing curve as generic type.
 pub fn constants<F: Field>() -> [F; MIMC_ROUNDS] {
     constants_with_seed(SEED)
 }
 
+/// it will return MiMC's constants, when use pairing curve as generic type, and use custom seed.
 pub fn constants_with_seed<F: Field>(seed: [u8; 32]) -> [F; MIMC_ROUNDS] {
     use rand::{Rng, SeedableRng};
     let rng = &mut rand::rngs::StdRng::from_seed(seed);
@@ -187,6 +196,7 @@ pub fn constants_with_seed<F: Field>(seed: [u8; 32]) -> [F; MIMC_ROUNDS] {
     constants
 }
 
+/// it will return groth16 parameters when use pairing curve as generic type.
 #[cfg(feature = "groth16")]
 pub fn groth16_params<E: math::PairingEngine>(
     constants: &[E::Fr],
@@ -194,6 +204,7 @@ pub fn groth16_params<E: math::PairingEngine>(
     groth16_params_with_seed(constants, GROTH16_SEED)
 }
 
+/// it will return groth16 parameters, when use pairing curve as generic type, and use custom seed.
 #[cfg(feature = "groth16")]
 pub fn groth16_params_with_seed<E: math::PairingEngine>(
     constants: &[E::Fr],

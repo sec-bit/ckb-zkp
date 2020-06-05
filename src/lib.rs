@@ -19,6 +19,8 @@ use std::vec::Vec;
 
 pub mod gadget;
 
+/// Supported zero-knowledge proof schemes.
+/// Now include: Groth16, Bulletproofs.
 #[derive(Copy, Clone)]
 pub enum Scheme {
     Groth16,
@@ -42,6 +44,8 @@ impl Scheme {
     }
 }
 
+/// Supported pairing curves for zkp use.
+/// Now include: Bls12_381, Bn_256.
 #[allow(non_camel_case_types)]
 #[derive(Copy, Clone)]
 pub enum Curve {
@@ -66,6 +70,8 @@ impl Curve {
     }
 }
 
+/// Supported use-friendly gadgets for zkp.
+/// Now include: MiMC hash proof.
 #[derive(Copy, Clone)]
 pub enum Gadget {
     MiMC,
@@ -86,6 +92,8 @@ impl Gadget {
     }
 }
 
+/// main prove functions, use Pairing Curve as generic type.
+/// it will return Proof struct.
 pub fn prove<E: PairingEngine, R: rand::Rng>(
     g: Gadget,
     s: Scheme,
@@ -134,6 +142,8 @@ pub fn prove<E: PairingEngine, R: rand::Rng>(
     }
 }
 
+/// main prove functions, use Bytes.
+/// it will return Proof's Bytes.
 pub fn prove_to_bytes<R: rand::Rng>(
     g: Gadget,
     s: Scheme,
@@ -165,6 +175,8 @@ pub fn prove_to_bytes<R: rand::Rng>(
     }
 }
 
+/// main verify functions, use Pairing Curve as generic type.
+/// it will return bool.
 pub fn verify<E: PairingEngine>(proof: &Proof<E>) -> bool {
     match proof.s {
         Scheme::Groth16 => {
@@ -195,6 +207,8 @@ pub fn verify<E: PairingEngine>(proof: &Proof<E>) -> bool {
     }
 }
 
+/// main verify functions, use Bytes.
+/// it will return bool.
 pub fn verify_from_bytes(bytes: &[u8]) -> bool {
     if bytes.len() < 3 {
         return false;
@@ -235,6 +249,7 @@ pub fn verify_from_bytes(bytes: &[u8]) -> bool {
     }
 }
 
+/// Proof struct type. It include used gadget, scheme, curve enum, and GadgetProof type.
 pub struct Proof<E: PairingEngine> {
     pub g: Gadget,
     pub s: Scheme,
@@ -266,6 +281,7 @@ impl<E: PairingEngine> Proof<E> {
     }
 }
 
+/// GadgetProof enum type. It include gadget's parameters and SchemeProof type.
 pub enum GadgetProof<E: PairingEngine> {
     MiMC(E::Fr, SchemeProof<E>),
 }
@@ -303,6 +319,7 @@ impl<E: PairingEngine> GadgetProof<E> {
 #[cfg(feature = "groth16")]
 use scheme::groth16::Proof as Groth16Proof;
 
+/// SchemeProof enum type. It include different scheme's Proof type.
 pub enum SchemeProof<E: PairingEngine> {
     #[cfg(feature = "groth16")]
     Groth16(Groth16Proof<E>, Vec<E::Fr>),
