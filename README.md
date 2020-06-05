@@ -1,4 +1,5 @@
 # ckb-zkp
+Smart contracts that run a zero-knowledge proof system on the Nervos CKB chain. CKB developers and users can implement various complex zero-knowledge verification processes through the simplest contract invocation. Cooperate with zkp-toolkit to complete offline prove and online verify.
 
 - [ckb-zkp](#ckb-zkp)
   - [Prerequisites](#prerequisites)
