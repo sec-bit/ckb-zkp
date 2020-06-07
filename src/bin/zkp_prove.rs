@@ -69,6 +69,15 @@ fn main() -> Result<(), ()> {
     path.push(filename);
     println!("Proof file: {:?}", path);
 
+    // -- json output style
+    // {
+    //     "gadget": "mimc",
+    //     "scheme": "groth16",
+    //     "curve": "bn_256",
+    //     "params": ["0xmimchash"],
+    //     "proof": "0xsss"
+    // }
+
     std::fs::write(path, proof).unwrap();
 
     Ok(())

@@ -1,8 +1,7 @@
-use math::Field;
-use math::FromBytes;
+use math::{Field, FromBytes, PairingEngine, ToBytes};
 use scheme::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
-use crate::Vec;
+use crate::{GadgetProof, Vec};
 
 /// This is an implementation of MiMC, specifically a
 /// variant named `LongsightF322p3` for BN-256.
@@ -198,7 +197,7 @@ pub fn constants_with_seed<F: Field>(seed: [u8; 32]) -> [F; MIMC_ROUNDS] {
 
 /// it will return groth16 parameters when use pairing curve as generic type.
 #[cfg(feature = "groth16")]
-pub fn groth16_params<E: math::PairingEngine>(
+pub fn groth16_params<E: PairingEngine>(
     constants: &[E::Fr],
 ) -> Result<scheme::groth16::Parameters<E>, SynthesisError> {
     groth16_params_with_seed(constants, GROTH16_SEED)
@@ -206,7 +205,7 @@ pub fn groth16_params<E: math::PairingEngine>(
 
 /// it will return groth16 parameters, when use pairing curve as generic type, and use custom seed.
 #[cfg(feature = "groth16")]
-pub fn groth16_params_with_seed<E: math::PairingEngine>(
+pub fn groth16_params_with_seed<E: PairingEngine>(
     constants: &[E::Fr],
     seed: [u8; 32],
 ) -> Result<scheme::groth16::Parameters<E>, SynthesisError> {
@@ -219,4 +218,50 @@ pub fn groth16_params_with_seed<E: math::PairingEngine>(
     let rng = &mut rand::rngs::StdRng::from_seed(seed);
 
     scheme::groth16::generate_random_parameters::<E, _, _>(c, rng)
+}
+
+#[cfg(feature = "groth16")]
+pub fn groth16_prove<E: PairingEngine, R: rand::Rng>(
+    b: &[u8],
+    mut rng: R,
+) -> Result<GadgetProof, ()> {
+    use scheme::groth16::create_random_proof;
+
+    let constants = constants::<E::Fr>();
+    let params = groth16_params::<E>(&constants).map_err(|_| ())?;
+
+    let (xl, xr, image) = mimc_hash(b, &constants);
+
+    let mc = MiMC {
+        xl: Some(xl),
+        xr: Some(xr),
+        constants: &constants,
+    };
+
+    let proof = create_random_proof(mc, &params, &mut rng).map_err(|_| ())?;
+
+    let mut p_bytes = Vec::new();
+    proof.write(&mut p_bytes).map_err(|_| ())?;
+
+    let mut i_bytes = Vec::new();
+    image.write(&mut i_bytes).map_err(|_| ())?;
+
+    Ok(GadgetProof::MiMC(i_bytes, p_bytes))
+}
+
+#[cfg(feature = "groth16")]
+pub fn groth16_verify<E: PairingEngine>(g: GadgetProof) -> Result<bool, ()> {
+    use scheme::groth16::{prepare_verifying_key, verify_proof, Proof};
+    match g {
+        GadgetProof::MiMC(i_bytes, p_bytes) => {
+            let proof = Proof::<E>::read(&p_bytes[..]).map_err(|_| ())?;
+            let image = <E::Fr>::read(&i_bytes[..]).map_err(|_| ())?;
+
+            let constants = constants::<E::Fr>();
+            let params = groth16_params::<E>(&constants).map_err(|_| ())?;
+            let pvk = prepare_verifying_key(&params.vk);
+
+            verify_proof(&pvk, &proof, &[image]).map_err(|_| ())
+        }
+    }
 }

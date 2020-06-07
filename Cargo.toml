@@ -45,3 +45,4 @@ rand = { version = "0.7", default-features = false }
 
 [dev-dependencies]
 rand = { version = "0.7" }
+serde_json = { version = "1" }
