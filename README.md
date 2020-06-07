@@ -17,11 +17,8 @@ fn main() {
     let rng = thread_rng();
 
     // use Proof struct.
-    use curve::bn_256::Bn_256;
-    let proof =
-        prove::<Bn_256, ThreadRng>(Gadget::MiMC, Scheme::Groth16, Curve::Bn_256, &bytes, rng)
-        .unwrap();
-    let is_ok = verify(&proof);
+    let proof = prove::(Gadget::MiMC, Scheme::Groth16, Curve::Bn_256, &bytes, rng).unwrap();
+    let is_ok = verify(proof);
     assert!(is_ok);
 
     // use Bytes.
