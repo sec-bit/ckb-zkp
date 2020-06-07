@@ -62,7 +62,7 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup1bitDemo<E> {
         )?;
 
         let tmp1_var = cs.alloc(
-            || "tmp1_var=b*c[1]",
+            || "tmp1_var=b*c[0]",
             || {
                 if self.in_bit.is_some() && self.in_constants[0].is_some() {
                     let mut in_constants_one_value = E::one();
