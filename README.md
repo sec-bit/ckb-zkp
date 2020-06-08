@@ -60,7 +60,7 @@ fn main() {
 
 ## Cli-Command.
 Use MiMC zero-knowledge proof as an example. 
-- **YOU NEED TRUSTED-SETUP** if use groth16 & bn_256.
+- **YOU NEED TRUSTED-SETUP** use groth16 & bn_256 as an example.
   - `cargo run --bin trusted-setup mimc groth16 bn_256` (When success, it will create prove key and verify key in the current trusted_setup directory)
 - Use default groth16 as scheme and bn256 as curve，and prove the secret string.
   - `cargo run --bin zkp-prove mimc --string=iamsecret` (When success, it will create a proof file at proofs_files/mimc_proof)
