@@ -170,28 +170,28 @@ impl GadgetProof {
 }
 
 macro_rules! handle_curve_prove {
-    ($func_name:ident, $rng_name:ident, $c:expr, $bytes:expr, $rng:expr) => {
+    ($func_name:ident, $rng_name:ident, $c:expr, $bytes:expr, $pk:expr, $rng:expr) => {
         match $c {
             Curve::Bls12_381 => {
                 #[cfg(not(feature = "bls12_381"))]
                 return Err(());
 
                 #[cfg(feature = "bls12_381")]
-                $func_name::<curve::Bls12_381, $rng_name>($bytes, $rng)
+                $func_name::<curve::Bls12_381, $rng_name>($bytes, $pk, $rng)
             }
             Curve::Bn_256 => {
                 #[cfg(not(feature = "bn_256"))]
                 return Err(());
 
                 #[cfg(feature = "bn_256")]
-                $func_name::<curve::Bn_256, $rng_name>($bytes, $rng)
+                $func_name::<curve::Bn_256, $rng_name>($bytes, $pk, $rng)
             }
         }
     };
 }
 
 macro_rules! handle_gadget_prove {
-    ($gadget:ident, $rng_name:ident, $s:expr, $c:expr, $bytes:expr, $rng:expr) => {
+    ($gadget:ident, $rng_name:ident, $s:expr, $c:expr, $bytes:expr, $pk:expr, $rng:expr) => {
         match $s {
             Scheme::Groth16 => {
                 #[cfg(not(feature = "groth16"))]
@@ -200,7 +200,7 @@ macro_rules! handle_gadget_prove {
                 #[cfg(feature = "groth16")]
                 {
                     use $gadget::groth16_prove;
-                    handle_curve_prove!(groth16_prove, $rng_name, $c, $bytes, $rng)
+                    handle_curve_prove!(groth16_prove, $rng_name, $c, $bytes, $pk, $rng)
                 }
             }
             Scheme::Bulletproofs => {
@@ -212,28 +212,28 @@ macro_rules! handle_gadget_prove {
 }
 
 macro_rules! handle_curve_verify {
-    ($func_name:ident, $c:expr, $bytes:expr) => {
+    ($func_name:ident, $c:expr, $gp:expr, $vk:expr) => {
         match $c {
             Curve::Bls12_381 => {
                 #[cfg(not(feature = "bls12_381"))]
                 return false;
 
                 #[cfg(feature = "bls12_381")]
-                $func_name::<curve::Bls12_381>($bytes).unwrap_or(false)
+                $func_name::<curve::Bls12_381>($gp, $vk).unwrap_or(false)
             }
             Curve::Bn_256 => {
                 #[cfg(not(feature = "bn_256"))]
                 return false;
 
                 #[cfg(feature = "bn_256")]
-                $func_name::<curve::Bn_256>($bytes).unwrap_or(false)
+                $func_name::<curve::Bn_256>($gp, $vk).unwrap_or(false)
             }
         }
     };
 }
 
 macro_rules! handle_gadget_verify {
-    ($gadget:ident, $s:expr, $c:expr, $gp:expr) => {
+    ($gadget:ident, $s:expr, $c:expr, $gp:expr, $vk:expr) => {
         match $s {
             Scheme::Groth16 => {
                 #[cfg(not(feature = "groth16"))]
@@ -242,7 +242,7 @@ macro_rules! handle_gadget_verify {
                 #[cfg(feature = "groth16")]
                 {
                     use $gadget::groth16_verify;
-                    handle_curve_verify!(groth16_verify, $c, $gp)
+                    handle_curve_verify!(groth16_verify, $c, $gp, $vk)
                 }
             }
             Scheme::Bulletproofs => {
@@ -257,9 +257,16 @@ use gadget::mimc;
 
 /// main prove functions.
 /// it will return Proof struct.
-pub fn prove<R: rand::Rng>(g: Gadget, s: Scheme, c: Curve, b: &[u8], rng: R) -> Result<Proof, ()> {
+pub fn prove<R: rand::Rng>(
+    g: Gadget,
+    s: Scheme,
+    c: Curve,
+    b: &[u8],
+    pk: &[u8],
+    rng: R,
+) -> Result<Proof, ()> {
     let p = match g {
-        Gadget::MiMC => handle_gadget_prove!(mimc, R, s, c, b, rng)?,
+        Gadget::MiMC => handle_gadget_prove!(mimc, R, s, c, b, pk, rng)?,
     };
 
     Ok(Proof { g, s, c, p })
@@ -272,24 +279,25 @@ pub fn prove_to_bytes<R: rand::Rng>(
     s: Scheme,
     c: Curve,
     b: &[u8],
+    pk: &[u8],
     rng: R,
 ) -> Result<Vec<u8>, ()> {
-    prove(g, s, c, b, rng).map(|p| p.to_bytes())
+    prove(g, s, c, b, pk, rng).map(|p| p.to_bytes())
 }
 
 /// main verify functions.
 /// it will return bool.
-pub fn verify(proof: Proof) -> bool {
+pub fn verify(proof: Proof, vk: &[u8]) -> bool {
     match proof.g {
-        Gadget::MiMC => handle_gadget_verify!(mimc, proof.s, proof.c, proof.p),
+        Gadget::MiMC => handle_gadget_verify!(mimc, proof.s, proof.c, proof.p, vk),
     }
 }
 
 /// main verify functions, use Bytes.
 /// it will return bool.
-pub fn verify_from_bytes(bytes: &[u8]) -> bool {
+pub fn verify_from_bytes(bytes: &[u8], vk: &[u8]) -> bool {
     if let Ok(proof) = Proof::from_bytes(bytes) {
-        return verify(proof);
+        return verify(proof, vk);
     }
 
     return false;

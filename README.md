@@ -10,36 +10,65 @@ The project now is FOR EXPERIMENTS, DONOT USE IN PRODUCTION.
 Use we supported MiMC gadget and groth16 zero-knowledge proof as an example. 
 ```rust
 use rand::prelude::*;
+use zkp::curve::bn_256::{Bn_256, Fr};
+use zkp::gadget::mimc::{constants, MiMC};
+use zkp::math::ToBytes;
+use zkp::scheme::groth16::generate_random_parameters;
 use zkp::{prove, prove_to_bytes, verify, verify_from_bytes, Curve, Gadget, Scheme};
 
+/// test for use groth16 & bn_256 & mimc gadget.
 fn main() {
     let bytes = vec![1, 2, 3, 4, 5]; // this is your secret.
-    let rng = thread_rng();
+    let mut rng = thread_rng();
 
-    // use Proof struct.
-    let proof = prove::(Gadget::MiMC, Scheme::Groth16, Curve::Bn_256, &bytes, rng).unwrap();
-    let is_ok = verify(proof);
+    // TRUSTED SETUP
+    println!("TRUSTED SETUP...");
+    let constants = constants::<Fr>();
+    let c = MiMC::<Fr> {
+        xl: None,
+        xr: None,
+        constants: &constants,
+    };
+    let params = generate_random_parameters::<Bn_256, _, _>(c, &mut rng).unwrap();
+
+    // you need save this prove key,
+    // when prove, use it as a params.
+    let mut pk_bytes = vec![];
+    params.write(&mut pk_bytes).unwrap();
+
+    // you need save this verify key,
+    // when verify, use it as a params.
+    let mut vk_bytes = vec![];
+    params.vk.write(&mut vk_bytes).unwrap();
+
+    println!("START PROVE...");
+    let proof = prove(
+        Gadget::MiMC,
+        Scheme::Groth16,
+        Curve::Bn_256,
+        &bytes,
+        &pk_bytes,
+        rng,
+    )
+    .unwrap();
+
+    println!("START VERIFY...");
+    let is_ok = verify(proof, &vk_bytes);
     assert!(is_ok);
-
-    // use Bytes.
-    let proof_bytes =
-        prove_to_bytes(Gadget::MiMC, Scheme::Groth16, Curve::Bn_256, &bytes, rng).unwrap();
-    let is_ok2 = verify_from_bytes(&proof_bytes);
-    assert!(is_ok2);
-
-    println!("all is ok");
 }
 ```
 
 ## Cli-Command.
 Use MiMC zero-knowledge proof as an example. 
+- **YOU NEED TRUSTED-SETUP** if use groth16 & bn_256.
+  - `cargo run --bin trusted-setup mimc groth16 bn_256` (When success, it will create prove key and verify key in the current trusted_setup directory)
 - Use default groth16 as scheme and bn256 as curve，and prove the secret string.
-   - `cargo run --bin zkp-prove mimc --string=iamsecret` (When success, it will create a proof file at proofs_files/mimc_proof)
-   - `cargo run --bin zkp-verify proofs_files/mimc_proof`
+  - `cargo run --bin zkp-prove mimc --string=iamsecret` (When success, it will create a proof file at proofs_files/mimc_proof)
+  - `cargo run --bin zkp-verify proofs_files/mimc_proof`
 
 - Use custom schemes and curves as backend, and prove the file value.
-   - `cargo run --bin zkp-prove mimc groth16 bls12_381 --file=README.md` (When success, it will create a proof file at proofs_files/REAME.md.mimc_proof)
-   - `cargo run --bin zkp-verify proofs_files/REAME.md.mimc_proof`
+  - `cargo run --bin zkp-prove mimc groth16 bls12_381 --file=README.md` (When success, it will create a proof file at proofs_files/REAME.md.mimc_proof)
+  - `cargo run --bin zkp-verify mimc groth16 bls12_381 proofs_files/REAME.md.mimc_proof`
 
 ## Features
 1. Efficient mathematics compute.

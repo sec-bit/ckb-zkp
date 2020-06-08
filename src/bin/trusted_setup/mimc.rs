@@ -1,34 +1,29 @@
-use rand::prelude::*;
-use std::path::PathBuf;
-// use zkp::{
-//     gadget::mimc::{mimc_hash, MiMC},
-//     math::PairingEngine,
-//     scheme::groth16::{create_random_proof, generate_random_parameters, prepare_verifying_key},
-//     Groth16Proof,
-// };
+use zkp::{
+    gadget::mimc::{constants, MiMC},
+    math::{PairingEngine, ToBytes},
+    scheme::groth16::generate_random_parameters,
+};
 
-/// Parameters we need setup:
-/// MIMC HASH CONSTANTS
-/// MIMC CIRCUIT ORIGINAL VALUE
-/// GROTH16 PARAMETERS
-/// GROTH16 PREPARE VERIFICATION KEY
-pub fn setup(_p: Option<PathBuf>) {
+/// Groth16 parameters we need setup:
+pub fn groth16_setup<E: PairingEngine, R: rand::Rng>(
+    mut rng: R,
+) -> Result<(Vec<u8>, Vec<u8>), String> {
     println!("Prepareing...");
+    let constants = constants::<E::Fr>();
 
-    let mut rng = rand::thread_rng();
+    let c = MiMC::<E::Fr> {
+        xl: None,
+        xr: None,
+        constants: &constants,
+    };
 
-    let seed: [u8; 32] = rng.gen();
+    let params = generate_random_parameters::<E, _, _>(c, &mut rng).unwrap();
 
-    println!("CONSTANTS SEED: {:?}", seed);
+    let mut pk_bytes = vec![];
+    params.write(&mut pk_bytes).unwrap();
 
-    let groth16_seed: [u8; 32] = rng.gen();
+    let mut vk_bytes = vec![];
+    params.vk.write(&mut vk_bytes).unwrap();
 
-    println!("GROTH16 SEED: {:?}", groth16_seed);
-
-    //let constants = constants_with_seed::<E::Fr>();
-    //let params = groth16_params_with_seed::<E>(&constants).unwrap();
-
-    //let mut vk_bytes = vec![];
-    //params.vk.write(&mut vk_bytes).unwrap();
-    //println!("{:?}", vk_bytes);
+    Ok((pk_bytes, vk_bytes))
 }

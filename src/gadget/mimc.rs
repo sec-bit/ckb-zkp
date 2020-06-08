@@ -162,12 +162,6 @@ pub const MIMC_ROUNDS: usize = 322;
 /// This is we used MiMC constants's seed, it can derived constants with different pairing curve.
 pub const SEED: [u8; 32] = [0; 32];
 
-/// This is we used groth16 seed, it can derived parameters with different pairing curve.
-pub const GROTH16_SEED: [u8; 32] = [0; 32];
-
-/// Not used now.
-pub const GROTH16_VK: [u8; 32] = [0; 32];
-
 /// it will return MiMC's constants, when use pairing curve as generic type.
 pub fn constants<F: Field>() -> [F; MIMC_ROUNDS] {
     constants_with_seed(SEED)
@@ -195,40 +189,16 @@ pub fn constants_with_seed<F: Field>(seed: [u8; 32]) -> [F; MIMC_ROUNDS] {
     constants
 }
 
-/// it will return groth16 parameters when use pairing curve as generic type.
-#[cfg(feature = "groth16")]
-pub fn groth16_params<E: PairingEngine>(
-    constants: &[E::Fr],
-) -> Result<scheme::groth16::Parameters<E>, SynthesisError> {
-    groth16_params_with_seed(constants, GROTH16_SEED)
-}
-
-/// it will return groth16 parameters, when use pairing curve as generic type, and use custom seed.
-#[cfg(feature = "groth16")]
-pub fn groth16_params_with_seed<E: PairingEngine>(
-    constants: &[E::Fr],
-    seed: [u8; 32],
-) -> Result<scheme::groth16::Parameters<E>, SynthesisError> {
-    let c = MiMC::<E::Fr> {
-        xl: None,
-        xr: None,
-        constants: constants,
-    };
-    use rand::SeedableRng;
-    let rng = &mut rand::rngs::StdRng::from_seed(seed);
-
-    scheme::groth16::generate_random_parameters::<E, _, _>(c, rng)
-}
-
 #[cfg(feature = "groth16")]
 pub fn groth16_prove<E: PairingEngine, R: rand::Rng>(
     b: &[u8],
+    pk: &[u8],
     mut rng: R,
 ) -> Result<GadgetProof, ()> {
-    use scheme::groth16::create_random_proof;
+    use scheme::groth16::{create_random_proof, Parameters};
 
     let constants = constants::<E::Fr>();
-    let params = groth16_params::<E>(&constants).map_err(|_| ())?;
+    let params = Parameters::<E>::read(pk).map_err(|_| ())?;
 
     let (xl, xr, image) = mimc_hash(b, &constants);
 
@@ -250,16 +220,15 @@ pub fn groth16_prove<E: PairingEngine, R: rand::Rng>(
 }
 
 #[cfg(feature = "groth16")]
-pub fn groth16_verify<E: PairingEngine>(g: GadgetProof) -> Result<bool, ()> {
-    use scheme::groth16::{prepare_verifying_key, verify_proof, Proof};
+pub fn groth16_verify<E: PairingEngine>(g: GadgetProof, vk: &[u8]) -> Result<bool, ()> {
+    use scheme::groth16::{prepare_verifying_key, verify_proof, Proof, VerifyingKey};
     match g {
         GadgetProof::MiMC(i_bytes, p_bytes) => {
             let proof = Proof::<E>::read(&p_bytes[..]).map_err(|_| ())?;
             let image = <E::Fr>::read(&i_bytes[..]).map_err(|_| ())?;
 
-            let constants = constants::<E::Fr>();
-            let params = groth16_params::<E>(&constants).map_err(|_| ())?;
-            let pvk = prepare_verifying_key(&params.vk);
+            let vk = VerifyingKey::<E>::read(vk).map_err(|_| ())?;
+            let pvk = prepare_verifying_key(&vk);
 
             verify_proof(&pvk, &proof, &[image]).map_err(|_| ())
         }

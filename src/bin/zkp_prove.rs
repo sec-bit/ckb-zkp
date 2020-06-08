@@ -3,14 +3,15 @@ use std::path::PathBuf;
 use zkp::{prove_to_bytes, Curve, Gadget, Scheme};
 
 const PROOFS_DIR: &'static str = "./proofs_files";
+const SETUP_DIR: &'static str = "./trusted_setup";
 
-pub fn handle_args() -> Result<(Gadget, Scheme, Curve, Vec<u8>, String), ()> {
+pub fn handle_args() -> Result<(Gadget, Scheme, Curve, Vec<u8>, String, String), String> {
     let args: Vec<_> = env::args().collect();
     if args.len() != 5 && args.len() != 3 {
         println!("Args. like: zkp-prove mimc --file=./README.md");
         println!("            zkp-prove mimc groth16 bn256 --file=./README.md");
         println!("            zkp-prove mimc groth16 bn256 --string=iamscretvalue");
-        return Err(());
+        return Err("Params invalid!".to_owned());
     }
 
     let g = match args[1].as_str() {
@@ -18,8 +19,12 @@ pub fn handle_args() -> Result<(Gadget, Scheme, Curve, Vec<u8>, String), ()> {
         _ => Gadget::MiMC,
     };
 
-    let (s, c) = if args.len() == 3 {
-        (Scheme::Groth16, Curve::Bn_256)
+    let (s, c, pk_file) = if args.len() == 3 {
+        (
+            Scheme::Groth16,
+            Curve::Bn_256,
+            format!("{}-{}-{}.pk", args[1], "groth16", "bn_256"),
+        )
     } else {
         let s = match args[2].as_str() {
             "groth16" => Scheme::Groth16,
@@ -32,7 +37,7 @@ pub fn handle_args() -> Result<(Gadget, Scheme, Curve, Vec<u8>, String), ()> {
             _ => Curve::Bn_256,
         };
 
-        (s, c)
+        (s, c, format!("{}-{}-{}.pk", args[1], args[2], args[3]))
     };
 
     let f = args[if args.len() == 3 { 2 } else { 4 }].as_str();
@@ -55,12 +60,20 @@ pub fn handle_args() -> Result<(Gadget, Scheme, Curve, Vec<u8>, String), ()> {
         panic!("unimplemented other file type.")
     };
 
-    Ok((g, s, c, bytes, filename))
+    Ok((g, s, c, bytes, pk_file, filename))
 }
 
-fn main() -> Result<(), ()> {
-    let (g, s, c, bytes, filename) = handle_args()?;
-    let proof = prove_to_bytes(g, s, c, &bytes, rand::thread_rng()).unwrap();
+fn main() -> Result<(), String> {
+    let (g, s, c, bytes, pk_file, filename) = handle_args()?;
+
+    // load pk file.
+    let mut pk_path = PathBuf::from(SETUP_DIR);
+    pk_path.push(pk_file);
+    if !pk_path.exists() {
+        return Err(format!("Cannot found setup file: {:?}", pk_path));
+    }
+    let pk = std::fs::read(&pk_path).unwrap();
+    let proof = prove_to_bytes(g, s, c, &bytes, &pk, rand::thread_rng()).unwrap();
 
     let mut path = PathBuf::from(PROOFS_DIR);
     if !path.exists() {

@@ -135,17 +135,72 @@ pub struct Parameters<E: PairingEngine> {
     pub l_query: Vec<E::G1Affine>,
 }
 
-impl<E: PairingEngine> Parameters<E> {
-    /// Serialize the parameters to bytes.
-    pub fn write<W: Write>(&self, mut _writer: W) -> io::Result<()> {
-        // TODO: implement serialization
-        unimplemented!()
-    }
+impl<E: PairingEngine> ToBytes for Parameters<E> {
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.vk.write(&mut writer)?;
+        self.beta_g1.write(&mut writer)?;
+        self.delta_g1.write(&mut writer)?;
+        (self.a_query.len() as u64).write(&mut writer)?;
+        self.a_query.write(&mut writer)?;
+        (self.b_g1_query.len() as u64).write(&mut writer)?;
+        self.b_g1_query.write(&mut writer)?;
+        (self.b_g2_query.len() as u64).write(&mut writer)?;
+        self.b_g2_query.write(&mut writer)?;
+        (self.h_query.len() as u64).write(&mut writer)?;
+        self.h_query.write(&mut writer)?;
+        (self.l_query.len() as u64).write(&mut writer)?;
+        self.l_query.write(&mut writer)?;
 
-    /// Deserialize the public parameters from bytes.
-    pub fn read<R: Read>(mut _reader: R, _checked: bool) -> io::Result<Self> {
-        // TODO: implement serialization
-        unimplemented!()
+        Ok(())
+    }
+}
+impl<E: PairingEngine> FromBytes for Parameters<E> {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let vk = VerifyingKey::<E>::read(&mut reader)?;
+        let beta_g1 = E::G1Affine::read(&mut reader)?;
+        let delta_g1 = E::G1Affine::read(&mut reader)?;
+
+        let a_query_len = u64::read(&mut reader).unwrap();
+        let mut a_query = vec![];
+        for _ in 0..a_query_len {
+            a_query.push(E::G1Affine::read(&mut reader)?);
+        }
+
+        let b_g1_query_len = u64::read(&mut reader).unwrap();
+        let mut b_g1_query = vec![];
+        for _ in 0..b_g1_query_len {
+            b_g1_query.push(E::G1Affine::read(&mut reader)?);
+        }
+
+        let b_g2_query_len = u64::read(&mut reader).unwrap();
+        let mut b_g2_query = vec![];
+        for _ in 0..b_g2_query_len {
+            b_g2_query.push(E::G2Affine::read(&mut reader)?);
+        }
+
+        let h_query_len = u64::read(&mut reader).unwrap();
+        let mut h_query = vec![];
+        for _ in 0..h_query_len {
+            h_query.push(E::G1Affine::read(&mut reader)?);
+        }
+
+        let l_query_len = u64::read(&mut reader).unwrap();
+        let mut l_query = vec![];
+        for _ in 0..l_query_len {
+            l_query.push(E::G1Affine::read(&mut reader)?);
+        }
+
+        Ok(Self {
+            vk,
+            beta_g1,
+            delta_g1,
+            a_query,
+            b_g1_query,
+            b_g2_query,
+            h_query,
+            l_query,
+        })
     }
 }
 
