@@ -3,8 +3,6 @@ use scheme::r1cs::{
     ConstraintSynthesizer, ConstraintSystem, LinearCombination, SynthesisError, Variable,
 };
 
-use super::test_constraint_system::TestConstraintSystem;
-
 use crate::Vec;
 
 struct RangeProof<F: PrimeField> {
@@ -62,11 +60,9 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for RangeProof<F> {
 
         let mut alpha_bits: Vec<Option<F>> = Vec::new();
 
-        let cs1 = TestConstraintSystem::<F>::new();
-
         let bits = match alpha_packed_value {
-            Some(_) => super::boolean::field_into_allocated_bits_le(cs1, alpha_packed_value)?,
-            _ => super::boolean::field_into_allocated_bits_le(cs1, Some(F::zero()))?,
+            Some(_) => super::boolean::field_into_allocated_bits_le(cs.ns(|| "field into bits"), alpha_packed_value)?,
+            _ => super::boolean::field_into_allocated_bits_le(cs.ns(|| "field into bits"), Some(F::zero()))?,
         };
         for i in 0..(n + 1) {
             if bits[i as usize].get_value() == Some(true) {
