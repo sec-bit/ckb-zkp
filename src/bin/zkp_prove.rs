@@ -9,8 +9,8 @@ pub fn handle_args() -> Result<(Gadget, Scheme, Curve, Vec<u8>, String, String),
     let args: Vec<_> = env::args().collect();
     if args.len() != 5 && args.len() != 3 {
         println!("Args. like: zkp-prove mimc --file=./README.md");
-        println!("            zkp-prove mimc groth16 bn256 --file=./README.md");
-        println!("            zkp-prove mimc groth16 bn256 --string=iamscretvalue");
+        println!("            zkp-prove mimc groth16 bn_256 --file=./README.md");
+        println!("            zkp-prove mimc groth16 bn_256 --string=iamscretvalue");
         return Err("Params invalid!".to_owned());
     }
 

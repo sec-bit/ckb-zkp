@@ -10,7 +10,7 @@ pub fn handle_args() -> Result<(Gadget, Scheme, Curve, String, bool), String> {
     let args: Vec<_> = env::args().collect();
     if args.len() != 4 && args.len() != 2 {
         println!("Args. like: trusted-setup mimc");
-        println!("            trusted-setup mimc groth16 bn256");
+        println!("            trusted-setup mimc groth16 bn_256");
         return Err("Params invalid!".to_owned());
     }
 

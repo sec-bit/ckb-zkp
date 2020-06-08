@@ -8,7 +8,7 @@ pub fn handle_args() -> Result<(String, String), String> {
     let args: Vec<_> = env::args().collect();
     if args.len() != 5 && args.len() != 3 {
         println!("Args. like: zkp-verify mimc ./proofs_files/mimc_proof");
-        println!("            zkp-verify mimc groth16 bn256 ./proofs_files/mimc_proof");
+        println!("            zkp-verify mimc groth16 bn_256 ./proofs_files/mimc_proof");
         return Err("Params invalid!".to_owned());
     }
 
