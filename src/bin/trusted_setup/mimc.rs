@@ -1,7 +1,7 @@
 use zkp::{
     gadget::mimc::{constants, MiMC},
     math::{PairingEngine, ToBytes},
-    scheme::groth16::generate_random_parameters,
+    scheme::groth16::{generate_random_parameters, prepare_verifying_key},
 };
 
 /// Groth16 parameters we need setup:
@@ -23,7 +23,9 @@ pub fn groth16_setup<E: PairingEngine, R: rand::Rng>(
     params.write(&mut pk_bytes).unwrap();
 
     let mut vk_bytes = vec![];
-    params.vk.write(&mut vk_bytes).unwrap();
+    let pvk = prepare_verifying_key(&params.vk);
+    pvk.write(&mut vk_bytes).unwrap();
+    //params.vk.write(&mut vk_bytes).unwrap();
 
     Ok((pk_bytes, vk_bytes))
 }

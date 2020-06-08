@@ -32,7 +32,7 @@ pub fn handle_args() -> Result<(Gadget, Scheme, Curve, Vec<u8>, String, String),
         };
 
         let c = match args[3].as_str() {
-            "bn256" => Curve::Bn_256,
+            "bn_256" => Curve::Bn_256,
             "bls12_381" => Curve::Bls12_381,
             _ => Curve::Bn_256,
         };

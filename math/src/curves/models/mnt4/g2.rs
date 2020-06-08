@@ -1,5 +1,5 @@
 use crate::{
-    bytes::ToBytes,
+    bytes::{FromBytes, ToBytes},
     curves::{
         mnt4::MNT4Parameters,
         models::mnt4::MNT4,
@@ -7,7 +7,7 @@ use crate::{
         AffineCurve,
     },
     fields::{Field, Fp2},
-    io::{Result as IoResult, Write},
+    io::{Read, Result as IoResult, Write},
     One, Vec,
 };
 
@@ -38,6 +38,12 @@ impl<P: MNT4Parameters> Default for G2Prepared<P> {
 
 impl<P: MNT4Parameters> ToBytes for G2Prepared<P> {
     fn write<W: Write>(&self, _writer: W) -> IoResult<()> {
+        unimplemented!()
+    }
+}
+
+impl<P: MNT4Parameters> FromBytes for G2Prepared<P> {
+    fn read<R: Read>(mut _reader: R) -> IoResult<Self> {
         unimplemented!()
     }
 }

@@ -1,8 +1,9 @@
 use rand::prelude::*;
+use std::time::Instant;
 use zkp::curve::bn_256::{Bn_256, Fr};
 use zkp::gadget::mimc::{constants, MiMC};
 use zkp::math::ToBytes;
-use zkp::scheme::groth16::generate_random_parameters;
+use zkp::scheme::groth16::{generate_random_parameters, prepare_verifying_key};
 use zkp::{prove, prove_to_bytes, verify, verify_from_bytes, Curve, Gadget, Scheme};
 
 /// test for use groth16 & bn_256 & mimc gadget.
@@ -27,11 +28,11 @@ fn main() {
 
     // you need save this verify key,
     // when verify, use it as a params.
+    let pvk = prepare_verifying_key(&params.vk);
     let mut vk_bytes = vec![];
-    params.vk.write(&mut vk_bytes).unwrap();
+    pvk.write(&mut vk_bytes).unwrap();
 
     println!("START PROVE...");
-    // START PROVE.
     let proof = prove(
         Gadget::MiMC,
         Scheme::Groth16,
@@ -43,12 +44,11 @@ fn main() {
     .unwrap();
 
     println!("START VERIFY...");
-    // START VERIFY.
     let is_ok = verify(proof, &vk_bytes);
     assert!(is_ok);
 
     println!("ANOTHER USE BYTES START PROVE...");
-    // use Bytes.
+    let p_start = Instant::now();
     let proof_bytes = prove_to_bytes(
         Gadget::MiMC,
         Scheme::Groth16,
@@ -58,11 +58,16 @@ fn main() {
         rng,
     )
     .unwrap();
+    let p_time = p_start.elapsed();
+    println!("PROVE TIME: {:?}", p_time);
 
     println!("PROOF FILE LENGTH: {}", proof_bytes.len());
 
     println!("ANOTHER USE BYTES START VERIFY...");
+    let v_start = Instant::now();
     let is_ok2 = verify_from_bytes(&proof_bytes, &vk_bytes);
+    let v_time = v_start.elapsed();
+    println!("VERIFY TIME: {:?}", v_time);
     assert!(is_ok2);
 
     println!("all is ok");

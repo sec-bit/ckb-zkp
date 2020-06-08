@@ -1,5 +1,5 @@
 use crate::{
-    bytes::ToBytes,
+    bytes::{FromBytes, ToBytes},
     curves::{
         bls12::{Bls12Parameters, TwistType},
         models::SWModelParameters,
@@ -7,7 +7,7 @@ use crate::{
         AffineCurve,
     },
     fields::{BitIterator, Field, Fp2},
-    io::{Result as IoResult, Write},
+    io::{Read, Result as IoResult, Write},
     Vec,
 };
 use num_traits::{One, Zero};
@@ -55,6 +55,26 @@ impl<P: Bls12Parameters> ToBytes for G2Prepared<P> {
             coeff.2.write(&mut writer)?;
         }
         self.infinity.write(writer)
+    }
+}
+
+impl<P: Bls12Parameters> FromBytes for G2Prepared<P> {
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let ell_coeffs_len = u64::read(&mut reader).unwrap();
+        let mut ell_coeffs = vec![];
+        for _ in 0..ell_coeffs_len {
+            let a = Fp2::<P::Fp2Params>::read(&mut reader)?;
+            let b = Fp2::<P::Fp2Params>::read(&mut reader)?;
+            let c = Fp2::<P::Fp2Params>::read(&mut reader)?;
+            ell_coeffs.push((a, b, c));
+        }
+
+        let infinity = bool::read(&mut reader)?;
+
+        Ok(Self {
+            ell_coeffs,
+            infinity,
+        })
     }
 }
 

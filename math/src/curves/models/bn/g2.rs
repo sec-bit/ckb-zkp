@@ -2,14 +2,14 @@ use core::ops::{AddAssign, MulAssign, Neg, SubAssign};
 use num_traits::One;
 
 use crate::{
-    bytes::ToBytes,
+    bytes::{FromBytes, ToBytes},
     curves::{
         bn::BnParameters,
         short_weierstrass_jacobian::{GroupAffine, GroupProjective},
         AffineCurve,
     },
     fields::{Field, Fp2, Fp6Parameters},
-    io::{Result as IoResult, Write},
+    io::{Read, Result as IoResult, Write},
     Vec,
 };
 
@@ -50,12 +50,33 @@ impl<P: BnParameters> Default for G2Prepared<P> {
 
 impl<P: BnParameters> ToBytes for G2Prepared<P> {
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.ell_coeffs.len() as u64).write(&mut writer)?;
         for coeff in &self.ell_coeffs {
             coeff.0.write(&mut writer)?;
             coeff.1.write(&mut writer)?;
             coeff.2.write(&mut writer)?;
         }
         self.infinity.write(writer)
+    }
+}
+
+impl<P: BnParameters> FromBytes for G2Prepared<P> {
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let ell_coeffs_len = u64::read(&mut reader).unwrap();
+        let mut ell_coeffs = vec![];
+        for _ in 0..ell_coeffs_len {
+            let a = Fp2::<P::Fp2Params>::read(&mut reader)?;
+            let b = Fp2::<P::Fp2Params>::read(&mut reader)?;
+            let c = Fp2::<P::Fp2Params>::read(&mut reader)?;
+            ell_coeffs.push((a, b, c));
+        }
+
+        let infinity = bool::read(&mut reader)?;
+
+        Ok(Self {
+            ell_coeffs,
+            infinity,
+        })
     }
 }
 
@@ -76,10 +97,10 @@ impl<P: BnParameters> From<G2Affine<P>> for G2Prepared<P> {
             match x {
                 1 => {
                     coeffs.push(addition_step(&mut r, &q));
-                },
+                }
                 -1 => {
                     coeffs.push(addition_step(&mut r, &negq));
-                },
+                }
                 _ => continue,
             }
         }

@@ -47,7 +47,14 @@ pub trait PairingEngine: Sized + 'static + Copy + Debug + Sync + Send {
         + Into<Self::G2Prepared>;
 
     /// A G2 element that has been preprocessed for use in a pairing.
-    type G2Prepared: ToBytes + Default + Clone + Send + Sync + Debug + From<Self::G2Affine>;
+    type G2Prepared: FromBytes
+        + ToBytes
+        + Default
+        + Clone
+        + Send
+        + Sync
+        + Debug
+        + From<Self::G2Affine>;
 
     /// The base field that hosts G1.
     type Fq: PrimeField + SquareRootField;

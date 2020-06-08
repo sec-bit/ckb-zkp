@@ -245,6 +245,7 @@ impl<E: PairingEngine> ToBytes for PreparedVerifyingKey<E> {
         self.alpha_g1_beta_g2.write(&mut writer)?;
         self.gamma_g2_neg_pc.write(&mut writer)?;
         self.delta_g2_neg_pc.write(&mut writer)?;
+        (self.gamma_abc_g1.len() as u64).write(&mut writer)?;
         for q in &self.gamma_abc_g1 {
             q.write(&mut writer)?;
         }
@@ -254,8 +255,24 @@ impl<E: PairingEngine> ToBytes for PreparedVerifyingKey<E> {
 
 impl<E: PairingEngine> FromBytes for PreparedVerifyingKey<E> {
     #[inline]
-    fn read<R: Read>(mut _reader: R) -> IoResult<Self> {
-        unimplemented!()
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let vk = VerifyingKey::<E>::read(&mut reader)?;
+        let alpha_g1_beta_g2 = E::Fqk::read(&mut reader)?;
+        let gamma_g2_neg_pc = E::G2Prepared::read(&mut reader)?;
+        let delta_g2_neg_pc = E::G2Prepared::read(&mut reader)?;
+
+        let gamma_abc_len = u64::read(&mut reader).unwrap();
+        let mut gamma_abc_g1 = vec![];
+        for _ in 0..gamma_abc_len {
+            gamma_abc_g1.push(E::G1Affine::read(&mut reader)?);
+        }
+        Ok(Self {
+            vk,
+            alpha_g1_beta_g2,
+            gamma_g2_neg_pc,
+            delta_g2_neg_pc,
+            gamma_abc_g1,
+        })
     }
 }
 

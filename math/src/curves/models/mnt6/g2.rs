@@ -1,5 +1,5 @@
 use crate::{
-    bytes::ToBytes,
+    bytes::{FromBytes, ToBytes},
     curves::{
         mnt6::MNT6Parameters,
         models::mnt6::MNT6,
@@ -7,7 +7,7 @@ use crate::{
         AffineCurve,
     },
     fields::{Field, Fp3},
-    io::{Result as IoResult, Write},
+    io::{Read, Result as IoResult, Write},
     One, Vec,
 };
 
@@ -38,6 +38,12 @@ impl<P: MNT6Parameters> Default for G2Prepared<P> {
 
 impl<P: MNT6Parameters> ToBytes for G2Prepared<P> {
     fn write<W: Write>(&self, _writer: W) -> IoResult<()> {
+        unimplemented!()
+    }
+}
+
+impl<P: MNT6Parameters> FromBytes for G2Prepared<P> {
+    fn read<R: Read>(mut _reader: R) -> IoResult<Self> {
         unimplemented!()
     }
 }
