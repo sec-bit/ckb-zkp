@@ -220,14 +220,25 @@ pub fn groth16_prove<E: PairingEngine, R: rand::Rng>(
 }
 
 #[cfg(feature = "groth16")]
-pub fn groth16_verify<E: PairingEngine>(g: GadgetProof, vk: &[u8]) -> Result<bool, ()> {
-    use scheme::groth16::{verify_proof, PreparedVerifyingKey, Proof};
+pub fn groth16_verify<E: PairingEngine>(
+    g: GadgetProof,
+    vk: &[u8],
+    is_pp: bool,
+) -> Result<bool, ()> {
+    use scheme::groth16::{
+        prepare_verifying_key, verify_proof, PreparedVerifyingKey, Proof, VerifyingKey,
+    };
     match g {
         GadgetProof::MiMC(i_bytes, p_bytes) => {
             let proof = Proof::<E>::read(&p_bytes[..]).map_err(|_| ())?;
             let image = <E::Fr>::read(&i_bytes[..]).map_err(|_| ())?;
 
-            let pvk = PreparedVerifyingKey::<E>::read(vk).map_err(|_| ())?;
+            let pvk = if is_pp {
+                PreparedVerifyingKey::<E>::read(vk).map_err(|_| ())?
+            } else {
+                let vk = VerifyingKey::<E>::read(vk).map_err(|_| ())?;
+                prepare_verifying_key(&vk)
+            };
 
             verify_proof(&pvk, &proof, &[image]).map_err(|_| ())
         }

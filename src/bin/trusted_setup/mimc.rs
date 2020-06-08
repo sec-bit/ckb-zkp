@@ -7,6 +7,7 @@ use zkp::{
 /// Groth16 parameters we need setup:
 pub fn groth16_setup<E: PairingEngine, R: rand::Rng>(
     mut rng: R,
+    is_prepare: bool,
 ) -> Result<(Vec<u8>, Vec<u8>), String> {
     println!("Prepareing...");
     let constants = constants::<E::Fr>();
@@ -23,9 +24,12 @@ pub fn groth16_setup<E: PairingEngine, R: rand::Rng>(
     params.write(&mut pk_bytes).unwrap();
 
     let mut vk_bytes = vec![];
-    let pvk = prepare_verifying_key(&params.vk);
-    pvk.write(&mut vk_bytes).unwrap();
-    //params.vk.write(&mut vk_bytes).unwrap();
+    if is_prepare {
+        let pvk = prepare_verifying_key(&params.vk);
+        pvk.write(&mut vk_bytes).unwrap();
+    } else {
+        params.vk.write(&mut vk_bytes).unwrap();
+    }
 
     Ok((pk_bytes, vk_bytes))
 }

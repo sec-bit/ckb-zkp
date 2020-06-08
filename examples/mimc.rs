@@ -3,7 +3,7 @@ use std::time::Instant;
 use zkp::curve::bn_256::{Bn_256, Fr};
 use zkp::gadget::mimc::{constants, MiMC};
 use zkp::math::ToBytes;
-use zkp::scheme::groth16::{generate_random_parameters, prepare_verifying_key};
+use zkp::scheme::groth16::generate_random_parameters;
 use zkp::{prove, prove_to_bytes, verify, verify_from_bytes, Curve, Gadget, Scheme};
 
 /// test for use groth16 & bn_256 & mimc gadget.
@@ -28,9 +28,8 @@ fn main() {
 
     // you need save this verify key,
     // when verify, use it as a params.
-    let pvk = prepare_verifying_key(&params.vk);
     let mut vk_bytes = vec![];
-    pvk.write(&mut vk_bytes).unwrap();
+    params.vk.write(&mut vk_bytes).unwrap();
 
     println!("START PROVE...");
     let proof = prove(
