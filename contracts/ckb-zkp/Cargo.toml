@@ -7,7 +7,7 @@ authors = ["SECBIT Labs"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-ckb-std = "0.2.2"
+ckb-std = "0.3.0"
 ckb-types = { package = "ckb-standalone-types", version = "0.0.1-pre.1", default-features = false }
 zkp = { path = "zkp-toolkit", default-features = false, features = [
     "groth16",
@@ -15,17 +15,18 @@ zkp = { path = "zkp-toolkit", default-features = false, features = [
 ] }
 
 [profile.release]
+# set debug-assertions to true to enable debug macro.
+# debug-assertions = true
 overflow-checks = true
 lto = true
 opt-level = "s"
 codegen-units = 1
-# debug-assertions = true
 
 [profile.dev]
 overflow-checks = true
 lto = true
 opt-level = "s"
-codegen-units = 1
+codegen-units = 16
 debug = 0
 
 [workspace]
