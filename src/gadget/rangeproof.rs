@@ -61,8 +61,14 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for RangeProof<F> {
         let mut alpha_bits: Vec<Option<F>> = Vec::new();
 
         let bits = match alpha_packed_value {
-            Some(_) => super::boolean::field_into_allocated_bits_le(cs.ns(|| "field into bits"), alpha_packed_value)?,
-            _ => super::boolean::field_into_allocated_bits_le(cs.ns(|| "field into bits"), Some(F::zero()))?,
+            Some(_) => super::boolean::field_into_allocated_bits_le(
+                cs.ns(|| "field into bits"),
+                alpha_packed_value,
+            )?,
+            _ => super::boolean::field_into_allocated_bits_le(
+                cs.ns(|| "field into bits"),
+                Some(F::zero()),
+            )?,
         };
         for i in 0..(n + 1) {
             if bits[i as usize].get_value() == Some(true) {
@@ -221,7 +227,7 @@ fn test_rangeproof() {
     };
 
     let mut rng = &mut test_rng();
-    let n = 10u64; // range 0 ~ 2^10
+    let n = 10u64; // |lhs - rhs| < 2^10
 
     println!("Creating parameters...");
     let params = {
@@ -239,8 +245,8 @@ fn test_rangeproof() {
     println!("Creating proofs...");
 
     let c1 = RangeProof::<Fr> {
-        lhs: Some(Fr::from(24u32)),
-        rhs: Some(Fr::from(25u32)),
+        lhs: Some(Fr::from(25u32)),
+        rhs: Some(Fr::from(26u32)),
         n: n,
     };
 

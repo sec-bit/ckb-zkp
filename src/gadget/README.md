@@ -38,7 +38,7 @@ After implementing the circuit in the `generate_constraints` function above, you
 
 ```rust
 let mut rng = &mut test_rng();
-let n = 10u64; // range 0 ~ 2^10
+let n = 10u64; // |lhs - rhs| < 2^10
 
 println!("Creating parameters...");
 let params = {
@@ -89,7 +89,7 @@ fn test_rangeproof() {
     };
 
     let mut rng = &mut test_rng();
-    let n = 10u64; // range 0 ~ 2^10
+    let n = 10u64; // |lhs - rhs| < 2^10
 
     println!("Creating parameters...");
     let params = {
