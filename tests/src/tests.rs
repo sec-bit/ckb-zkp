@@ -10,10 +10,11 @@ use std::fs::File;
 use std::io::Read;
 
 // Relative path starts from capsuled-contracts/tests.
-const PROOF_FILE: &str = "../contracts/ckb-zkp/zkp-toolkit/proofs_files/mimc_proof";
-const MAX_CYCLES: u64 = 400_000_000;
+const VK_DIR: &str = "../dependencies/zkp-toolkit/trusted_setup/";
+const PROOF_DIR: &str = "../dependencies/zkp-toolkit/proofs_files/";
+const MAX_CYCLES: u64 = 1000_000_000;
 
-fn build_test_context(proof_file: Bytes) -> (Context, TransactionView) {
+fn build_test_context(proof_file: Bytes, vk: Bytes) -> (Context, TransactionView) {
     // deploy contract.
     let mut context = Context::default();
     let contract_bin: Bytes = Loader::default().load_binary("ckb-zkp");
@@ -31,7 +32,7 @@ fn build_test_context(proof_file: Bytes) -> (Context, TransactionView) {
 
     // Build TYPE script using the ckb-zkp contract
     let type_script = context
-        .build_script(&contract_out_point, Default::default())
+        .build_script(&contract_out_point, vk)
         .expect("build type script");
     let type_script_dep = CellDep::new_builder().out_point(contract_out_point).build();
 
@@ -71,28 +72,62 @@ fn build_test_context(proof_file: Bytes) -> (Context, TransactionView) {
     (context, tx)
 }
 #[test]
-fn test_prove() {
-    let mut proof_file = File::open(PROOF_FILE).expect("read proof file");
-    let mut buffer = Vec::new();
+fn test_prove_bn256() {
+    let mut proof_file = File::open(format!("{}/{}", PROOF_DIR, "mimc_proof_bn256")).expect("read proof file");
+    let mut proof_bin = Vec::new();
     // read the whole file
     proof_file
-        .read_to_end(&mut buffer)
-        .expect("read whole file");
-    let (mut context, tx) = build_test_context(buffer.into());
+        .read_to_end(&mut proof_bin)
+        .expect("Failed to read proof file");
+
+    let mut vk_file = File::open(format!("{}/{}", VK_DIR, "mimc-groth16-bn_256.vk")).expect("Failed to read VK file");
+    let mut vk_bin = Vec::new();
+    vk_file
+        .read_to_end(&mut vk_bin)
+        .expect("Failed to read VK file");
+
+    let (mut context, tx) = build_test_context(proof_bin.into(), vk_bin.into());
 
     let tx = context.complete_tx(tx);
     match context.verify_tx(&tx, MAX_CYCLES) {
         Ok(cycles) => {
             println!("cycles: {}", cycles);
         }
-        Err(_) => panic!("passing test"),
+        Err(err) => panic!("Failed to pass test: {}", err),
     }
 }
 
 #[test]
+fn test_prove_bls12_381() {
+    let mut proof_file = File::open(format!("{}/{}", PROOF_DIR, "mimc_proof_bls12_381")).expect("read proof file");
+    let mut proof_bin = Vec::new();
+    // read the whole file
+    proof_file
+        .read_to_end(&mut proof_bin)
+        .expect("Failed to read proof file");
+
+    let mut vk_file = File::open(format!("{}/{}", VK_DIR, "mimc-groth16-bls12_381.vk")).expect("Failed to read VK file");
+    let mut vk_bin = Vec::new();
+    vk_file
+        .read_to_end(&mut vk_bin)
+        .expect("Failed to read VK file");
+
+    let (mut context, tx) = build_test_context(proof_bin.into(), vk_bin.into());
+
+    let tx = context.complete_tx(tx);
+    match context.verify_tx(&tx, MAX_CYCLES) {
+        Ok(cycles) => {
+            println!("cycles: {}", cycles);
+        }
+        Err(err) => panic!("Failed to pass test: {}", err),
+    }
+}
+
+
+#[test]
 #[ignore]
 fn test_no_proof() {
-    let (mut context, tx) = build_test_context(Bytes::new());
+    let (mut context, tx) = build_test_context(Bytes::new(), Bytes::new());
 
     let tx = context.complete_tx(tx);
     context

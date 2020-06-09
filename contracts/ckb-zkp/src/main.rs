@@ -74,4 +74,4 @@ pub fn main() -> i8 {
 }
 
 entry!(main);
-default_alloc!(4 * 1024, 64 * 1024, 64);
+default_alloc!(4 * 1024, 256 * 1024, 64);
