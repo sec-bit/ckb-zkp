@@ -207,7 +207,6 @@ pub fn groth16_prove<E: PairingEngine, R: rand::Rng>(
         xr: Some(xr),
         constants: &constants,
     };
-
     let proof = create_random_proof(mc, &params, &mut rng).map_err(|_| ())?;
 
     let mut p_bytes = Vec::new();
