@@ -19,7 +19,7 @@ pub mod gadget;
 
 /// Supported zero-knowledge proof schemes.
 /// Now include: Groth16, Bulletproofs.
-#[derive(Copy, Clone)]
+#[derive(Debug)]
 pub enum Scheme {
     Groth16,
     Bulletproofs,
@@ -45,7 +45,7 @@ impl Scheme {
 /// Supported pairing curves for zkp use.
 /// Now include: Bls12_381, Bn_256.
 #[allow(non_camel_case_types)]
-#[derive(Copy, Clone)]
+#[derive(Debug)]
 pub enum Curve {
     Bls12_381,
     Bn_256,
@@ -70,29 +70,152 @@ impl Curve {
 
 /// Supported use-friendly gadgets for zkp.
 /// Now include: MiMC hash proof.
-#[derive(Copy, Clone)]
+#[derive(Debug)]
 pub enum Gadget {
-    MiMC,
+    /// pre-image content (plaintext).
+    MiMC(Vec<u8>),
+    /// secret num, public compared num. secret > public.
+    GreaterThan(u64, u64),
+    /// secret num, public compared num. secret < public.
+    LessThan(u64, u64),
+    /// secret num, public compared nums. public_a < secret < public_b.
+    Between(u64, u64, u64),
 }
 
 impl Gadget {
-    pub fn to_byte(&self) -> u8 {
+    pub fn to_byte(self) -> Vec<u8> {
+        let mut bytes = vec![];
         match self {
-            Gadget::MiMC => 0,
+            Gadget::MiMC(mut p) => {
+                bytes.extend_from_slice(&0u16.to_le_bytes());
+                bytes.extend_from_slice(&(p.len() as u64).to_le_bytes());
+                bytes.append(&mut p);
+            }
+            _ => {}
         }
+        bytes
     }
 
-    pub fn from_byte(bytes: u8) -> Result<Self, ()> {
-        match bytes {
-            0u8 => Ok(Gadget::MiMC),
+    pub fn from_byte(bytes: &[u8]) -> Result<Self, ()> {
+        if bytes.len() < 2 {
+            return Err(());
+        }
+
+        let mut g_len = [0u8; 2];
+        let (g, bytes) = bytes.split_at(2);
+        g_len.copy_from_slice(g);
+
+        match u16::from_le_bytes(g_len) {
+            0u16 => {
+                let (len_bytes, bytes) = bytes.split_at(8);
+                let mut tmp_len = [0u8; 8];
+                tmp_len.copy_from_slice(len_bytes);
+                let bytes_len = u64::from_le_bytes(tmp_len) as usize;
+                if bytes.len() < bytes_len {
+                    return Err(());
+                }
+                Ok(Gadget::MiMC(bytes[..bytes_len].to_vec()))
+            }
+            _ => Err(()),
+        }
+    }
+}
+
+/// GadgetProof enum type. It include gadget's parameters and SchemeProof type.
+#[derive(Debug)]
+pub enum GadgetProof {
+    /// MiMC hash value, and proof.
+    MiMC(Vec<u8>, Vec<u8>),
+    /// compared num, and proof.
+    GreaterThan(u64, Vec<u8>),
+    /// compared num, and proof.
+    LessThan(u64, Vec<u8>),
+    /// compared left num and right num, and proof.
+    Between(u64, u64, Vec<u8>),
+}
+
+impl GadgetProof {
+    pub fn to_bytes(self) -> Vec<u8> {
+        let mut bytes = vec![];
+        match self {
+            GadgetProof::MiMC(mut e, mut s) => {
+                bytes.extend_from_slice(&0u16.to_le_bytes());
+                bytes.append(&mut (e.len() as u32).to_le_bytes().to_vec());
+                bytes.append(&mut e);
+                bytes.append(&mut s);
+            } // ADD OTHER GADGET
+            GadgetProof::GreaterThan(n, mut p) => {
+                bytes.extend_from_slice(&1u16.to_le_bytes());
+                bytes.extend_from_slice(&n.to_le_bytes());
+                bytes.append(&mut p);
+            }
+            GadgetProof::LessThan(n, mut p) => {
+                bytes.extend_from_slice(&2u16.to_le_bytes());
+                bytes.extend_from_slice(&n.to_le_bytes());
+                bytes.append(&mut p);
+            }
+            GadgetProof::Between(l, r, mut p) => {
+                bytes.extend_from_slice(&3u16.to_le_bytes());
+                bytes.extend_from_slice(&l.to_le_bytes());
+                bytes.extend_from_slice(&r.to_le_bytes());
+                bytes.append(&mut p);
+            }
+        }
+
+        bytes
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, ()> {
+        if bytes.len() < 2 {
+            return Err(());
+        }
+
+        let mut g_len = [0u8; 2];
+        let (g, bytes) = bytes.split_at(2);
+        g_len.copy_from_slice(g);
+
+        match u16::from_le_bytes(g_len) {
+            0u16 => {
+                let mut h_len_bytes = [0u8; 4];
+                let (h_len_b, bytes) = bytes.split_at(4);
+                h_len_bytes.copy_from_slice(h_len_b);
+                let h_len = u32::from_le_bytes(h_len_bytes);
+                let (h, p) = bytes.split_at(h_len as usize);
+                Ok(GadgetProof::MiMC(h.to_vec(), p.to_vec()))
+            }
+            1u16 => {
+                let mut n_bytes = [0u8; 8];
+                let (n_b, bytes) = bytes.split_at(8);
+                n_bytes.copy_from_slice(n_b);
+                let n = u64::from_le_bytes(n_bytes);
+                Ok(GadgetProof::GreaterThan(n, bytes.to_vec()))
+            }
+            2u16 => {
+                let mut n_bytes = [0u8; 8];
+                let (n_b, bytes) = bytes.split_at(8);
+                n_bytes.copy_from_slice(n_b);
+                let n = u64::from_le_bytes(n_bytes);
+                Ok(GadgetProof::LessThan(n, bytes.to_vec()))
+            }
+            3u16 => {
+                let mut l_bytes = [0u8; 8];
+                let (l_b, bytes) = bytes.split_at(8);
+                l_bytes.copy_from_slice(l_b);
+                let l = u64::from_le_bytes(l_bytes);
+                let mut r_bytes = [0u8; 8];
+                let (r_b, bytes) = bytes.split_at(8);
+                r_bytes.copy_from_slice(r_b);
+                let r = u64::from_le_bytes(r_bytes);
+                Ok(GadgetProof::Between(l, r, bytes.to_vec()))
+            }
             _ => Err(()),
         }
     }
 }
 
 /// Proof struct type. It include used gadget, scheme, curve enum, and GadgetProof type.
+#[derive(Debug)]
 pub struct Proof {
-    pub g: Gadget,
     pub s: Scheme,
     pub c: Curve,
     pub p: GadgetProof,
@@ -101,7 +224,6 @@ pub struct Proof {
 impl Proof {
     pub fn to_bytes(self) -> Vec<u8> {
         let mut bytes = vec![];
-        bytes.push(self.g.to_byte());
         bytes.push(self.s.to_byte());
         bytes.push(self.c.to_byte());
         bytes.append(&mut self.p.to_bytes());
@@ -109,16 +231,15 @@ impl Proof {
     }
 
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, ()> {
-        if bytes.len() < 3 {
+        if bytes.len() < 2 {
             return Err(());
         }
 
-        let g = Gadget::from_byte(bytes[0])?;
-        let s = Scheme::from_byte(bytes[1])?;
-        let c = Curve::from_byte(bytes[2])?;
-        let p = GadgetProof::from_bytes(&bytes[3..])?;
+        let s = Scheme::from_byte(bytes[0])?;
+        let c = Curve::from_byte(bytes[1])?;
+        let p = GadgetProof::from_bytes(&bytes[2..])?;
 
-        Ok(Self { g, s, c, p })
+        Ok(Self { s, c, p })
     }
 
     pub fn to_hex() {
@@ -130,68 +251,29 @@ impl Proof {
     }
 }
 
-/// GadgetProof enum type. It include gadget's parameters and SchemeProof type.
-pub enum GadgetProof {
-    MiMC(Vec<u8>, Vec<u8>),
-}
-
-impl GadgetProof {
-    pub fn to_bytes(self) -> Vec<u8> {
-        let mut bytes = vec![];
-        match self {
-            GadgetProof::MiMC(mut e, mut s) => {
-                bytes.push(0u8);
-                bytes.append(&mut (e.len() as u32).to_le_bytes().to_vec());
-                bytes.append(&mut e);
-                bytes.append(&mut s);
-            } // ADD OTHER GADGET
-        }
-
-        bytes
-    }
-
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, ()> {
-        if bytes.len() < 5 {
-            return Err(());
-        }
-
-        let (g, n_bytes) = bytes.split_at(1);
-        let (e_len_bytes, es_bytes) = n_bytes.split_at(4);
-        let mut len_bytes = [0u8; 4];
-        len_bytes.copy_from_slice(&e_len_bytes);
-        let e_len = u32::from_le_bytes(len_bytes);
-        let (e, s) = es_bytes.split_at(e_len as usize);
-
-        match g {
-            [0u8] => Ok(GadgetProof::MiMC(e.to_vec(), s.to_vec())),
-            _ => Err(()),
-        }
-    }
-}
-
 macro_rules! handle_curve_prove {
-    ($func_name:ident, $rng_name:ident, $c:expr, $bytes:expr, $pk:expr, $rng:expr) => {
+    ($func_name:ident, $rng_name:ident, $c:expr, $g:expr, $pk:expr, $rng:expr) => {
         match $c {
             Curve::Bls12_381 => {
                 #[cfg(not(feature = "bls12_381"))]
                 return Err(());
 
                 #[cfg(feature = "bls12_381")]
-                $func_name::<curve::Bls12_381, $rng_name>($bytes, $pk, $rng)
+                $func_name::<curve::Bls12_381, $rng_name>($g, $pk, $rng)
             }
             Curve::Bn_256 => {
                 #[cfg(not(feature = "bn_256"))]
                 return Err(());
 
                 #[cfg(feature = "bn_256")]
-                $func_name::<curve::Bn_256, $rng_name>($bytes, $pk, $rng)
+                $func_name::<curve::Bn_256, $rng_name>($g, $pk, $rng)
             }
         }
     };
 }
 
 macro_rules! handle_gadget_prove {
-    ($gadget:ident, $rng_name:ident, $s:expr, $c:expr, $bytes:expr, $pk:expr, $rng:expr) => {
+    ($gadget:ident, $rng_name:ident, $s:expr, $c:expr, $g:expr, $pk:expr, $rng:expr) => {
         match $s {
             Scheme::Groth16 => {
                 #[cfg(not(feature = "groth16"))]
@@ -200,7 +282,7 @@ macro_rules! handle_gadget_prove {
                 #[cfg(feature = "groth16")]
                 {
                     use $gadget::groth16_prove;
-                    handle_curve_prove!(groth16_prove, $rng_name, $c, $bytes, $pk, $rng)
+                    handle_curve_prove!(groth16_prove, $rng_name, $c, $g, $pk, $rng)
                 }
             }
             Scheme::Bulletproofs => {
@@ -254,22 +336,19 @@ macro_rules! handle_gadget_verify {
 }
 
 use gadget::mimc;
+use gadget::rangeproof;
 
 /// main prove functions.
 /// it will return Proof struct.
-pub fn prove<R: rand::Rng>(
-    g: Gadget,
-    s: Scheme,
-    c: Curve,
-    b: &[u8],
-    pk: &[u8],
-    rng: R,
-) -> Result<Proof, ()> {
+pub fn prove<R: rand::Rng>(g: Gadget, s: Scheme, c: Curve, pk: &[u8], rng: R) -> Result<Proof, ()> {
     let p = match g {
-        Gadget::MiMC => handle_gadget_prove!(mimc, R, s, c, b, pk, rng)?,
+        Gadget::MiMC(..) => handle_gadget_prove!(mimc, R, s, c, &g, pk, rng)?,
+        Gadget::GreaterThan(..) | Gadget::LessThan(..) | Gadget::Between(..) => {
+            handle_gadget_prove!(rangeproof, R, s, c, &g, pk, rng)?
+        }
     };
 
-    Ok(Proof { g, s, c, p })
+    Ok(Proof { s, c, p })
 }
 
 /// main prove functions, use Bytes.
@@ -278,18 +357,20 @@ pub fn prove_to_bytes<R: rand::Rng>(
     g: Gadget,
     s: Scheme,
     c: Curve,
-    b: &[u8],
     pk: &[u8],
     rng: R,
 ) -> Result<Vec<u8>, ()> {
-    prove(g, s, c, b, pk, rng).map(|p| p.to_bytes())
+    prove(g, s, c, pk, rng).map(|p| p.to_bytes())
 }
 
 /// main verify functions.
 /// it will return bool.
 pub fn verify(proof: Proof, vk: &[u8]) -> bool {
-    match proof.g {
-        Gadget::MiMC => handle_gadget_verify!(mimc, proof.s, proof.c, proof.p, vk, false),
+    match proof.p {
+        GadgetProof::MiMC(..) => handle_gadget_verify!(mimc, proof.s, proof.c, proof.p, vk, false),
+        GadgetProof::GreaterThan(..) | GadgetProof::LessThan(..) | GadgetProof::Between(..) => {
+            handle_gadget_verify!(rangeproof, proof.s, proof.c, proof.p, vk, false)
+        }
     }
 }
 
@@ -307,8 +388,11 @@ pub fn verify_from_bytes(bytes: &[u8], vk: &[u8]) -> bool {
 /// it will return bool.
 pub fn verify_with_prepare(bytes: &[u8], pvk: &[u8]) -> bool {
     if let Ok(proof) = Proof::from_bytes(bytes) {
-        match proof.g {
-            Gadget::MiMC => handle_gadget_verify!(mimc, proof.s, proof.c, proof.p, pvk, true),
+        match proof.p {
+            GadgetProof::MiMC(..) => {
+                handle_gadget_verify!(mimc, proof.s, proof.c, proof.p, pvk, true)
+            }
+            _ => false,
         }
     } else {
         false

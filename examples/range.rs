@@ -1,24 +1,24 @@
 use rand::prelude::*;
 use std::time::Instant;
 use zkp::curve::bn_256::{Bn_256, Fr};
-use zkp::gadget::mimc::{constants, MiMC};
+use zkp::gadget::rangeproof::RangeProof;
 use zkp::math::ToBytes;
 use zkp::scheme::groth16::generate_random_parameters;
 use zkp::{prove, prove_to_bytes, verify, verify_from_bytes, Curve, Gadget, Scheme};
 
 /// test for use groth16 & bn_256 & mimc gadget.
 fn main() {
-    let bytes = vec![1, 2, 3, 4, 5]; // this is your secret.
+    let secret = 100u64; // this is your secret.
     let mut rng = thread_rng();
 
     // TRUSTED SETUP
     println!("TRUSTED SETUP...");
-    let constants = constants::<Fr>();
-    let c = MiMC::<Fr> {
-        xl: None,
-        xr: None,
-        constants: &constants,
+    let c = RangeProof::<Fr> {
+        lhs: None,
+        rhs: None,
+        n: 64, // u64
     };
+
     let params = generate_random_parameters::<Bn_256, _, _>(c, &mut rng).unwrap();
 
     // you need save this prove key,
@@ -31,10 +31,9 @@ fn main() {
     let mut vk_bytes = vec![];
     params.vk.write(&mut vk_bytes).unwrap();
 
-    let new_bytes = bytes.clone();
-    println!("START PROVE...");
+    println!("START PROVE GREATER...");
     let proof = prove(
-        Gadget::MiMC(new_bytes),
+        Gadget::GreaterThan(secret, 10),
         Scheme::Groth16,
         Curve::Bn_256,
         &pk_bytes,
@@ -42,14 +41,42 @@ fn main() {
     )
     .unwrap();
 
-    println!("START VERIFY...");
+    println!("START VERIFY GREATER...");
     let is_ok = verify(proof, &vk_bytes);
     assert!(is_ok);
+
+    println!("START PROVE LESS...");
+    let proof_l = prove(
+        Gadget::LessThan(secret, 1000),
+        Scheme::Groth16,
+        Curve::Bn_256,
+        &pk_bytes,
+        rng,
+    )
+    .unwrap();
+
+    println!("START VERIFY LESS...");
+    let is_ok_l = verify(proof_l, &vk_bytes);
+    assert!(is_ok_l);
+
+    println!("START PROVE BETWEEN...");
+    let proof_b = prove(
+        Gadget::Between(secret, 1, 10000),
+        Scheme::Groth16,
+        Curve::Bn_256,
+        &pk_bytes,
+        rng,
+    )
+    .unwrap();
+
+    println!("START VERIFY BETWEEN...");
+    let is_ok_b = verify(proof_b, &vk_bytes);
+    assert!(is_ok_b);
 
     println!("ANOTHER USE BYTES START PROVE...");
     let p_start = Instant::now();
     let proof_bytes = prove_to_bytes(
-        Gadget::MiMC(bytes),
+        Gadget::GreaterThan(secret, 10),
         Scheme::Groth16,
         Curve::Bn_256,
         &pk_bytes,

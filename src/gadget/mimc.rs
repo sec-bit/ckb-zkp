@@ -1,7 +1,7 @@
 use math::{Field, FromBytes, PairingEngine, ToBytes};
 use scheme::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
-use crate::{GadgetProof, Vec};
+use crate::{Gadget, GadgetProof, Vec};
 
 /// This is an implementation of MiMC, specifically a
 /// variant named `LongsightF322p3` for BN-256.
@@ -191,31 +191,35 @@ pub fn constants_with_seed<F: Field>(seed: [u8; 32]) -> [F; MIMC_ROUNDS] {
 
 #[cfg(feature = "groth16")]
 pub fn groth16_prove<E: PairingEngine, R: rand::Rng>(
-    b: &[u8],
+    g: &Gadget,
     pk: &[u8],
     mut rng: R,
 ) -> Result<GadgetProof, ()> {
     use scheme::groth16::{create_random_proof, Parameters};
+    match g {
+        Gadget::MiMC(b) => {
+            let constants = constants::<E::Fr>();
+            let params = Parameters::<E>::read(pk).map_err(|_| ())?;
 
-    let constants = constants::<E::Fr>();
-    let params = Parameters::<E>::read(pk).map_err(|_| ())?;
+            let (xl, xr, image) = mimc_hash(b, &constants);
 
-    let (xl, xr, image) = mimc_hash(b, &constants);
+            let mc = MiMC {
+                xl: Some(xl),
+                xr: Some(xr),
+                constants: &constants,
+            };
+            let proof = create_random_proof(mc, &params, &mut rng).map_err(|_| ())?;
 
-    let mc = MiMC {
-        xl: Some(xl),
-        xr: Some(xr),
-        constants: &constants,
-    };
-    let proof = create_random_proof(mc, &params, &mut rng).map_err(|_| ())?;
+            let mut p_bytes = Vec::new();
+            proof.write(&mut p_bytes).map_err(|_| ())?;
 
-    let mut p_bytes = Vec::new();
-    proof.write(&mut p_bytes).map_err(|_| ())?;
+            let mut i_bytes = Vec::new();
+            image.write(&mut i_bytes).map_err(|_| ())?;
 
-    let mut i_bytes = Vec::new();
-    image.write(&mut i_bytes).map_err(|_| ())?;
-
-    Ok(GadgetProof::MiMC(i_bytes, p_bytes))
+            Ok(GadgetProof::MiMC(i_bytes, p_bytes))
+        }
+        _ => Err(()),
+    }
 }
 
 #[cfg(feature = "groth16")]
@@ -241,5 +245,6 @@ pub fn groth16_verify<E: PairingEngine>(
 
             verify_proof(&pvk, &proof, &[image]).map_err(|_| ())
         }
+        _ => Err(()),
     }
 }

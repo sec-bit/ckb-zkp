@@ -43,10 +43,9 @@ fn main() {
 
     println!("START PROVE...");
     let proof = prove(
-        Gadget::MiMC,
+        Gadget::MiMC(bytes),
         Scheme::Groth16,
         Curve::Bn_256,
-        &bytes,
         &pk_bytes,
         rng,
     )

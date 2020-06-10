@@ -5,16 +5,10 @@ use scheme::r1cs::{
 
 use crate::Vec;
 
-struct RangeProof<F: PrimeField> {
-    lhs: Option<F>,
-    rhs: Option<F>,
-    n: u64,
-    // less: Option<bool>,
-    // lessOrEqual: Option<E::Fr>,
-    // n: Option<u32>,
-    // alpha: Option<E::Fr>,
-    // notAllZeroes: Option<bool>,
-    // constants: &'a [E::Fr],
+pub struct RangeProof<F: PrimeField> {
+    pub lhs: Option<F>,
+    pub rhs: Option<F>,
+    pub n: u64,
 }
 
 impl<F: PrimeField> ConstraintSynthesizer<F> for RangeProof<F> {
@@ -214,6 +208,116 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for RangeProof<F> {
         // );
 
         Ok(())
+    }
+}
+
+use crate::{Gadget, GadgetProof};
+use math::{Field, FromBytes, PairingEngine, ToBytes};
+
+#[cfg(feature = "groth16")]
+pub fn groth16_prove<E: PairingEngine, R: rand::Rng>(
+    g: &Gadget,
+    pk: &[u8],
+    mut rng: R,
+) -> Result<GadgetProof, ()> {
+    use scheme::groth16::{create_random_proof, Parameters};
+    let params = Parameters::<E>::read(pk).map_err(|_| ())?;
+
+    match g {
+        Gadget::GreaterThan(s, lhs) => {
+            let repr_s = <E::Fr as PrimeField>::BigInt::from(*s);
+            let repr_lhs = <E::Fr as PrimeField>::BigInt::from(*lhs);
+
+            let c1 = RangeProof::<E::Fr> {
+                lhs: Some(<E::Fr as PrimeField>::from_repr(repr_lhs)),
+                rhs: Some(<E::Fr as PrimeField>::from_repr(repr_s)),
+                n: 64,
+            };
+
+            let proof = create_random_proof(c1, &params, &mut rng).map_err(|_| ())?;
+            let mut p_bytes = Vec::new();
+            proof.write(&mut p_bytes).map_err(|_| ())?;
+            Ok(GadgetProof::GreaterThan(*lhs, p_bytes))
+        }
+        Gadget::LessThan(s, rhs) => {
+            let repr_s = <E::Fr as PrimeField>::BigInt::from(*s);
+            let repr_rhs = <E::Fr as PrimeField>::BigInt::from(*rhs);
+
+            let c1 = RangeProof::<E::Fr> {
+                lhs: Some(<E::Fr as PrimeField>::from_repr(repr_s)),
+                rhs: Some(<E::Fr as PrimeField>::from_repr(repr_rhs)),
+                n: 64,
+            };
+
+            let proof = create_random_proof(c1, &params, &mut rng).map_err(|_| ())?;
+            let mut p_bytes = Vec::new();
+            proof.write(&mut p_bytes).map_err(|_| ())?;
+            Ok(GadgetProof::LessThan(*rhs, p_bytes))
+        }
+        Gadget::Between(s, lhs, rhs) => {
+            let repr_s = <E::Fr as PrimeField>::BigInt::from(*s);
+            let repr_lhs = <E::Fr as PrimeField>::BigInt::from(*lhs);
+            let repr_rhs = <E::Fr as PrimeField>::BigInt::from(*rhs);
+
+            let c_l = RangeProof::<E::Fr> {
+                lhs: Some(<E::Fr as PrimeField>::from_repr(repr_lhs)),
+                rhs: Some(<E::Fr as PrimeField>::from_repr(repr_s)),
+                n: 64,
+            };
+            let proof_l = create_random_proof(c_l, &params, &mut rng).map_err(|_| ())?;
+
+            let c_r = RangeProof::<E::Fr> {
+                lhs: Some(<E::Fr as PrimeField>::from_repr(repr_s)),
+                rhs: Some(<E::Fr as PrimeField>::from_repr(repr_rhs)),
+                n: 64,
+            };
+            let proof_r = create_random_proof(c_r, &params, &mut rng).map_err(|_| ())?;
+
+            let mut p_bytes = Vec::new();
+
+            proof_l.write(&mut p_bytes).map_err(|_| ())?;
+            proof_r.write(&mut p_bytes).map_err(|_| ())?;
+
+            Ok(GadgetProof::Between(*lhs, *rhs, p_bytes))
+        }
+        _ => Err(()),
+    }
+}
+
+#[cfg(feature = "groth16")]
+pub fn groth16_verify<E: PairingEngine>(
+    g: GadgetProof,
+    vk: &[u8],
+    is_pp: bool,
+) -> Result<bool, ()> {
+    use scheme::groth16::{
+        prepare_verifying_key, verify_proof, PreparedVerifyingKey, Proof, VerifyingKey,
+    };
+    let pvk = if is_pp {
+        PreparedVerifyingKey::<E>::read(vk).map_err(|_| ())?
+    } else {
+        let vk = VerifyingKey::<E>::read(vk).map_err(|_| ())?;
+        prepare_verifying_key(&vk)
+    };
+
+    let repr_image = <E::Fr as PrimeField>::BigInt::from(2);
+    let image = <E::Fr as PrimeField>::from_repr(repr_image).pow([64]);
+
+    match g {
+        GadgetProof::GreaterThan(_, p_bytes) | GadgetProof::LessThan(_, p_bytes) => {
+            let proof = Proof::<E>::read(&p_bytes[..]).map_err(|_| ())?;
+
+            verify_proof(&pvk, &proof, &[image]).map_err(|_| ())
+        }
+        GadgetProof::Between(_, _, p_bytes) => {
+            let len = p_bytes.len() / 2;
+            let l_proof = Proof::<E>::read(&p_bytes[0..len]).map_err(|_| ())?;
+            let r_proof = Proof::<E>::read(&p_bytes[len..]).map_err(|_| ())?;
+
+            Ok(verify_proof(&pvk, &l_proof, &[image]).map_err(|_| ())?
+                && verify_proof(&pvk, &r_proof, &[image]).map_err(|_| ())?)
+        }
+        _ => Err(()),
     }
 }
 
