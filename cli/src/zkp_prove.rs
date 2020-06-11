@@ -5,7 +5,7 @@ use zkp::{prove_to_bytes, Curve, Gadget, Scheme};
 const PROOFS_DIR: &'static str = "./proofs_files";
 const SETUP_DIR: &'static str = "./trusted_setup";
 
-pub fn handle_args() -> Result<(Gadget, Scheme, Curve, Vec<u8>, String, String), String> {
+pub fn handle_args() -> Result<(Gadget, Scheme, Curve, String, String), String> {
     let args: Vec<_> = env::args().collect();
     if args.len() != 5 && args.len() != 3 {
         println!("Args. like: zkp-prove mimc --file=./README.md");
@@ -13,11 +13,6 @@ pub fn handle_args() -> Result<(Gadget, Scheme, Curve, Vec<u8>, String, String),
         println!("            zkp-prove mimc groth16 bn_256 --string=iamscretvalue");
         return Err("Params invalid!".to_owned());
     }
-
-    let g = match args[1].as_str() {
-        "mimc" => Gadget::MiMC,
-        _ => Gadget::MiMC,
-    };
 
     let (s, c, pk_file) = if args.len() == 3 {
         (
@@ -60,11 +55,16 @@ pub fn handle_args() -> Result<(Gadget, Scheme, Curve, Vec<u8>, String, String),
         panic!("unimplemented other file type.")
     };
 
-    Ok((g, s, c, bytes, pk_file, filename))
+    let g = match args[1].as_str() {
+        "mimc" => Gadget::MiMC(bytes),
+        _ => return Err(format!("{} unimplemented!", args[1])),
+    };
+
+    Ok((g, s, c, pk_file, filename))
 }
 
 fn main() -> Result<(), String> {
-    let (g, s, c, bytes, pk_file, filename) = handle_args()?;
+    let (g, s, c, pk_file, filename) = handle_args()?;
 
     // load pk file.
     let mut pk_path = PathBuf::from(SETUP_DIR);
@@ -73,7 +73,7 @@ fn main() -> Result<(), String> {
         return Err(format!("Cannot found setup file: {:?}", pk_path));
     }
     let pk = std::fs::read(&pk_path).unwrap();
-    let proof = prove_to_bytes(g, s, c, &bytes, &pk, rand::thread_rng()).unwrap();
+    let proof = prove_to_bytes(g, s, c, &pk, rand::thread_rng()).unwrap();
 
     let mut path = PathBuf::from(PROOFS_DIR);
     if !path.exists() {

@@ -17,8 +17,8 @@ pub fn handle_args() -> Result<(Gadget, Scheme, Curve, String, bool), String> {
     let is_pp = args.contains(&"--prepare".to_owned());
 
     let g = match args[1].as_str() {
-        "mimc" => Gadget::MiMC,
-        _ => Gadget::MiMC,
+        "mimc" => Gadget::MiMC(vec![]),
+        _ => return Err(format!("{} unimplemented!", args[1])),
     };
 
     let (s, c, filename) = if args.len() == 2 {
@@ -49,8 +49,8 @@ pub fn handle_args() -> Result<(Gadget, Scheme, Curve, String, bool), String> {
 macro_rules! handle_curve {
     ($func_name:ident, $rng_name:ident, $c:expr, $rng:expr, $pp:expr) => {
         match $c {
-            Curve::Bls12_381 => $func_name::<curve::Bls12_381, $rng_name>($rng, $pp),
-            Curve::Bn_256 => $func_name::<curve::Bn_256, $rng_name>($rng, $pp),
+            Curve::Bls12_381 => $func_name::<zkp::curve::Bls12_381, $rng_name>($rng, $pp),
+            Curve::Bn_256 => $func_name::<zkp::curve::Bn_256, $rng_name>($rng, $pp),
         }
     };
 }
@@ -75,7 +75,8 @@ fn main() -> Result<(), String> {
     let rng = rand::thread_rng();
 
     let (pk, vk) = match g {
-        Gadget::MiMC => handle_gadget!(mimc, ThreadRng, s, c, rng, is_pp)?,
+        Gadget::MiMC(..) => handle_gadget!(mimc, ThreadRng, s, c, rng, is_pp)?,
+        _ => return Err(format!("{} unimplemented!", "Gadget")),
     };
 
     let path = PathBuf::from(SETUP_DIR);

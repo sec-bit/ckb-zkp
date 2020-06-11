@@ -612,5 +612,13 @@ dependencies = [
  "num-traits",
  "rand",
  "scheme",
+]
+
+[[package]]
+name = "zkp-cli"
+version = "0.1.0"
+dependencies = [
+ "rand",
  "serde_json",
+ "zkp",
 ]

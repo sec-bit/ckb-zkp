@@ -12,20 +12,9 @@ edition = "2018"
 members = [
     "math",
     "curve",
-    "scheme"
+    "scheme",
+    "cli"
 ]
-
-[[bin]]
-path = "src/bin/zkp_prove.rs"
-name = "zkp-prove"
-
-[[bin]]
-path = "src/bin/zkp_verify.rs"
-name = "zkp-verify"
-
-[[bin]]
-path = "src/bin/trusted_setup/main.rs"
-name = "trusted-setup"
 
 [features]
 default = ["full"]
@@ -45,7 +34,6 @@ rand = { version = "0.7", default-features = false }
 
 [dev-dependencies]
 rand = { version = "0.7" }
-serde_json = { version = "1" }
 blake2s_simd = "0.5"
 byteorder = "1"
 num-traits = { version = "0.2", default-features = false }
