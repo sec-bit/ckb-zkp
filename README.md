@@ -68,11 +68,13 @@ See [details](./cli)
 5. no-std is support.
 
 ## Gadgets
-See [details](./src/gadget)
-1. MiMC - hash for prove things. - OK
-2. Boolean - prove the bool value. - OK
-3. Rangeproof - prove the range. - OK
-4. ... Continue ...
+See more [details](./src/gadget)
+- MiMC hash
+- GreaterThan
+- LessThan
+- Between
+- Boolean
+- ... Continue others...
 
 
 ## License
