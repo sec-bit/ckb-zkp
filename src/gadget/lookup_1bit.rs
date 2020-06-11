@@ -1,10 +1,7 @@
-
 use math::PrimeField;
-use scheme::r1cs::{
-    ConstraintSynthesizer, ConstraintSystem, SynthesisError,
-};
+use scheme::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
-// use bellman::gadgets::Assignment;
+use crate::Vec;
 
 struct Lookup1bitDemo<E: PrimeField> {
     in_bit: Option<E>,
@@ -12,18 +9,21 @@ struct Lookup1bitDemo<E: PrimeField> {
 }
 
 impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup1bitDemo<E> {
-    fn generate_constraints<CS: ConstraintSystem<E>>(self, cs: &mut CS) -> Result<(), SynthesisError> {
+    fn generate_constraints<CS: ConstraintSystem<E>>(
+        self,
+        cs: &mut CS,
+    ) -> Result<(), SynthesisError> {
         assert!(self.in_constants.len() == 2);
         // assert!(self.in_bit == Some(E::zero()) || self.in_bit == Some(E::one()));
         let index = match self.in_bit {
             Some(a_value) => {
                 let mut tmp: usize = 0;
-                if a_value == E::one(){
+                if a_value == E::one() {
                     tmp += 1;
                 }
                 Some(tmp)
             }
-            _ => None, 
+            _ => None,
         };
 
         let res: Option<E>;
@@ -32,15 +32,19 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup1bitDemo<E> {
         } else {
             res = None;
         }
-        let res_var = cs.alloc(
-            || "res_var",
-            || res.ok_or(SynthesisError::AssignmentMissing),
-        ).unwrap();
+        let res_var = cs
+            .alloc(
+                || "res_var",
+                || res.ok_or(SynthesisError::AssignmentMissing),
+            )
+            .unwrap();
 
-        let in_constants_var0 = cs.alloc(
-            || "in_constants_var_0",
-            || self.in_constants[0].ok_or(SynthesisError::AssignmentMissing),
-        ).unwrap();
+        let in_constants_var0 = cs
+            .alloc(
+                || "in_constants_var_0",
+                || self.in_constants[0].ok_or(SynthesisError::AssignmentMissing),
+            )
+            .unwrap();
 
         // 构建约束(c[0] + b*c[1] - b*c[0])*1 = r
         /* 这里有问题。

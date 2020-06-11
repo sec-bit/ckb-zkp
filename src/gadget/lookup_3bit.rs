@@ -1,11 +1,7 @@
 use math::PrimeField;
-use scheme::r1cs::{
-    ConstraintSynthesizer, ConstraintSystem, SynthesisError, Variable,
-};
+use scheme::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, Variable};
 
-
-
-// use bellman::gadgets::Assignment;
+use crate::Vec;
 
 struct Lookup3bitDemo<E: PrimeField> {
     in_bit: Vec<Option<E>>,
@@ -13,27 +9,30 @@ struct Lookup3bitDemo<E: PrimeField> {
 }
 
 impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup3bitDemo<E> {
-    fn generate_constraints<CS: ConstraintSystem<E>>(self, cs: &mut CS) -> Result<(), SynthesisError> {
+    fn generate_constraints<CS: ConstraintSystem<E>>(
+        self,
+        cs: &mut CS,
+    ) -> Result<(), SynthesisError> {
         assert!(self.in_constants.len() == 8);
         assert!(self.in_bit.len() == 3);
         // assert!(self.in_bit == Some(E::zero()) || self.in_bit == Some(E::one()));
         let index = match (self.in_bit[0], self.in_bit[1], self.in_bit[2]) {
             (Some(a_value), Some(b_value), Some(c_value)) => {
                 let mut tmp: usize = 0;
-                if a_value == E::one(){
+                if a_value == E::one() {
                     tmp += 1;
                 }
 
-                if b_value == E::one(){
+                if b_value == E::one() {
                     tmp += 2;
                 }
 
-                if c_value == E::one(){
+                if c_value == E::one() {
                     tmp += 4;
                 }
                 Some(tmp)
             }
-            _ => None, 
+            _ => None,
         };
 
         let res: Option<E>;
@@ -48,7 +47,7 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup3bitDemo<E> {
             || res.ok_or(SynthesisError::AssignmentMissing),
         )?;
 
-        let mut in_bit_var : Vec<Variable> = Vec::with_capacity(self.in_bit.len()); 
+        let mut in_bit_var: Vec<Variable> = Vec::with_capacity(self.in_bit.len());
         for i in 0..self.in_bit.len() {
             let tmp = cs.alloc(
                 || format!("self.in_bit[{}]", i),
@@ -78,7 +77,7 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup3bitDemo<E> {
             |lc| lc + in_bit_var[1],
             |lc| lc + precomp01_var,
         );
-        
+
         // b[0] * b[2] = precomp02
         let precomp02_var = cs.alloc(
             || "precomp02_var",
@@ -86,7 +85,7 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup3bitDemo<E> {
                 if self.in_bit[0].is_some() && self.in_bit[1].is_some() {
                     let mut precomp02 = self.in_bit[0].unwrap();
                     precomp02.mul_assign(&self.in_bit[2].unwrap());
-                    
+
                     Ok(precomp02)
                 } else {
                     Err(SynthesisError::AssignmentMissing)
@@ -98,7 +97,7 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup3bitDemo<E> {
             || "b[0] * b[2] = precomp02",
             |lc| lc + in_bit_var[0],
             |lc| lc + in_bit_var[2],
-            |lc| lc + precomp02_var 
+            |lc| lc + precomp02_var,
         );
 
         // b[1] * b[2] = precomp12
@@ -120,14 +119,15 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup3bitDemo<E> {
             || "b[1] * b[2] = precomp12",
             |lc| lc + in_bit_var[1],
             |lc| lc + in_bit_var[2],
-            |lc| lc + precomp12_var
+            |lc| lc + precomp12_var,
         );
 
         // precomp01 * b[2] = precomp012
         let precomp012_var = cs.alloc(
             || "precomp012_var",
             || {
-                if self.in_bit[0].is_some() && self.in_bit[1].is_some() && self.in_bit[2].is_some() {
+                if self.in_bit[0].is_some() && self.in_bit[1].is_some() && self.in_bit[2].is_some()
+                {
                     let mut precomp012 = self.in_bit[0].unwrap();
                     precomp012.mul_assign(&self.in_bit[1].unwrap());
                     precomp012.mul_assign(&self.in_bit[2].unwrap());
@@ -149,7 +149,8 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup3bitDemo<E> {
         let lhs_var = cs.alloc(
             || "lhs_var_alloc",
             || {
-                if self.in_bit[0].is_some() && self.in_bit[1].is_some() && self.in_bit[2].is_some() {
+                if self.in_bit[0].is_some() && self.in_bit[1].is_some() && self.in_bit[2].is_some()
+                {
                     let mut res = self.in_constants[0].unwrap();
 
                     // b[0]*-c[0]
@@ -249,7 +250,7 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup3bitDemo<E> {
             || "lhs * 1 = r",
             |lc| lc + lhs_var,
             |lc| lc + CS::one(),
-            |lc| lc + res_var 
+            |lc| lc + res_var,
         );
         Ok(())
     }

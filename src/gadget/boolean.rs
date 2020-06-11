@@ -1,7 +1,7 @@
-//! Gadgets for allocating bits in the circuit and performing boolean logic.
-
 use math::{BitIterator, PrimeField};
 use scheme::r1cs::{ConstraintSystem, LinearCombination, SynthesisError, Variable};
+
+use crate::Vec;
 
 /// Represents a variable in the constraint system which is guaranteed
 /// to be either zero or one.

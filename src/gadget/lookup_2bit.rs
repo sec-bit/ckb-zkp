@@ -1,7 +1,7 @@
 use math::PrimeField;
-use scheme::r1cs::{
-    ConstraintSynthesizer, ConstraintSystem, SynthesisError,
-};
+use scheme::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
+
+use crate::Vec;
 
 struct Lookup2bitDemo<E: PrimeField> {
     in_bit: Vec<Option<E>>,
@@ -9,23 +9,26 @@ struct Lookup2bitDemo<E: PrimeField> {
 }
 
 impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup2bitDemo<E> {
-    fn generate_constraints<CS: ConstraintSystem<E>>(self, cs: &mut CS) -> Result<(), SynthesisError> {
+    fn generate_constraints<CS: ConstraintSystem<E>>(
+        self,
+        cs: &mut CS,
+    ) -> Result<(), SynthesisError> {
         assert!(self.in_constants.len() == 4);
         assert!(self.in_bit.len() == 2);
         // assert!(self.in_bit == Some(E::zero()) || self.in_bit == Some(E::one()));
         let index = match (self.in_bit[0], self.in_bit[1]) {
             (Some(a_value), Some(b_value)) => {
                 let mut tmp: usize = 0;
-                if a_value == E::one(){
+                if a_value == E::one() {
                     tmp += 1;
                 }
 
-                if b_value == E::one(){
+                if b_value == E::one() {
                     tmp += 2;
                 }
                 Some(tmp)
             }
-            _ => None, 
+            _ => None,
         };
 
         let res: Option<E>;
@@ -56,7 +59,7 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup2bitDemo<E> {
                     tmp = self.in_constants[0].unwrap();
                     tmp = -tmp;
                     res.add_assign(&tmp);
-                    
+
                     res.mul_assign(&self.in_bit[0].unwrap());
                     Ok(res)
                 } else {
@@ -64,7 +67,6 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup2bitDemo<E> {
                 }
             },
         )?;
-
 
         // rhs = -c[0] + r + (b[1] * (-c[2] + c[0]))
         // -c[0]

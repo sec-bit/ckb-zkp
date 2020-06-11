@@ -1,9 +1,9 @@
 use math::PrimeField;
-use scheme::r1cs::{
-    ConstraintSynthesizer, ConstraintSystem, SynthesisError, Variable,
-};
-use super::boolean::Boolean;
+use scheme::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, Variable};
 
+use crate::Vec;
+
+use super::boolean::Boolean;
 use super::test_constraint_system::TestConstraintSystem;
 
 struct MerkletreeDemo<E: PrimeField> {
@@ -17,9 +17,14 @@ struct MerkletreeDemo<E: PrimeField> {
 }
 
 impl<E: PrimeField> ConstraintSynthesizer<E> for MerkletreeDemo<E> {
-    fn generate_constraints<CS: ConstraintSystem<E>>(self, cs: &mut CS) -> Result<(), SynthesisError> {
-        let mut left_digests: Vec<Vec<Option<E>>> = vec![vec![Some(E::from(0u32)); self.digest_size as usize]; self.tree_depth as usize];
-        let mut right_digests: Vec<Vec<Option<E>>> = vec![vec![Some(E::from(0u32)); self.digest_size as usize]; self.tree_depth as usize];
+    fn generate_constraints<CS: ConstraintSystem<E>>(
+        self,
+        cs: &mut CS,
+    ) -> Result<(), SynthesisError> {
+        let mut left_digests: Vec<Vec<Option<E>>> =
+            vec![vec![Some(E::from(0u32)); self.digest_size as usize]; self.tree_depth as usize];
+        let mut right_digests: Vec<Vec<Option<E>>> =
+            vec![vec![Some(E::from(0u32)); self.digest_size as usize]; self.tree_depth as usize];
         println!("tree_depth: {}", self.tree_depth);
         println!("digest_size: {}", self.digest_size);
         assert!(self.tree_depth > 0);
@@ -37,15 +42,14 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for MerkletreeDemo<E> {
         let mut address_bits_var: Vec<Variable> = Vec::new();
         let mut leaf_digest_var: Vec<Variable> = Vec::new();
 
-
         // merkle_authentication_path_variable_withness
         for i in 0..self.tree_depth as usize {
             // address_bits一定为0或者为1，这里不需要添加约束
-            if Some(E::one()) == self.address_bits[self.tree_depth as usize -1-i] {
+            if Some(E::one()) == self.address_bits[self.tree_depth as usize - 1 - i] {
                 for j in 0..self.digest_size as usize {
                     left_digests[i][j] = self.path[i][j];
                 }
-            }else {
+            } else {
                 for j in 0..self.digest_size as usize {
                     right_digests[i][j] = self.path[i][j];
                 }
@@ -53,7 +57,8 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for MerkletreeDemo<E> {
         }
 
         // merkle_tree_check_read_gadget_withness
-        let mut internal_output: Vec<Vec<Option<E>>> = vec![vec![Some(E::zero()); self.digest_size as usize]; self.tree_depth as usize - 1];
+        let mut internal_output: Vec<Vec<Option<E>>> =
+            vec![vec![Some(E::zero()); self.digest_size as usize]; self.tree_depth as usize - 1];
         let mut internal_output_var: Vec<Vec<Variable>> = vec![vec![]; self.tree_depth as usize];
         // let mut pre_hash: Vec<Option<E>> = Vec::with_capacity(256);
         let mut computed_root: Vec<Option<E>> = vec![Some(E::zero()); self.digest_size as usize];
@@ -62,33 +67,32 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for MerkletreeDemo<E> {
 
         for i in (0..self.tree_depth as usize).rev() {
             // hash contraint TODO
-            if i == self.tree_depth as usize -1 {
-                if self.address_bits[self.tree_depth as usize-1-i] == Some(E::one()) {
+            if i == self.tree_depth as usize - 1 {
+                if self.address_bits[self.tree_depth as usize - 1 - i] == Some(E::one()) {
                     for j in 0..self.digest_size as usize {
                         right_digests[i][j] = self.leaf_digest[j];
                     }
-                }else {
+                } else {
                     for j in 0..self.digest_size as usize {
                         left_digests[i][j] = self.leaf_digest[j];
                     }
                 }
 
-                // // digest_selector_gadget constraint
-                // for j in 0..digest_size as usize {
-                //     cs.enforce(
-                //         || format!("digest_selector_gadget[{}][{}]", i, j),
-                //         |lc| lc + address_bits_var[tree_depth as usize-1-i],
-                //         |lc| lc + right_digests_var[i][j] - left_digests_var[i][j],
-                //         |lc| lc + leaf_digest_var[j] - left_digests_var[i][j],
-                //     );
-                // }
-
+            // // digest_selector_gadget constraint
+            // for j in 0..digest_size as usize {
+            //     cs.enforce(
+            //         || format!("digest_selector_gadget[{}][{}]", i, j),
+            //         |lc| lc + address_bits_var[tree_depth as usize-1-i],
+            //         |lc| lc + right_digests_var[i][j] - left_digests_var[i][j],
+            //         |lc| lc + leaf_digest_var[j] - left_digests_var[i][j],
+            //     );
+            // }
             } else {
-                if self.address_bits[self.tree_depth as usize-1-i] == Some(E::one()) {
+                if self.address_bits[self.tree_depth as usize - 1 - i] == Some(E::one()) {
                     for j in 0..self.digest_size as usize {
                         right_digests[i][j] = internal_output[i][j];
                     }
-                }else {
+                } else {
                     for j in 0..self.digest_size as usize {
                         left_digests[i][j] = internal_output[i][j];
                     }
@@ -136,7 +140,7 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for MerkletreeDemo<E> {
                 for (j, x) in r.iter().enumerate() {
                     if Some(false) == x.get_value() {
                         computed_root[j] = Some(E::zero());
-                    }else {
+                    } else {
                         computed_root[j] = Some(E::one());
                     }
                 }
@@ -149,7 +153,7 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for MerkletreeDemo<E> {
                             Boolean::Is(ref v) => v.get_variable(),
                             Boolean::Not(ref v) => v.get_variable(),
                         });
-                    }else {
+                    } else {
                         computed_root_var.push(match x {
                             Boolean::Constant(c) => CS::one(),
                             Boolean::Is(ref v) => v.get_variable(),
@@ -159,7 +163,7 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for MerkletreeDemo<E> {
                 }
 
                 assert!(256 == computed_root.len());
-            }else {
+            } else {
                 // sha256Hash(left_digests[i], right_digests[i], internal_output[i]);
                 let mut content: Vec<Option<E>> = Vec::new();
                 content.append(&mut tmp_left);
@@ -177,30 +181,30 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for MerkletreeDemo<E> {
 
                 for (j, x) in r.iter().enumerate() {
                     if Some(false) == x.get_value() {
-                        internal_output[i-1][j] = Some(E::zero());
-                    }else {
-                        internal_output[i-1][j] = Some(E::one());
+                        internal_output[i - 1][j] = Some(E::zero());
+                    } else {
+                        internal_output[i - 1][j] = Some(E::one());
                     }
                 }
 
                 // 将sha256的计算结果输出线路接到internal_output_var之上
                 for (j, x) in r.iter().enumerate() {
                     if Some(false) == x.get_value() {
-                        internal_output_var[i-1].push(match x {
+                        internal_output_var[i - 1].push(match x {
                             Boolean::Constant(c) => CS::one(),
                             Boolean::Is(ref v) => v.get_variable(),
                             Boolean::Not(ref v) => v.get_variable(),
                         });
-                    }else {
-                        internal_output_var[i-1].push(match x {
-                            Boolean::Constant(c) =>  CS::one(),
+                    } else {
+                        internal_output_var[i - 1].push(match x {
+                            Boolean::Constant(c) => CS::one(),
                             Boolean::Is(ref v) => v.get_variable(),
-                            Boolean::Not(ref v) => v.get_variable(), 
+                            Boolean::Not(ref v) => v.get_variable(),
                         });
                     }
                 }
 
-                assert!(256 == internal_output[i-1].len());
+                assert!(256 == internal_output[i - 1].len());
             }
         }
 
@@ -277,23 +281,20 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for MerkletreeDemo<E> {
             }
         }
 
-
         // merkle_tree_check_read_gadget_contraint
         // 该部分一共有两个约束，一个是digest_selector_gadget的约束，一个是hash函数的约束
         println!("begin merkle_tree_check_read_gadget_contraint");
         for i in (0..self.tree_depth as usize).rev() {
             // digest_selector_gadget constraint
-            if i == self.tree_depth as usize -1 {
+            if i == self.tree_depth as usize - 1 {
                 for j in 0..self.digest_size as usize {
-                    
                     cs.enforce(
                         || format!("digest_selector_gadget[{}][{}]", i, j),
-                        |lc| lc + address_bits_var[self.tree_depth as usize-1-i],
+                        |lc| lc + address_bits_var[self.tree_depth as usize - 1 - i],
                         |lc| lc + right_digests_var[i][j] - left_digests_var[i][j],
                         |lc| lc + leaf_digest_var[j] - left_digests_var[i][j],
                     );
                 }
-
             } else {
                 for j in 0..self.digest_size as usize {
                     // let address_bits_val = AllocatedNum::<E>::getEFrValue(&address_bits[tree_depth as usize - 1 - i]);
@@ -312,7 +313,7 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for MerkletreeDemo<E> {
                     // }
                     cs.enforce(
                         || format!("digest_selector_gadget[{}][{}]", i, j),
-                        |lc| lc + address_bits_var[self.tree_depth as usize-1-i],
+                        |lc| lc + address_bits_var[self.tree_depth as usize - 1 - i],
                         |lc| lc + right_digests_var[i][j] - left_digests_var[i][j],
                         |lc| lc + internal_output_var[i][j] - left_digests_var[i][j],
                     );
@@ -322,14 +323,14 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for MerkletreeDemo<E> {
             // SHA256 hash 的约束已经在求解hash的output的时候已经完成。
             // TODO
         }
-        
+
         // 最后添加对计算结果检查的约束
         for i in 0..self.digest_size as usize {
             cs.enforce(
                 || format!("root_digest[{}] == computed_root[{}]", i, i),
                 |lc| lc + root_digest_var[i],
                 |lc| lc + CS::one(),
-                |lc| lc + computed_root_var[i], 
+                |lc| lc + computed_root_var[i],
             );
         }
 
@@ -339,12 +340,12 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for MerkletreeDemo<E> {
 
 #[test]
 fn test_merkletree() {
-    use curve::bn_256::{Fr};
+    use curve::bn_256::Fr;
     use math::test_rng;
+    use rand::Rng;
     use scheme::groth16::{
         create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
     };
-    use rand::Rng;
     /*prepare test*/
     // 构造withness的过程
     type EFr = Option<Fr>;
@@ -352,14 +353,15 @@ fn test_merkletree() {
     let mut digest_len: u64 = 256;
     let mut tree_depth: u64 = 16;
     // Vec::with_capacity(digest_len as usize); 只是申明最大容量，优化扩容过程
-    let mut path: Vec<Vec<EFr>> = vec![vec![Some(Fr::from(0u32)); digest_len as usize]; tree_depth as usize];
+    let mut path: Vec<Vec<EFr>> =
+        vec![vec![Some(Fr::from(0u32)); digest_len as usize]; tree_depth as usize];
 
     let mut pre_hash: Vec<Option<Fr>> = vec![Some(Fr::from(0u32)); digest_len as usize];
     for i in 0..digest_len {
         let mut randNum = test_rng().gen_range(0, 2);
         if 0 == randNum {
             pre_hash[i as usize] = Some(Fr::from(0u32));
-        }else {
+        } else {
             pre_hash[i as usize] = Some(Fr::from(1u32));
         }
     }
@@ -369,17 +371,25 @@ fn test_merkletree() {
     let mut address: u64 = 0;
 
     for i in (0..tree_depth).rev() {
-        let randNum = test_rng().gen_range(0,2);
-        let mut computed_is_right: bool = if randNum == 0 {false} else {true};
-        address |= if computed_is_right == true {1 << (tree_depth-1- i as u64)} else {0};
-        address_bits.push(if computed_is_right {Some(Fr::from(1u32))} else {Some(Fr::from(0u32))});
+        let randNum = test_rng().gen_range(0, 2);
+        let mut computed_is_right: bool = if randNum == 0 { false } else { true };
+        address |= if computed_is_right == true {
+            1 << (tree_depth - 1 - i as u64)
+        } else {
+            0
+        };
+        address_bits.push(if computed_is_right {
+            Some(Fr::from(1u32))
+        } else {
+            Some(Fr::from(0u32))
+        });
 
         let mut other: Vec<EFr> = vec![Some(Fr::from(0u32)); digest_len as usize];
         for i in 0..digest_len {
             let mut randNum = test_rng().gen_range(0, 2);
             if 0 == randNum {
                 other[i as usize] = Some(Fr::from(0u32));
-            }else {
+            } else {
                 other[i as usize] = Some(Fr::from(1u32));
             }
         }
@@ -393,7 +403,7 @@ fn test_merkletree() {
             // SHA256TwoToOneHashGadget::gethash(&tmp1, &tmp2, &h);
             content.append(&mut tmp1);
             content.append(&mut tmp2);
-        }else {
+        } else {
             // block.append(&mut tmp2);
             // block.append(&mut tmp1);
             // SHA256TwoToOneHashGadget::gethash(&tmp2, &tmp1, &h);
@@ -410,13 +420,13 @@ fn test_merkletree() {
         }
         // cs1 仅仅用来求hash值
         let mut cs1 = TestConstraintSystem::<Fr>::new();
-        let mut r = sha256(& mut cs1, &input_bits).unwrap();
+        let mut r = sha256(&mut cs1, &input_bits).unwrap();
         assert!(r.len() == 256);
 
         for (i, x) in r.iter().enumerate() {
             if false == x.get_value().unwrap() {
                 h[i] = Some(Fr::from(0u32));
-            }else {
+            } else {
                 h[i] = Some(Fr::from(1u32));
             }
         }
@@ -466,5 +476,4 @@ fn test_merkletree() {
     let proof = create_random_proof(c1, &params, rng).unwrap();
     println!("cs.num_contraints: {}", cs.num_constraints());
     assert!(verify_proof(&pvk, &proof, &[]).unwrap());
-
 }

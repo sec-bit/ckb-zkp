@@ -65,7 +65,7 @@ See [details](./cli)
 2. Variety of curves.
 3. Variety of zkp schemes.
 4. Multiple out-of-the-box gadgets.
-5. no-std is support.
+5. `no-std` is supported.
 
 ## Gadgets
 See more [details](./src/gadget)
