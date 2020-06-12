@@ -28,7 +28,7 @@ impl GadgetName for MiMC {
                 path.file_name()
                     .map(|f| f.to_str())
                     .flatten()
-                    .map(|f| f.to_owned())
+                    .map(|f| format!("{}.mimc", f))
                     .unwrap_or(format!("mimc")),
             )
         } else if args[0].starts_with("--string=") {
