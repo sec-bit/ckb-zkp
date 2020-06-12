@@ -49,10 +49,18 @@ pub fn main() -> i8 {
 
                         // execute the verification.
                         if verify_from_bytes(&data_buffer[0..data_len_result], &args) {
-                            debug!("Verification succeeded.");
+                            debug!(
+                                "Verification succeeded, vk size: {}, proof size: {}",
+                                args.len(),
+                                data_len_result
+                            );
                         // return 0;
                         } else {
-                            debug!("Verification failed.");
+                            debug!(
+                                "Verification failed, vk size: {}, proof size: {}",
+                                args.len(),
+                                data_len_result
+                            );
                             return -1;
                         }
                     }
@@ -74,4 +82,4 @@ pub fn main() -> i8 {
 }
 
 entry!(main);
-default_alloc!(4 * 1024, 256 * 1024, 64);
+default_alloc!(4 * 1024, 512 * 1024, 64);
