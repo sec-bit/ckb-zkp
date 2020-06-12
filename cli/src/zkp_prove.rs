@@ -5,62 +5,187 @@ use zkp::{prove_to_bytes, Curve, Gadget, Scheme};
 const PROOFS_DIR: &'static str = "./proofs_files";
 const SETUP_DIR: &'static str = "./trusted_setup";
 
+trait GadgetName {
+    fn handle(&self, args: &[String]) -> Result<(Gadget, String), String>;
+    fn options(&self) -> String;
+}
+
+struct MiMC;
+struct Greater;
+struct Less;
+struct Between;
+
+impl GadgetName for MiMC {
+    fn handle(&self, args: &[String]) -> Result<(Gadget, String), String> {
+        if args.len() < 1 {
+            return Err("unimplemented other file type.".to_owned());
+        }
+
+        let (bytes, filename) = if args[0].starts_with("--file=") {
+            let path = PathBuf::from(&args[0][7..]);
+            (
+                std::fs::read(&path).expect("file not found!"),
+                path.file_name()
+                    .map(|f| f.to_str())
+                    .flatten()
+                    .map(|f| f.to_owned())
+                    .unwrap_or(format!("mimc")),
+            )
+        } else if args[0].starts_with("--string=") {
+            (args[0][9..].as_bytes().to_vec(), format!("mimc"))
+        } else {
+            panic!("unimplemented other file type.")
+        };
+
+        Ok((Gadget::MiMC(bytes), filename))
+    }
+
+    fn options(&self) -> String {
+        "[--file=xxx | --string=xx]".to_owned()
+    }
+}
+
+impl GadgetName for Greater {
+    fn handle(&self, args: &[String]) -> Result<(Gadget, String), String> {
+        let sec = args[0]
+            .as_str()
+            .parse::<u64>()
+            .expect("Interger parse error");
+        let com = args[1]
+            .as_str()
+            .parse::<u64>()
+            .expect("Interger parse error");
+
+        Ok((Gadget::GreaterThan(sec, com), "greater".to_owned()))
+    }
+
+    fn options(&self) -> String {
+        "[secret_integer] [compared_interger]".to_owned()
+    }
+}
+
+impl GadgetName for Less {
+    fn handle(&self, args: &[String]) -> Result<(Gadget, String), String> {
+        let sec = args[0]
+            .as_str()
+            .parse::<u64>()
+            .expect("Interger parse error");
+        let com = args[1]
+            .as_str()
+            .parse::<u64>()
+            .expect("Interger parse error");
+
+        Ok((Gadget::GreaterThan(sec, com), "less".to_owned()))
+    }
+
+    fn options(&self) -> String {
+        "[secret_integer] [compared_interger]".to_owned()
+    }
+}
+
+impl GadgetName for Between {
+    fn handle(&self, args: &[String]) -> Result<(Gadget, String), String> {
+        let sec = args[0]
+            .as_str()
+            .parse::<u64>()
+            .expect("Interger parse error");
+        let from = args[1]
+            .as_str()
+            .parse::<u64>()
+            .expect("Interger parse error");
+        let to = args[2]
+            .as_str()
+            .parse::<u64>()
+            .expect("Interger parse error");
+
+        Ok((Gadget::Between(sec, from, to), "between".to_owned()))
+    }
+
+    fn options(&self) -> String {
+        "[secret_integer] [start_interger] [end_interger]".to_owned()
+    }
+}
+
+fn print_common() {
+    println!("");
+    println!("scheme:");
+    println!("    groth16      -- Groth16 zero-knowledge proof system. [Default]");
+    println!("    bulletproofs -- Bulletproofs zero-knowledge proof system.");
+    println!("");
+    println!("curve:");
+    println!("    bn_256    -- BN_256 pairing curve. [Default]");
+    println!("    bls12_381 -- BLS12_381 pairing curve.");
+    println!("");
+    println!("OPTIONS:");
+    println!("    --json    -- input/ouput use json type file.");
+    println!("    --prepare -- use prepare verify key when verify proof.");
+    println!("");
+}
+
+fn parse_gadget_name(g: &str) -> Result<Box<(dyn GadgetName + 'static)>, String> {
+    match g {
+        "mimc" => Ok(Box::new(MiMC)),
+        "greater" => Ok(Box::new(Greater)),
+        "less" => Ok(Box::new(Less)),
+        "between" => Ok(Box::new(Between)),
+        _ => Err(format!("{} unimplemented!", g)),
+    }
+}
+
 pub fn handle_args() -> Result<(Gadget, Scheme, Curve, String, String), String> {
     let args: Vec<_> = env::args().collect();
-    if args.len() != 5 && args.len() != 3 {
-        println!("Args. like: zkp-prove mimc --file=./README.md");
-        println!("            zkp-prove mimc groth16 bn_256 --file=./README.md");
-        println!("            zkp-prove mimc groth16 bn_256 --string=iamscretvalue");
+    if args.len() < 2 {
+        println!("zkp-prove");
+        println!("");
+        println!("Usage: zkp-prove [GADGET] <scheme> <curve> [GADGET OPTIONS] <OPTIONS>");
+        println!("");
+        println!("GADGET: ");
+        println!("    mimc    -- MiMC hash & proof.");
+        println!("    greater -- Greater than comparison proof.");
+        println!("    less    -- Less than comparison proof.");
+        println!("    between -- Between comparison proof.");
+        print_common();
+
         return Err("Params invalid!".to_owned());
     }
 
-    let (s, c, pk_file) = if args.len() == 3 {
-        (
-            Scheme::Groth16,
-            Curve::Bn_256,
-            format!("{}-{}-{}.pk", args[1], "groth16", "bn_256"),
-        )
-    } else {
-        let s = match args[2].as_str() {
-            "groth16" => Scheme::Groth16,
-            _ => Scheme::Groth16,
-        };
+    let g = parse_gadget_name(args[1].as_str())?;
 
-        let c = match args[3].as_str() {
-            "bn_256" => Curve::Bn_256,
-            "bls12_381" => Curve::Bls12_381,
-            _ => Curve::Bn_256,
-        };
+    if args.len() == 2 {
+        println!("zkp-prove {}", args[1]);
+        println!("");
+        println!(
+            "Usage: zkp-prove {} <scheme> <curve> {} <OPTIONS>",
+            args[1],
+            g.options()
+        );
+        print_common();
+        return Err("Params invalid!".to_owned());
+    }
 
-        (s, c, format!("{}-{}-{}.pk", args[1], args[2], args[3]))
+    let (s, c, n) = match args[2].as_str() {
+        "groth16" => match args[3].as_str() {
+            "bls12_381" => (Scheme::Groth16, Curve::Bls12_381, 4),
+            "bn_256" => (Scheme::Groth16, Curve::Bn_256, 4),
+            _ => (Scheme::Groth16, Curve::Bn_256, 3),
+        },
+        "bulletproofs" => match args[3].as_str() {
+            "bls12_381" => (Scheme::Bulletproofs, Curve::Bls12_381, 4),
+            "bn_256" => (Scheme::Bulletproofs, Curve::Bn_256, 4),
+            _ => (Scheme::Bulletproofs, Curve::Bn_256, 3),
+        },
+        "bls12_381" => (Scheme::Groth16, Curve::Bls12_381, 3),
+        "bn_256" => (Scheme::Groth16, Curve::Bn_256, 3),
+        _ => (Scheme::Groth16, Curve::Bn_256, 2),
     };
 
-    let f = args[if args.len() == 3 { 2 } else { 4 }].as_str();
-    let (bytes, filename) = if f.starts_with("--file=") {
-        let path = PathBuf::from(&f[7..]);
-        (
-            std::fs::read(&path).expect("file not found!"),
-            path.file_name()
-                .map(|s| s.to_str())
-                .flatten()
-                .map(|s| format!("{}.{}_proof", s, args[1].as_str()))
-                .unwrap_or(format!("{}_proof", args[1].as_str())),
-        )
-    } else if f.starts_with("--string=") {
-        (
-            f[9..].as_bytes().to_vec(),
-            format!("{}_proof", args[1].as_str()),
-        )
-    } else {
-        panic!("unimplemented other file type.")
-    };
+    let pk_file = format!("{}-{}-{}.pk", args[1], s.to_str(), c.to_str());
 
-    let g = match args[1].as_str() {
-        "mimc" => Gadget::MiMC(bytes),
-        _ => return Err(format!("{} unimplemented!", args[1])),
-    };
+    let (gadget, filename) = g.handle(&args[n..])?;
 
-    Ok((g, s, c, pk_file, filename))
+    let file = format!("{}.{}-{}.proof", filename, s.to_str(), c.to_str());
+
+    Ok((gadget, s, c, pk_file, file))
 }
 
 fn main() -> Result<(), String> {

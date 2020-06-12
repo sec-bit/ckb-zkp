@@ -5,12 +5,41 @@ use zkp::{Curve, Gadget, Scheme};
 const SETUP_DIR: &'static str = "./trusted_setup";
 
 mod mimc;
+mod range;
+
+fn print_common() {
+    println!("");
+    println!("scheme:");
+    println!("    groth16      -- Groth16 zero-knowledge proof system. [Default]");
+    println!("    bulletproofs -- Bulletproofs zero-knowledge proof system.");
+    println!("");
+    println!("curve:");
+    println!("    bn_256    -- BN_256 pairing curve. [Default]");
+    println!("    bls12_381 -- BLS12_381 pairing curve.");
+    println!("");
+    println!("OPTIONS:");
+    println!("    --prepare -- use prepare verify key when verify proof.");
+    println!("");
+}
+
+fn print_help() {
+    println!("trusted-setup");
+    println!("");
+    println!("Usage: trusted-setup [GADGET] <scheme> <curve> <OPTIONS>");
+    println!("");
+    println!("GADGET: ");
+    println!("    mimc    -- MiMC hash & proof.");
+    println!("    greater -- Greater than comparison proof.");
+    println!("    less    -- Less than comparison proof.");
+    println!("    between -- Between comparison proof.");
+    print_common();
+}
 
 pub fn handle_args() -> Result<(Gadget, Scheme, Curve, String, bool), String> {
     let args: Vec<_> = env::args().collect();
-    if args.len() != 4 && args.len() != 2 {
-        println!("Args. like: trusted-setup mimc");
-        println!("            trusted-setup mimc groth16 bn_256");
+    if args.len() < 2 {
+        print_help();
+
         return Err("Params invalid!".to_owned());
     }
 
@@ -18,30 +47,42 @@ pub fn handle_args() -> Result<(Gadget, Scheme, Curve, String, bool), String> {
 
     let g = match args[1].as_str() {
         "mimc" => Gadget::MiMC(vec![]),
+        "greater" => Gadget::GreaterThan(0, 0),
+        "less" => Gadget::GreaterThan(0, 0), // use some range setup
+        "between" => Gadget::GreaterThan(0, 0), // use some range setup
         _ => return Err(format!("{} unimplemented!", args[1])),
     };
 
-    let (s, c, filename) = if args.len() == 2 {
-        (
-            Scheme::Groth16,
-            Curve::Bn_256,
-            format!("{}-{}-{}", args[1], "groth16", "bn_256"),
-        )
+    let (s, c) = if args.len() < 3 {
+        (Scheme::Groth16, Curve::Bn_256)
     } else {
-        let s = match args[2].as_str() {
-            "groth16" => Scheme::Groth16,
-            "bulletproofs" => Scheme::Bulletproofs,
-            _ => return Err(format!("{} not supported!", args[2])),
-        };
-
-        let c = match args[3].as_str() {
-            "bn_256" => Curve::Bn_256,
-            "bls12_381" => Curve::Bls12_381,
-            _ => return Err(format!("{} not supported!", args[3])),
-        };
-
-        (s, c, format!("{}-{}-{}", args[1], args[2], args[3]))
+        match args[2].as_str() {
+            "groth16" => {
+                if args.len() < 4 {
+                    (Scheme::Groth16, Curve::Bn_256)
+                } else {
+                    match args[3].as_str() {
+                        "bls12_381" => (Scheme::Groth16, Curve::Bls12_381),
+                        _ => (Scheme::Groth16, Curve::Bn_256),
+                    }
+                }
+            }
+            "bulletproofs" => {
+                if args.len() < 4 {
+                    (Scheme::Bulletproofs, Curve::Bn_256)
+                } else {
+                    match args[3].as_str() {
+                        "bls12_381" => (Scheme::Bulletproofs, Curve::Bls12_381),
+                        _ => (Scheme::Bulletproofs, Curve::Bn_256),
+                    }
+                }
+            }
+            "bls12_381" => (Scheme::Groth16, Curve::Bls12_381),
+            _ => (Scheme::Groth16, Curve::Bn_256),
+        }
     };
+
+    let filename = format!("{}-{}-{}", args[1], s.to_str(), c.to_str());
 
     Ok((g, s, c, filename, is_pp))
 }
@@ -76,6 +117,7 @@ fn main() -> Result<(), String> {
 
     let (pk, vk) = match g {
         Gadget::MiMC(..) => handle_gadget!(mimc, ThreadRng, s, c, rng, is_pp)?,
+        Gadget::GreaterThan(..) => handle_gadget!(range, ThreadRng, s, c, rng, is_pp)?,
         _ => return Err(format!("{} unimplemented!", "Gadget")),
     };
 

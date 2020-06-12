@@ -9,12 +9,12 @@ license = "MIT/Apache-2.0"
 edition = "2018"
 
 [[bin]]
-path = "src/zkp_prove.rs"
-name = "zkp-prove"
-
-[[bin]]
 path = "src/zkp_verify.rs"
 name = "zkp-verify"
+
+[[bin]]
+path = "src/zkp_prove.rs"
+name = "zkp-prove"
 
 [[bin]]
 path = "src/trusted_setup/main.rs"

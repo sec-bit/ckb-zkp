@@ -40,6 +40,21 @@ impl Scheme {
             _ => Err(()),
         }
     }
+
+    pub fn to_str<'a>(&self) -> &'a str {
+        match self {
+            Scheme::Groth16 => "groth16",
+            Scheme::Bulletproofs => "bulletproofs",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Result<Self, ()> {
+        match s {
+            "groth16" => Ok(Scheme::Groth16),
+            "bulletproofs" => Ok(Scheme::Bulletproofs),
+            _ => Err(()),
+        }
+    }
 }
 
 /// Supported pairing curves for zkp use.
@@ -63,6 +78,21 @@ impl Curve {
         match bytes {
             0u8 => Ok(Curve::Bls12_381),
             1u8 => Ok(Curve::Bn_256),
+            _ => Err(()),
+        }
+    }
+
+    pub fn to_str<'a>(&self) -> &'a str {
+        match self {
+            Curve::Bls12_381 => "bls12_381",
+            Curve::Bn_256 => "bn_256",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Result<Self, ()> {
+        match s {
+            "bls12_381" => Ok(Curve::Bls12_381),
+            "bn_256" => Ok(Curve::Bn_256),
             _ => Err(()),
         }
     }
