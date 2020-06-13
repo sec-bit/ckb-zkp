@@ -85,7 +85,7 @@ capsule build --release
 
 ### Enable `debug!` macro in release mode
 
-**In `ckb-std` in version 0.2.2, `debug!` macro is disabled in release mode**. If you still want to enable `debug!` macro in **release** mode, insert `debug-assertions = true` under `[profile.release]` in `contracts/ckb-zkp/Cargo.toml`.
+**In `ckb-std` version 0.2.2 and newer, `debug!` macro is disabled in release mode**. If you still want to enable `debug!` macro in **release** mode, insert `debug-assertions = true` under `[profile.release]` in `contracts/ckb-zkp/Cargo.toml`.
 
 ## Tests
 
@@ -93,7 +93,38 @@ capsule build --release
 
 1. Generate a vk file and a proof file.
 
-   Generate a vk file and a proof file. See https://aciclo.net/zkp/zkp-toolkit#cli-command for help.
+   Use groth16 scheme & bn_256 curve:
+
+   1. Complete trusted-setup:
+
+      ```sh
+      cargo run --bin trusted-setup mimc
+      ```
+
+   2. Prove the secret string.
+
+      ```sh
+      cargo run --bin zkp-prove mimc --string=iamsecret
+      ```
+
+      When success, it will create a proof file at proofs_files.
+
+   3. (Optional) Do the verification.
+
+      ```sh
+      cargo run --bin zkp-verify mimc proofs_files/mimc.groth16-bn_256.proof
+      ```
+
+   Use groth16 as scheme and bls12_381 as curve:
+
+   ```sh
+   # trusted-setup
+   cargo run --bin trusted-setup mimc groth16 bls12_381
+   # Prove the secret string
+   cargo run --bin zkp-prove mimc groth16 bls12_381 --string=iamsecret
+   ```
+
+   See https://aciclo.net/zkp/zkp-toolkit#cli-command for further help.
 
    Put these files into anywhere of project folder, and assign the positions and names of the files in _./tests/src/tests.rs_. The default location and names suits the local dependency pattern.
 
@@ -122,7 +153,6 @@ CAPSULE_TEST_ENV=release cargo test -p tests --tests -- --nocapture
 ```
 
 You can uncomment the `#[ignore]` attribute before a test function to omit it.
-
 
 ## Deployment
 

@@ -28,6 +28,3 @@ lto = true
 opt-level = "s"
 codegen-units = 16
 debug = 0
-
-[workspace]
-exclude = ["zkp-toolkit"]
