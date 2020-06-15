@@ -1,0 +1,15 @@
+{
+    "tabWidth": 4,
+    "printWidth": 89,
+    "endOfLine": "lf",
+    "overrides": [
+        {
+            "files": ["*.md", "*.markdown"],
+            "options": { "tabWidth": 2 }
+        },
+        {
+            "files": ["*.yaml", "*.yml"],
+            "options": { "tabWidth": 2 }
+        }
+    ]
+}

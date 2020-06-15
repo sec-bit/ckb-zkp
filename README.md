@@ -57,7 +57,8 @@ Smart contracts that run a zero-knowledge proof system on the [Nervos CKB chain]
      [dependencies]
      zkp = { git = "https://github.com/sec-bit/zkp-toolkit.git", rev = "3bfcda742a", default-features = false, features = [
          "groth16",
-         "bn_256"
+         "bn_256",
+         "bls12_381",
      ] }
      ```
 
@@ -91,19 +92,21 @@ capsule build --release
 
 ### Prerequises for testing
 
-1. Generate a vk file and a proof file.
+1. Go to _./dependencies/zkp-toolkit/cli_ and enerate a vk file and a proof file using `zkp-toolkit`. Then put these files into anywhere of project folder, and assign the positions and names of the files in _./tests/src/tests.rs_. The default location and names suits the local dependency pattern.
 
    Use groth16 scheme & bn_256 curve:
 
    1. Complete trusted-setup:
 
       ```sh
+      # ./dependencies/zkp-toolkit/cli
       cargo run --bin trusted-setup mimc
       ```
 
    2. Prove the secret string.
 
       ```sh
+      # ./dependencies/zkp-toolkit/cli
       cargo run --bin zkp-prove mimc --string=iamsecret
       ```
 
@@ -112,42 +115,37 @@ capsule build --release
    3. (Optional) Do the verification.
 
       ```sh
+      # ./dependencies/zkp-toolkit/cli
       cargo run --bin zkp-verify mimc proofs_files/mimc.groth16-bn_256.proof
       ```
 
    Use groth16 as scheme and bls12_381 as curve:
 
    ```sh
+   # ./dependencies/zkp-toolkit/cli
    # trusted-setup
    cargo run --bin trusted-setup mimc groth16 bls12_381
    # Prove the secret string
    cargo run --bin zkp-prove mimc groth16 bls12_381 --string=iamsecret
+   # Verification.
+   cargo run --bin zkp-verify mimc groth16 bls12_381 proofs_files/mimc.groth16-bls12_381.proof
    ```
 
    See https://aciclo.net/zkp/zkp-toolkit#cli-command for further help.
 
-   Put these files into anywhere of project folder, and assign the positions and names of the files in _./tests/src/tests.rs_. The default location and names suits the local dependency pattern.
-
 ### Run tests
 
-Make sure vk file(s) and proof file(s) are prepared.
+**Make sure vk file(s) and proof file(s) are prepared.**
 
 Then type the following command.
 
-ATTENTION: If you build the contract with `--release` flag, you should run test with `--release`, and vice versa.
+ATTENTION: If you build the contract with `--release` flag, you should run test with `CAPSULE_TEST_ENV=release`.
 
-```sh
-# Dev mode
-capsule test
-# Release mode, built with --release flag.
-capsule test --release
-```
-
-If you find it slow to run testing, use the following command instead:
+the flag `--test-threads 1` after `--` is used to ensure `debug!` outputs print in order.
 
 ```sh
 # Dev mode contracts.
-cargo test -p tests --tests -- --nocapture
+cargo test -p tests --tests -- --nocapture --test-threads 1
 # Release mode contracts.
 CAPSULE_TEST_ENV=release cargo test -p tests --tests -- --nocapture
 ```
@@ -205,29 +203,54 @@ opt-level = "z"
 codegen-units = 1
 ```
 
-To strip the binary, use `rustflags = "-C link-arg=-s"` in cargo config.
+To strip the binary, use `rustflags = "-C link-arg=-s"` in cargo config, which is a default option in capsule with release compiling mode.
 
 We will not try to explain what each option means (Explained in _The Cargo Book_), but list the size and running cost of the contract binaries under different option combinations.
 
-Common setup: Release mode, stripped, using `capsule` to build and test and measure running costs.
+Test setup:
 
-| LTO   | `opt-level` | `codegen-units` | Binary size(Byte) | cycles        |
-| ----- | ----------- | --------------- | ----------------- | ------------- |
-| false | not set     | not set         | 213792            | 102902773     |
-| true  | not set     | not set         | 221912            | 101517377     |
-| true  | “z”         | not set         | 90840             | 279663892     |
-| false | “z”         | not set         | 99104             | failed to run |
-| true  | “z”         | 1               | 74456             | 290196835     |
-| true  | “s”         | 1               | 86744             | 203553832     |
+- Release mode;
+- stripped;
+- using `jjy0/ckb-capsule-recipe-rust:2020-6-2` to build and test and measure running costs;
+- using scheme groth16 and curve bn_256;
+- `ckb-std` 0.3.0;
+- `zkp-toolkit` revision 3bfcda742a;
+- `ckb-tool` and `ckb-testtool` version 0.0.1.
+
+| LTO     | `opt-level` | `codegen-units` | Binary size(Byte) | Execution cost (cycles) |
+| ------- | ----------- | --------------- | ----------------- | ----------------------- |
+| not set | not set     | not set         | 496472            | 94548494                |
+| true    | not set     | not set         | 418576            | 99437440                |
+| not set | “z”         | not set         | 217944            | 1145224343              |
+| true    | “z”         | not set         | 176912            | 212607081               |
+| not set | “z”         | 1               | 136024            | 1180836966              |
+| true    | “z”         | 1               | 115472            | 222454238               |
+| true    | “s”         | 1               | 213776            | 158433197               |
 
 Here comes a rough result:
 
-- Enable LTO, use `opt-level = "z"`, `codegen-units = 1` for minimun binary size, with a large cycle consumption.
-- Enable LTO, use `opt-level = "s"`, `codegen-units = 1` for a balance of binary size and cycle consumption.
+- Enabling LTO, use `opt-level = "z"`, `codegen-units = 1` for minimun binary size, with a large cycle consumption.
+- Enabling LTO, use `opt-level = "s"`, `codegen-units = 1` will increase the binary size, and decrease the cycle consumption.
 
 ## Curve benchmark
 
-TODO, test curve bn256 and bls12_381 for cycle consumption.
+Test setup:
+
+- Release mode;
+- stripped;
+- `LTO = true`, `codegen-units = 1`;
+- using `jjy0/ckb-capsule-recipe-rust:2020-6-2` to build and test and measure running costs;
+- using scheme groth16 and curve bn_256;
+- `ckb-std` 0.3.0;
+- `zkp-toolkit` revision 3bfcda742a;
+- `ckb-tool` and `ckb-testtool` version 0.0.1.
+
+| Curve     | `opt-level` | Execution cost (cycles) |
+| --------- | ----------- | ----------------------- |
+| bn_256    | "z"         | 222454238               |
+| bn_256    | "s"         | 158433197               |
+| bls12_381 | "z"         | 354845813               |
+| bls12_381 | "s"         | 314480688               |
 
 ## Troubleshooting
 
