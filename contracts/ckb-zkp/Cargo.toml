@@ -11,7 +11,8 @@ ckb-std = "0.3.0"
 ckb-types = { package = "ckb-standalone-types", version = "0.0.1-pre.1", default-features = false }
 zkp = { path = "../../dependencies/zkp-toolkit", default-features = false, features = [
     "groth16",
-    "bn_256"
+    "bn_256",
+    "bls12_381",
 ] }
 
 [profile.release]
@@ -19,7 +20,7 @@ zkp = { path = "../../dependencies/zkp-toolkit", default-features = false, featu
 # debug-assertions = true
 overflow-checks = true
 lto = true
-opt-level = "s"
+opt-level = "z"
 codegen-units = 1
 
 [profile.dev]

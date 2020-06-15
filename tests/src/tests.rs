@@ -9,16 +9,16 @@ use ckb_tool::ckb_types::{
 use std::fs::File;
 use std::io::Read;
 
-const MAX_CYCLES: u64 = 1000_000_000;
+const MAX_CYCLES: u64 = 10000_000_000;
 
 // Relative path starts from capsuled-contracts/tests.
 const VK_DIR: &str = "../dependencies/zkp-toolkit/cli/trusted_setup/";
 const PROOF_DIR: &str = "../dependencies/zkp-toolkit/cli/proofs_files/";
 
 // Names of vk files and proof files.
-const VK_BN_256 : &str= "mimc-groth16-bn_256.vk";
+const VK_BN_256: &str = "mimc-groth16-bn_256.vk";
 const PROOF_BN_256: &str = "mimc.groth16-bn_256.proof";
-const VK_BLS12_381 : &str= "mimc-groth16-bls12_381.vk";
+const VK_BLS12_381: &str = "mimc-groth16-bls12_381.vk";
 const PROOF_BLS12_381: &str = "mimc.groth16-bls12_381.proof";
 
 #[test]
@@ -104,15 +104,14 @@ fn build_test_context(proof_file: Bytes, vk: Bytes) -> (Context, TransactionView
 
 fn proving_test(vk_file: &str, proof_file: &str) {
     let mut proof_file =
-        File::open(format!("{}/{}", PROOF_DIR, proof_file)).expect("read proof file");
+        File::open(format!("{}/{}", PROOF_DIR, proof_file)).expect("proof file not exists");
     let mut proof_bin = Vec::new();
     // read the whole file
     proof_file
         .read_to_end(&mut proof_bin)
         .expect("Failed to read proof file");
 
-    let mut vk_file =
-        File::open(format!("{}/{}", VK_DIR, vk_file)).expect("Failed to read VK file");
+    let mut vk_file = File::open(format!("{}/{}", VK_DIR, vk_file)).expect("VK file not exists");
     let mut vk_bin = Vec::new();
     vk_file
         .read_to_end(&mut vk_bin)
