@@ -1,6 +1,7 @@
+use serde_json::json;
 use std::env;
 use std::path::PathBuf;
-use zkp::{prove_to_bytes, Curve, Gadget, Scheme};
+use zkp::{prove, Curve, Gadget, GadgetProof, Scheme};
 
 const PROOFS_DIR: &'static str = "./proofs_files";
 const SETUP_DIR: &'static str = "./trusted_setup";
@@ -132,7 +133,7 @@ fn parse_gadget_name(g: &str) -> Result<Box<(dyn GadgetName + 'static)>, String>
     }
 }
 
-pub fn handle_args() -> Result<(Gadget, Scheme, Curve, String, String), String> {
+pub fn handle_args() -> Result<(Gadget, Scheme, Curve, String, String, bool, bool), String> {
     let args: Vec<_> = env::args().collect();
     if args.len() < 2 {
         println!("zkp-prove");
@@ -150,6 +151,8 @@ pub fn handle_args() -> Result<(Gadget, Scheme, Curve, String, String), String> 
     }
 
     let g = parse_gadget_name(args[1].as_str())?;
+    let is_pp = args.contains(&"--prepare".to_owned());
+    let is_json = args.contains(&"--json".to_owned());
 
     if args.len() == 2 {
         println!("zkp-prove {}", args[1]);
@@ -185,11 +188,17 @@ pub fn handle_args() -> Result<(Gadget, Scheme, Curve, String, String), String> 
 
     let file = format!("{}.{}-{}.proof", filename, s.to_str(), c.to_str());
 
-    Ok((gadget, s, c, pk_file, file))
+    Ok((gadget, s, c, pk_file, file, is_pp, is_json))
+}
+
+fn to_hex(v: &[u8]) -> String {
+    let mut s = String::with_capacity(v.len() * 2);
+    s.extend(v.iter().map(|b| format!("{:02x}", b)));
+    s
 }
 
 fn main() -> Result<(), String> {
-    let (g, s, c, pk_file, filename) = handle_args()?;
+    let (g, s, c, pk_file, mut filename, _is_pp, is_json) = handle_args()?;
 
     // load pk file.
     let mut pk_path = PathBuf::from(SETUP_DIR);
@@ -198,25 +207,45 @@ fn main() -> Result<(), String> {
         return Err(format!("Cannot found setup file: {:?}", pk_path));
     }
     let pk = std::fs::read(&pk_path).unwrap();
-    let proof = prove_to_bytes(g, s, c, &pk, rand::thread_rng()).unwrap();
+    let proof = prove(g, s, c, &pk, rand::thread_rng()).unwrap();
 
     let mut path = PathBuf::from(PROOFS_DIR);
     if !path.exists() {
         std::fs::create_dir_all(&path).unwrap();
     }
+
+    if is_json {
+        filename.push_str(".json");
+    }
+
     path.push(filename);
     println!("Proof file: {:?}", path);
 
-    // -- json output style
-    // {
-    //     "gadget": "mimc",
-    //     "scheme": "groth16",
-    //     "curve": "bn_256",
-    //     "params": ["0xmimchash"],
-    //     "proof": "0xsss"
-    // }
+    if is_json {
+        let (name, params, p) = match proof.p {
+            GadgetProof::MiMC(hash, proof) => ("mimc", vec![to_hex(&hash)], to_hex(&proof)),
+            GadgetProof::GreaterThan(n, proof) => {
+                ("greater", vec![format!("{}", n)], to_hex(&proof))
+            }
+            GadgetProof::LessThan(n, proof) => ("less", vec![format!("{}", n)], to_hex(&proof)),
+            GadgetProof::Between(l, r, proof) => (
+                "between",
+                vec![format!("{}", l), format!("{}", r)],
+                to_hex(&proof),
+            ),
+        };
 
-    std::fs::write(path, proof).unwrap();
+        let content = json!({
+            "gadget": name,
+            "scheme": proof.s.to_str(),
+            "curve": proof.c.to_str(),
+            "params": params,
+            "proof": p
+        });
+        serde_json::to_writer(&std::fs::File::create(path).unwrap(), &content).unwrap();
+    } else {
+        std::fs::write(path, proof.to_bytes()).unwrap();
+    }
 
     Ok(())
 }
