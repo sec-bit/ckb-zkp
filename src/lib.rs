@@ -286,14 +286,14 @@ macro_rules! handle_curve_prove {
         match $c {
             Curve::Bls12_381 => {
                 #[cfg(not(feature = "bls12_381"))]
-                return Err(());
+                panic!("Cound not found bls12_381 feature");
 
                 #[cfg(feature = "bls12_381")]
                 $func_name::<curve::Bls12_381, $rng_name>($g, $pk, $rng)
             }
             Curve::Bn_256 => {
                 #[cfg(not(feature = "bn_256"))]
-                return Err(());
+                panic!("Cound not found bn_256 feature");
 
                 #[cfg(feature = "bn_256")]
                 $func_name::<curve::Bn_256, $rng_name>($g, $pk, $rng)
@@ -307,7 +307,7 @@ macro_rules! handle_gadget_prove {
         match $s {
             Scheme::Groth16 => {
                 #[cfg(not(feature = "groth16"))]
-                return Err(());
+                panic!("Cound not found groth16 feature");
 
                 #[cfg(feature = "groth16")]
                 {
@@ -328,14 +328,14 @@ macro_rules! handle_curve_verify {
         match $c {
             Curve::Bls12_381 => {
                 #[cfg(not(feature = "bls12_381"))]
-                return false;
+                panic!("Cound not found bls12_381 feature");
 
                 #[cfg(feature = "bls12_381")]
                 $func_name::<curve::Bls12_381>($gp, $vk, $pp).unwrap_or(false)
             }
             Curve::Bn_256 => {
                 #[cfg(not(feature = "bn_256"))]
-                return false;
+                panic!("Cound not found bn_256 feature");
 
                 #[cfg(feature = "bn_256")]
                 $func_name::<curve::Bn_256>($gp, $vk, $pp).unwrap_or(false)
@@ -349,7 +349,7 @@ macro_rules! handle_gadget_verify {
         match $s {
             Scheme::Groth16 => {
                 #[cfg(not(feature = "groth16"))]
-                return false;
+                panic!("Cound not found groth16 feature");
 
                 #[cfg(feature = "groth16")]
                 {
