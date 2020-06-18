@@ -1,6 +1,8 @@
 # ckb-zkp
 
-Smart contracts that run a zero-knowledge proof system on the [Nervos CKB chain](https://www.nervos.org/). CKB developers and users can implement various complex zero-knowledge verification processes through the simplest contract invocation. Cooperate with zkp-toolkit to complete offline prove and online verify.
+Smart contracts that run as zero-knowledge proof verifiers on the [Nervos CKB chain](https://www.nervos.org/). CKB developers and users can implement various complex zero-knowledge verification processes through the simplest contract invocation. Cooperate with zkp-toolkit to complete off-chain prove and on-chain verify.
+
+This project is part of *zkp-toolkit-ckb* and is supported by the Nervos Foundation. Check out the [original proposal](https://talk.nervos.org/t/secbit-labs-zkp-toolkit-ckb-a-zero-knowledge-proof-toolkit-for-ckb/4254) and [grant announcement](https://medium.com/nervosnetwork/three-new-ecosystem-grants-awarded-892b97e8bc06).
 
 ## Table of contents
 
@@ -18,18 +20,20 @@ Smart contracts that run a zero-knowledge proof system on the [Nervos CKB chain]
     - [Binary optimization](#binary-optimization)
     - [Curve benchmark](#curve-benchmark)
     - [Impacts of disabling `zkp-toolkit` feature](#impacts-of-disabling-zkp-toolkit-feature)
+    - [Further optimizations](#further-optimizations)
   - [Troubleshooting](#troubleshooting)
     - [`capsule` complained `error: Can't found capsule.toml, current directory is not a project`](#capsule-complained-error-cant-found-capsuletoml-current-directory-is-not-a-project)
     - [I can't see any output in the ckb's log on dev vhain.](#i-cant-see-any-output-in-the-ckbs-log-on-dev-vhain)
     - [The test can't find contract binary/proof file/vk file.](#the-test-cant-find-contract-binaryproof-filevk-file)
     - [How is the project mounted into the Docker container?](#how-is-the-project-mounted-into-the-docker-container)
   - [Acknowledgement](#acknowledgement)
+  - [Security](#security)
   - [References](#references)
   - [License](#license)
 
 ## Prerequisites
 
-1. Install the development framework [`capsule`](https://github.com/jjyr/capsule) by jjy, a developer of nervos network. Access its [wiki page](https://github.com/nervosnetwork/capsule/wiki) for more details about `capsule`.
+1. Install the development framework [`capsule`](https://github.com/jjyr/capsule) by jjy, a developer of the Nervos network. Access its [wiki page](https://github.com/nervosnetwork/capsule/wiki) for more details about `capsule`.
 
 <!-- TODO update capsule revision -->
 
@@ -53,7 +57,7 @@ cargo install capsule --git https://github.com/jjyr/capsule.git --rev=089a5505
 
    - `zkp-toolkit` is available on Github or crates.io, and you don't need to modify `zkp-toolkit`.
 
-     Simply use git url or version tag in manifest of the contract. If you want to modify the `zkp-toolkit` library, see the section below.
+     Simply use the git URL or version tag in the manifest of the contract. If you want to modify the `zkp-toolkit` library, see the section below.
 
      Specify the revision of dependency `zkp-toolkit`.
 
@@ -88,11 +92,11 @@ cargo install capsule --git https://github.com/jjyr/capsule.git --rev=089a5505
      ] }
      ```
 
-     Reason: During early development, the dependency `zkp-toolkit` is not available via a public git url, so we can only access this dependency via local path.
+     Reason: During early development, the dependency `zkp-toolkit` is not available via a public git URL, so we can only access this dependency via a local path.
 
 ## Build contracts
 
-Like Cargo, you can choose to build contract in **dev** mode or **release** mode. The product under release mode is suitable for deployment with a reasonable size and execution consumption, and, `debug!` macro is disabled. Dev mode product allows you to use `debug!` macro to print logs in ckb log, but on cost of larger binary size and execution cycles. The product resides in _./build/[release|debug]/ckb-zkp_.
+Like Cargo, you can choose to build the contract in **dev** mode or **release** mode. The product under release mode is suitable for deployment with a reasonable size and execution consumption, and, `debug!` macro is disabled. Dev mode product allows you to use `debug!` macro to print logs in ckb log, but on the cost of larger binary size and execution cycles. The product resides in _./build/[release|debug]/ckb-zkp_.
 
 Note that: all the `capsule` commands should be executed at the project root
 
@@ -110,9 +114,9 @@ capsule build --release
 
 ## Tests
 
-### Prerequises for testing
+### Prerequisites for testing
 
-1. Go to _./dependencies/zkp-toolkit/cli_ and enerate a vk file and a proof file using `zkp-toolkit`. Then put these files into anywhere of project folder, and assign the positions and names of the files in _./tests/src/tests.rs_. The default location and names suits the local dependency pattern.
+1. Go to _./dependencies/zkp-toolkit/cli_ and generate a vk file and a proof file using `zkp-toolkit`. Then put these files into anywhere of the project folder, and assign the positions and names of the files in _./tests/src/tests.rs_. The default location and names suit the local dependency pattern.
 
    Use groth16 scheme & bn_256 curve:
 
@@ -130,7 +134,7 @@ capsule build --release
       cargo run --bin zkp-prove mimc --string=iamsecret
       ```
 
-      When success, it will create a proof file at proofs_files.
+      When successful, it will create a proof file at proofs_files.
 
    3. (Optional) Do the verification.
 
@@ -159,7 +163,7 @@ capsule build --release
 
 Then type the following command.
 
-ATTENTION: If you build the contract with `--release` flag, you should run test with `CAPSULE_TEST_ENV=release`.
+ATTENTION: If you build the contract with `--release` flag, you should run tests with `CAPSULE_TEST_ENV=release`.
 
 the flag `--test-threads 1` after `--` is used to ensure `debug!` outputs print in order.
 
@@ -180,9 +184,9 @@ In file _./tests/src/tests.rs_, you can uncomment the `#[ignore]` attribute befo
 
 `Capsule` brings out-of-box contract deploying and migrating. It works for development and test on dev chain. To deploy a contract you have just cooked, you need:
 
-- A running ckb client on local machine or on the net.
+- A running ckb client on the local machine or the net.
 - A ckb-cli executable. `capsule` uses ckb-cli to interact with ckb client.
-- An account with sufficient CKBs for deployment (1 Byte of contract binary will comsume 1 CKB. The transaction body will also take some extra CKBs, but not much). This account should be imported into ckb-cli.
+- An account with sufficient CKBs for deployment (1 Byte of contract binary will consume 1 CKB. The transaction body will also take some extra CKBs, but not much). This account should be imported into ckb-cli.
 - A deployment manifest _./deployment.toml_, which assigns the contract binary and cell lock-arg.
 
 When everything needed is met, you should theoretically be able to deploy the contract. Use the command below to launch the transaction, and note that commonly the `<ADDRESS>` is a 46-bit alphanumeric string (Starting with `ckt1` if you use a test net or dev chain).
@@ -194,7 +198,7 @@ capsule deploy --address <ADDRESS>
 
 ### Invoking the contract on-chain
 
-TODO: No ready-to-use gear for invoking, use `ckb-cli` or an sdk to build a transaction to invoke the contract.
+TODO: No ready-to-use gear for invoking, use `ckb-cli`, or an SDK to build a transaction to invoke the contract.
 
 ### Debugging the `capsule` itself (Temporary feature)
 
@@ -209,7 +213,7 @@ RUST_LOG=capsule=trace capsule deploy --address <ADDRESS>
 
 ### Binary optimization
 
-In ckb, the costs comes from the size of the built transaction. Heavier in size means higher in cost, while running cost (total instructs executed).So several compiling options are used to try to reduce the contract binary size.
+In ckb, the costs come from the size of the built transaction. Heavier in size means higher in cost, while running cost (total instructions executed) has little impact on the deployment and invocation of contracts. So several compiling options are used to try to reduce the contract binary size.
 
 - To build in release mode, this is enabled by default.
 - LTO
@@ -231,7 +235,7 @@ opt-level = "z"
 codegen-units = 1
 ```
 
-To strip the binary, use `rustflags = "-C link-arg=-s"` in cargo config, which is a default option in capsule with release compiling mode.
+To strip the binary, use `rustflags = "-C link-arg=-s"` in cargo config, which is a default option in Capsule with release compiling mode.
 
 We will not try to explain what each option means (Explained in _The Cargo Book_), but list the size and running cost of the contract binaries under different option combinations.
 
@@ -262,7 +266,7 @@ Here comes a rough result:
 
 ### Curve benchmark
 
-Currently we use two different curves in proving and verifying, so we performed a simple benchmark on execution costs separately.
+Currently, we use two different curves in proving and verifying, so we performed a simple benchmark on execution costs separately.
 
 Test setup:
 
@@ -284,7 +288,7 @@ Test setup:
 
 ### Impacts of disabling `zkp-toolkit` feature
 
-Different curves are enabled as crate features in the contract. Amount of features enabled impact the binary size and execution cost.
+Different curves are enabled as crate features in the contract. The number of features enabled will impact the binary size and execution cost.
 
 Test setup:
 
@@ -305,7 +309,11 @@ Test setup:
 | bls12_381, bn_256 | 115472            | bn_256      | 222454238               | 0                   |
 | bls12_381, bn_256 | 115472            | bls12_381   | 354845813               | 0                   |
 
+### Further optimizations
 
+We have accomplished the main goal we set for the Milestone-I of the [zkp-toolkit-ckb](https://talk.nervos.org/t/secbit-labs-zkp-toolkit-ckb-a-zero-knowledge-proof-toolkit-for-ckb/4254), which was a simple on-chain verifier for CKB. The proof-of-concept smart contract code shows that we can make a usable zkp verifier for CKB with pure Rust without modifying the underlying chain. This also gives us a baseline on the performance of zkp verifiers for CKB-VM.
+
+We'll implement more zkp verifiers in the following milestones, looking at reducing the binary size and [execution](https://xuejie.space/2020_03_03_introduction_to_ckb_script_programming_performant_wasm/) [cost](https://xuejie.space/2020_04_09_language_choices/), as well as the best practice to integrate with other contracts.
 
 ## Troubleshooting
 
@@ -313,7 +321,7 @@ Test setup:
 
 All the commands executed by `capsule` should be executed under the project root.
 
-### I can't see any output in the ckb's log on dev vhain.
+### I can't see any output in the CKB's log on dev chain.
 
 Modify ckb's configuration as below:
 
@@ -334,15 +342,19 @@ capsule build && capsule test
 capsule build --release && capsule test --release
 ```
 
-As capsule executes building and testing in docker, absolute path may not work as expected, so **use relative path**. And currently capsule (jjyr/capsule revision 2f9513f8) mount the whole project folder into docker, so any relative location inside the project folder is allowed.
+As capsule executes building and testing in docker, the absolute path may not work as expected, so **use relative path**. And currently, the Capsule (jjyr/capsule revision 2f9513f8) mount the whole project folder into docker, so any relative location inside the project folder is allowed.
 
 ### How is the project mounted into the Docker container?
 
-In the fork of `jjyr/capsule` revision `2f9513f8`, `capsule` mounts the project folder into the container with path _/code_. But in the main source `nervosnetwork/capsule`, `capsule` may only mount the contract folder into the container. As docker is used, absolute path is not recommended.
+In the fork of `jjyr/capsule` revision `2f9513f8`, `capsule` mounts the project folder into the container with path _/code_. But in the main source `nervosnetwork/capsule`, `capsule` may only mount the contract folder into the container. As docker is used, the absolute path is not recommended.
 
 ## Acknowledgement
 
-- Many thanks to [jjy](https://github.com/jjyr), a developer of [nervosnetwork](https://github.com/nervosnetwork), for his selfless advise on this project.
+- Many thanks to [jjy](https://github.com/jjyr), a developer of [nervosnetwork](https://github.com/nervosnetwork), for his selfless help and advice on this project.
+
+## Security
+
+This project is still under active development and is currently being used for research and experimental purposes only, please **DO NOT USE IT IN PRODUCTION** for now.
 
 ## References
 
