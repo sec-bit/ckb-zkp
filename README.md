@@ -1,13 +1,19 @@
 # zkp-toolkit
 
 ## Introduction
-Zero-knowledge proof system toolkit with pure Rust.
 
-Current zero-knowledge proof library is too low-level, and users must have a good knowledge before they can use it. The purpose of this project is to lower the difficulty for using zero-knowledge proof, and easy to use, so it can be used by users of all levels.
-The project now is FOR EXPERIMENTS, DONOT USE IN PRODUCTION.
+Zero-knowledge proofs toolkit with pure Rust, empowering the community with the cutting-edge techniques of zero-knowledge proofs to develop all kinds of decentralized applications.
+
+The project is going to bridge the gap of cryptographic engineering between thriving academic research and aspiring dAPPs developers, by providing multiple zkp scheme and curve options, a more user-friendly interface, many useful gadget libraries, and many more tutorials and examples.
+
+This project is part of *zkp-toolkit-ckb* and is supported by the Nervos Foundation. Check out the [original proposal](https://talk.nervos.org/t/secbit-labs-zkp-toolkit-ckb-a-zero-knowledge-proof-toolkit-for-ckb/4254) and [grant announcement](https://medium.com/nervosnetwork/three-new-ecosystem-grants-awarded-892b97e8bc06).
+
+It can be used in conjunction with the ckb-zkp project to implement on-chain zkp verifiers for the CKB-VM.
 
 ## Example
-Use we supported MiMC gadget and groth16 zero-knowledge proof as an example. 
+
+Use the MiMC gadget and Groth16 scheme we supported as an example.
+
 ```rust
 use rand::prelude::*;
 use zkp::curve::bn_256::{Bn_256, Fr};
@@ -57,7 +63,7 @@ fn main() {
 }
 ```
 
-## Cli-Command.
+## CLI-Command.
 See [details](./cli)
 
 ## Features
@@ -76,6 +82,9 @@ See more [details](./src/gadget)
 - Boolean
 - ... Continue others...
 
+## Security
+
+This project is still under active development and is currently being used for research and experimental purposes only, please **DO NOT USE IT IN PRODUCTION** for now.
 
 ## License
 
