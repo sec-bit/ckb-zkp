@@ -79,6 +79,8 @@ cargo install capsule --git https://github.com/jjyr/capsule.git --rev=089a5505
      Specify local dependency in contract's Cargo manifest:
 
      ```toml
+     # File: ./contracts/ckb-zkp/Cargo.toml
+     [dependencies]
      zkp = { path = "../../dependencies/zkp-toolkit", default-features = false, features = [
          "groth16",
          "bn_256",
