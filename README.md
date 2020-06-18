@@ -8,11 +8,11 @@ The project is going to bridge the gap of cryptographic engineering between thri
 
 This project is part of *zkp-toolkit-ckb* and is supported by the Nervos Foundation. Check out the [original proposal](https://talk.nervos.org/t/secbit-labs-zkp-toolkit-ckb-a-zero-knowledge-proof-toolkit-for-ckb/4254) and [grant announcement](https://medium.com/nervosnetwork/three-new-ecosystem-grants-awarded-892b97e8bc06).
 
-It can be used in conjunction with the ckb-zkp project to implement on-chain zkp verifiers for the CKB-VM.
+It can be used in conjunction with the [ckb-zkp](https://github.com/sec-bit/ckb-zkp) project to implement on-chain zkp verifiers for the CKB-VM.
 
 ## Example
 
-Use the MiMC gadget and Groth16 scheme we supported as an example.
+Use the [MiMC](http://eprint.iacr.org/2016/492) gadget and [Groth16](https://eprint.iacr.org/2016/260) scheme we supported as an example.
 
 ```rust
 use rand::prelude::*;
@@ -63,24 +63,32 @@ fn main() {
 }
 ```
 
-## CLI-Command.
-See [details](./cli)
-
 ## Features
-1. Efficient mathematics compute.
+
+1. Efficient computation.
 2. Variety of curves.
 3. Variety of zkp schemes.
 4. Multiple out-of-the-box gadgets.
 5. `no-std` is supported.
 
+Currently, [Groth16](https://eprint.iacr.org/2016/260) and [bulletproofs](https://crypto.stanford.edu/bulletproofs/) are supported. You can describe zkp circuits for the Groth16 scheme through the powerful constraint system. Specially, we implemented a modified version of bulletproofs with R1CS support. It only supports describe constraints in matrix for now and we're porting the constraint system to it.
+
+You can check the [original proposal](https://talk.nervos.org/t/secbit-labs-zkp-toolkit-ckb-a-zero-knowledge-proof-toolkit-for-ckb/4254) for more feature details.
+
+## CLI-Command
+
+Check [CLI usage](./cli) for hands-on examples.
+
 ## Gadgets
-See more [details](./src/gadget)
+
 - MiMC hash
 - GreaterThan
 - LessThan
 - Between
 - Boolean
-- ... Continue others...
+- ... Many others ...
+
+Check the [gadget doc](./src/gadget) for more details.
 
 ## Security
 

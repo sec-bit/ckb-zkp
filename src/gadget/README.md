@@ -6,7 +6,7 @@ This doc mainly lists the gadgets that the zkp-toolkit library has implemented i
 
 ## Gadget list
 
-- [x] rangeproof (comparison_gadget actually)
+- [x] rangeproof (comparison_gadget actually, and make it to be `GreaterThan`, `LessThan`, and `Between` separately)
 - [x] isnonzero
 - [x] lookup_1bit
 - [x] lookup_2bit
@@ -14,6 +14,8 @@ This doc mainly lists the gadgets that the zkp-toolkit library has implemented i
 - [x] merkletree
 - [x] boolean
 - [x] mimc
+
+Many other useful gadgets to come.
 
 ## How to write zkp-toolkit gadget
 
@@ -323,7 +325,7 @@ field_into_allocated_bits_le: Vec<AllocatedBit>
 
 #### Features
 
-mimc hash function
+[mimc](http://eprint.iacr.org/2016/492) hash function
 
 #### Constraint
 
