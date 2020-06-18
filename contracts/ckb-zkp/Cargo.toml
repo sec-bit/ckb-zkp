@@ -14,6 +14,11 @@ zkp = { path = "../../dependencies/zkp-toolkit", default-features = false, featu
     "bn_256",
     "bls12_381",
 ] }
+# zkp = { git = "https://github.com/sec-bit/zkp-toolkit.git", rev = "3bfcda742a", default-features = false, features = [
+#     "groth16",
+#     "bn_256",
+#     "bls12_381",
+# ] }
 
 [profile.release]
 # set debug-assertions to true to enable debug macro.
@@ -22,6 +27,7 @@ overflow-checks = true
 lto = true
 opt-level = "z"
 codegen-units = 1
+panic = 'abort'
 
 [profile.dev]
 overflow-checks = true
