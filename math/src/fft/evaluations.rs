@@ -1,3 +1,5 @@
+// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
+
 //! A polynomial represented in evaluations form.
 
 use crate::fft::{DensePolynomial, EvaluationDomain};

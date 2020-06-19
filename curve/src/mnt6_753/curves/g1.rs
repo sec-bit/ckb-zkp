@@ -1,3 +1,5 @@
+// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
+
 use crate::mnt6_753::{self, Fq, Fr, FR_ONE};
 use math::{
     biginteger::BigInteger768,

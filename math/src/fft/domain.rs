@@ -1,3 +1,5 @@
+// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
+
 //! This module contains an `EvaluationDomain` abstraction for
 //! performing various kinds of polynomial arithmetic on top of
 //! the scalar field.

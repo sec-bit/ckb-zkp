@@ -1,3 +1,5 @@
+// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
+
 use math::curves::bls12::{Bls12, Bls12Parameters, TwistType};
 
 use crate::bls12_381::{Fq, Fq12Parameters, Fq2Parameters, Fq6Parameters};

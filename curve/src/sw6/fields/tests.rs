@@ -1,3 +1,5 @@
+// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
+
 use math::{buffer_bit_byte_size, test_rng, CanonicalSerialize, Field, PrimeField};
 use rand::Rng;
 

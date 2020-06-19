@@ -7,6 +7,8 @@ use rand::Rng;
 use crate::r1cs::{
     ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable,
 };
+// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
+
 use crate::{String, Vec};
 
 use super::{push_constraints, r1cs_to_qap::R1CStoQAP, Parameters, Proof};

@@ -1,3 +1,5 @@
+// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
+
 #![cfg(feature = "bls12_381")]
 use crate::bls12_381::{Fr, G1Projective};
 use math::{msm::VariableBaseMSM, AffineCurve, PrimeField, ProjectiveCurve, UniformRand, Zero};

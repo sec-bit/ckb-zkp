@@ -1,3 +1,5 @@
+// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
+
 macro_rules! impl_Fp {
     ($Fp:ident, $FpParameters:ident, $limbs:expr) => {
         use $crate::serialize::CanonicalDeserialize;

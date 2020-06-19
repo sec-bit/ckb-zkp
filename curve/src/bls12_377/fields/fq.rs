@@ -1,3 +1,5 @@
+// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
+
 use math::{biginteger::BigInteger384 as BigInteger, fields::*};
 
 pub type Fq = Fp384<FqParameters>;

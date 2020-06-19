@@ -1,3 +1,5 @@
+// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
+
 macro_rules! bigint_impl {
     ($name:ident, $num_limbs:expr) => {
         #[derive(Copy, Clone, PartialEq, Eq, Debug, Default, Hash)]

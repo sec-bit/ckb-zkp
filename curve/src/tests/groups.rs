@@ -1,3 +1,5 @@
+// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
+
 #![allow(unused)]
 use math::{Group, One, UniformRand, Zero};
 use rand::SeedableRng;

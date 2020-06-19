@@ -1,3 +1,5 @@
+// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
+
 //! no-std io replacement
 use crate::Vec;
 use core::{cmp, fmt, mem};

@@ -1,3 +1,5 @@
+// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
+
 #[cfg(any(feature = "bls12_381", feature = "jubjub"))]
 pub mod fr;
 #[cfg(any(feature = "bls12_381", feature = "jubjub"))]

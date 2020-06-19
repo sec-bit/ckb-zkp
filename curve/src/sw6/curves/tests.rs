@@ -1,3 +1,5 @@
+// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
+
 use math::{test_rng, AffineCurve, Field, One, PairingEngine, PrimeField, ProjectiveCurve};
 use rand::Rng;
 

@@ -1,3 +1,5 @@
+// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
+
 use crate::tests::fields::{field_test, primefield_test};
 use math::test_rng;
 use rand::Rng;

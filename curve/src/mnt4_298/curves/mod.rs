@@ -1,3 +1,5 @@
+// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
+
 use math::{
     biginteger::BigInteger320,
     curves::models::mnt4::{MNT4Parameters, MNT4},

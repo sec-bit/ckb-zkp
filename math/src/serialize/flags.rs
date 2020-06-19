@@ -1,3 +1,5 @@
+// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
+
 pub trait Flags: Default + Clone + Copy + Sized {
     fn u8_bitmask(&self) -> u8;
     fn from_u8(value: u8) -> Self;

@@ -1,3 +1,5 @@
+// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
+
 mod error;
 mod flags;
 pub use crate::io::{Read, Write};

@@ -1,3 +1,5 @@
+// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
+
 #![cfg_attr(not(feature = "std"), no_std)]
 #![deny(unused_import_braces, unused_qualifications, trivial_casts)]
 #![deny(trivial_numeric_casts, variant_size_differences)]
