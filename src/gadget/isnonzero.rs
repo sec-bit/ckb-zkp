@@ -70,3 +70,20 @@ fn test_isnonzero_demo() {
     let proof = create_random_proof(c1, &params, rng).unwrap();
     assert!(verify_proof(&pvk, &proof, &[]).unwrap());
 }
+
+#[test]
+fn test_isnonzero_bp_demo() {
+    use curve::bn_256::{Bn_256, Fr};
+    use scheme::bulletproofs::arithmetic_circuit::{
+        create_proof, verify_proof,
+    };
+
+    println!("Creating proofs...");
+
+    let c = IsnonzeroDemo::<Fr> {
+        check_num: Some(Fr::from(1u32)),
+    };
+    let (generators, r1cs_circuit, proof, assignment) = create_proof::<Bn_256, _>(c).unwrap();
+
+    verify_proof(&generators, &proof, &r1cs_circuit, &assignment.s);
+}

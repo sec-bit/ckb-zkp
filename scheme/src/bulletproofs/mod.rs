@@ -3,7 +3,11 @@ pub mod inner_product_proof;
 
 use math::{msm::VariableBaseMSM, Field, PairingEngine, PrimeField, Zero};
 
+use crate::r1cs::{Index, LinearCombination};
 use crate::Vec;
+
+#[cfg(test)]
+mod test;
 
 // Q (vector, zQ) * Qxn (matrix, WL, WR, WO) = n (vector, zQW)
 pub fn vector_matrix_product<E: PairingEngine>(v: &Vec<E::Fr>, m: &Vec<Vec<E::Fr>>) -> Vec<E::Fr> {
@@ -279,4 +283,17 @@ fn random_bytes_to_fr<E: PairingEngine>(bytes: &[u8]) -> E::Fr {
     r_bytes.copy_from_slice(&bytes[0..31]);
     let r = <E::Fr as Field>::from_random_bytes(&r_bytes);
     r.unwrap()
+}
+
+fn push_constraints<F: Field>(
+    l: LinearCombination<F>,
+    constraints: &mut [Vec<(F, Index)>],
+    this_constraint: usize,
+) {
+    for (var, coeff) in l.as_ref() {
+        match var.get_unchecked() {
+            Index::Input(i) => constraints[this_constraint].push((*coeff, Index::Input(i))),
+            Index::Aux(i) => constraints[this_constraint].push((*coeff, Index::Aux(i))),
+        }
+    }
 }
