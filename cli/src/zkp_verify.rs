@@ -1,6 +1,6 @@
 use std::env;
 use std::path::PathBuf;
-use zkp::{verify, verify_from_bytes, Curve, GadgetProof, Proof, Scheme};
+use zkp_toolkit::{verify, verify_from_bytes, Curve, GadgetProof, Proof, Scheme};
 
 const SETUP_DIR: &'static str = "./trusted_setup";
 
