@@ -8,10 +8,97 @@ use rand::Rng;
 
 use crate::Vec;
 
-use super::{
-    hadamard_product, inner_product, inner_product_proof, quick_multiexp, random_bytes_to_fr,
-    vector_matrix_product, vector_matrix_product_t, VecPoly5,
+use crate::r1cs::{
+    ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable,
 };
+
+use super::{
+    hadamard_product, inner_product, inner_product_proof, push_constraints, quick_multiexp,
+    random_bytes_to_fr, vector_matrix_product, vector_matrix_product_t, VecPoly5,
+};
+
+// use rayon::prelude::*; // TODO: use rayon to accelerate
+
+pub struct ProvingAssignment<E: PairingEngine> {
+    // Constraints
+    pub(crate) at: Vec<Vec<(E::Fr, Index)>>,
+    pub(crate) bt: Vec<Vec<(E::Fr, Index)>>,
+    pub(crate) ct: Vec<Vec<(E::Fr, Index)>>,
+
+    // Assignments of variables
+    pub(crate) input_assignment: Vec<E::Fr>,
+    pub(crate) aux_assignment: Vec<E::Fr>,
+}
+
+impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
+    type Root = Self;
+
+    #[inline]
+    fn alloc<F, A, AR>(&mut self, _: A, f: F) -> Result<Variable, SynthesisError>
+    where
+        F: FnOnce() -> Result<E::Fr, SynthesisError>,
+        A: FnOnce() -> AR,
+        AR: Into<String>,
+    {
+        let index = self.aux_assignment.len();
+        self.aux_assignment.push(f()?);
+        Ok(Variable::new_unchecked(Index::Aux(index)))
+    }
+
+    #[inline]
+    fn alloc_input<F, A, AR>(&mut self, _: A, f: F) -> Result<Variable, SynthesisError>
+    where
+        F: FnOnce() -> Result<E::Fr, SynthesisError>,
+        A: FnOnce() -> AR,
+        AR: Into<String>,
+    {
+        let index = self.input_assignment.len();
+        self.input_assignment.push(f()?);
+        Ok(Variable::new_unchecked(Index::Input(index)))
+    }
+
+    #[inline]
+    fn enforce<A, AR, LA, LB, LC>(&mut self, _: A, a: LA, b: LB, c: LC)
+    where
+        A: FnOnce() -> AR,
+        AR: Into<String>,
+        LA: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
+        LB: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
+        LC: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
+    {
+        let num_constraints = self.num_constraints();
+
+        self.at.push(Vec::new());
+        self.bt.push(Vec::new());
+        self.ct.push(Vec::new());
+
+        push_constraints(a(LinearCombination::zero()), &mut self.at, num_constraints);
+
+        push_constraints(b(LinearCombination::zero()), &mut self.bt, num_constraints);
+
+        push_constraints(c(LinearCombination::zero()), &mut self.ct, num_constraints);
+    }
+
+    fn push_namespace<NR, N>(&mut self, _: N)
+    where
+        NR: Into<String>,
+        N: FnOnce() -> NR,
+    {
+        // Do nothing; we don't care about namespaces in this context.
+    }
+
+    fn pop_namespace(&mut self) {
+        // Do nothing; we don't care about namespaces in this context.
+    }
+
+    fn get_root(&mut self) -> &mut Self::Root {
+        self
+    }
+
+    fn num_constraints(&self) -> usize {
+        self.at.len()
+    }
+}
 
 pub struct Generators<E: PairingEngine> {
     g_vec_N: Vec<E::G1Affine>,
@@ -19,17 +106,21 @@ pub struct Generators<E: PairingEngine> {
     g: E::G1Affine,
     h: E::G1Affine,
     u: E::G1Affine,
-}
-
-pub struct BpCircuit<E: PairingEngine> {
     n: usize,
     N: usize,
-    WL: Vec<Vec<E::Fr>>,
-    WR: Vec<Vec<E::Fr>>,
-    WO: Vec<Vec<E::Fr>>,
-    WV: Vec<Vec<E::Fr>>,
-    c: Vec<E::Fr>,
+    k: usize,
+    n_w: usize,
 }
+
+// pub struct BpCircuit<E: PairingEngine> {
+//     n: usize,
+//     N: usize,
+//     WL: Vec<Vec<E::Fr>>,
+//     WR: Vec<Vec<E::Fr>>,
+//     WO: Vec<Vec<E::Fr>>,
+//     WV: Vec<Vec<E::Fr>>,
+//     c: Vec<E::Fr>,
+// }
 
 pub struct R1csCircuit<E: PairingEngine> {
     pub CL: Vec<Vec<E::Fr>>,
@@ -41,7 +132,7 @@ pub struct Assignment<E: PairingEngine> {
     pub aL: Vec<E::Fr>,
     aR: Vec<E::Fr>,
     aO: Vec<E::Fr>,
-    s: Vec<E::Fr>,
+    pub s: Vec<E::Fr>,
     pub w: Vec<E::Fr>,
 }
 
@@ -67,13 +158,124 @@ pub struct Proof<E: PairingEngine> {
     IPP_P: E::G1Projective,
 }
 
+// very basic support for R1CS ConstraintSystem
+// TODO: refactor this then we do not need to return Generators, R1csCircuit, and Assignment.
+pub fn create_proof<E, C>(
+    circuit: C,
+) -> Result<(Generators<E>, R1csCircuit<E>, Proof<E>, Assignment<E>), SynthesisError>
+where
+    E: PairingEngine,
+    C: ConstraintSynthesizer<E::Fr>,
+{
+    let mut rng = rand::thread_rng();
+    let mut prover = ProvingAssignment::<E> {
+        at: vec![],
+        bt: vec![],
+        ct: vec![],
+        input_assignment: vec![],
+        aux_assignment: vec![],
+    };
+
+    // Allocate the "one" input variable
+    prover.alloc_input(|| "", || Ok(E::Fr::one()))?;
+
+    // Synthesize the circuit.
+    circuit.generate_constraints(&mut prover)?; // TODO: maybe we should move this out becasue we do not need a trusted setup for bp
+
+    let num_constraints = prover.at.len();
+    assert_eq!(num_constraints, prover.bt.len());
+    assert_eq!(num_constraints, prover.ct.len());
+
+    let f = [&prover.input_assignment[..], &prover.aux_assignment[..]].concat();
+    let num_inputs = prover.input_assignment.len();
+    let num_assignments = f.len();
+    println!(
+        "num_constraints = {}, num_inputs = {}, num_assignments = {}",
+        num_constraints, num_inputs, num_assignments
+    );
+
+    let mut CL: Vec<Vec<E::Fr>> = vec![vec![E::Fr::zero(); num_assignments]; num_constraints];
+    let mut CR: Vec<Vec<E::Fr>> = vec![vec![E::Fr::zero(); num_assignments]; num_constraints];
+    let mut CO: Vec<Vec<E::Fr>> = vec![vec![E::Fr::zero(); num_assignments]; num_constraints];
+
+    // Convert vec with index to full matrix
+    // TODO: compute with at, bt, ct directly
+    for i in 0..num_constraints {
+        for &(ref coeff, index) in prover.at[i].iter() {
+            let index = match index {
+                Index::Input(i) => i,
+                Index::Aux(i) => num_inputs + i,
+            };
+            CL[i][index] = *coeff;
+        }
+        for &(ref coeff, index) in prover.bt[i].iter() {
+            let index = match index {
+                Index::Input(i) => i,
+                Index::Aux(i) => num_inputs + i,
+            };
+            CR[i][index] = *coeff;
+        }
+        for &(ref coeff, index) in prover.ct[i].iter() {
+            let index = match index {
+                Index::Input(i) => i,
+                Index::Aux(i) => num_inputs + i,
+            };
+            CO[i][index] = *coeff;
+        }
+    }
+
+    let r1cs_circuit = R1csCircuit::<E> { CL, CR, CO };
+
+    let aL = vector_matrix_product_t::<E>(&f, &r1cs_circuit.CL);
+    let aR = vector_matrix_product_t::<E>(&f, &r1cs_circuit.CR);
+    let aO = vector_matrix_product_t::<E>(&f, &r1cs_circuit.CO);
+
+    let input = Assignment {
+        aL: aL,
+        aR: aR,
+        aO: aO,
+        s: prover.input_assignment,
+        w: prover.aux_assignment,
+    };
+
+    // create generators
+    // n_max
+    let n_max = cmp::max(input.aL.len(), input.w.len());
+    let N = n_max.next_power_of_two(); // N must be greater than or equal to n & n_w
+    let g_vec_N = create_generators::<E, _>(&mut rng, N);
+    let h_vec_N = create_generators::<E, _>(&mut rng, N);
+    let gh = create_generators::<E, _>(&mut rng, 2);
+    let g = gh[0];
+    let h = gh[1];
+    let u = E::G1Projective::rand(&mut rng).into_affine();
+
+    let n = num_constraints;
+    let k = input.s.len();
+    let n_w = input.w.len();
+    let generators = Generators {
+        g_vec_N,
+        h_vec_N,
+        g,
+        h,
+        u,
+        n,
+        N,
+        k,
+        n_w,
+    };
+
+    let proof = prove(&generators, &r1cs_circuit, &input, &mut rng);
+
+    Ok((generators, r1cs_circuit, proof, input))
+}
+
 // bulletproofs arithmetic circuit proof with R1CS format
 pub fn prove<E: PairingEngine, R>(
     gens: &Generators<E>,
     r1cs_circuit: &R1csCircuit<E>,
     input: &Assignment<E>,
     rng: &mut R,
-) -> (BpCircuit<E>, Proof<E>)
+) -> Proof<E>
 where
     R: Rng,
 {
@@ -210,7 +412,7 @@ where
                 + &(zn_sq * &r1cs_circuit.CO[i][j]);
         }
     }
-    let c = vector_matrix_product_t::<E>(&input.s, &C1);
+    // let c = vector_matrix_product_t::<E>(&input.s, &C1);
 
     // zQ * WL, zQ * WR
     let zQ_WL: Vec<E::Fr> = vector_matrix_product::<E>(&z_Q, &WL);
@@ -320,15 +522,15 @@ where
         r_x.clone(),
     );
 
-    let bp_circuit = BpCircuit {
-        n,
-        N,
-        WL,
-        WR,
-        WO,
-        WV,
-        c,
-    };
+    // let bp_circuit = BpCircuit {
+    //     n,
+    //     N,
+    //     WL,
+    //     WR,
+    //     WO,
+    //     WV,
+    //     c,
+    // };
 
     let proof = Proof {
         A_I,
@@ -353,10 +555,15 @@ where
         IPP_P,
     };
 
-    (bp_circuit, proof)
+    (proof)
 }
 
-pub fn verify<E: PairingEngine>(gens: &Generators<E>, circuit: &BpCircuit<E>, proof: &Proof<E>) {
+pub fn verify_proof<E: PairingEngine>(
+    gens: &Generators<E>,
+    proof: &Proof<E>,
+    r1cs_circuit: &R1csCircuit<E>,
+    public_inputs: &[E::Fr],
+) {
     let mut transcript = Transcript::new(b"protocol3");
 
     // generators
@@ -365,8 +572,8 @@ pub fn verify<E: PairingEngine>(gens: &Generators<E>, circuit: &BpCircuit<E>, pr
     let g = gens.g.clone();
     let h = gens.h.clone();
 
-    transcript.append_u64(b"n", circuit.n as u64);
-    transcript.append_u64(b"N", circuit.N as u64);
+    transcript.append_u64(b"n", gens.n as u64);
+    transcript.append_u64(b"N", gens.N as u64);
     transcript.append_message(b"A_I", &math::to_bytes!(proof.A_I).unwrap());
     transcript.append_message(b"A_O", &math::to_bytes!(proof.A_O).unwrap());
     transcript.append_message(b"A_W", &math::to_bytes!(proof.A_W).unwrap());
@@ -381,8 +588,8 @@ pub fn verify<E: PairingEngine>(gens: &Generators<E>, circuit: &BpCircuit<E>, pr
     let z = random_bytes_to_fr::<E>(&buf_z);
 
     // compute y, z vectors, and delta(y, z)
-    let mut y_n: Vec<E::Fr> = vec![E::Fr::zero(); circuit.N]; // challenge per witness
-    for i in 0..circuit.N {
+    let mut y_n: Vec<E::Fr> = vec![E::Fr::zero(); gens.N]; // challenge per witness
+    for i in 0..gens.N {
         if i == 0 {
             y_n[i] = E::Fr::one();
         } else {
@@ -390,13 +597,13 @@ pub fn verify<E: PairingEngine>(gens: &Generators<E>, circuit: &BpCircuit<E>, pr
         }
     }
 
-    let mut y_n_inv: Vec<E::Fr> = vec![E::Fr::zero(); circuit.N];
-    for i in 0..circuit.N {
+    let mut y_n_inv: Vec<E::Fr> = vec![E::Fr::zero(); gens.N];
+    for i in 0..gens.N {
         y_n_inv[i] = y_n[i].inverse().unwrap();
     }
 
-    let mut z_Q: Vec<E::Fr> = vec![E::Fr::zero(); circuit.n]; // challenge per constraint
-    for i in 0..circuit.n {
+    let mut z_Q: Vec<E::Fr> = vec![E::Fr::zero(); gens.n]; // challenge per constraint
+    for i in 0..gens.n {
         if i == 0 {
             z_Q[i] = z;
         } else {
@@ -404,13 +611,43 @@ pub fn verify<E: PairingEngine>(gens: &Generators<E>, circuit: &BpCircuit<E>, pr
         }
     }
 
-    let z_Q_neg: Vec<E::Fr> = (0..circuit.n).map(|i| -E::Fr::one() * &z_Q[i]).collect();
+    let z_Q_neg: Vec<E::Fr> = (0..gens.n).map(|i| -E::Fr::one() * &z_Q[i]).collect();
+
+    // WL, WR, WO with padding
+    let mut WL: Vec<Vec<E::Fr>> = vec![vec![E::Fr::zero(); gens.N]; gens.n]; // Qxn, Q=n, n=N
+    let mut WR: Vec<Vec<E::Fr>> = vec![vec![E::Fr::zero(); gens.N]; gens.n]; // Qxn, Q=n, n=N
+    let mut WO: Vec<Vec<E::Fr>> = vec![vec![E::Fr::zero(); gens.N]; gens.n]; // Qxn, Q=n, n=N
+    let zn = z_Q[gens.n - 1];
+    let zn_sq = zn * &zn;
+    for i in 0..gens.n {
+        WL[i][i] = E::Fr::one();
+        WR[i][i] = zn * &(E::Fr::one());
+        WO[i][i] = zn_sq * &(E::Fr::one());
+    }
+
+    // c, WV
+    let m = gens.k + gens.n_w;
+    let mut C1: Vec<Vec<E::Fr>> = vec![vec![E::Fr::zero(); gens.k]; gens.n];
+    let mut WV = vec![vec![E::Fr::zero(); gens.N]; gens.n]; // C2
+    for i in 0..gens.n {
+        for j in 0..gens.k {
+            C1[i][j] = r1cs_circuit.CL[i][j]
+                + &(zn * &r1cs_circuit.CR[i][j])
+                + &(zn_sq * &r1cs_circuit.CO[i][j]);
+        }
+        for j in gens.k..m {
+            WV[i][j - gens.k] = r1cs_circuit.CL[i][j]
+                + &(zn * &r1cs_circuit.CR[i][j])
+                + &(zn_sq * &r1cs_circuit.CO[i][j]);
+        }
+    }
+    let c = vector_matrix_product_t::<E>(&public_inputs.to_vec(), &C1);
 
     // zQ * WL, zQ * WR
-    let zQ_WL: Vec<E::Fr> = vector_matrix_product::<E>(&z_Q, &circuit.WL);
-    let zQ_WR: Vec<E::Fr> = vector_matrix_product::<E>(&z_Q, &circuit.WR);
-    let zQ_WO: Vec<E::Fr> = vector_matrix_product::<E>(&z_Q, &circuit.WO);
-    let zQ_neg_WV: Vec<E::Fr> = vector_matrix_product::<E>(&z_Q_neg, &circuit.WV);
+    let zQ_WL: Vec<E::Fr> = vector_matrix_product::<E>(&z_Q, &WL);
+    let zQ_WR: Vec<E::Fr> = vector_matrix_product::<E>(&z_Q, &WR);
+    let zQ_WO: Vec<E::Fr> = vector_matrix_product::<E>(&z_Q, &WO);
+    let zQ_neg_WV: Vec<E::Fr> = vector_matrix_product::<E>(&z_Q_neg, &WV);
 
     let ynInvZQWR: Vec<E::Fr> = hadamard_product::<E>(&y_n_inv, &zQ_WR);
     let delta_yz: E::Fr = inner_product::<E>(&ynInvZQWR, &zQ_WL);
@@ -431,7 +668,7 @@ pub fn verify<E: PairingEngine>(gens: &Generators<E>, circuit: &BpCircuit<E>, pr
     let x = random_bytes_to_fr::<E>(&buf_x);
 
     // V computes and checks:
-    let h_vec_inv: Vec<E::G1Affine> = (0..circuit.N)
+    let h_vec_inv: Vec<E::G1Affine> = (0..gens.N)
         .map(|i| h_vec[i].mul(y_n_inv[i]).into_affine())
         .collect();
 
@@ -463,7 +700,7 @@ pub fn verify<E: PairingEngine>(gens: &Generators<E>, circuit: &BpCircuit<E>, pr
     let checkT_lhs: E::G1Projective =
         quick_multiexp::<E>(&vec![proof.t_x, proof.tau_x], &vec![g, h]);
 
-    let zQ_c = inner_product::<E>(&z_Q, &circuit.c);
+    let zQ_c = inner_product::<E>(&z_Q, &c);
 
     let xx = x * &x;
     let xxxx = xx * &xx;
@@ -480,7 +717,7 @@ pub fn verify<E: PairingEngine>(gens: &Generators<E>, circuit: &BpCircuit<E>, pr
 
     assert_eq!(checkT_lhs, checkT_rhs);
 
-    let y_n_neg: Vec<E::Fr> = (0..circuit.N).map(|i| -E::Fr::one() * &y_n[i]).collect();
+    let y_n_neg: Vec<E::Fr> = (0..gens.N).map(|i| -E::Fr::one() * &y_n[i]).collect();
     let P = proof.A_I.mul(xx)
         + &proof.A_O.mul(xx * &x)
         + &proof.A_W.mul(xxxx)
@@ -546,17 +783,24 @@ mod tests {
         let h = gh[1];
         let u = E::G1Projective::rand(&mut rng).into_affine();
 
+        let n = input.aL.len();
+        let k = input.s.len();
+        let n_w = input.w.len();
         let generators = Generators {
             g_vec_N,
             h_vec_N,
             g,
             h,
             u,
+            n,
+            N,
+            k,
+            n_w,
         };
 
-        let (bp_circuit, proof) = prove(&generators, &r1cs_circuit, &input, &mut rng);
+        let proof = prove(&generators, &r1cs_circuit, &input, &mut rng);
 
-        verify(&generators, &bp_circuit, &proof);
+        verify_proof(&generators, &proof, &r1cs_circuit, &input.s);
     }
 
     #[test]

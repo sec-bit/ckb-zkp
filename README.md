@@ -71,7 +71,7 @@ fn main() {
 4. Multiple out-of-the-box gadgets.
 5. `no-std` is supported.
 
-Currently, [Groth16](https://eprint.iacr.org/2016/260) and [bulletproofs](https://crypto.stanford.edu/bulletproofs/) are supported. You can describe zkp circuits for the Groth16 scheme through the powerful constraint system. Specially, we implemented a modified version of bulletproofs with R1CS support. It only supports describe constraints in matrix for now and we're porting the constraint system to it.
+Currently, [Groth16](https://eprint.iacr.org/2016/260) and [bulletproofs](https://crypto.stanford.edu/bulletproofs/) are supported. You can describe zkp circuits for the Groth16 scheme through the powerful constraint system. Specially, we implemented a modified version of bulletproofs with R1CS support. It also supports to describe constraints through the same constraint system. So gadgets could be sharable between Groth16 and bulletproofs. We're working on that.
 
 You can check the [original proposal](https://talk.nervos.org/t/secbit-labs-zkp-toolkit-ckb-a-zero-knowledge-proof-toolkit-for-ckb/4254) for more feature details.
 
