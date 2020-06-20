@@ -12,8 +12,8 @@ use std::io::Read;
 const MAX_CYCLES: u64 = 10000_000_000;
 
 // Relative path starts from capsuled-contracts/tests.
-const VK_DIR: &str = "../dependencies/zkp-toolkit/cli/trusted_setup/";
-const PROOF_DIR: &str = "../dependencies/zkp-toolkit/cli/proofs_files/";
+const VK_DIR: &str = "trusted_setup";
+const PROOF_DIR: &str = "proofs_files";
 
 // Names of vk files and proof files.
 const VK_BN_256: &str = "mimc-groth16-bn_256.vk";
