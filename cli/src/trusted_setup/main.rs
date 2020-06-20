@@ -1,6 +1,6 @@
 use std::env;
 use std::path::PathBuf;
-use zkp::{Curve, Gadget, Scheme};
+use zkp_toolkit::{Curve, Gadget, Scheme};
 
 const SETUP_DIR: &'static str = "./trusted_setup";
 
@@ -90,8 +90,8 @@ pub fn handle_args() -> Result<(Gadget, Scheme, Curve, String, bool), String> {
 macro_rules! handle_curve {
     ($func_name:ident, $rng_name:ident, $c:expr, $rng:expr, $pp:expr) => {
         match $c {
-            Curve::Bls12_381 => $func_name::<zkp::curve::Bls12_381, $rng_name>($rng, $pp),
-            Curve::Bn_256 => $func_name::<zkp::curve::Bn_256, $rng_name>($rng, $pp),
+            Curve::Bls12_381 => $func_name::<zkp_toolkit::curve::Bls12_381, $rng_name>($rng, $pp),
+            Curve::Bn_256 => $func_name::<zkp_toolkit::curve::Bn_256, $rng_name>($rng, $pp),
         }
     };
 }

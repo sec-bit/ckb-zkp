@@ -1,4 +1,4 @@
-use zkp::{
+use zkp_toolkit::{
     gadget::mimc::{constants, MiMC},
     math::{PairingEngine, ToBytes},
     scheme::groth16::{generate_random_parameters, prepare_verifying_key},
