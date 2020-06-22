@@ -4,3 +4,5 @@ build/*
 dependencies/*
 !.gitkeep
 Cargo.lock
+/cli/proofs_files
+/cli/trusted_setup
