@@ -1,35 +1,47 @@
 # ckb-zkp
 
-Smart contracts that run as zero-knowledge proof verifiers on the [Nervos CKB chain](https://www.nervos.org/). CKB developers and users can implement various complex zero-knowledge verification processes through the simplest contract invocation. Cooperate with zkp-toolkit to complete off-chain prove and on-chain verify.
+Smart contracts that run as zero-knowledge proof verifiers on the [Nervos CKB chain](https://www.nervos.org/). CKB developers and users can implement various complex zero-knowledge verification processes through the simplest contract invocation. Cooperate with [zkp-toolkit](https://github.com/sec-bit/zkp-toolkit) to complete off-chain prove and on-chain verify.
 
-This project is part of *zkp-toolkit-ckb* and is supported by the Nervos Foundation. Check out the [original proposal](https://talk.nervos.org/t/secbit-labs-zkp-toolkit-ckb-a-zero-knowledge-proof-toolkit-for-ckb/4254) and [grant announcement](https://medium.com/nervosnetwork/three-new-ecosystem-grants-awarded-892b97e8bc06).
+This project is part of _zkp-toolkit-ckb_ and is supported by the Nervos Foundation. Check out the [original proposal](https://talk.nervos.org/t/secbit-labs-zkp-toolkit-ckb-a-zero-knowledge-proof-toolkit-for-ckb/4254) and [grant announcement](https://medium.com/nervosnetwork/three-new-ecosystem-grants-awarded-892b97e8bc06).
 
 ## Table of contents
 
 - [ckb-zkp](#ckb-zkp)
   - [Table of contents](#table-of-contents)
+  - [How does this contract help to verify a zero-knowledge proof?](#how-does-this-contract-help-to-verify-a-zero-knowledge-proof)
   - [Prerequisites](#prerequisites)
   - [Build contracts](#build-contracts)
     - [Enable `debug!` macro in release mode](#enable-debug-macro-in-release-mode)
   - [Tests](#tests)
-    - [Prerequises for testing](#prerequises-for-testing)
+    - [Prerequisites for testing](#prerequisites-for-testing)
     - [Run tests](#run-tests)
+  - [Deployment](#deployment)
     - [Invoking the contract on-chain](#invoking-the-contract-on-chain)
     - [Debugging the `capsule` itself (Temporary feature)](#debugging-the-capsule-itself-temporary-feature)
   - [Optimizations & Benchmarks](#optimizations--benchmarks)
-    - [Binary optimization](#binary-optimization)
+    - [Binary size optimization](#binary-size-optimization)
     - [Curve benchmark](#curve-benchmark)
     - [Impacts of disabling `zkp-toolkit` feature](#impacts-of-disabling-zkp-toolkit-feature)
     - [Further optimizations](#further-optimizations)
   - [Troubleshooting](#troubleshooting)
     - [`capsule` complained `error: Can't found capsule.toml, current directory is not a project`](#capsule-complained-error-cant-found-capsuletoml-current-directory-is-not-a-project)
-    - [I can't see any output in the ckb's log on dev vhain.](#i-cant-see-any-output-in-the-ckbs-log-on-dev-vhain)
+    - [I can't see any output in the CKB's log on dev chain.](#i-cant-see-any-output-in-the-ckbs-log-on-dev-chain)
     - [The test can't find contract binary/proof file/vk file.](#the-test-cant-find-contract-binaryproof-filevk-file)
     - [How is the project mounted into the Docker container?](#how-is-the-project-mounted-into-the-docker-container)
+    - [What does "cycles" mean in Nervos ckb?](#what-does-cycles-mean-in-nervos-ckb)
   - [Acknowledgement](#acknowledgement)
   - [Security](#security)
-  - [References](#references)
   - [License](#license)
+
+## How does this contract help to verify a zero-knowledge proof?
+
+A contract for verification is deployed on the ckb chain. The prover and the verifier know where the contract is deployed.
+
+1. The prover completes the trusted-setup, and generates a proof (in the form of a file);
+2. The prover sends a transaction that creates some new cells(aka. utxo, but carrying some data), with one containing the proof and vk files and using the previous contract as its type script (which means, this cell should pass the verification of the contract logic);
+3. The miner collects the transaction and execute the assigned contract. All the cells in a transaction assigning one contract as type script are verified by the contract logic. Otherwise, the transaction is rejected by the miner.
+4. The prover goes public with the transaction, the proof, the vk file, and the verification contract address that is needed to do the verification.
+5. The verifier is able to verify the proof using the information provided by the prover.
 
 ## Prerequisites
 
@@ -104,7 +116,7 @@ Note that: all the `capsule` commands should be executed at the project root
 # At project root
 # Dev mode, enable debug! macro but result in bloated size.
 capsule build
-# Release mode. Slim, no debug!.
+# Release mode. Slim, no outputs in the logs.
 capsule build --release
 ```
 
@@ -113,6 +125,8 @@ capsule build --release
 **In `ckb-std` version 0.2.2 and newer, `debug!` macro is disabled in release mode**. If you still want to enable `debug!` macro in **release** mode, insert `debug-assertions = true` under `[profile.release]` in `contracts/ckb-zkp/Cargo.toml`.
 
 ## Tests
+
+A simplified, one-time blockchain context is used in the tests environment using [ckb-tool](https://github.com/jjyr/ckb-tool) crate. Needless to setup an authentic blockchain and run a node, one can simply send a transaction to invoke the contract and checkout if the contract works as expected.
 
 ### Prerequisites for testing
 
@@ -155,7 +169,7 @@ capsule build --release
    cargo run --bin zkp-verify mimc groth16 bls12_381 proofs_files/mimc.groth16-bls12_381.proof
    ```
 
-   See https://aciclo.net/zkp/zkp-toolkit#cli-command for further help.
+   See https://github.com/sec-bit/zkp-toolkit#cli-command for further help.
 
 ### Run tests
 
@@ -175,10 +189,7 @@ cargo test -p tests --tests -- --nocapture --test-threads 1
 CAPSULE_TEST_ENV=release cargo test -p tests --tests -- --nocapture
 ```
 
-In file _./tests/src/tests.rs_, you can uncomment the `#[ignore]` attribute before a test function to omit it. Or specify the test function name to filter others.
-
-```sh
-
+In the file _./tests/src/tests.rs_, you can uncomment the `#[ignore]` attribute before a test function to omit it. Or specify the test function name to filter others.
 
 ## Deployment
 
@@ -198,7 +209,7 @@ capsule deploy --address <ADDRESS>
 
 ### Invoking the contract on-chain
 
-TODO: No ready-to-use gear for invoking, use `ckb-cli`, or an SDK to build a transaction to invoke the contract.
+TODO: No ready-to-use gear for invoking a contract on a real chain. Ese `ckb-cli`, or an [SDK](https://docs.ckb.dev/docs/docs/sdk/sdk-overview) to build a transaction to invoke the contract.
 
 ### Debugging the `capsule` itself (Temporary feature)
 
@@ -211,9 +222,15 @@ RUST_LOG=capsule=trace capsule deploy --address <ADDRESS>
 
 ## Optimizations & Benchmarks
 
-### Binary optimization
+In Nervos ckb, [one should pay for data storaging, transaction fees and computer resources](https://docs.nervos.org/key-concepts/economics.html#the-economics-of-the-ckbyte). Paying for data storaging means, one needs to pay an amount of ckb tokens in direct proportion to the size of the transaction he raises. Paying for computer resources means one should pay extra ckbs based on the amount of computer resources that are used to verify a transaction. The computer resources are measured as [**cycles**](https://docs.nervos.org/glossary/glossary-general.html#cycles).
 
-In ckb, the costs come from the size of the built transaction. Heavier in size means higher in cost, while running cost (total instructions executed) has little impact on the deployment and invocation of contracts. So several compiling options are used to try to reduce the contract binary size.
+On the other hand, [On mainnet Lina, the value of `MAX_BLOCK_BYTES` is `597_000` and `MAX_BLOCK_CYCLES` is `3_500_000_000`.](https://docs.nervos.org/technical-concepts/architecture.html#computing-cycles-and-transaction-size)
+
+For these reasons, we take contract binary size and execution cost both into consideration.
+
+### Binary size optimization
+
+The deployer should pay for storaging his contract on-chain. The larger the binary is, the more ckb tokens will be spent for deployment. So several compiling options are analyzed to reduce the contract binary size.
 
 - To build in release mode, this is enabled by default.
 - LTO
@@ -229,7 +246,7 @@ To use LTO, `opt-level` and `codegen-units`, modify _Cargo.toml_:
 overflow-checks = true
 # lto: true, "thin", false(default)
 lto = true
-# opt-level: 0(default), 1, 2, 3, "s", "z"
+# opt-level: 0, 1, 2, 3(default), "s", "z"
 opt-level = "z"
 # codegen-units: greater than 0, default 16
 codegen-units = 1
@@ -237,7 +254,7 @@ codegen-units = 1
 
 To strip the binary, use `rustflags = "-C link-arg=-s"` in cargo config, which is a default option in Capsule with release compiling mode.
 
-We will not try to explain what each option means (Explained in _The Cargo Book_), but list the size and running cost of the contract binaries under different option combinations.
+We will not try to explain what each option means (Explained in _The Cargo Book_), but list the size and running cost of the contract binaries under different combinations of these building options.
 
 Test setup:
 
@@ -261,8 +278,8 @@ Test setup:
 
 Here comes a rough result:
 
+- Generally, size decreasing results to execution cost increasing.
 - Enabling LTO, use `opt-level = "z"`, `codegen-units = 1` for minimun binary size, with a large cycle consumption.
-- Enabling LTO, use `opt-level = "s"`, `codegen-units = 1` will increase the binary size, and decrease the cycle consumption.
 
 ### Curve benchmark
 
@@ -337,9 +354,9 @@ Make sure you **build and test the contract in the same mode** (dev or release, 
 
 ```sh
 # At project root
-capsule build && capsule test
+capsule build && cargo test -p tests --tests -- --nocapture --test-threads 1
 # Or
-capsule build --release && capsule test --release
+capsule build --release && CAPSULE_TEST_ENV=release cargo test -p tests --tests -- --nocapture
 ```
 
 As capsule executes building and testing in docker, the absolute path may not work as expected, so **use relative path**. And currently, the Capsule (jjyr/capsule revision 2f9513f8) mount the whole project folder into docker, so any relative location inside the project folder is allowed.
@@ -348,17 +365,17 @@ As capsule executes building and testing in docker, the absolute path may not wo
 
 In the fork of `jjyr/capsule` revision `2f9513f8`, `capsule` mounts the project folder into the container with path _/code_. But in the main source `nervosnetwork/capsule`, `capsule` may only mount the contract folder into the container. As docker is used, the absolute path is not recommended.
 
+### What does "cycles" mean in Nervos ckb?
+
+The concept and intruduction of cycles can be found [here](https://docs.nervos.org/glossary/glossary-general.html#cycles).
+
 ## Acknowledgement
 
-- Many thanks to [jjy](https://github.com/jjyr), a developer of [nervosnetwork](https://github.com/nervosnetwork), for his selfless help and advice on this project.
+- Many, many thanks to [jjy](https://github.com/jjyr), a developer of [nervosnetwork](https://github.com/nervosnetwork), for his selfless help and advice on this project.
 
 ## Security
 
 This project is still under active development and is currently being used for research and experimental purposes only, please **DO NOT USE IT IN PRODUCTION** for now.
-
-## References
-
-<!-- TODO -->
 
 ## License
 
