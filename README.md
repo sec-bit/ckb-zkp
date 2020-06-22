@@ -33,25 +33,19 @@ This project is part of *zkp-toolkit-ckb* and is supported by the Nervos Foundat
 
 ## Prerequisites
 
-1. Install the development framework [`capsule`](https://github.com/jjyr/capsule) by jjy, a developer of the Nervos network. Access its [wiki page](https://github.com/nervosnetwork/capsule/wiki) for more details about `capsule`.
+1. Install the CKB contract development framework [capsule](https://github.com/nervosnetwork/capsule). Access the [wiki page](https://github.com/nervosnetwork/capsule/wiki) for more details about `capsule`.
 
 <!-- TODO update capsule revision -->
 
 ```sh
-cargo install capsule --git https://github.com/jjyr/capsule.git --rev=089a5505
+cargo install capsule --git https://github.com/nervosnetwork/capsule.git --rev=089a5505
 ```
 
 `capsule` is under development and not stable, so please specify the revision when installing.
 
-2. Pull the [docker image from jjy](https://hub.docker.com/r/jjy0/ckb-capsule-recipe-rust), which is used to build contracts.
+2. Deploy a ckb dev chain. See https://docs.nervos.org/dev-guide/devchain.html for guidance.
 
-   ```sh
-   docker pull jjy0/ckb-capsule-recipe-rust:2020-6-2
-   ```
-
-3. Deploy a ckb dev chain. See https://docs.nervos.org/dev-guide/devchain.html for guidance.
-
-4. Add the local dependency (optional) and specify the revision of dependency (necessary).
+3. Add the local dependency (optional) and specify the revision of dependency (necessary).
 
    ATTENTION: **"Adding the local dependency" is not necessary when the `zkp-toolkit` repo is available on Github. Only use local dependency on development, especially when developing `zkp-toolkit`.**
 
@@ -342,11 +336,11 @@ capsule build && capsule test
 capsule build --release && capsule test --release
 ```
 
-As capsule executes building and testing in docker, the absolute path may not work as expected, so **use relative path**. And currently, the Capsule (jjyr/capsule revision 2f9513f8) mount the whole project folder into docker, so any relative location inside the project folder is allowed.
+As capsule executes building and testing in docker, the absolute path may not work as expected, so **use relative path**. And currently, the Capsule (nervosnetwork/capsule revision 2f9513f8) mount the whole project folder into docker, so any relative location inside the project folder is allowed.
 
 ### How is the project mounted into the Docker container?
 
-In the fork of `jjyr/capsule` revision `2f9513f8`, `capsule` mounts the project folder into the container with path _/code_. But in the main source `nervosnetwork/capsule`, `capsule` may only mount the contract folder into the container. As docker is used, the absolute path is not recommended.
+In the `nervosnetwork/capsule` revision `2f9513f8`, `capsule` mounts the project folder into the container with path _/code_. But in the main source `nervosnetwork/capsule`, `capsule` may only mount the contract folder into the container. As docker is used, the absolute path is not recommended.
 
 ## Acknowledgement
 
