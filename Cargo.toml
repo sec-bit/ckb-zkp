@@ -14,11 +14,11 @@ members = [
     "curve",
     "scheme",
     "cli",
-    "tests",
 ]
 exclude = [
     "contracts",
     "dependencies",
+    "tests",
 ]
 
 
