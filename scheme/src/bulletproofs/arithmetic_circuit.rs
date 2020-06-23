@@ -555,7 +555,7 @@ where
         IPP_P,
     };
 
-    (proof)
+    proof
 }
 
 pub fn verify_proof<E: PairingEngine>(
