@@ -7,7 +7,7 @@ A cli toolkit for zkp.
 ## Usage
 
 - **YOU NEED TRUSTED-SETUP** to run Groth16 scheme
-  - `cargo run --bin trusted-setup mimc` (Prove key and verify key will be generated in the `trusted_setup` directory)
+  - `cargo run --bin trusted-setup mimc` (Proving key and verification key will be generated in the `trusted_setup` directory)
   - The random common reference string (CRS) generated in this way is for testing purposes only. These parameters would have to be generated securely by a trusted setup, which is normally through a trusted third party or a multi-party computation.
 
 - Use default groth16 as scheme and bn_256 as curve, and prove knowledge of the preimage of a MiMC hash invocation which is the secret string.
@@ -40,7 +40,7 @@ curve:
     bls12_381 -- BLS12_381 pairing curve.
 
 OPTIONS:
-    --prepare -- use prepare verify key when verify proof.
+    --prepare -- use prepared verification key when verifying proof.
 
 ```
   
@@ -67,7 +67,7 @@ curve:
 
 OPTIONS:
     --json    -- input/ouput use json type file.
-    --prepare -- use prepare verify key when verify proof.
+    --prepare -- use prepared verification key when verifying proof.
 ```
 
 You can use the `--json` option to get the proof file in JSON format.
@@ -95,7 +95,7 @@ curve:
 
 OPTIONS:
     --json    -- input/ouput use json type file.
-    --prepare -- use prepare verify key when verify proof.
+    --prepare -- use prepared verification key when verifying proof.
 ```
 
 You can use the `--json` option to pass the proof file in JSON format.
