@@ -9,6 +9,7 @@ use ckb_tool::ckb_types::{
 use std::fs::File;
 use std::io::Read;
 
+const CONTRACT_NAME: &str = "mimc-groth16-verifier";
 const MAX_CYCLES: u64 = 10000_000_000;
 
 // Relative path starts from capsuled-contracts/tests.
@@ -47,7 +48,7 @@ fn test_no_proof() {
 fn build_test_context(proof_file: Bytes, vk: Bytes) -> (Context, TransactionView) {
     // deploy contract.
     let mut context = Context::default();
-    let contract_bin: Bytes = Loader::default().load_binary("ckb-zkp");
+    let contract_bin: Bytes = Loader::default().load_binary(CONTRACT_NAME);
     let contract_out_point = context.deploy_contract(contract_bin);
     // Deploy always_success script as lock script.
     let always_success_out_point = context.deploy_contract(ALWAYS_SUCCESS.clone());
