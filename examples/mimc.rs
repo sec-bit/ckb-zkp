@@ -1,6 +1,4 @@
-use rand::prelude::*;
-use std::time::Instant;
-use zkp_toolkit::{
+use ckb_zkp::{
     curve::bn_256::{Bn_256, Fr},
     gadget::mimc::{constants, MiMC},
     math::ToBytes,
@@ -8,6 +6,8 @@ use zkp_toolkit::{
     scheme::groth16::generate_random_parameters,
     verify, verify_from_bytes, Curve, Gadget, Scheme,
 };
+use rand::prelude::*;
+use std::time::Instant;
 
 /// test for use groth16 & bn_256 & mimc gadget.
 fn main() {

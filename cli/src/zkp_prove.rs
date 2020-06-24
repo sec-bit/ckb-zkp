@@ -1,7 +1,7 @@
+use ckb_zkp::{prove, Curve, Gadget, GadgetProof, Scheme};
 use serde_json::json;
 use std::env;
 use std::path::PathBuf;
-use zkp_toolkit::{prove, Curve, Gadget, GadgetProof, Scheme};
 
 const PROOFS_DIR: &'static str = "./proofs_files";
 const SETUP_DIR: &'static str = "./trusted_setup";

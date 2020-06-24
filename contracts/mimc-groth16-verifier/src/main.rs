@@ -12,7 +12,7 @@ use ckb_std::{
     syscalls,
 };
 use ckb_types::{packed::*, prelude::*};
-use zkp_toolkit::verify_from_bytes;
+use ckb_zkp::verify_from_bytes;
 
 entry!(main);
 default_alloc!(4 * 1024, 512 * 1024, 64);

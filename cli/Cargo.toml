@@ -21,6 +21,6 @@ path = "src/trusted_setup/main.rs"
 name = "trusted-setup"
 
 [dependencies]
-zkp-toolkit = { path = ".." }
+ckb-zkp = { path = ".." }
 rand = { version = "0.7" }
 serde_json = { version = "1" }
