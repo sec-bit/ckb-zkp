@@ -1,0 +1,27 @@
+[package]
+name = "math"
+version = "0.1.0"
+authors = ["SECBIT Labs"]
+description = "A library for bignumber, finite fields and elliptic curves"
+keywords = ["cryptography", "finite fields", "elliptic curves", "pairing"]
+categories = ["cryptography"]
+license = "MIT/Apache-2.0"
+edition = "2018"
+
+[dependencies]
+math-derive = { path = "math-derive", optional = true }
+derivative = { version = "2", features = ["use_core"] }
+num-traits = { version = "0.2", default-features = false }
+rand = { version = "0.7", default-features = false }
+rayon = { version = "1", optional = true }
+unroll = "0.1.4"
+
+[dev-dependencies]
+rand_xorshift = "0.2"
+curve = { path = "../curve", default-features = false, features = [ "bls12_381", "bn_256" ] }
+
+[features]
+default = [ "std" ]
+std = []
+parallel = [ "std", "rayon" ]
+derive = [ "math-derive" ]

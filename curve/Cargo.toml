@@ -1,0 +1,37 @@
+[package]
+name = "curve"
+version = "0.1.0"
+authors = ["SECBIT Labs"]
+description = "A library for finite fields and elliptic curves"
+keywords = ["cryptography", "finite fields", "elliptic curves", "pairing"]
+categories = ["cryptography"]
+license = "MIT/Apache-2.0"
+edition = "2018"
+
+[dependencies]
+math = { path = "../math", default-features = false }
+
+[dev-dependencies]
+rand = { version = "0.7", default-features = false }
+rand_xorshift = "0.2"
+
+[features]
+default = [ "std" ]
+
+full = [ "bls12_377", "bls12_381", "bn_256", "sw6", "mnt4_298", "mnt4_753", "mnt6_298", "mnt6_753", "edwards_bls12", "edwards_sw6", "jubjub" ]
+
+bls12_377 = []
+bls12_381 = []
+bn_256 = []
+edwards_bls12 = []
+edwards_sw6 = []
+jubjub = []
+sw6 = []
+mnt4_298 = []
+mnt4_753 = []
+mnt6_298 = []
+mnt6_753 = []
+
+std = [ "math/std" ]
+parallel = [ "std", "math/parallel" ]
+derive = [ "math/derive" ]
