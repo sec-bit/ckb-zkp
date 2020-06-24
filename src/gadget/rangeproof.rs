@@ -321,6 +321,170 @@ pub fn groth16_verify<E: PairingEngine>(
     }
 }
 
+#[cfg(feature = "bulletproofs")]
+pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
+    g: &Gadget,
+    _pk: &[u8],
+    _rng: R,
+) -> Result<GadgetProof, ()> {
+    use scheme::bulletproofs::arithmetic_circuit::create_proof;
+
+    match g {
+        Gadget::GreaterThan(s, lhs) => {
+            let repr_s = <E::Fr as PrimeField>::BigInt::from(*s);
+            let repr_lhs = <E::Fr as PrimeField>::BigInt::from(*lhs);
+
+            let c1 = RangeProof::<E::Fr> {
+                lhs: Some(<E::Fr as PrimeField>::from_repr(repr_lhs)),
+                rhs: Some(<E::Fr as PrimeField>::from_repr(repr_s)),
+                n: 64,
+            };
+
+            let (generators, r1cs_circuit, proof, assignment) =
+                create_proof::<E, RangeProof<E::Fr>>(c1).map_err(|_| ())?;
+
+            let mut p_bytes = Vec::new();
+            generators.write(&mut p_bytes).map_err(|_| ())?;
+            r1cs_circuit.write(&mut p_bytes).map_err(|_| ())?;
+            proof.write(&mut p_bytes).map_err(|_| ())?;
+            (assignment.s.len() as u64)
+                .write(&mut p_bytes)
+                .map_err(|_| ())?;
+            for i in &assignment.s {
+                i.write(&mut p_bytes).map_err(|_| ())?;
+            }
+
+            Ok(GadgetProof::GreaterThan(*lhs, p_bytes))
+        }
+        Gadget::LessThan(s, rhs) => {
+            let repr_s = <E::Fr as PrimeField>::BigInt::from(*s);
+            let repr_rhs = <E::Fr as PrimeField>::BigInt::from(*rhs);
+
+            let c1 = RangeProof::<E::Fr> {
+                lhs: Some(<E::Fr as PrimeField>::from_repr(repr_s)),
+                rhs: Some(<E::Fr as PrimeField>::from_repr(repr_rhs)),
+                n: 64,
+            };
+
+            let (generators, r1cs_circuit, proof, assignment) =
+                create_proof::<E, RangeProof<E::Fr>>(c1).map_err(|_| ())?;
+
+            let mut p_bytes = Vec::new();
+            generators.write(&mut p_bytes).map_err(|_| ())?;
+            r1cs_circuit.write(&mut p_bytes).map_err(|_| ())?;
+            proof.write(&mut p_bytes).map_err(|_| ())?;
+            (assignment.s.len() as u64)
+                .write(&mut p_bytes)
+                .map_err(|_| ())?;
+            for i in &assignment.s {
+                i.write(&mut p_bytes).map_err(|_| ())?;
+            }
+
+            Ok(GadgetProof::LessThan(*rhs, p_bytes))
+        }
+        Gadget::Between(s, lhs, rhs) => {
+            let repr_s = <E::Fr as PrimeField>::BigInt::from(*s);
+            let repr_lhs = <E::Fr as PrimeField>::BigInt::from(*lhs);
+            let repr_rhs = <E::Fr as PrimeField>::BigInt::from(*rhs);
+
+            let c_l = RangeProof::<E::Fr> {
+                lhs: Some(<E::Fr as PrimeField>::from_repr(repr_lhs)),
+                rhs: Some(<E::Fr as PrimeField>::from_repr(repr_s)),
+                n: 64,
+            };
+
+            let (generators, r1cs_circuit, proof, assignment) =
+                create_proof::<E, RangeProof<E::Fr>>(c_l).map_err(|_| ())?;
+
+            let mut p_bytes = Vec::new();
+            generators.write(&mut p_bytes).map_err(|_| ())?;
+            r1cs_circuit.write(&mut p_bytes).map_err(|_| ())?;
+            proof.write(&mut p_bytes).map_err(|_| ())?;
+            (assignment.s.len() as u64)
+                .write(&mut p_bytes)
+                .map_err(|_| ())?;
+            for i in &assignment.s {
+                i.write(&mut p_bytes).map_err(|_| ())?;
+            }
+
+            let c_r = RangeProof::<E::Fr> {
+                lhs: Some(<E::Fr as PrimeField>::from_repr(repr_s)),
+                rhs: Some(<E::Fr as PrimeField>::from_repr(repr_rhs)),
+                n: 64,
+            };
+            let (r_generators, r_r1cs_circuit, r_proof, r_assignment) =
+                create_proof::<E, RangeProof<E::Fr>>(c_r).map_err(|_| ())?;
+
+            r_generators.write(&mut p_bytes).map_err(|_| ())?;
+            r_r1cs_circuit.write(&mut p_bytes).map_err(|_| ())?;
+            r_proof.write(&mut p_bytes).map_err(|_| ())?;
+            (r_assignment.s.len() as u64)
+                .write(&mut p_bytes)
+                .map_err(|_| ())?;
+            for i in &r_assignment.s {
+                i.write(&mut p_bytes).map_err(|_| ())?;
+            }
+
+            Ok(GadgetProof::Between(*lhs, *rhs, p_bytes))
+        }
+        _ => Err(()),
+    }
+}
+
+#[cfg(feature = "bulletproofs")]
+pub fn bulletproofs_verify<E: PairingEngine>(
+    g: GadgetProof,
+    _vk: &[u8],
+    _is_pp: bool,
+) -> Result<bool, ()> {
+    use scheme::bulletproofs::arithmetic_circuit::{verify_proof, Generators, Proof, R1csCircuit};
+    match g {
+        GadgetProof::GreaterThan(_, p_bytes) | GadgetProof::LessThan(_, p_bytes) => {
+            let mut bytes = &p_bytes[..];
+            let generators = Generators::<E>::read(&mut bytes).map_err(|_| ())?;
+            let r1cs_circuit = R1csCircuit::<E>::read(&mut bytes).map_err(|_| ())?;
+            let proof = Proof::<E>::read(&mut bytes).map_err(|_| ())?;
+            let s_len = u64::read(&mut bytes).map_err(|_| ())?;
+            let mut s = vec![];
+            for _ in 0..s_len {
+                let v = E::Fr::read(&mut bytes).map_err(|_| ())?;
+                s.push(v);
+            }
+
+            Ok(verify_proof(&generators, &proof, &r1cs_circuit, &s))
+        }
+        GadgetProof::Between(_, _, p_bytes) => {
+            let mut bytes = &p_bytes[..];
+            let generators = Generators::<E>::read(&mut bytes).map_err(|_| ())?;
+            let r1cs_circuit = R1csCircuit::<E>::read(&mut bytes).map_err(|_| ())?;
+            let proof = Proof::<E>::read(&mut bytes).map_err(|_| ())?;
+            let s_len = u64::read(&mut bytes).map_err(|_| ())?;
+            let mut s = vec![];
+            for _ in 0..s_len {
+                let v = E::Fr::read(&mut bytes).map_err(|_| ())?;
+                s.push(v);
+            }
+
+            if !verify_proof(&generators, &proof, &r1cs_circuit, &s) {
+                return Ok(false);
+            }
+
+            let r_generators = Generators::<E>::read(&mut bytes).map_err(|_| ())?;
+            let r_r1cs_circuit = R1csCircuit::<E>::read(&mut bytes).map_err(|_| ())?;
+            let r_proof = Proof::<E>::read(&mut bytes).map_err(|_| ())?;
+            let r_s_len = u64::read(&mut bytes).map_err(|_| ())?;
+            let mut r_s = vec![];
+            for _ in 0..r_s_len {
+                let v = E::Fr::read(&mut bytes).map_err(|_| ())?;
+                r_s.push(v);
+            }
+
+            Ok(verify_proof(&r_generators, &r_proof, &r_r1cs_circuit, &r_s))
+        }
+        _ => Err(()),
+    }
+}
+
 #[test]
 fn test_rangeproof() {
     use curve::bn_256::{Bn_256, Fr};

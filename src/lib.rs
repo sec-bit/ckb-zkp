@@ -316,8 +316,14 @@ macro_rules! handle_gadget_prove {
                 }
             }
             Scheme::Bulletproofs => {
-                // TODO
-                Err(())
+                #[cfg(not(feature = "bulletproofs"))]
+                panic!("Cound not found bulletproofs feature");
+
+                #[cfg(feature = "bulletproofs")]
+                {
+                    use $gadget::bulletproofs_prove;
+                    handle_curve_prove!(bulletproofs_prove, $rng_name, $c, $g, $pk, $rng)
+                }
             }
         }
     };
@@ -358,8 +364,14 @@ macro_rules! handle_gadget_verify {
                 }
             }
             Scheme::Bulletproofs => {
-                // TODO
-                false
+                #[cfg(not(feature = "bulletproofs"))]
+                panic!("Cound not found bulletproofs feature");
+
+                #[cfg(feature = "bulletproofs")]
+                {
+                    use $gadget::bulletproofs_verify;
+                    handle_curve_verify!(bulletproofs_verify, $c, $gp, $vk, $pp)
+                }
             }
         }
     };

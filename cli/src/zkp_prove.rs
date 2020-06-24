@@ -1,7 +1,8 @@
-use ckb_zkp::{prove, Curve, Gadget, GadgetProof, Scheme};
 use serde_json::json;
 use std::env;
 use std::path::PathBuf;
+
+use ckb_zkp::{prove, Curve, Gadget, GadgetProof, Scheme};
 
 const PROOFS_DIR: &'static str = "./proofs_files";
 const SETUP_DIR: &'static str = "./trusted_setup";
@@ -200,13 +201,19 @@ fn to_hex(v: &[u8]) -> String {
 fn main() -> Result<(), String> {
     let (g, s, c, pk_file, mut filename, _is_pp, is_json) = handle_args()?;
 
-    // load pk file.
-    let mut pk_path = PathBuf::from(SETUP_DIR);
-    pk_path.push(pk_file);
-    if !pk_path.exists() {
-        return Err(format!("Cannot found setup file: {:?}", pk_path));
-    }
-    let pk = std::fs::read(&pk_path).unwrap();
+    let pk = match s {
+        Scheme::Groth16 => {
+            // load pk file.
+            let mut pk_path = PathBuf::from(SETUP_DIR);
+            pk_path.push(pk_file);
+            if !pk_path.exists() {
+                return Err(format!("Cannot found setup file: {:?}", pk_path));
+            }
+            std::fs::read(&pk_path).unwrap()
+        }
+        Scheme::Bulletproofs => vec![],
+    };
+
     let proof = prove(g, s, c, &pk, rand::thread_rng()).unwrap();
 
     let mut path = PathBuf::from(PROOFS_DIR);

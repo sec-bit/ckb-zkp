@@ -1,5 +1,10 @@
 #![allow(non_snake_case)]
-use math::{bytes::ToBytes, AffineCurve, Field, One, PairingEngine, ProjectiveCurve};
+use math::{
+    bytes::{FromBytes, ToBytes},
+    io::Result as IoResult,
+    serialize::*,
+    AffineCurve, Field, One, PairingEngine, ProjectiveCurve,
+};
 use merlin::Transcript;
 
 use crate::Vec;
@@ -11,6 +16,46 @@ pub struct Proof<E: PairingEngine> {
     R_vec: Vec<E::G1Affine>,
     a: E::Fr,
     b: E::Fr,
+}
+
+impl<E: PairingEngine> ToBytes for Proof<E> {
+    #[inline]
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.L_vec.len() as u64).write(&mut writer)?;
+        for i in &self.L_vec {
+            i.write(&mut writer)?;
+        }
+        (self.R_vec.len() as u64).write(&mut writer)?;
+        for i in &self.R_vec {
+            i.write(&mut writer)?;
+        }
+        self.a.write(&mut writer)?;
+        self.b.write(&mut writer)?;
+
+        Ok(())
+    }
+}
+
+impl<E: PairingEngine> FromBytes for Proof<E> {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let l_len = u64::read(&mut reader)?;
+        let mut L_vec = vec![];
+        for _ in 0..l_len {
+            let v = E::G1Affine::read(&mut reader)?;
+            L_vec.push(v);
+        }
+        let r_len = u64::read(&mut reader)?;
+        let mut R_vec = vec![];
+        for _ in 0..r_len {
+            let v = E::G1Affine::read(&mut reader)?;
+            R_vec.push(v);
+        }
+        let a = E::Fr::read(&mut reader)?;
+        let b = E::Fr::read(&mut reader)?;
+
+        Ok(Self { L_vec, R_vec, a, b })
+    }
 }
 
 // protocol2 should not be used independently
@@ -103,7 +148,7 @@ pub fn verify<E: PairingEngine>(
     u: E::G1Affine,
     P: &E::G1Projective,
     proof: &Proof<E>,
-) {
+) -> bool {
     let mut transcript = Transcript::new(b"protocol2");
     let lg_n = proof.L_vec.len();
     let n = 1 << lg_n;
@@ -150,8 +195,8 @@ pub fn verify<E: PairingEngine>(
     let CheckP_rhs: E::G1Projective = quick_multiexp::<E>(&x_sq_vec, &proof.L_vec)
         + &(quick_multiexp::<E>(&x_inv_sq_vec, &proof.R_vec))
         + P;
-    assert_eq!(CheckP_lhs, CheckP_rhs);
-    println!("succeed!");
+
+    CheckP_lhs == CheckP_rhs
 }
 
 #[cfg(test)]
@@ -210,7 +255,7 @@ mod tests {
         println!("Time elapsed in prove is: {:?}", duration);
 
         let t4 = Instant::now();
-        verify::<E>(g_vec.clone(), h_vec.clone(), u, &P, &proof);
+        assert!(verify::<E>(g_vec.clone(), h_vec.clone(), u, &P, &proof));
         let duration = t4.elapsed();
         println!(
             "Time elapsed in verify is: {:?} \n >>>>>>>>>>>>>>>>>>>",

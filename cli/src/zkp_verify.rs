@@ -1,6 +1,7 @@
-use ckb_zkp::{verify, verify_from_bytes, Curve, GadgetProof, Proof, Scheme};
 use std::env;
 use std::path::PathBuf;
+
+use ckb_zkp::{verify, verify_from_bytes, Curve, GadgetProof, Proof, Scheme};
 
 const SETUP_DIR: &'static str = "./trusted_setup";
 
@@ -33,7 +34,7 @@ fn print_help() {
     print_common();
 }
 
-pub fn handle_args() -> Result<(String, String, bool, bool), String> {
+pub fn handle_args() -> Result<(String, Scheme, String, bool, bool), String> {
     let args: Vec<_> = env::args().collect();
     if args.len() < 3 {
         print_help();
@@ -62,7 +63,7 @@ pub fn handle_args() -> Result<(String, String, bool, bool), String> {
 
     let vk_file = format!("{}-{}-{}.vk", args[1], s.to_str(), c.to_str());
 
-    Ok((vk_file, args[n].clone(), is_pp, is_json))
+    Ok((vk_file, s, args[n].clone(), is_pp, is_json))
 }
 
 fn from_hex(s: &str) -> Result<Vec<u8>, ()> {
@@ -81,15 +82,20 @@ fn from_hex(s: &str) -> Result<Vec<u8>, ()> {
 }
 
 pub fn main() -> Result<(), String> {
-    let (vk_file, filename, _is_pp, is_json) = handle_args()?;
+    let (vk_file, s, filename, _is_pp, is_json) = handle_args()?;
 
-    // load pk file.
-    let mut vk_path = PathBuf::from(SETUP_DIR);
-    vk_path.push(vk_file);
-    if !vk_path.exists() {
-        return Err(format!("Cannot found setup file: {:?}", vk_path));
-    }
-    let vk = std::fs::read(&vk_path).unwrap();
+    let vk = match s {
+        Scheme::Groth16 => {
+            // load pk file.
+            let mut vk_path = PathBuf::from(SETUP_DIR);
+            vk_path.push(vk_file);
+            if !vk_path.exists() {
+                return Err(format!("Cannot found setup file: {:?}", vk_path));
+            }
+            std::fs::read(&vk_path).unwrap()
+        }
+        Scheme::Bulletproofs => vec![],
+    };
 
     let path = PathBuf::from(filename);
 

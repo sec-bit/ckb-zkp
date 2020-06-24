@@ -1,4 +1,4 @@
-//! An implementation of the [`Groth16`] zkSNARK.
+//! An implementation of the [`Groth16`] zkSNARK. and [`Bulletproofs`]
 //!
 //! [`Groth16`]: https://eprint.iacr.org/2016/260.pdf
 #![cfg_attr(not(feature = "std"), no_std)]

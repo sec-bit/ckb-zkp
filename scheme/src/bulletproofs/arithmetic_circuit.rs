@@ -1,7 +1,10 @@
 #![allow(non_snake_case)]
 use core::cmp;
 use math::{
-    bytes::ToBytes, AffineCurve, Field, One, PairingEngine, ProjectiveCurve, UniformRand, Zero,
+    bytes::{FromBytes, ToBytes},
+    io::Result as IoResult,
+    serialize::*,
+    AffineCurve, Field, One, PairingEngine, ProjectiveCurve, UniformRand, Zero,
 };
 use merlin::Transcript;
 use rand::Rng;
@@ -112,6 +115,72 @@ pub struct Generators<E: PairingEngine> {
     n_w: usize,
 }
 
+impl<E: PairingEngine> ToBytes for Generators<E> {
+    #[inline]
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.g_vec_N.len() as u64).write(&mut writer)?;
+        for q in &self.g_vec_N {
+            q.write(&mut writer)?;
+        }
+
+        (self.h_vec_N.len() as u64).write(&mut writer)?;
+        for q in &self.h_vec_N {
+            q.write(&mut writer)?;
+        }
+
+        self.g.write(&mut writer)?;
+        self.h.write(&mut writer)?;
+        self.u.write(&mut writer)?;
+
+        (self.n as u64).write(&mut writer)?;
+        (self.N as u64).write(&mut writer)?;
+        (self.k as u64).write(&mut writer)?;
+        (self.n_w as u64).write(&mut writer)?;
+
+        Ok(())
+    }
+}
+
+impl<E: PairingEngine> FromBytes for Generators<E> {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let g_len = u64::read(&mut reader)?;
+        let mut g_vec_N = vec![];
+        for _ in 0..g_len {
+            let v = E::G1Affine::read(&mut reader)?;
+            g_vec_N.push(v);
+        }
+
+        let h_len = u64::read(&mut reader)?;
+        let mut h_vec_N = vec![];
+        for _ in 0..h_len {
+            let v = E::G1Affine::read(&mut reader)?;
+            h_vec_N.push(v);
+        }
+
+        let g = E::G1Affine::read(&mut reader)?;
+        let h = E::G1Affine::read(&mut reader)?;
+        let u = E::G1Affine::read(&mut reader)?;
+
+        let n = u64::read(&mut reader)? as usize;
+        let N = u64::read(&mut reader)? as usize;
+        let k = u64::read(&mut reader)? as usize;
+        let n_w = u64::read(&mut reader)? as usize;
+
+        Ok(Self {
+            g_vec_N,
+            h_vec_N,
+            g,
+            h,
+            u,
+            n,
+            N,
+            k,
+            n_w,
+        })
+    }
+}
+
 // pub struct BpCircuit<E: PairingEngine> {
 //     n: usize,
 //     N: usize,
@@ -128,12 +197,163 @@ pub struct R1csCircuit<E: PairingEngine> {
     pub CO: Vec<Vec<E::Fr>>,
 }
 
+impl<E: PairingEngine> ToBytes for R1csCircuit<E> {
+    #[inline]
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.CL.len() as u64).write(&mut writer)?;
+        for i in &self.CL {
+            (i.len() as u64).write(&mut writer)?;
+            for j in i {
+                j.write(&mut writer)?;
+            }
+        }
+
+        (self.CR.len() as u64).write(&mut writer)?;
+        for i in &self.CR {
+            (i.len() as u64).write(&mut writer)?;
+            for j in i {
+                j.write(&mut writer)?;
+            }
+        }
+
+        (self.CO.len() as u64).write(&mut writer)?;
+        for i in &self.CO {
+            (i.len() as u64).write(&mut writer)?;
+            for j in i {
+                j.write(&mut writer)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl<E: PairingEngine> FromBytes for R1csCircuit<E> {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let cl_len = u64::read(&mut reader)?;
+        let mut CL = vec![];
+        for _ in 0..cl_len {
+            let i_len = u64::read(&mut reader)?;
+            let mut i = vec![];
+            for _ in 0..i_len {
+                let v = E::Fr::read(&mut reader)?;
+                i.push(v);
+            }
+
+            CL.push(i);
+        }
+
+        let cr_len = u64::read(&mut reader)?;
+        let mut CR = vec![];
+        for _ in 0..cr_len {
+            let i_len = u64::read(&mut reader)?;
+            let mut i = vec![];
+            for _ in 0..i_len {
+                let v = E::Fr::read(&mut reader)?;
+                i.push(v);
+            }
+
+            CR.push(i);
+        }
+
+        let co_len = u64::read(&mut reader)?;
+        let mut CO = vec![];
+        for _ in 0..co_len {
+            let i_len = u64::read(&mut reader)?;
+            let mut i = vec![];
+            for _ in 0..i_len {
+                let v = E::Fr::read(&mut reader)?;
+                i.push(v);
+            }
+
+            CO.push(i);
+        }
+
+        Ok(Self { CL, CR, CO })
+    }
+}
+
 pub struct Assignment<E: PairingEngine> {
     pub aL: Vec<E::Fr>,
     aR: Vec<E::Fr>,
     aO: Vec<E::Fr>,
     pub s: Vec<E::Fr>,
     pub w: Vec<E::Fr>,
+}
+
+impl<E: PairingEngine> ToBytes for Assignment<E> {
+    #[inline]
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.aL.len() as u64).write(&mut writer)?;
+        for i in &self.aL {
+            i.write(&mut writer)?;
+        }
+
+        (self.aR.len() as u64).write(&mut writer)?;
+        for i in &self.aR {
+            i.write(&mut writer)?;
+        }
+
+        (self.aO.len() as u64).write(&mut writer)?;
+        for i in &self.aO {
+            i.write(&mut writer)?;
+        }
+
+        (self.s.len() as u64).write(&mut writer)?;
+        for i in &self.s {
+            i.write(&mut writer)?;
+        }
+
+        (self.w.len() as u64).write(&mut writer)?;
+        for i in &self.w {
+            i.write(&mut writer)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<E: PairingEngine> FromBytes for Assignment<E> {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let l_len = u64::read(&mut reader)?;
+        let mut aL = vec![];
+        for _ in 0..l_len {
+            let v = E::Fr::read(&mut reader)?;
+            aL.push(v);
+        }
+
+        let r_len = u64::read(&mut reader)?;
+        let mut aR = vec![];
+        for _ in 0..r_len {
+            let v = E::Fr::read(&mut reader)?;
+            aR.push(v);
+        }
+
+        let o_len = u64::read(&mut reader)?;
+        let mut aO = vec![];
+        for _ in 0..o_len {
+            let v = E::Fr::read(&mut reader)?;
+            aO.push(v);
+        }
+
+        let s_len = u64::read(&mut reader)?;
+        let mut s = vec![];
+        for _ in 0..s_len {
+            let v = E::Fr::read(&mut reader)?;
+            s.push(v);
+        }
+
+        let w_len = u64::read(&mut reader)?;
+        let mut w = vec![];
+        for _ in 0..w_len {
+            let v = E::Fr::read(&mut reader)?;
+            w.push(v);
+        }
+
+        Ok(Self { aL, aR, aO, s, w })
+    }
 }
 
 pub struct Proof<E: PairingEngine> {
@@ -156,6 +376,101 @@ pub struct Proof<E: PairingEngine> {
     t_x: E::Fr,
     IPP: inner_product_proof::Proof<E>,
     IPP_P: E::G1Projective,
+}
+
+impl<E: PairingEngine> ToBytes for Proof<E> {
+    #[inline]
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.A_I.write(&mut writer)?;
+        self.A_O.write(&mut writer)?;
+        self.A_W.write(&mut writer)?;
+        self.S.write(&mut writer)?;
+        self.T_2.write(&mut writer)?;
+        self.T_3.write(&mut writer)?;
+        self.T_5.write(&mut writer)?;
+        self.T_6.write(&mut writer)?;
+        self.T_7.write(&mut writer)?;
+        self.T_8.write(&mut writer)?;
+        self.T_9.write(&mut writer)?;
+        self.T_10.write(&mut writer)?;
+        self.mu.write(&mut writer)?;
+        self.tau_x.write(&mut writer)?;
+
+        (self.l_x.len() as u64).write(&mut writer)?;
+        for i in &self.l_x {
+            i.write(&mut writer)?;
+        }
+        (self.r_x.len() as u64).write(&mut writer)?;
+        for i in &self.r_x {
+            i.write(&mut writer)?;
+        }
+
+        self.t_x.write(&mut writer)?;
+        self.IPP.write(&mut writer)?;
+        self.IPP_P.write(&mut writer)?;
+
+        Ok(())
+    }
+}
+
+impl<E: PairingEngine> FromBytes for Proof<E> {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let A_I = E::G1Affine::read(&mut reader)?;
+        let A_O = E::G1Affine::read(&mut reader)?;
+        let A_W = E::G1Affine::read(&mut reader)?;
+        let S = E::G1Affine::read(&mut reader)?;
+        let T_2 = E::G1Affine::read(&mut reader)?;
+        let T_3 = E::G1Affine::read(&mut reader)?;
+        let T_5 = E::G1Affine::read(&mut reader)?;
+        let T_6 = E::G1Affine::read(&mut reader)?;
+        let T_7 = E::G1Affine::read(&mut reader)?;
+        let T_8 = E::G1Affine::read(&mut reader)?;
+        let T_9 = E::G1Affine::read(&mut reader)?;
+        let T_10 = E::G1Affine::read(&mut reader)?;
+        let mu = E::Fr::read(&mut reader)?;
+        let tau_x = E::Fr::read(&mut reader)?;
+
+        let l_len = u64::read(&mut reader)?;
+        let mut l_x = vec![];
+        for _ in 0..l_len {
+            let v = E::Fr::read(&mut reader)?;
+            l_x.push(v);
+        }
+
+        let r_len = u64::read(&mut reader)?;
+        let mut r_x = vec![];
+        for _ in 0..r_len {
+            let v = E::Fr::read(&mut reader)?;
+            r_x.push(v);
+        }
+
+        let t_x = E::Fr::read(&mut reader)?;
+        let IPP = inner_product_proof::Proof::<E>::read(&mut reader)?;
+        let IPP_P = E::G1Projective::read(&mut reader)?;
+
+        Ok(Self {
+            A_I,
+            A_O,
+            A_W,
+            S,
+            T_2,
+            T_3,
+            T_5,
+            T_6,
+            T_7,
+            T_8,
+            T_9,
+            T_10,
+            mu,
+            tau_x,
+            l_x,
+            r_x,
+            t_x,
+            IPP,
+            IPP_P,
+        })
+    }
 }
 
 // very basic support for R1CS ConstraintSystem
@@ -563,7 +878,7 @@ pub fn verify_proof<E: PairingEngine>(
     proof: &Proof<E>,
     r1cs_circuit: &R1csCircuit<E>,
     public_inputs: &[E::Fr],
-) {
+) -> bool {
     let mut transcript = Transcript::new(b"protocol3");
 
     // generators
@@ -688,13 +1003,15 @@ pub fn verify_proof<E: PairingEngine>(
     // check tx ?= <lx, rx>
     // USE IPP here
     // assert_eq!(proof.t_x, inner_product::<E>(&proof.l_x, &proof.r_x));
-    inner_product_proof::verify(
+    if !inner_product_proof::verify(
         gens.g_vec_N.clone(),
         gens.h_vec_N.clone(),
         ux,
         &proof.IPP_P,
         &proof.IPP,
-    );
+    ) {
+        return false;
+    }
 
     // check ti
     let checkT_lhs: E::G1Projective =
@@ -731,9 +1048,7 @@ pub fn verify_proof<E: PairingEngine>(
         + &quick_multiexp::<E>(&proof.l_x, &g_vec)
         + &quick_multiexp::<E>(&proof.r_x, &h_vec_inv);
 
-    assert_eq!(P, checkP);
-
-    println!("succeed!");
+    P == checkP
 }
 
 pub fn create_generators<E: PairingEngine, R: Rng>(rng: &mut R, len: usize) -> Vec<E::G1Affine> {

@@ -48,7 +48,7 @@ mod bn_256 {
     fn prove_and_verify() {
         let rng = &mut test_rng();
 
-        for _ in 0..10 {
+        for _ in 0..5 {
             let a = Fr::rand(rng);
             let b = Fr::rand(rng);
             let mut c = a;
@@ -61,7 +61,12 @@ mod bn_256 {
                 })
                 .unwrap();
 
-            verify_proof(&generators, &proof, &r1cs_circuit, &assignment.s);
+            assert!(verify_proof(
+                &generators,
+                &proof,
+                &r1cs_circuit,
+                &assignment.s
+            ));
         }
     }
 }
@@ -78,7 +83,7 @@ mod bls12_381 {
     fn prove_and_verify() {
         let rng = &mut test_rng();
 
-        for _ in 0..10 {
+        for _ in 0..5 {
             let a = Fr::rand(rng);
             let b = Fr::rand(rng);
             let mut c = a;
@@ -91,7 +96,12 @@ mod bls12_381 {
                 })
                 .unwrap();
 
-            verify_proof(&generators, &proof, &r1cs_circuit, &assignment.s);
+            assert!(verify_proof(
+                &generators,
+                &proof,
+                &r1cs_circuit,
+                &assignment.s
+            ));
         }
     }
 }
