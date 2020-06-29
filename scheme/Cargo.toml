@@ -1,0 +1,32 @@
+[package]
+name = "scheme"
+version = "0.1.0"
+authors = ["SECBIT Labs"]
+description = "implementation of the different zero-knowledge proof system schemes"
+keywords = ["zero knowledge", "cryptography", "zkSNARK", "SNARK", "Groth"]
+categories = ["cryptography"]
+license = "MIT/Apache-2.0"
+edition = "2018"
+
+[features]
+default = ["full"]
+full = ["parallel", "groth16", "bulletproofs"]
+std = ["math/std"]
+parallel = ["std", "rayon", "math/parallel"]
+groth16 = []
+bulletproofs = ["merlin", "sha3", "digest"]
+
+[dependencies]
+math = { path = "../math", default-features = false, features = [ "derive" ] }
+curve = { path = "../curve", default-features = false }
+rand = { version = "0.7", default-features = false }
+rayon = { version = "1", optional = true }
+smallvec = "1.1.0"
+merlin = { version = "2.0.0", default-features = false, optional = true }
+sha3 = { version = "0.8", default-features = false, optional = true }
+digest = { version = "0.8", default-features = false, optional = true }
+
+[dev-dependencies]
+csv = { version = "1" }
+rand = { version = "0.7" }
+curve = { path = "../curve", default-features = false, features = [ "bls12_381", "bn_256", "sw6" ] }

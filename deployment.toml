@@ -1,7 +1,7 @@
 [[cells]]
-name = "ckb-zkp"
+name = "mimc-groth16-verifier"
 enable_type_id = false
-location = { file = "build/release/ckb-zkp" }
+location = { file = "build/release/mimc-groth16-verifier" }
 
 # Dep group cells
 # [[dep_groups]]

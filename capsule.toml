@@ -1,5 +1,5 @@
 deployment = "deployment.toml"
 
 [[contracts]]
-name = "ckb-zkp"
+name = "mimc-groth16-verifier"
 template_type = "Rust"

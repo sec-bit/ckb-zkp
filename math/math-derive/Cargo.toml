@@ -1,0 +1,17 @@
+[package]
+name = "math-derive"
+version = "0.1.0"
+authors = ["SECBIT Labs"]
+description = "A library for bignumber, finite fields and elliptic curves"
+keywords = ["cryptography", "finite fields", "elliptic curves", "pairing"]
+categories = ["cryptography"]
+license = "MIT/Apache-2.0"
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1.0"
+syn = "1.0"
+quote = "1.0"
