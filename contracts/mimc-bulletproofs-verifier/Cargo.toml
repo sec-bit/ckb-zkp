@@ -1,0 +1,33 @@
+[package]
+name = "mimc-bulletproofs-verifier"
+version = "0.1.0"
+authors = ["SECBIT Labs"]
+license = "MIT/Apache-2.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ckb-std = "0.3.0"
+ckb-types = { package = "ckb-standalone-types", version = "0.0.1-pre.1", default-features = false }
+
+[dependencies.ckb-zkp]
+path = "../../"
+default-features = false
+features = [ "groth16", "bn_256", "bls12_381"]
+
+[profile.release]
+# set debug-assertions to true to enable debug macro.
+# debug-assertions = true
+overflow-checks = true
+lto = true
+opt-level = "z"
+codegen-units = 1
+panic = 'abort'
+
+[profile.dev]
+overflow-checks = true
+lto = true
+opt-level = "s"
+codegen-units = 16
+debug = 0
