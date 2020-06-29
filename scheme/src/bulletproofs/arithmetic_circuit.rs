@@ -200,29 +200,86 @@ pub struct R1csCircuit<E: PairingEngine> {
 impl<E: PairingEngine> ToBytes for R1csCircuit<E> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.CL.len() as u64).write(&mut writer)?;
-        for i in &self.CL {
-            (i.len() as u64).write(&mut writer)?;
-            for j in i {
-                j.write(&mut writer)?;
+        let zero = E::Fr::zero();
+
+        let x = self.CL.len();
+        let y = if x > 0 { self.CL[0].len() } else { 0 };
+
+        (x as u32).write(&mut writer)?;
+        (y as u32).write(&mut writer)?;
+
+        let mut cl_bytes = Vec::new();
+        let mut cr_bytes = Vec::new();
+        let mut co_bytes = Vec::new();
+
+        let mut l_i = 0u32;
+        let mut r_i = 0u32;
+        let mut o_i = 0u32;
+
+        for i in 0..x {
+            let mut l_n = 0u32;
+            let mut l_bytes = Vec::new();
+
+            let mut r_n = 0u32;
+            let mut r_bytes = Vec::new();
+
+            let mut o_n = 0u32;
+            let mut o_bytes = Vec::new();
+
+            for j in 0..y {
+                let l_t = self.CL[i][j];
+                let r_t = self.CR[i][j];
+                let o_t = self.CO[i][j];
+
+                if l_t != zero {
+                    (j as u32).write(&mut l_bytes)?;
+                    l_t.write(&mut l_bytes)?;
+                    l_n += 1
+                }
+
+                if r_t != zero {
+                    (j as u32).write(&mut r_bytes)?;
+                    r_t.write(&mut r_bytes)?;
+                    r_n += 1
+                }
+
+                if o_t != zero {
+                    (j as u32).write(&mut o_bytes)?;
+                    o_t.write(&mut o_bytes)?;
+                    o_n += 1
+                }
+            }
+
+            if l_n > 0 {
+                l_i += 1;
+                (i as u32).write(&mut cl_bytes)?;
+                l_n.write(&mut cl_bytes)?;
+                l_bytes.write(&mut cl_bytes)?;
+            }
+
+            if r_n > 0 {
+                r_i += 1;
+                (i as u32).write(&mut cr_bytes)?;
+                r_n.write(&mut cr_bytes)?;
+                r_bytes.write(&mut cr_bytes)?;
+            }
+
+            if o_n > 0 {
+                o_i += 1;
+                (i as u32).write(&mut co_bytes)?;
+                o_n.write(&mut co_bytes)?;
+                o_bytes.write(&mut co_bytes)?;
             }
         }
 
-        (self.CR.len() as u64).write(&mut writer)?;
-        for i in &self.CR {
-            (i.len() as u64).write(&mut writer)?;
-            for j in i {
-                j.write(&mut writer)?;
-            }
-        }
+        l_i.write(&mut writer)?;
+        cl_bytes.write(&mut writer)?;
 
-        (self.CO.len() as u64).write(&mut writer)?;
-        for i in &self.CO {
-            (i.len() as u64).write(&mut writer)?;
-            for j in i {
-                j.write(&mut writer)?;
-            }
-        }
+        r_i.write(&mut writer)?;
+        cr_bytes.write(&mut writer)?;
+
+        o_i.write(&mut writer)?;
+        co_bytes.write(&mut writer)?;
 
         Ok(())
     }
@@ -231,43 +288,42 @@ impl<E: PairingEngine> ToBytes for R1csCircuit<E> {
 impl<E: PairingEngine> FromBytes for R1csCircuit<E> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let cl_len = u64::read(&mut reader)?;
-        let mut CL = vec![];
-        for _ in 0..cl_len {
-            let i_len = u64::read(&mut reader)?;
-            let mut i = vec![];
-            for _ in 0..i_len {
-                let v = E::Fr::read(&mut reader)?;
-                i.push(v);
-            }
+        let zero = E::Fr::zero();
+        let x = u32::read(&mut reader)? as usize;
+        let y = u32::read(&mut reader)? as usize;
 
-            CL.push(i);
+        let mut CL = vec![vec![zero; y]; x];
+        let mut CR = vec![vec![zero; y]; x];
+        let mut CO = vec![vec![zero; y]; x];
+
+        let l_i = u32::read(&mut reader)?;
+        for _ in 0..l_i {
+            let i = u32::read(&mut reader)? as usize;
+            let i_n = u32::read(&mut reader)?;
+            for _ in 0..i_n {
+                let j = u32::read(&mut reader)? as usize;
+                CL[i][j] = E::Fr::read(&mut reader)?;
+            }
         }
 
-        let cr_len = u64::read(&mut reader)?;
-        let mut CR = vec![];
-        for _ in 0..cr_len {
-            let i_len = u64::read(&mut reader)?;
-            let mut i = vec![];
-            for _ in 0..i_len {
-                let v = E::Fr::read(&mut reader)?;
-                i.push(v);
+        let r_i = u32::read(&mut reader)?;
+        for _ in 0..r_i {
+            let i = u32::read(&mut reader)? as usize;
+            let i_n = u32::read(&mut reader)?;
+            for _ in 0..i_n {
+                let j = u32::read(&mut reader)? as usize;
+                CR[i][j] = E::Fr::read(&mut reader)?;
             }
-
-            CR.push(i);
         }
 
-        let co_len = u64::read(&mut reader)?;
-        let mut CO = vec![];
-        for _ in 0..co_len {
-            let i_len = u64::read(&mut reader)?;
-            let mut i = vec![];
-            for _ in 0..i_len {
-                let v = E::Fr::read(&mut reader)?;
-                i.push(v);
+        let o_i = u32::read(&mut reader)?;
+        for _ in 0..o_i {
+            let i = u32::read(&mut reader)? as usize;
+            let i_n = u32::read(&mut reader)?;
+            for _ in 0..i_n {
+                let j = u32::read(&mut reader)? as usize;
+                CO[i][j] = E::Fr::read(&mut reader)?;
             }
-
-            CO.push(i);
         }
 
         Ok(Self { CL, CR, CO })
@@ -889,6 +945,7 @@ pub fn verify_proof<E: PairingEngine>(
 
     transcript.append_u64(b"n", gens.n as u64);
     transcript.append_u64(b"N", gens.N as u64);
+
     transcript.append_message(b"A_I", &math::to_bytes!(proof.A_I).unwrap());
     transcript.append_message(b"A_O", &math::to_bytes!(proof.A_O).unwrap());
     transcript.append_message(b"A_W", &math::to_bytes!(proof.A_W).unwrap());
