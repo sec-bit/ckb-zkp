@@ -1,15 +1,15 @@
-
 use math::PrimeField;
-use scheme::r1cs::{
-    ConstraintSynthesizer, ConstraintSystem, SynthesisError,
-};
+use scheme::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
 struct IsnonzeroDemo<F: PrimeField> {
     check_num: Option<F>,
 }
 
 impl<E: PrimeField> ConstraintSynthesizer<E> for IsnonzeroDemo<E> {
-    fn generate_constraints<CS: ConstraintSystem<E>>(self, cs: &mut CS) -> Result<(), SynthesisError> {
+    fn generate_constraints<CS: ConstraintSystem<E>>(
+        self,
+        cs: &mut CS,
+    ) -> Result<(), SynthesisError> {
         let inv_var = cs.alloc(
             || "elhemeral inverse",
             || {
@@ -37,7 +37,6 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for IsnonzeroDemo<E> {
             |lc| lc + CS::one(),
         );
 
-
         Ok(())
     }
 }
@@ -53,9 +52,7 @@ fn test_isnonzero_demo() {
     let mut rng = &mut test_rng();
     println!("Creating parameters...");
     let params = {
-        let c = IsnonzeroDemo::<Fr> {
-            check_num: None,
-        };
+        let c = IsnonzeroDemo::<Fr> { check_num: None };
 
         generate_random_parameters::<Bn_256, _, _>(c, &mut rng).unwrap()
     };
@@ -74,16 +71,17 @@ fn test_isnonzero_demo() {
 #[test]
 fn test_isnonzero_bp_demo() {
     use curve::bn_256::{Bn_256, Fr};
-    use scheme::bulletproofs::arithmetic_circuit::{
-        create_proof, verify_proof,
-    };
+    use scheme::bulletproofs::arithmetic_circuit::{create_proof, verify_proof};
+
+    let mut rng = &mut math::test_rng();
 
     println!("Creating proofs...");
 
     let c = IsnonzeroDemo::<Fr> {
         check_num: Some(Fr::from(1u32)),
     };
-    let (generators, r1cs_circuit, proof, assignment) = create_proof::<Bn_256, _>(c).unwrap();
+    let (generators, r1cs_circuit, proof, assignment) =
+        create_proof::<Bn_256, _, _>(c, &mut rng).unwrap();
 
     verify_proof(&generators, &proof, &r1cs_circuit, &assignment.s);
 }
