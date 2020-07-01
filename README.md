@@ -1,6 +1,13 @@
 # ckb-zkp
 
-*(a.k.a. zkp-toolkit-ckb)*
+[![CI](https://flat.badgen.net/github/checks/sec-bit/ckb-zkp/master)](https://github.com/sec-bit/ckb-zkp/actions)
+[![License:Apache](https://flat.badgen.net/badge/license/Apache%202.0/blue)](./LICENSE-APACHE)
+[![License: MIT](https://flat.badgen.net/badge/license/MIT/orange)](./LICENSE-MIT)
+
+<!-- The badge below is for future usage. -->
+<!-- [![crates.io](https://flat.badgen.net/crates/v/ckb-zkp)]() -->
+
+_(a.k.a. zkp-toolkit-ckb)_
 
 Zero-knowledge proofs toolkit for CKB, empowering the community with the cutting-edge techniques of zero-knowledge proofs to develop all kinds of decentralized applications.
 
