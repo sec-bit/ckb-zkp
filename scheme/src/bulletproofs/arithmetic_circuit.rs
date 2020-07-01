@@ -531,14 +531,15 @@ impl<E: PairingEngine> FromBytes for Proof<E> {
 
 // very basic support for R1CS ConstraintSystem
 // TODO: refactor this then we do not need to return Generators, R1csCircuit, and Assignment.
-pub fn create_proof<E, C>(
+pub fn create_proof<E, C, R>(
     circuit: C,
+    rng: &mut R,
 ) -> Result<(Generators<E>, R1csCircuit<E>, Proof<E>, Assignment<E>), SynthesisError>
 where
     E: PairingEngine,
     C: ConstraintSynthesizer<E::Fr>,
+    R: Rng,
 {
-    let mut rng = rand::thread_rng();
     let mut prover = ProvingAssignment::<E> {
         at: vec![],
         bt: vec![],
@@ -613,12 +614,12 @@ where
     // n_max
     let n_max = cmp::max(input.aL.len(), input.w.len());
     let N = n_max.next_power_of_two(); // N must be greater than or equal to n & n_w
-    let g_vec_N = create_generators::<E, _>(&mut rng, N);
-    let h_vec_N = create_generators::<E, _>(&mut rng, N);
-    let gh = create_generators::<E, _>(&mut rng, 2);
+    let g_vec_N = create_generators::<E, _>(rng, N);
+    let h_vec_N = create_generators::<E, _>(rng, N);
+    let gh = create_generators::<E, _>(rng, 2);
     let g = gh[0];
     let h = gh[1];
-    let u = E::G1Projective::rand(&mut rng).into_affine();
+    let u = E::G1Projective::rand(rng).into_affine();
 
     let n = num_constraints;
     let k = input.s.len();
@@ -635,7 +636,7 @@ where
         n_w,
     };
 
-    let proof = prove(&generators, &r1cs_circuit, &input, &mut rng);
+    let proof = prove(&generators, &r1cs_circuit, &input, rng);
 
     Ok((generators, r1cs_circuit, proof, input))
 }

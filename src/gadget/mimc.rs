@@ -260,7 +260,7 @@ pub fn groth16_verify<E: PairingEngine>(
 pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
     g: &Gadget,
     _pk: &[u8],
-    _rng: R,
+    mut rng: R,
 ) -> Result<GadgetProof, ()> {
     use scheme::bulletproofs::arithmetic_circuit::create_proof;
 
@@ -270,7 +270,7 @@ pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
             let (image, mc) = hash_and_r1cs(b, &constants);
 
             let (generators, r1cs_circuit, proof, assignment) =
-                create_proof::<E, MiMC<E::Fr>>(mc).map_err(|_| ())?;
+                create_proof::<E, MiMC<E::Fr>, R>(mc, &mut rng).map_err(|_| ())?;
 
             let mut p_bytes = Vec::new();
             generators.write(&mut p_bytes).map_err(|_| ())?;
