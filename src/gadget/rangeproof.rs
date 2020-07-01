@@ -212,7 +212,7 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for RangeProof<F> {
 }
 
 use crate::{Gadget, GadgetProof};
-use math::{Field, FromBytes, PairingEngine, ToBytes};
+use math::{FromBytes, PairingEngine, ToBytes};
 
 #[cfg(feature = "groth16")]
 pub fn groth16_prove<E: PairingEngine, R: rand::Rng>(
@@ -290,6 +290,7 @@ pub fn groth16_verify<E: PairingEngine>(
     vk: &[u8],
     is_pp: bool,
 ) -> Result<bool, ()> {
+    use math::Field;
     use scheme::groth16::{
         prepare_verifying_key, verify_proof, PreparedVerifyingKey, Proof, VerifyingKey,
     };

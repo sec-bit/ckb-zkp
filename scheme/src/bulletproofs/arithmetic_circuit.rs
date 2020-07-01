@@ -9,7 +9,7 @@ use math::{
 use merlin::Transcript;
 use rand::Rng;
 
-use crate::Vec;
+use crate::{String, Vec};
 
 use crate::r1cs::{
     ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable,
@@ -561,10 +561,10 @@ where
     let f = [&prover.input_assignment[..], &prover.aux_assignment[..]].concat();
     let num_inputs = prover.input_assignment.len();
     let num_assignments = f.len();
-    println!(
-        "num_constraints = {}, num_inputs = {}, num_assignments = {}",
-        num_constraints, num_inputs, num_assignments
-    );
+    // println!(
+    //     "num_constraints = {}, num_inputs = {}, num_assignments = {}",
+    //     num_constraints, num_inputs, num_assignments
+    // );
 
     let mut CL: Vec<Vec<E::Fr>> = vec![vec![E::Fr::zero(); num_assignments]; num_constraints];
     let mut CR: Vec<Vec<E::Fr>> = vec![vec![E::Fr::zero(); num_assignments]; num_constraints];
