@@ -325,7 +325,7 @@ pub fn groth16_verify<E: PairingEngine>(
 pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
     g: &Gadget,
     _pk: &[u8],
-    _rng: R,
+    mut rng: R,
 ) -> Result<GadgetProof, ()> {
     use scheme::bulletproofs::arithmetic_circuit::create_proof;
 
@@ -341,7 +341,7 @@ pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
             };
 
             let (generators, r1cs_circuit, proof, assignment) =
-                create_proof::<E, RangeProof<E::Fr>>(c1).map_err(|_| ())?;
+                create_proof::<E, RangeProof<E::Fr>, R>(c1, &mut rng).map_err(|_| ())?;
 
             let mut p_bytes = Vec::new();
             generators.write(&mut p_bytes).map_err(|_| ())?;
@@ -367,7 +367,7 @@ pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
             };
 
             let (generators, r1cs_circuit, proof, assignment) =
-                create_proof::<E, RangeProof<E::Fr>>(c1).map_err(|_| ())?;
+                create_proof::<E, RangeProof<E::Fr>, R>(c1, &mut rng).map_err(|_| ())?;
 
             let mut p_bytes = Vec::new();
             generators.write(&mut p_bytes).map_err(|_| ())?;
@@ -394,7 +394,7 @@ pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
             };
 
             let (generators, r1cs_circuit, proof, assignment) =
-                create_proof::<E, RangeProof<E::Fr>>(c_l).map_err(|_| ())?;
+                create_proof::<E, RangeProof<E::Fr>, R>(c_l, &mut rng).map_err(|_| ())?;
 
             let mut p_bytes = Vec::new();
             generators.write(&mut p_bytes).map_err(|_| ())?;
@@ -413,7 +413,7 @@ pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
                 n: 64,
             };
             let (r_generators, r_r1cs_circuit, r_proof, r_assignment) =
-                create_proof::<E, RangeProof<E::Fr>>(c_r).map_err(|_| ())?;
+                create_proof::<E, RangeProof<E::Fr>, R>(c_r, &mut rng).map_err(|_| ())?;
 
             r_generators.write(&mut p_bytes).map_err(|_| ())?;
             r_r1cs_circuit.write(&mut p_bytes).map_err(|_| ())?;
