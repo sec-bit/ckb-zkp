@@ -74,10 +74,10 @@ pub fn prove<E: PairingEngine>(
     let lg_n = n.trailing_zeros() as usize;
     let mut L_vec: Vec<E::G1Affine> = Vec::with_capacity(lg_n);
     let mut R_vec: Vec<E::G1Affine> = Vec::with_capacity(lg_n);
-    let mut i = 1;
+    //let mut i = 1;
     while n > 1 {
-        println!("fold, i={}, full_n={}", i, n);
-        i += 1;
+        //println!("fold, i={}, full_n={}", i, n);
+        //i += 1;
         // P computes:
         n = n / 2;
         let (aL, aR) = a_vec.split_at(n);

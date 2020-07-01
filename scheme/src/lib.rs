@@ -25,7 +25,7 @@ use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use std::{string::String, vec::Vec};
 
-#[cfg(feature = "groth16")]
+#[cfg(any(feature = "groth16", feature = "bulletproofs"))]
 #[macro_use]
 extern crate math;
 
