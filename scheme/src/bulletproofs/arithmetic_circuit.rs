@@ -1129,7 +1129,7 @@ mod tests {
         statement: Vec<E::Fr>,
         witness: Vec<E::Fr>,
     ) {
-        let mut rng = rand::thread_rng();
+        let rng = &mut math::test_rng();
         let r1cs_circuit = R1csCircuit::<E> { CL, CR, CO };
 
         let f = [&statement[..], &witness[..]].concat();
@@ -1149,12 +1149,12 @@ mod tests {
         // n_max
         let n_max = cmp::max(input.aL.len(), input.w.len());
         let N = n_max.next_power_of_two(); // N must be greater than or equal to n & n_w
-        let g_vec_N = create_generators::<E, _>(&mut rng, N);
-        let h_vec_N = create_generators::<E, _>(&mut rng, N);
-        let gh = create_generators::<E, _>(&mut rng, 2);
+        let g_vec_N = create_generators::<E, _>(rng, N);
+        let h_vec_N = create_generators::<E, _>(rng, N);
+        let gh = create_generators::<E, _>(rng, 2);
         let g = gh[0];
         let h = gh[1];
-        let u = E::G1Projective::rand(&mut rng).into_affine();
+        let u = E::G1Projective::rand(rng).into_affine();
 
         let n = input.aL.len();
         let k = input.s.len();
@@ -1171,7 +1171,7 @@ mod tests {
             n_w,
         };
 
-        let proof = prove(&generators, &r1cs_circuit, &input, &mut rng);
+        let proof = prove(&generators, &r1cs_circuit, &input, rng);
 
         verify_proof(&generators, &proof, &r1cs_circuit, &input.s);
     }
@@ -1326,7 +1326,7 @@ mod tests {
     // a_L[0] * a_R[0] = a_O[0]
     // a_L[1] * a_R[1] = a_O[1]
     fn shuffle_circuit_r1cs_succeed<E: PairingEngine>() {
-        let rng = &mut rand::thread_rng();
+        let rng = &mut math::test_rng();
 
         let zer = E::Fr::zero();
         let one = E::Fr::one();

@@ -54,12 +54,14 @@ mod bn_256 {
             let mut c = a;
             c.mul_assign(&b);
 
-            let (generators, r1cs_circuit, proof, assignment) =
-                create_proof::<Bn_256, _>(MySillyCircuit {
+            let (generators, r1cs_circuit, proof, assignment) = create_proof::<Bn_256, _, _>(
+                MySillyCircuit {
                     a: Some(a),
                     b: Some(b),
-                })
-                .unwrap();
+                },
+                rng,
+            )
+            .unwrap();
 
             assert!(verify_proof(
                 &generators,
@@ -89,12 +91,14 @@ mod bls12_381 {
             let mut c = a;
             c.mul_assign(&b);
 
-            let (generators, r1cs_circuit, proof, assignment) =
-                create_proof::<Bls12_381, _>(MySillyCircuit {
+            let (generators, r1cs_circuit, proof, assignment) = create_proof::<Bls12_381, _, _>(
+                MySillyCircuit {
                     a: Some(a),
                     b: Some(b),
-                })
-                .unwrap();
+                },
+                rng,
+            )
+            .unwrap();
 
             assert!(verify_proof(
                 &generators,
