@@ -14,7 +14,7 @@ ckb-types = { package = "ckb-standalone-types", version = "0.0.1-pre.1", default
 [dependencies.ckb-zkp]
 path = "../../"
 default-features = false
-features = [ "groth16", "bn_256", "bls12_381"]
+features = [ "bulletproofs", "bn_256", "bls12_381"]
 
 [profile.release]
 # set debug-assertions to true to enable debug macro.
