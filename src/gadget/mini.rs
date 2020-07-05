@@ -3,7 +3,7 @@ use scheme::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
 use crate::{Gadget, GadgetProof, Vec};
 
-struct Mini<F: PrimeField> {
+pub struct Mini<F: PrimeField> {
     pub x: Option<F>,
     pub y: Option<F>,
     pub z: Option<F>,
@@ -59,7 +59,7 @@ pub fn groth16_prove<E: PairingEngine, R: rand::Rng>(
             let mut p_bytes = Vec::new();
             proof.write(&mut p_bytes).map_err(|_| ())?;
 
-            Ok(GadgetProof::MiMC(z.to_le_bytes().to_vec(), p_bytes))
+            Ok(GadgetProof::Mini(*z, p_bytes))
         }
         _ => Err(()),
     }
@@ -125,10 +125,7 @@ pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
                 i.write(&mut p_bytes).map_err(|_| ())?;
             }
 
-            let mut i_bytes = Vec::new();
-            z.write(&mut i_bytes).map_err(|_| ())?;
-
-            Ok(GadgetProof::MiMC(i_bytes, p_bytes))
+            Ok(GadgetProof::Mini(*z, p_bytes))
         }
         _ => Err(()),
     }
@@ -142,7 +139,7 @@ pub fn bulletproofs_verify<E: PairingEngine>(
 ) -> Result<bool, ()> {
     use scheme::bulletproofs::arithmetic_circuit::{verify_proof, Generators, Proof, R1csCircuit};
     match g {
-        GadgetProof::Mini(_i_bytes, p_bytes) => {
+        GadgetProof::Mini(_z, p_bytes) => {
             let mut bytes = &p_bytes[..];
             let generators = Generators::<E>::read(&mut bytes).map_err(|_| ())?;
             let r1cs_circuit = R1csCircuit::<E>::read(&mut bytes).map_err(|_| ())?;

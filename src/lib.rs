@@ -171,6 +171,7 @@ impl GadgetProof {
         let mut bytes = vec![];
         match self {
             GadgetProof::Mini(e, mut s) => {
+                bytes.extend_from_slice(&4u16.to_le_bytes());
                 bytes.append(&mut e.to_le_bytes().to_vec());
                 bytes.append(&mut s);
             }

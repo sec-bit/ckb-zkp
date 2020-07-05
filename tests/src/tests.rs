@@ -8,9 +8,10 @@ use ckb_tool::ckb_types::{
 };
 use std::fs::File;
 use std::io::Read;
+use std::time::Instant;
 
-//const CONTRACT_NAME: &str = "mimc-groth16-verifier";
-const CONTRACT_NAME: &str = "mimc-bulletproofs-verifier";
+const BULLETPROOFS_CONTRACT_NAME: &str = "mimc-bulletproofs-verifier";
+const GROTH16_CONTRACT_NAME: &str = "mimc-groth16-verifier";
 const MAX_CYCLES: u64 = 1_000_000_000_000;
 
 // Relative path starts from capsuled-contracts/tests.
@@ -18,36 +19,33 @@ const VK_DIR: &str = "../cli/trusted_setup";
 const PROOF_DIR: &str = "../cli/proofs_files";
 
 // Names of vk files and proof files.
-const VK_BN_256: &str = "mimc-groth16-bn_256.vk";
-const PROOF_BN_256: &str = "mimc.groth16-bn_256.proof";
+const VK_BN_256: &str = "mini-groth16-bn_256.vk";
+const PROOF_BN_256: &str = "mini.groth16-bn_256.proof";
 const VK_BLS12_381: &str = "mimc-groth16-bls12_381.vk";
 const PROOF_BLS12_381: &str = "mimc.groth16-bls12_381.proof";
 
 //const BULLETPROOFS_BN_256: &str = "mimc.bulletproofs-bn_256.proof";
 const BULLETPROOFS_BN_256: &str = "mini.bulletproofs-bn_256.proof";
 
-//#[test]
-// #[ignore]
-fn test_proof_bn_256() {
-    proving_test(VK_BN_256, PROOF_BN_256);
+#[test]
+fn test_groth16_proof_bn_256() {
+    proving_test(VK_BN_256, PROOF_BN_256, GROTH16_CONTRACT_NAME);
 }
 
 //#[test]
 // #[ignore]
 fn test_proof_bls12_381() {
-    proving_test(VK_BLS12_381, PROOF_BLS12_381);
+    proving_test(VK_BLS12_381, PROOF_BLS12_381, GROTH16_CONTRACT_NAME);
 }
 
 #[test]
-// #[ignore]
 fn test_bulletproofs_bn_256() {
-    proving_test(VK_BN_256, BULLETPROOFS_BN_256);
+    proving_test(VK_BN_256, BULLETPROOFS_BN_256, BULLETPROOFS_CONTRACT_NAME);
 }
 
 #[test]
-// #[ignore]
 fn test_no_proof() {
-    let (mut context, tx) = build_test_context(Bytes::new(), Bytes::new());
+    let (mut context, tx) = build_test_context(Bytes::new(), Bytes::new(), GROTH16_CONTRACT_NAME);
 
     let tx = context.complete_tx(tx);
     context
@@ -55,10 +53,10 @@ fn test_no_proof() {
         .expect_err("should not pass verification");
 }
 
-fn build_test_context(proof_file: Bytes, vk: Bytes) -> (Context, TransactionView) {
+fn build_test_context(proof_file: Bytes, vk: Bytes, contract: &str) -> (Context, TransactionView) {
     // deploy contract.
     let mut context = Context::default();
-    let contract_bin: Bytes = Loader::default().load_binary(CONTRACT_NAME);
+    let contract_bin: Bytes = Loader::default().load_binary(contract);
     let contract_out_point = context.deploy_contract(contract_bin);
     // Deploy always_success script as lock script.
     let always_success_out_point = context.deploy_contract(ALWAYS_SUCCESS.clone());
@@ -113,9 +111,9 @@ fn build_test_context(proof_file: Bytes, vk: Bytes) -> (Context, TransactionView
     (context, tx)
 }
 
-fn proving_test(vk_file: &str, proof_file: &str) {
+fn proving_test(vk_file: &str, proof_file_s: &str, contract: &str) {
     let mut proof_file =
-        File::open(format!("{}/{}", PROOF_DIR, proof_file)).expect("proof file not exists");
+        File::open(format!("{}/{}", PROOF_DIR, proof_file_s)).expect("proof file not exists");
     let mut proof_bin = Vec::new();
     // read the whole file
     proof_file
@@ -129,13 +127,16 @@ fn proving_test(vk_file: &str, proof_file: &str) {
         .read_to_end(&mut vk_bin)
         .expect("Failed to read VK file");
 
-    let (mut context, tx) = build_test_context(proof_bin.into(), vk_bin.into());
+    let (mut context, tx) = build_test_context(proof_bin.into(), vk_bin.into(), contract);
 
     let tx = context.complete_tx(tx);
+
+    let start = Instant::now();
     match context.verify_tx(&tx, MAX_CYCLES) {
         Ok(cycles) => {
             println!("cycles: {}", cycles);
         }
         Err(err) => panic!("Failed to pass test: {}", err),
     }
+    println!("Verify {} Time: {:?}", proof_file_s, start.elapsed());
 }
