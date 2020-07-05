@@ -24,7 +24,7 @@ const VK_BLS12_381: &str = "mimc-groth16-bls12_381.vk";
 const PROOF_BLS12_381: &str = "mimc.groth16-bls12_381.proof";
 
 //const BULLETPROOFS_BN_256: &str = "mimc.bulletproofs-bn_256.proof";
-const BULLETPROOFS_BN_256: &str = "greater.bulletproofs-bn_256.proof";
+const BULLETPROOFS_BN_256: &str = "mini.bulletproofs-bn_256.proof";
 
 //#[test]
 // #[ignore]

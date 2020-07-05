@@ -8,10 +8,11 @@ use ckb_std::{ckb_constants::Source, debug, default_alloc, entry, error::SysErro
 use ckb_zkp::verify_from_bytes;
 
 entry!(main);
-default_alloc!(4 * 1024, 512 * 1024, 64);
+default_alloc!(4 * 1024, 2048 * 1024, 64);
 
 #[no_mangle]
 pub fn main() -> i8 {
+    debug!("Started");
     let index = 0;
     // Proof file size:
     const DATA_BUF_SIZE: usize = 500 * 1024; // 500KB

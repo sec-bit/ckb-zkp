@@ -5,6 +5,7 @@ pub mod lookup_1bit;
 pub mod lookup_2bit;
 pub mod lookup_3bit;
 pub mod mimc;
+pub mod mini;
 pub mod rangeproof;
 // pub mod merkletree;
 

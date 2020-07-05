@@ -27,6 +27,7 @@ fn print_help() {
     println!("Usage: zkp-verify [GADGET] <scheme> <curve> [FILE] <OPTIONS>");
     println!("");
     println!("GADGET: ");
+    println!("    mini    -- Mini circuit.");
     println!("    mimc    -- MiMC hash & proof.");
     println!("    greater -- Greater than comparison proof.");
     println!("    less    -- Less than comparison proof.");
@@ -114,6 +115,10 @@ pub fn main() -> Result<(), String> {
             let s = Scheme::from_str(s_str).unwrap();
             let c = Curve::from_str(c_str).unwrap();
             let p = match g_str {
+                "mini" => {
+                    let z = params[0].as_str().unwrap().parse::<u32>().unwrap();
+                    GadgetProof::Mini(z, from_hex(p_str).unwrap())
+                }
                 "mimc" => GadgetProof::MiMC(
                     from_hex(params[0].as_str().unwrap()).unwrap(),
                     from_hex(p_str).unwrap(),

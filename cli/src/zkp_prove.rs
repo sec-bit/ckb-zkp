@@ -16,6 +16,7 @@ struct MiMC;
 struct Greater;
 struct Less;
 struct Between;
+struct Mini;
 
 impl GadgetName for MiMC {
     fn handle(&self, args: &[String]) -> Result<(Gadget, String), String> {
@@ -108,6 +109,29 @@ impl GadgetName for Between {
     }
 }
 
+impl GadgetName for Mini {
+    fn handle(&self, args: &[String]) -> Result<(Gadget, String), String> {
+        let x = args[0]
+            .as_str()
+            .parse::<u32>()
+            .expect("Interger parse error");
+        let y = args[1]
+            .as_str()
+            .parse::<u32>()
+            .expect("Interger parse error");
+        let z = args[2]
+            .as_str()
+            .parse::<u32>()
+            .expect("Interger parse error");
+
+        Ok((Gadget::Mini(x, y, z), "mini".to_owned()))
+    }
+
+    fn options(&self) -> String {
+        "[x] [y] [z]".to_owned()
+    }
+}
+
 fn print_common() {
     println!("");
     println!("scheme:");
@@ -130,6 +154,7 @@ fn parse_gadget_name(g: &str) -> Result<Box<(dyn GadgetName + 'static)>, String>
         "greater" => Ok(Box::new(Greater)),
         "less" => Ok(Box::new(Less)),
         "between" => Ok(Box::new(Between)),
+        "mini" => Ok(Box::new(Mini)),
         _ => Err(format!("{} unimplemented!", g)),
     }
 }
@@ -142,6 +167,7 @@ pub fn handle_args() -> Result<(Gadget, Scheme, Curve, String, String, bool, boo
         println!("Usage: zkp-prove [GADGET] <scheme> <curve> [GADGET OPTIONS] <OPTIONS>");
         println!("");
         println!("GADGET: ");
+        println!("    mini    -- Mini circuit.");
         println!("    mimc    -- MiMC hash & proof.");
         println!("    greater -- Greater than comparison proof.");
         println!("    less    -- Less than comparison proof.");
@@ -230,6 +256,7 @@ fn main() -> Result<(), String> {
 
     if is_json {
         let (name, params, p) = match proof.p {
+            GadgetProof::Mini(z, proof) => ("mini", vec![format!("{}", z)], to_hex(&proof)),
             GadgetProof::MiMC(hash, proof) => ("mimc", vec![to_hex(&hash)], to_hex(&proof)),
             GadgetProof::GreaterThan(n, proof) => {
                 ("greater", vec![format!("{}", n)], to_hex(&proof))
