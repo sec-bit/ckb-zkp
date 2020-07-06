@@ -1,5 +1,4 @@
-mod boolean;
-
+pub mod boolean;
 pub mod isnonzero;
 pub mod lookup_1bit;
 pub mod lookup_2bit;

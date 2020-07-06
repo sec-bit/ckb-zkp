@@ -157,7 +157,7 @@ impl<'a, F: Field> ConstraintSynthesizer<F> for MiMC<'a, F> {
 }
 
 /// This is we used MiMC rounds constant.
-pub const MIMC_ROUNDS: usize = 322;
+pub const MIMC_ROUNDS: usize = 45;
 
 /// This is we used MiMC constants's seed, it can derived constants with different pairing curve.
 pub const SEED: [u8; 32] = [0; 32];
