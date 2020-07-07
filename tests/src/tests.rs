@@ -10,8 +10,8 @@ use std::fs::File;
 use std::io::Read;
 use std::time::Instant;
 
-const BULLETPROOFS_CONTRACT_NAME: &str = "mimc-bulletproofs-verifier";
-const GROTH16_CONTRACT_NAME: &str = "mimc-groth16-verifier";
+const BULLETPROOFS_CONTRACT_NAME: &str = "bulletproofs-verifier";
+const GROTH16_CONTRACT_NAME: &str = "groth16-verifier";
 const MAX_CYCLES: u64 = 1_000_000_000_000;
 
 // Relative path starts from capsuled-contracts/tests.
@@ -21,19 +21,18 @@ const PROOF_DIR: &str = "../cli/proofs_files";
 // Names of vk files and proof files.
 const VK_BN_256: &str = "mini-groth16-bn_256.vk";
 const PROOF_BN_256: &str = "mini.groth16-bn_256.proof";
-const VK_BLS12_381: &str = "mimc-groth16-bls12_381.vk";
-const PROOF_BLS12_381: &str = "mimc.groth16-bls12_381.proof";
+const VK_BLS12_381: &str = "mini-groth16-bls12_381.vk";
+const PROOF_BLS12_381: &str = "mini.groth16-bls12_381.proof";
 
-//const BULLETPROOFS_BN_256: &str = "mimc.bulletproofs-bn_256.proof";
-const BULLETPROOFS_BN_256: &str = "mimc.bulletproofs-bn_256.proof";
+const BULLETPROOFS_BN_256: &str = "mini.bulletproofs-bn_256.proof";
+//const BULLETPROOFS_BN_256: &str = "mimc.bulletproofs-bn_256.proof"; // test for benchmark
 
 #[test]
 fn test_groth16_proof_bn_256() {
     proving_test(VK_BN_256, PROOF_BN_256, GROTH16_CONTRACT_NAME);
 }
 
-//#[test]
-// #[ignore]
+#[test]
 fn test_proof_bls12_381() {
     proving_test(VK_BLS12_381, PROOF_BLS12_381, GROTH16_CONTRACT_NAME);
 }
