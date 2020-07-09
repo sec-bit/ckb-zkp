@@ -24,15 +24,15 @@ const PROOF_BN_256: &str = "mini.groth16-bn_256.proof";
 const VK_BLS12_381: &str = "mini-groth16-bls12_381.vk";
 const PROOF_BLS12_381: &str = "mini.groth16-bls12_381.proof";
 
-const BULLETPROOFS_BN_256: &str = "mini.bulletproofs-bn_256.proof";
-//const BULLETPROOFS_BN_256: &str = "mimc.bulletproofs-bn_256.proof"; // test for benchmark
+//const BULLETPROOFS_BN_256: &str = "greater.bulletproofs-bn_256.proof";
+const BULLETPROOFS_BN_256: &str = "mimc.bulletproofs-bn_256.proof"; // test for benchmark
 
-#[test]
+//#[test]
 fn test_groth16_proof_bn_256() {
     proving_test(VK_BN_256, PROOF_BN_256, GROTH16_CONTRACT_NAME);
 }
 
-#[test]
+//#[test]
 fn test_proof_bls12_381() {
     proving_test(VK_BLS12_381, PROOF_BLS12_381, GROTH16_CONTRACT_NAME);
 }

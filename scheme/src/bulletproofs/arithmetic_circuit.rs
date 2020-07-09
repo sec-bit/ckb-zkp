@@ -9,6 +9,12 @@ use math::{
 use merlin::Transcript;
 use rand::Rng;
 
+#[cfg(not(feature = "std"))]
+use alloc::collections::BTreeMap;
+
+#[cfg(feature = "std")]
+use std::collections::BTreeMap;
+
 use crate::{String, Vec};
 
 use crate::r1cs::{
@@ -17,7 +23,8 @@ use crate::r1cs::{
 
 use super::{
     hadamard_product, inner_product, inner_product_proof, push_constraints, quick_multiexp,
-    random_bytes_to_fr, vector_matrix_product, vector_matrix_product_t, VecPoly5,
+    random_bytes_to_fr, vector_map_product, vector_matrix_product, vector_matrix_product_t,
+    vector_product, VecPoly5,
 };
 
 // use rayon::prelude::*; // TODO: use rayon to accelerate
@@ -195,6 +202,9 @@ pub struct R1csCircuit<E: PairingEngine> {
     pub CL: Vec<Vec<E::Fr>>,
     pub CR: Vec<Vec<E::Fr>>,
     pub CO: Vec<Vec<E::Fr>>,
+    pub CL_T: BTreeMap<(u32, u32), E::Fr>,
+    pub CR_T: BTreeMap<(u32, u32), E::Fr>,
+    pub CO_T: BTreeMap<(u32, u32), E::Fr>,
 }
 
 impl<E: PairingEngine> ToBytes for R1csCircuit<E> {
@@ -288,13 +298,14 @@ impl<E: PairingEngine> ToBytes for R1csCircuit<E> {
 impl<E: PairingEngine> FromBytes for R1csCircuit<E> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let zero = E::Fr::zero();
-        let x = u32::read(&mut reader)? as usize;
-        let y = u32::read(&mut reader)? as usize;
+        //let zero = E::Fr::zero();
+        let _x = u32::read(&mut reader)? as usize;
+        let _y = u32::read(&mut reader)? as usize;
+        //println!("x: {}, y: {}", _x, _y);
 
-        let mut CL = vec![vec![zero; y]; x];
-        let mut CR = vec![vec![zero; y]; x];
-        let mut CO = vec![vec![zero; y]; x];
+        let mut CL_T = BTreeMap::new();
+        let mut CR_T = BTreeMap::new();
+        let mut CO_T = BTreeMap::new();
 
         let l_i = u32::read(&mut reader)?;
         for _ in 0..l_i {
@@ -302,7 +313,7 @@ impl<E: PairingEngine> FromBytes for R1csCircuit<E> {
             let i_n = u32::read(&mut reader)?;
             for _ in 0..i_n {
                 let j = u32::read(&mut reader)? as usize;
-                CL[i][j] = E::Fr::read(&mut reader)?;
+                CL_T.insert((i as u32, j as u32), E::Fr::read(&mut reader)?);
             }
         }
 
@@ -312,7 +323,7 @@ impl<E: PairingEngine> FromBytes for R1csCircuit<E> {
             let i_n = u32::read(&mut reader)?;
             for _ in 0..i_n {
                 let j = u32::read(&mut reader)? as usize;
-                CR[i][j] = E::Fr::read(&mut reader)?;
+                CR_T.insert((i as u32, j as u32), E::Fr::read(&mut reader)?);
             }
         }
 
@@ -322,11 +333,18 @@ impl<E: PairingEngine> FromBytes for R1csCircuit<E> {
             let i_n = u32::read(&mut reader)?;
             for _ in 0..i_n {
                 let j = u32::read(&mut reader)? as usize;
-                CO[i][j] = E::Fr::read(&mut reader)?;
+                CO_T.insert((i as u32, j as u32), E::Fr::read(&mut reader)?);
             }
         }
 
-        Ok(Self { CL, CR, CO })
+        Ok(Self {
+            CL_T,
+            CR_T,
+            CO_T,
+            CL: Default::default(),
+            CR: Default::default(),
+            CO: Default::default(),
+        })
     }
 }
 
@@ -596,7 +614,14 @@ where
         }
     }
 
-    let r1cs_circuit = R1csCircuit::<E> { CL, CR, CO };
+    let r1cs_circuit = R1csCircuit::<E> {
+        CL,
+        CR,
+        CO,
+        CL_T: Default::default(),
+        CR_T: Default::default(),
+        CO_T: Default::default(),
+    };
 
     let aL = vector_matrix_product_t::<E>(&f, &r1cs_circuit.CL);
     let aR = vector_matrix_product_t::<E>(&f, &r1cs_circuit.CR);
@@ -937,6 +962,8 @@ pub fn verify_proof<E: PairingEngine>(
     public_inputs: &[E::Fr],
 ) -> bool {
     let mut transcript = Transcript::new(b"protocol3");
+    let zero = E::Fr::zero();
+    let one = E::Fr::one();
 
     // generators
     let g_vec: Vec<E::G1Affine> = gens.g_vec_N.clone();
@@ -961,21 +988,21 @@ pub fn verify_proof<E: PairingEngine>(
     let z = random_bytes_to_fr::<E>(&buf_z);
 
     // compute y, z vectors, and delta(y, z)
-    let mut y_n: Vec<E::Fr> = vec![E::Fr::zero(); gens.N]; // challenge per witness
+    let mut y_n: Vec<E::Fr> = vec![zero; gens.N]; // challenge per witness
     for i in 0..gens.N {
         if i == 0 {
-            y_n[i] = E::Fr::one();
+            y_n[i] = one;
         } else {
             y_n[i] = y_n[i - 1] * &y;
         }
     }
 
-    let mut y_n_inv: Vec<E::Fr> = vec![E::Fr::zero(); gens.N];
+    let mut y_n_inv: Vec<E::Fr> = vec![zero; gens.N];
     for i in 0..gens.N {
         y_n_inv[i] = y_n[i].inverse().unwrap();
     }
 
-    let mut z_Q: Vec<E::Fr> = vec![E::Fr::zero(); gens.n]; // challenge per constraint
+    let mut z_Q: Vec<E::Fr> = vec![zero; gens.n]; // challenge per constraint
     for i in 0..gens.n {
         if i == 0 {
             z_Q[i] = z;
@@ -984,43 +1011,78 @@ pub fn verify_proof<E: PairingEngine>(
         }
     }
 
-    let z_Q_neg: Vec<E::Fr> = (0..gens.n).map(|i| -E::Fr::one() * &z_Q[i]).collect();
+    let z_Q_neg: Vec<E::Fr> = (0..gens.n).map(|i| -one * &z_Q[i]).collect();
 
+    //println!("gens.N: {}, gens.n: {}", gens.N, gens.n);
     // WL, WR, WO with padding
-    let mut WL: Vec<Vec<E::Fr>> = vec![vec![E::Fr::zero(); gens.N]; gens.n]; // Qxn, Q=n, n=N
-    let mut WR: Vec<Vec<E::Fr>> = vec![vec![E::Fr::zero(); gens.N]; gens.n]; // Qxn, Q=n, n=N
-    let mut WO: Vec<Vec<E::Fr>> = vec![vec![E::Fr::zero(); gens.N]; gens.n]; // Qxn, Q=n, n=N
+    //let mut WL: Vec<Vec<E::Fr>> = vec![vec![E::Fr::zero(); gens.N]; gens.n]; // Qxn, Q=n, n=N
+    //let mut WR: Vec<Vec<E::Fr>> = vec![vec![E::Fr::zero(); gens.N]; gens.n]; // Qxn, Q=n, n=N
+    //let mut WO: Vec<Vec<E::Fr>> = vec![vec![E::Fr::zero(); gens.N]; gens.n]; // Qxn, Q=n, n=Nw
+    let mut WL: Vec<E::Fr> = vec![zero; gens.n]; // Qxn, Q=n, n=N
+    let mut WR: Vec<E::Fr> = vec![zero; gens.n]; // Qxn, Q=n, n=N
+    let mut WO: Vec<E::Fr> = vec![zero; gens.n]; // Qxn, Q=n, n=N
+
     let zn = z_Q[gens.n - 1];
     let zn_sq = zn * &zn;
     for i in 0..gens.n {
-        WL[i][i] = E::Fr::one();
-        WR[i][i] = zn * &(E::Fr::one());
-        WO[i][i] = zn_sq * &(E::Fr::one());
+        //WL[i][i] = E::Fr::one();
+        //WR[i][i] = zn * &(E::Fr::one());
+        //WO[i][i] = zn_sq * &(E::Fr::one());
+        WL[i] = one;
+        WR[i] = zn * &one;
+        WO[i] = zn_sq * &one;
     }
 
     // c, WV
     let m = gens.k + gens.n_w;
-    let mut C1: Vec<Vec<E::Fr>> = vec![vec![E::Fr::zero(); gens.k]; gens.n];
-    let mut WV = vec![vec![E::Fr::zero(); gens.N]; gens.n]; // C2
+    let mut C1: Vec<Vec<E::Fr>> = vec![vec![zero; gens.k]; gens.n];
+    //let mut WV: Vec<Vec<E::Fr>> = vec![vec![zero; gens.N]; gens.n]; // C2
+    let mut WV: BTreeMap<(u32, u32), E::Fr> = BTreeMap::new();
+
     for i in 0..gens.n {
         for j in 0..gens.k {
-            C1[i][j] = r1cs_circuit.CL[i][j]
-                + &(zn * &r1cs_circuit.CR[i][j])
-                + &(zn_sq * &r1cs_circuit.CO[i][j]);
+            let cl = r1cs_circuit
+                .CL_T
+                .get(&(i as u32, j as u32))
+                .unwrap_or(&zero);
+            let cr = r1cs_circuit
+                .CR_T
+                .get(&(i as u32, j as u32))
+                .unwrap_or(&zero);
+            let co = r1cs_circuit
+                .CO_T
+                .get(&(i as u32, j as u32))
+                .unwrap_or(&zero);
+            C1[i][j] = *cl + &(zn * cr) + &(zn_sq * co);
         }
         for j in gens.k..m {
-            WV[i][j - gens.k] = r1cs_circuit.CL[i][j]
-                + &(zn * &r1cs_circuit.CR[i][j])
-                + &(zn_sq * &r1cs_circuit.CO[i][j]);
+            let cl = r1cs_circuit
+                .CL_T
+                .get(&(i as u32, j as u32))
+                .unwrap_or(&zero);
+            let cr = r1cs_circuit
+                .CR_T
+                .get(&(i as u32, j as u32))
+                .unwrap_or(&zero);
+            let co = r1cs_circuit
+                .CO_T
+                .get(&(i as u32, j as u32))
+                .unwrap_or(&zero);
+
+            //WV[i][j - gens.k] = *cl + &(zn * cr) + &(zn_sq * co);
+            let res = *cl + &(zn * cr) + &(zn_sq * co);
+            if res != zero {
+                WV.insert((i as u32, (j - gens.k) as u32), res);
+            }
         }
     }
     let c = vector_matrix_product_t::<E>(&public_inputs.to_vec(), &C1);
 
     // zQ * WL, zQ * WR
-    let zQ_WL: Vec<E::Fr> = vector_matrix_product::<E>(&z_Q, &WL);
-    let zQ_WR: Vec<E::Fr> = vector_matrix_product::<E>(&z_Q, &WR);
-    let zQ_WO: Vec<E::Fr> = vector_matrix_product::<E>(&z_Q, &WO);
-    let zQ_neg_WV: Vec<E::Fr> = vector_matrix_product::<E>(&z_Q_neg, &WV);
+    let zQ_WL: Vec<E::Fr> = vector_product::<E>(&z_Q, &WL, gens.N, gens.n);
+    let zQ_WR: Vec<E::Fr> = vector_product::<E>(&z_Q, &WR, gens.N, gens.n);
+    let zQ_WO: Vec<E::Fr> = vector_product::<E>(&z_Q, &WO, gens.N, gens.n);
+    let zQ_neg_WV: Vec<E::Fr> = vector_map_product::<E>(&z_Q_neg, &WV, gens.N);
 
     let ynInvZQWR: Vec<E::Fr> = hadamard_product::<E>(&y_n_inv, &zQ_WR);
     let delta_yz: E::Fr = inner_product::<E>(&ynInvZQWR, &zQ_WL);
@@ -1092,7 +1154,7 @@ pub fn verify_proof<E: PairingEngine>(
 
     assert_eq!(checkT_lhs, checkT_rhs);
 
-    let y_n_neg: Vec<E::Fr> = (0..gens.N).map(|i| -E::Fr::one() * &y_n[i]).collect();
+    let y_n_neg: Vec<E::Fr> = (0..gens.N).map(|i| -one * &y_n[i]).collect();
     let P = proof.A_I.mul(xx)
         + &proof.A_O.mul(xx * &x)
         + &proof.A_W.mul(xxxx)
@@ -1130,7 +1192,14 @@ mod tests {
         witness: Vec<E::Fr>,
     ) {
         let rng = &mut math::test_rng();
-        let r1cs_circuit = R1csCircuit::<E> { CL, CR, CO };
+        let r1cs_circuit = R1csCircuit::<E> {
+            CL,
+            CR,
+            CO,
+            CL_T: Default::default(),
+            CR_T: Default::default(),
+            CO_T: Default::default(),
+        };
 
         let f = [&statement[..], &witness[..]].concat();
         let aL = vector_matrix_product_t::<E>(&f, &r1cs_circuit.CL);

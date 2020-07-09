@@ -223,6 +223,7 @@ pub fn groth16_prove<E: PairingEngine, R: rand::Rng>(
 ) -> Result<GadgetProof, ()> {
     use scheme::groth16::{create_random_proof, Parameters};
     let params = Parameters::<E>::read(pk).map_err(|_| ())?;
+    let n = 64;
 
     match g {
         Gadget::GreaterThan(s, lhs) => {
@@ -232,7 +233,7 @@ pub fn groth16_prove<E: PairingEngine, R: rand::Rng>(
             let c1 = RangeProof::<E::Fr> {
                 lhs: Some(<E::Fr as PrimeField>::from_repr(repr_lhs)),
                 rhs: Some(<E::Fr as PrimeField>::from_repr(repr_s)),
-                n: 64,
+                n: n,
             };
 
             let proof = create_random_proof(c1, &params, &mut rng).map_err(|_| ())?;
@@ -247,7 +248,7 @@ pub fn groth16_prove<E: PairingEngine, R: rand::Rng>(
             let c1 = RangeProof::<E::Fr> {
                 lhs: Some(<E::Fr as PrimeField>::from_repr(repr_s)),
                 rhs: Some(<E::Fr as PrimeField>::from_repr(repr_rhs)),
-                n: 64,
+                n: n,
             };
 
             let proof = create_random_proof(c1, &params, &mut rng).map_err(|_| ())?;
@@ -263,14 +264,14 @@ pub fn groth16_prove<E: PairingEngine, R: rand::Rng>(
             let c_l = RangeProof::<E::Fr> {
                 lhs: Some(<E::Fr as PrimeField>::from_repr(repr_lhs)),
                 rhs: Some(<E::Fr as PrimeField>::from_repr(repr_s)),
-                n: 64,
+                n: n,
             };
             let proof_l = create_random_proof(c_l, &params, &mut rng).map_err(|_| ())?;
 
             let c_r = RangeProof::<E::Fr> {
                 lhs: Some(<E::Fr as PrimeField>::from_repr(repr_s)),
                 rhs: Some(<E::Fr as PrimeField>::from_repr(repr_rhs)),
-                n: 64,
+                n: n,
             };
             let proof_r = create_random_proof(c_r, &params, &mut rng).map_err(|_| ())?;
 
@@ -330,6 +331,7 @@ pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
     mut rng: R,
 ) -> Result<GadgetProof, ()> {
     use scheme::bulletproofs::arithmetic_circuit::create_proof;
+    let n = 64;
 
     match g {
         Gadget::GreaterThan(s, lhs) => {
@@ -339,7 +341,7 @@ pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
             let c1 = RangeProof::<E::Fr> {
                 lhs: Some(<E::Fr as PrimeField>::from_repr(repr_lhs)),
                 rhs: Some(<E::Fr as PrimeField>::from_repr(repr_s)),
-                n: 64,
+                n: n,
             };
 
             let (generators, r1cs_circuit, proof, assignment) =
@@ -347,8 +349,11 @@ pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
 
             let mut p_bytes = Vec::new();
             generators.write(&mut p_bytes).map_err(|_| ())?;
+            //println!("p_bytes: {}", p_bytes.len());
             r1cs_circuit.write(&mut p_bytes).map_err(|_| ())?;
+            //println!("p_bytes: {}", p_bytes.len());
             proof.write(&mut p_bytes).map_err(|_| ())?;
+            //println!("p_bytes: {}", p_bytes.len());
             (assignment.s.len() as u64)
                 .write(&mut p_bytes)
                 .map_err(|_| ())?;
@@ -365,7 +370,7 @@ pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
             let c1 = RangeProof::<E::Fr> {
                 lhs: Some(<E::Fr as PrimeField>::from_repr(repr_s)),
                 rhs: Some(<E::Fr as PrimeField>::from_repr(repr_rhs)),
-                n: 64,
+                n: n,
             };
 
             let (generators, r1cs_circuit, proof, assignment) =
@@ -392,7 +397,7 @@ pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
             let c_l = RangeProof::<E::Fr> {
                 lhs: Some(<E::Fr as PrimeField>::from_repr(repr_lhs)),
                 rhs: Some(<E::Fr as PrimeField>::from_repr(repr_s)),
-                n: 64,
+                n: n,
             };
 
             let (generators, r1cs_circuit, proof, assignment) =
@@ -412,7 +417,7 @@ pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
             let c_r = RangeProof::<E::Fr> {
                 lhs: Some(<E::Fr as PrimeField>::from_repr(repr_s)),
                 rhs: Some(<E::Fr as PrimeField>::from_repr(repr_rhs)),
-                n: 64,
+                n: n,
             };
             let (r_generators, r_r1cs_circuit, r_proof, r_assignment) =
                 create_proof::<E, RangeProof<E::Fr>, R>(c_r, &mut rng).map_err(|_| ())?;
