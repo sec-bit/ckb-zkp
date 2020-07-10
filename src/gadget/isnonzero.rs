@@ -1,30 +1,33 @@
 use math::PrimeField;
 use scheme::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
-struct IsnonzeroDemo<F: PrimeField> {
+struct Isnonzero<F: PrimeField> {
     check_num: Option<F>,
 }
 
-impl<E: PrimeField> ConstraintSynthesizer<E> for IsnonzeroDemo<E> {
+impl<E: PrimeField> ConstraintSynthesizer<E> for Isnonzero<E> {
     fn generate_constraints<CS: ConstraintSystem<E>>(
         self,
         cs: &mut CS,
     ) -> Result<(), SynthesisError> {
-        let inv_var = cs.alloc(
-            || "elhemeral inverse",
-            || {
-                let tmp = self.check_num.clone();
-                if tmp.unwrap() == E::zero() {
-                    Err(SynthesisError::DivisionByZero)
-                } else {
-                    Ok(tmp.unwrap().inverse().unwrap())
-                }
-            },
-        )?;
-
         let check_num_var = cs.alloc(
             || "check_num_var",
             || self.check_num.ok_or(SynthesisError::AssignmentMissing),
+        )?;
+
+        let inv_var = cs.alloc(
+            || "elhemeral inverse",
+            || {
+                let tmp = self
+                    .check_num
+                    .clone()
+                    .ok_or(SynthesisError::AssignmentMissing)?;
+                if tmp == E::zero() {
+                    Err(SynthesisError::DivisionByZero)
+                } else {
+                    tmp.inverse().ok_or(SynthesisError::AssignmentMissing)
+                }
+            },
         )?;
 
         // Constrain a * inv = 1, which is only valid
@@ -42,7 +45,7 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for IsnonzeroDemo<E> {
 }
 
 #[test]
-fn test_isnonzero_demo() {
+fn test_isnonzero() {
     use curve::bn_256::{Bn_256, Fr};
     use math::test_rng;
     use scheme::groth16::{
@@ -50,9 +53,10 @@ fn test_isnonzero_demo() {
     };
 
     let mut rng = &mut test_rng();
+
     println!("Creating parameters...");
     let params = {
-        let c = IsnonzeroDemo::<Fr> { check_num: None };
+        let c = Isnonzero::<Fr> { check_num: None };
 
         generate_random_parameters::<Bn_256, _, _>(c, &mut rng).unwrap()
     };
@@ -60,28 +64,32 @@ fn test_isnonzero_demo() {
     let pvk = prepare_verifying_key(&params.vk);
 
     println!("Creating proofs...");
-
-    let c1 = IsnonzeroDemo::<Fr> {
+    let c1 = Isnonzero::<Fr> {
         check_num: Some(Fr::from(1u32)),
     };
     let proof = create_random_proof(c1, &params, rng).unwrap();
+
     assert!(verify_proof(&pvk, &proof, &[]).unwrap());
 }
 
 #[test]
-fn test_isnonzero_bp_demo() {
+fn test_isnonzero_bp() {
     use curve::bn_256::{Bn_256, Fr};
     use scheme::bulletproofs::arithmetic_circuit::{create_proof, verify_proof};
 
     let mut rng = &mut math::test_rng();
 
     println!("Creating proofs...");
-
-    let c = IsnonzeroDemo::<Fr> {
+    let c = Isnonzero::<Fr> {
         check_num: Some(Fr::from(1u32)),
     };
     let (generators, r1cs_circuit, proof, assignment) =
         create_proof::<Bn_256, _, _>(c, &mut rng).unwrap();
 
-    verify_proof(&generators, &proof, &r1cs_circuit, &assignment.s);
+    assert!(verify_proof(
+        &generators,
+        &proof,
+        &r1cs_circuit,
+        &assignment.s
+    ));
 }

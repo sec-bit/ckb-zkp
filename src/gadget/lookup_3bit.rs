@@ -3,31 +3,31 @@ use scheme::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, Vari
 
 use crate::Vec;
 
-struct Lookup3bitDemo<E: PrimeField> {
+struct Lookup3bit<E: PrimeField> {
     in_bit: Vec<Option<E>>,
     in_constants: Vec<Option<E>>,
 }
 
-impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup3bitDemo<E> {
+impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup3bit<E> {
     fn generate_constraints<CS: ConstraintSystem<E>>(
         self,
         cs: &mut CS,
     ) -> Result<(), SynthesisError> {
         assert!(self.in_constants.len() == 8);
         assert!(self.in_bit.len() == 3);
-        // assert!(self.in_bit == Some(E::zero()) || self.in_bit == Some(E::one()));
+
         let index = match (self.in_bit[0], self.in_bit[1], self.in_bit[2]) {
-            (Some(a_value), Some(b_value), Some(c_value)) => {
+            (Some(b0), Some(b1), Some(b2)) => {
                 let mut tmp: usize = 0;
-                if a_value == E::one() {
+                if b0 == E::one() {
                     tmp += 1;
                 }
 
-                if b_value == E::one() {
+                if b1 == E::one() {
                     tmp += 2;
                 }
 
-                if c_value == E::one() {
+                if b2 == E::one() {
                     tmp += 4;
                 }
                 Some(tmp)
@@ -35,12 +35,7 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup3bitDemo<E> {
             _ => None,
         };
 
-        let res: Option<E>;
-        if index.is_some() {
-            res = self.in_constants[index.unwrap()];
-        } else {
-            res = None;
-        }
+        let res = index.map(|i| self.in_constants[i]).flatten();
 
         let res_var = cs.alloc(
             || "res_var",
@@ -50,24 +45,21 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup3bitDemo<E> {
         let mut in_bit_var: Vec<Variable> = Vec::with_capacity(self.in_bit.len());
         for i in 0..self.in_bit.len() {
             let tmp = cs.alloc(
-                || format!("self.in_bit[{}]", i),
+                || "self.in_bit",
                 || self.in_bit[i].ok_or(SynthesisError::AssignmentMissing),
             )?;
 
             in_bit_var.push(tmp);
         }
+
         // b[0] * b[1] = precomp01
         let precomp01_var = cs.alloc(
             || "precomp01_var",
             || {
-                if self.in_bit[0].is_some() && self.in_bit[1].is_some() {
-                    let mut precomp01 = self.in_bit[0].unwrap();
-                    precomp01.mul_assign(&self.in_bit[1].unwrap());
+                let b0 = self.in_bit[0].ok_or(SynthesisError::AssignmentMissing)?;
+                let b1 = self.in_bit[1].ok_or(SynthesisError::AssignmentMissing)?;
 
-                    Ok(precomp01)
-                } else {
-                    Err(SynthesisError::AssignmentMissing)
-                }
+                Ok(b0 * b1)
             },
         )?;
 
@@ -82,14 +74,10 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup3bitDemo<E> {
         let precomp02_var = cs.alloc(
             || "precomp02_var",
             || {
-                if self.in_bit[0].is_some() && self.in_bit[1].is_some() {
-                    let mut precomp02 = self.in_bit[0].unwrap();
-                    precomp02.mul_assign(&self.in_bit[2].unwrap());
+                let b0 = self.in_bit[0].ok_or(SynthesisError::AssignmentMissing)?;
+                let b2 = self.in_bit[2].ok_or(SynthesisError::AssignmentMissing)?;
 
-                    Ok(precomp02)
-                } else {
-                    Err(SynthesisError::AssignmentMissing)
-                }
+                Ok(b0 * b2)
             },
         )?;
 
@@ -104,14 +92,10 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup3bitDemo<E> {
         let precomp12_var = cs.alloc(
             || "precomp12_var",
             || {
-                if self.in_bit[1].is_some() && self.in_bit[2].is_some() {
-                    let mut precomp12 = self.in_bit[1].unwrap();
-                    precomp12.mul_assign(&self.in_bit[2].unwrap());
+                let b1 = self.in_bit[1].ok_or(SynthesisError::AssignmentMissing)?;
+                let b2 = self.in_bit[2].ok_or(SynthesisError::AssignmentMissing)?;
 
-                    Ok(precomp12)
-                } else {
-                    Err(SynthesisError::AssignmentMissing)
-                }
+                Ok(b1 * b2)
             },
         )?;
 
@@ -122,20 +106,15 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup3bitDemo<E> {
             |lc| lc + precomp12_var,
         );
 
-        // precomp01 * b[2] = precomp012
+        // b[0] * b[1] * b[2] = precomp012
         let precomp012_var = cs.alloc(
             || "precomp012_var",
             || {
-                if self.in_bit[0].is_some() && self.in_bit[1].is_some() && self.in_bit[2].is_some()
-                {
-                    let mut precomp012 = self.in_bit[0].unwrap();
-                    precomp012.mul_assign(&self.in_bit[1].unwrap());
-                    precomp012.mul_assign(&self.in_bit[2].unwrap());
+                let b0 = self.in_bit[0].ok_or(SynthesisError::AssignmentMissing)?;
+                let b1 = self.in_bit[1].ok_or(SynthesisError::AssignmentMissing)?;
+                let b2 = self.in_bit[2].ok_or(SynthesisError::AssignmentMissing)?;
 
-                    Ok(precomp012)
-                } else {
-                    Err(SynthesisError::AssignmentMissing)
-                }
+                Ok(b0 * b1 * b2)
             },
         )?;
 
@@ -149,102 +128,34 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup3bitDemo<E> {
         let lhs_var = cs.alloc(
             || "lhs_var_alloc",
             || {
-                if self.in_bit[0].is_some() && self.in_bit[1].is_some() && self.in_bit[2].is_some()
-                {
-                    let mut res = self.in_constants[0].unwrap();
+                let b0 = self.in_bit[0].ok_or(SynthesisError::AssignmentMissing)?;
+                let b1 = self.in_bit[1].ok_or(SynthesisError::AssignmentMissing)?;
+                let b2 = self.in_bit[2].ok_or(SynthesisError::AssignmentMissing)?;
+                let c0 = self.in_constants[0].ok_or(SynthesisError::AssignmentMissing)?;
+                let c1 = self.in_constants[1].ok_or(SynthesisError::AssignmentMissing)?;
+                let c2 = self.in_constants[2].ok_or(SynthesisError::AssignmentMissing)?;
+                let c3 = self.in_constants[3].ok_or(SynthesisError::AssignmentMissing)?;
+                let c4 = self.in_constants[4].ok_or(SynthesisError::AssignmentMissing)?;
+                let c5 = self.in_constants[5].ok_or(SynthesisError::AssignmentMissing)?;
+                let c6 = self.in_constants[6].ok_or(SynthesisError::AssignmentMissing)?;
+                let c7 = self.in_constants[7].ok_or(SynthesisError::AssignmentMissing)?;
 
-                    // b[0]*-c[0]
-                    let mut tmp = self.in_constants[0].unwrap();
-                    tmp = -tmp;
-                    tmp.mul_assign(&self.in_bit[0].unwrap());
-                    res.add_assign(&tmp);
+                #[rustfmt::skip]
+                let r = c0 +
+                        b0 * (-c0) +
+                        b0 * c1 +
+                        b1 * (-c0) +
+                        b1 * c2 +
+                        b0 * b1 * (-c1 + (-c2) + c0 + c3) +
+                        b2 * (-c0 + c4) +
+                        b0 * b2 * (c0 + (-c1) + (-c4) + c5) +
+                        b1 * b2 * (c0 + (-c2) + (-c4) + c6) +
+                        b0 * b1 * b2 * (-c0 + c1 + c2 + (-c3) + c4 + (-c5) + (-c6) + c7);
 
-                    // b[0]*c[1]
-                    tmp = self.in_constants[1].unwrap();
-                    tmp.mul_assign(&self.in_bit[0].unwrap());
-                    res.add_assign(&tmp);
-
-                    // b[1]*-c[0]
-                    tmp = self.in_constants[0].unwrap();
-                    tmp = -tmp;
-                    tmp.mul_assign(&self.in_bit[1].unwrap());
-                    res.add_assign(&tmp);
-
-                    // b[1]*c[2]
-                    tmp = self.in_constants[2].unwrap();
-                    tmp.mul_assign(&self.in_bit[1].unwrap());
-                    res.add_assign(&tmp);
-
-                    // (precomp01 * (-c[1] + -c[2] + c[0] + c[3]))
-                    tmp = self.in_constants[1].unwrap();
-                    tmp = -tmp;
-                    let mut tmp1 = self.in_constants[2].unwrap();
-                    tmp1 = -tmp1;
-                    tmp.add_assign(&tmp1);
-                    tmp.add_assign(&self.in_constants[0].unwrap());
-                    tmp.add_assign(&self.in_constants[3].unwrap());
-                    tmp.mul_assign(&self.in_bit[0].unwrap());
-                    tmp.mul_assign(&self.in_bit[1].unwrap());
-                    res.add_assign(&tmp);
-
-                    // (b[2] * (-c[0] + c[4]))
-                    tmp = self.in_constants[0].unwrap();
-                    tmp = -tmp;
-                    tmp.add_assign(&self.in_constants[4].unwrap());
-                    tmp.mul_assign(&self.in_bit[2].unwrap());
-                    res.add_assign(&tmp);
-
-                    // (precomp02 * (c[0] - c[1] -c[4] + c[5]))
-                    tmp = self.in_constants[1].unwrap();
-                    tmp = -tmp;
-                    tmp1 = self.in_constants[4].unwrap();
-                    tmp1 = -tmp1;
-                    tmp.add_assign(&tmp1);
-                    tmp.add_assign(&self.in_constants[0].unwrap());
-                    tmp.add_assign(&self.in_constants[5].unwrap());
-                    tmp.mul_assign(&self.in_bit[0].unwrap());
-                    tmp.mul_assign(&self.in_bit[2].unwrap());
-                    res.add_assign(&tmp);
-
-                    // (precomp12 * (c[0] - c[2] - c[4] + c[6]))
-                    tmp = self.in_constants[2].unwrap();
-                    tmp = -tmp;
-                    tmp1 = self.in_constants[4].unwrap();
-                    tmp1 = -tmp1;
-                    tmp.add_assign(&tmp1);
-                    tmp.add_assign(&self.in_constants[0].unwrap());
-                    tmp.add_assign(&self.in_constants[6].unwrap());
-                    tmp.mul_assign(&self.in_bit[1].unwrap());
-                    tmp.mul_assign(&self.in_bit[2].unwrap());
-                    res.add_assign(&tmp);
-
-                    // precomp012 * (-c[0] + c[1] + c[2] - c[3] + c[4] - c[5] -c[6] + c[7])
-                    tmp = self.in_constants[0].unwrap();
-                    tmp = -tmp;
-                    tmp.add_assign(&self.in_constants[1].unwrap());
-                    tmp.add_assign(&self.in_constants[2].unwrap());
-                    tmp1 = self.in_constants[3].unwrap();
-                    tmp1 = -tmp1;
-                    tmp.add_assign(&tmp1);
-                    tmp.add_assign(&self.in_constants[4].unwrap());
-                    tmp1 = self.in_constants[5].unwrap();
-                    tmp1 = -tmp1;
-                    tmp.add_assign(&tmp1);
-                    tmp1 = self.in_constants[6].unwrap();
-                    tmp1 = -tmp1;
-                    tmp.add_assign(&tmp1);
-                    tmp.add_assign(&self.in_constants[7].unwrap());
-                    tmp.mul_assign(&self.in_bit[0].unwrap());
-                    tmp.mul_assign(&self.in_bit[1].unwrap());
-                    tmp.mul_assign(&self.in_bit[2].unwrap());
-                    res.add_assign(&tmp);
-
-                    Ok(res)
-                } else {
-                    Err(SynthesisError::AssignmentMissing)
-                }
+                Ok(r)
             },
         )?;
+
         // ... * 1 = r
         cs.enforce(
             || "lhs * 1 = r",
@@ -252,12 +163,13 @@ impl<E: PrimeField> ConstraintSynthesizer<E> for Lookup3bitDemo<E> {
             |lc| lc + CS::one(),
             |lc| lc + res_var,
         );
+
         Ok(())
     }
 }
 
 #[test]
-fn test_lookup3bit_demo() {
+fn test_lookup3bit() {
     use curve::bn_256::{Bn_256, Fr};
     use math::test_rng;
     use scheme::groth16::{
@@ -265,9 +177,10 @@ fn test_lookup3bit_demo() {
     };
 
     let mut rng = &mut test_rng();
+
     println!("Creating parameters...");
     let params = {
-        let c = Lookup3bitDemo::<Fr> {
+        let c = Lookup3bit::<Fr> {
             in_bit: vec![None; 3],
             in_constants: vec![None; 8],
         };
@@ -277,25 +190,24 @@ fn test_lookup3bit_demo() {
     let pvk = prepare_verifying_key(&params.vk);
 
     println!("Creating proofs...");
-    let mut in_constants_value: Vec<Option<Fr>> = Vec::with_capacity(4);
-    in_constants_value.push(Some(Fr::from(9u32)));
-    in_constants_value.push(Some(Fr::from(10u32)));
-    in_constants_value.push(Some(Fr::from(11u32)));
-    in_constants_value.push(Some(Fr::from(12u32)));
-    in_constants_value.push(Some(Fr::from(13u32)));
-    in_constants_value.push(Some(Fr::from(14u32)));
-    in_constants_value.push(Some(Fr::from(15u32)));
-    in_constants_value.push(Some(Fr::from(16u32)));
-
-    let mut in_bits_value: Vec<Option<Fr>> = Vec::with_capacity(2);
-    in_bits_value.push(Some(Fr::from(1u32)));
-    in_bits_value.push(Some(Fr::from(1u32)));
-    in_bits_value.push(Some(Fr::from(1u32)));
-
-    let c1 = Lookup3bitDemo::<Fr> {
-        in_bit: in_bits_value.clone(),
-        in_constants: in_constants_value.clone(),
+    let c1 = Lookup3bit::<Fr> {
+        in_bit: vec![
+            Some(Fr::from(1u32)),
+            Some(Fr::from(1u32)),
+            Some(Fr::from(1u32)),
+        ],
+        in_constants: vec![
+            Some(Fr::from(9u32)),
+            Some(Fr::from(10u32)),
+            Some(Fr::from(11u32)),
+            Some(Fr::from(12u32)),
+            Some(Fr::from(13u32)),
+            Some(Fr::from(14u32)),
+            Some(Fr::from(15u32)),
+            Some(Fr::from(16u32)),
+        ],
     };
     let proof = create_random_proof(c1, &params, rng).unwrap();
+
     assert!(verify_proof(&pvk, &proof, &[]).unwrap());
 }

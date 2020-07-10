@@ -1,9 +1,6 @@
 // For randomness (during paramgen and proof generation)
 use rand::Rng;
 
-// For benchmarking
-use std::time::{Duration, Instant};
-
 // Bring in some tools for using pairing-friendly curves
 use curve::bn_256::{Bn_256, Fr};
 use math::{test_rng, Field};
@@ -175,56 +172,21 @@ fn test_mimc_groth_16() {
 
     println!("Creating proofs...");
 
-    // Let's benchmark stuff!
-    const SAMPLES: u32 = 3;
-    let mut total_proving = Duration::new(0, 0);
-    let mut total_verifying = Duration::new(0, 0);
+    // Generate a random preimage and compute the image
+    let xl = rng.gen();
+    let xr = rng.gen();
+    let image = mimc(xl, xr, &constants);
 
-    // Just a place to put the proof data, so we can
-    // benchmark deserialization.
-    // let mut proof_vec = vec![];
+    // Create an instance of our circuit (with the
+    // witness)
+    let c = MiMCDemo {
+        xl: Some(xl),
+        xr: Some(xr),
+        constants: &constants,
+    };
 
-    for _ in 0..SAMPLES {
-        // Generate a random preimage and compute the image
-        let xl = rng.gen();
-        let xr = rng.gen();
-        let image = mimc(xl, xr, &constants);
+    let proof = create_random_proof(c, &params, rng).unwrap();
 
-        // proof_vec.truncate(0);
-
-        let start = Instant::now();
-        {
-            // Create an instance of our circuit (with the
-            // witness)
-            let c = MiMCDemo {
-                xl: Some(xl),
-                xr: Some(xr),
-                constants: &constants,
-            };
-
-            // Create a groth16 proof with our parameters.
-            let proof = create_random_proof(c, &params, rng).unwrap();
-            assert!(verify_proof(&pvk, &proof, &[image]).unwrap());
-
-            // proof.write(&mut proof_vec).unwrap();
-        }
-
-        total_proving += start.elapsed();
-
-        let start = Instant::now();
-        // let proof = Proof::read(&proof_vec[..]).unwrap();
-        // Check the proof
-
-        total_verifying += start.elapsed();
-    }
-    let proving_avg = total_proving / SAMPLES;
-    let proving_avg =
-        proving_avg.subsec_nanos() as f64 / 1_000_000_000f64 + (proving_avg.as_secs() as f64);
-
-    let verifying_avg = total_verifying / SAMPLES;
-    let verifying_avg =
-        verifying_avg.subsec_nanos() as f64 / 1_000_000_000f64 + (verifying_avg.as_secs() as f64);
-
-    println!("Average proving time: {:?} seconds", proving_avg);
-    println!("Average verifying time: {:?} seconds", verifying_avg);
+    println!("verifing...");
+    assert!(verify_proof(&pvk, &proof, &[image]).unwrap());
 }
