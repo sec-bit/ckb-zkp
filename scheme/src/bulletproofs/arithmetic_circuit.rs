@@ -1226,7 +1226,8 @@ mod tests {
             CL_T: Default::default(),
             CR_T: Default::default(),
             CO_T: Default::default(),
-        };
+        }
+        .matrix_to_map();
 
         let f = [&statement[..], &witness[..]].concat();
         let aL = vector_matrix_product_t::<E>(&f, &r1cs_circuit.CL);

@@ -212,7 +212,7 @@ mod tests {
         let t1 = Instant::now();
         assert!(n.is_power_of_two());
 
-        let mut rng = rand::thread_rng();
+        let mut rng = math::test_rng();
 
         // generators
         let mut g_vec: Vec<E::G1Affine> = Vec::with_capacity(n);
