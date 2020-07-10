@@ -207,6 +207,32 @@ pub struct R1csCircuit<E: PairingEngine> {
     pub CO_T: BTreeMap<(u32, u32), E::Fr>,
 }
 
+impl<E: PairingEngine> R1csCircuit<E> {
+    fn matrix_to_map(mut self) -> Self {
+        let m = self.CL.len();
+        if self.CL.len() != 0 {
+            let n = self.CL[0].len();
+            let zero = E::Fr::zero();
+
+            for i in 0..m {
+                for j in 0..n {
+                    if self.CL[i][j] != zero {
+                        self.CL_T.insert((i as u32, j as u32), self.CL[i][j]);
+                    }
+                    if self.CR[i][j] != zero {
+                        self.CR_T.insert((i as u32, j as u32), self.CR[i][j]);
+                    }
+                    if self.CO[i][j] != zero {
+                        self.CO_T.insert((i as u32, j as u32), self.CO[i][j]);
+                    }
+                }
+            }
+        }
+
+        self
+    }
+}
+
 impl<E: PairingEngine> ToBytes for R1csCircuit<E> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
@@ -663,7 +689,7 @@ where
 
     let proof = prove(&generators, &r1cs_circuit, &input, rng);
 
-    Ok((generators, r1cs_circuit, proof, input))
+    Ok((generators, r1cs_circuit.matrix_to_map(), proof, input))
 }
 
 // bulletproofs arithmetic circuit proof with R1CS format
