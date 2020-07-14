@@ -1,6 +1,7 @@
 //! An implementation of the [`Groth16`] zkSNARK.
 //!
 //! [`Groth16`]: https://eprint.iacr.org/2016/260.pdf
+//! [`Bulletproofs`]: https://eprint.iacr.org/2017/1066.pdf
 #![cfg_attr(not(feature = "std"), no_std)]
 #![deny(unused_import_braces, unused_qualifications, trivial_casts)]
 #![deny(trivial_numeric_casts, private_in_public, variant_size_differences)]

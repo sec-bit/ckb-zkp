@@ -7,15 +7,6 @@ use crate::{Gadget, GadgetProof, Vec};
 /// variant named `LongsightF322p3` for BN-256.
 /// See http://eprint.iacr.org/2016/492 for more
 /// information about this construction.
-///
-/// ``` ignore
-/// function LongsightF322p3(xL ⦂ Fp, xR ⦂ Fp) {
-///     for i from 0 up to 321 {
-///         xL, xR := xR + (xL + Ci)^3, xL
-///     }
-///     return xL
-/// }
-/// ```
 pub fn mimc<F: Field>(mut xl: F, mut xr: F, constants: &[F]) -> F {
     for i in 0..MIMC_ROUNDS {
         let mut tmp1 = xl;
