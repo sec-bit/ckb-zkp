@@ -43,3 +43,6 @@ rand = { version = "0.7" }
 blake2s_simd = "0.5"
 byteorder = "1"
 num-traits = { version = "0.2", default-features = false }
+
+[profile.test]
+opt-level = 3

@@ -2,13 +2,9 @@
 
 ## Introduction
 
-Zero-knowledge proofs toolkit with pure Rust, empowering the community with the cutting-edge techniques of zero-knowledge proofs to develop all kinds of decentralized applications.
+Zero-knowledge proofs toolkit with pure Rust.
 
-The project is going to bridge the gap of cryptographic engineering between thriving academic research and aspiring dAPPs developers, by providing multiple zkp scheme and curve options, a more user-friendly interface, many useful gadget libraries, and many more tutorials and examples.
-
-This project is part of *zkp-toolkit-ckb* and is supported by the Nervos Foundation. Check out the [original proposal](https://talk.nervos.org/t/secbit-labs-zkp-toolkit-ckb-a-zero-knowledge-proof-toolkit-for-ckb/4254) and [grant announcement](https://medium.com/nervosnetwork/three-new-ecosystem-grants-awarded-892b97e8bc06).
-
-It can be used in conjunction with the [ckb-zkp](https://github.com/sec-bit/ckb-zkp) project to implement on-chain zkp verifiers for the CKB-VM.
+This project is part of *zkp-toolkit-ckb* and is supported by the Nervos Foundation. It provides multiple zkp schemes and curve options, which can also be used to implement on-chain zkp verifiers for the CKB-VM.
 
 ## Example
 
@@ -16,13 +12,13 @@ Use the [MiMC](http://eprint.iacr.org/2016/492) gadget and [Groth16](https://epr
 
 ```rust
 use rand::prelude::*;
-use zkp::curve::bn_256::{Bn_256, Fr};
-use zkp::gadget::mimc::{constants, MiMC};
-use zkp::math::ToBytes;
-use zkp::scheme::groth16::generate_random_parameters;
-use zkp::{prove, prove_to_bytes, verify, verify_from_bytes, Curve, Gadget, Scheme};
+use ckb-zkp::curve::bn_256::{Bn_256, Fr};
+use ckb-zkp::gadget::mimc::{constants, MiMC};
+use ckb-zkp::math::ToBytes;
+use ckb-zkp::scheme::groth16::generate_random_parameters;
+use ckb-zkp::{prove, prove_to_bytes, verify, verify_from_bytes, Curve, Gadget, Scheme};
 
-/// test for use groth16 & bn_256 & mimc gadget.
+/// testing for use groth16 & bn_256 & mimc gadget.
 fn main() {
     let bytes = vec![1, 2, 3, 4, 5]; // this is your secret.
     let mut rng = thread_rng();
@@ -37,13 +33,13 @@ fn main() {
     };
     let params = generate_random_parameters::<Bn_256, _, _>(c, &mut rng).unwrap();
 
-    // you need save this prove key,
-    // when prove, use it as a params.
+    // you need save this proving key,
+    // when proving, use it as a params.
     let mut pk_bytes = vec![];
     params.write(&mut pk_bytes).unwrap();
 
-    // you need save this verify key,
-    // when verify, use it as a params.
+    // you need save this verification key,
+    // when verifying, use it as a params.
     let mut vk_bytes = vec![];
     params.vk.write(&mut vk_bytes).unwrap();
 

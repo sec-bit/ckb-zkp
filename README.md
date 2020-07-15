@@ -1,8 +1,23 @@
 # ckb-zkp
 
-Smart contracts that run as zero-knowledge proof verifiers on the [Nervos CKB chain](https://www.nervos.org/). CKB developers and users can implement various complex zero-knowledge verification processes through the simplest contract invocation. Cooperate with [ckb-zkp crate](./README-zkp.md) to complete off-chain prove and on-chain verify.
+[![CI](https://flat.badgen.net/github/checks/sec-bit/ckb-zkp/master)](https://github.com/sec-bit/ckb-zkp/actions)
+[![License:Apache](https://flat.badgen.net/badge/license/Apache%202.0/blue)](./LICENSE-APACHE)
+[![License: MIT](https://flat.badgen.net/badge/license/MIT/orange)](./LICENSE-MIT)
 
-This project is part of _zkp-toolkit-ckb_ and is supported by the Nervos Foundation. Check out the [original proposal](https://talk.nervos.org/t/secbit-labs-zkp-toolkit-ckb-a-zero-knowledge-proof-toolkit-for-ckb/4254) and [grant announcement](https://medium.com/nervosnetwork/three-new-ecosystem-grants-awarded-892b97e8bc06).
+<!-- The badge below is for future usage. -->
+<!-- [![crates.io](https://flat.badgen.net/crates/v/ckb-zkp)]() -->
+
+_(a.k.a. zkp-toolkit-ckb)_
+
+Zero-knowledge proofs toolkit for CKB, empowering the community with the cutting-edge techniques of zero-knowledge proofs to develop all kinds of decentralized applications.
+
+The project is going to bridge the gap of cryptographic engineering between thriving academic research and aspiring dAPPs developers, by providing multiple zkp schemes and curve options, a more user-friendly interface, many useful gadget libraries, and many more tutorials and examples.
+
+Besides, it provides smart contracts that run as zero-knowledge proof verifiers on the Nervos CKB chain. CKB developers and users can implement various complex zero-knowledge verification processes through the simplest contract invocation. Cooperate with the core [zkp-toolkit](./README-zkp.md) to complete off-chain prove and on-chain verify.
+
+This project is also known as _zkp-toolkit-ckb_ and is supported by the Nervos Foundation. Check out the [original proposal](https://talk.nervos.org/t/secbit-labs-zkp-toolkit-ckb-a-zero-knowledge-proof-toolkit-for-ckb/4254) and [grant announcement](https://medium.com/nervosnetwork/three-new-ecosystem-grants-awarded-892b97e8bc06).
+
+The following document is more focused on CKB smart contracts. [Check this doc](./README-zkp.md) for more details on zkp-toolkit usage and features.
 
 ## Table of contents
 

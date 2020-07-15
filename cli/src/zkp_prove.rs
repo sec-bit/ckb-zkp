@@ -144,7 +144,7 @@ fn print_common() {
     println!("");
     println!("OPTIONS:");
     println!("    --json    -- input/ouput use json type file.");
-    println!("    --prepare -- use prepare verify key when verify proof.");
+    println!("    --prepare -- use prepared verification key when verifying proof.");
     println!("");
 }
 

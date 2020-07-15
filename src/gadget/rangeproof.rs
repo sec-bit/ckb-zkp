@@ -1,4 +1,4 @@
-use math::PrimeField;
+use math::{BitIterator,PrimeField};
 use scheme::r1cs::{
     ConstraintSynthesizer, ConstraintSystem, LinearCombination, SynthesisError, Variable,
 };
@@ -52,30 +52,27 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for RangeProof<F> {
             || alpha_packed_value.ok_or(SynthesisError::AssignmentMissing),
         )?;
 
-        let mut alpha_bits: Vec<Option<F>> = Vec::new();
-
-        let bits = match alpha_packed_value {
-            Some(_) => super::boolean::field_into_allocated_bits_le(
-                cs.ns(|| "field into bits"),
-                alpha_packed_value,
-            )?,
-            _ => super::boolean::field_into_allocated_bits_le(
-                cs.ns(|| "field into bits"),
-                Some(F::zero()),
-            )?,
+        let alpha_value = match alpha_packed_value {
+            Some(i) => i,
+            _ =>F::zero(),
         };
-        for i in 0..(n + 1) {
-            if bits[i as usize].get_value() == Some(true) {
-                alpha_bits.push(Some(F::one()));
+        
+        let mut alpha_bits: Vec<Option<F>> = Vec::new();
+        let mut bits: Vec<Option<F>> = Vec::new();
+        
+        for b in BitIterator::new(alpha_value.into_repr()) {
+            if b {
+                bits.push(Some(F::one()));
             } else {
-                alpha_bits.push(Some(F::zero()));
+                bits.push(Some(F::zero()));
             }
         }
-
+        for i in 0..(n+1){
+            alpha_bits.push(bits[bits.len()-1-i as usize]);
+        }
         assert_eq!(alpha_bits.len(), (n + 1) as usize);
 
         let mut alpha: Vec<Variable> = Vec::new();
-
         for i in 0..n {
             let alpha_i = cs.alloc(
                 || format!("alpha[{}]", i),

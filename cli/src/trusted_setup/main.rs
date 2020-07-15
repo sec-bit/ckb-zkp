@@ -19,7 +19,7 @@ fn print_common() {
     println!("    bls12_381 -- BLS12_381 pairing curve.");
     println!("");
     println!("OPTIONS:");
-    println!("    --prepare -- use prepare verify key when verify proof.");
+    println!("    --prepare -- use prepared verification key when verifying proof.");
     println!("");
 }
 
