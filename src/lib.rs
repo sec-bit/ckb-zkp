@@ -15,6 +15,7 @@ use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
+pub mod circuit;
 pub mod gadget;
 
 /// Supported zero-knowledge proof schemes.

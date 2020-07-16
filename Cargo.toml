@@ -37,12 +37,14 @@ math = { path = "math", default-features = false }
 scheme = { path = "scheme", default-features = false }
 curve = { path = "curve", default-features = false }
 rand = { version = "0.7", default-features = false }
+byteorder = { version = "1", default-feautres = false }
 
 [dev-dependencies]
-rand = { version = "0.7" }
+rand = "0.7"
 blake2s_simd = "0.5"
-byteorder = "1"
 num-traits = { version = "0.2", default-features = false }
+hex-literal = "0.2"
+sha2 = "0.9"
 
 [profile.test]
 opt-level = 3
