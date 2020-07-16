@@ -5,6 +5,7 @@ use std::path::PathBuf;
 const SETUP_DIR: &'static str = "./trusted_setup";
 
 mod mimc;
+mod mini;
 mod range;
 
 fn print_common() {
@@ -46,6 +47,7 @@ pub fn handle_args() -> Result<(Gadget, Scheme, Curve, String, bool), String> {
     let is_pp = args.contains(&"--prepare".to_owned());
 
     let g = match args[1].as_str() {
+        "mini" => Gadget::Mini(0, 0, 0),
         "mimc" => Gadget::MiMC(vec![]),
         "greater" => Gadget::GreaterThan(0, 0),
         "less" => Gadget::GreaterThan(0, 0), // use some range setup
@@ -116,6 +118,7 @@ fn main() -> Result<(), String> {
     let rng = rand::thread_rng();
 
     let (pk, vk) = match g {
+        Gadget::Mini(..) => handle_gadget!(mini, ThreadRng, s, c, rng, is_pp)?,
         Gadget::MiMC(..) => handle_gadget!(mimc, ThreadRng, s, c, rng, is_pp)?,
         Gadget::GreaterThan(..) => handle_gadget!(range, ThreadRng, s, c, rng, is_pp)?,
         _ => return Err(format!("{} unimplemented!", "Gadget")),

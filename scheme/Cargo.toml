@@ -28,5 +28,4 @@ digest = { version = "0.8", default-features = false, optional = true }
 
 [dev-dependencies]
 csv = { version = "1" }
-rand = { version = "0.7" }
 curve = { path = "../curve", default-features = false, features = [ "bls12_381", "bn_256", "sw6" ] }

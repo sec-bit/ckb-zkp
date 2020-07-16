@@ -102,6 +102,7 @@ impl Curve {
 /// Now include: MiMC hash proof.
 #[derive(Debug)]
 pub enum Gadget {
+    Mini(u32, u32, u32),
     /// pre-image content (plaintext).
     MiMC(Vec<u8>),
     /// secret num, public compared num. secret > public.
@@ -154,6 +155,7 @@ impl Gadget {
 /// GadgetProof enum type. It include gadget's parameters and SchemeProof type.
 #[derive(Debug)]
 pub enum GadgetProof {
+    Mini(u32, Vec<u8>),
     /// MiMC hash value, and proof.
     MiMC(Vec<u8>, Vec<u8>),
     /// compared num, and proof.
@@ -168,6 +170,11 @@ impl GadgetProof {
     pub fn to_bytes(self) -> Vec<u8> {
         let mut bytes = vec![];
         match self {
+            GadgetProof::Mini(e, mut s) => {
+                bytes.extend_from_slice(&4u16.to_le_bytes());
+                bytes.append(&mut e.to_le_bytes().to_vec());
+                bytes.append(&mut s);
+            }
             GadgetProof::MiMC(mut e, mut s) => {
                 bytes.extend_from_slice(&0u16.to_le_bytes());
                 bytes.append(&mut (e.len() as u32).to_le_bytes().to_vec());
@@ -237,6 +244,13 @@ impl GadgetProof {
                 r_bytes.copy_from_slice(r_b);
                 let r = u64::from_le_bytes(r_bytes);
                 Ok(GadgetProof::Between(l, r, bytes.to_vec()))
+            }
+            4u16 => {
+                let mut l_bytes = [0u8; 4];
+                let (l_b, bytes) = bytes.split_at(4);
+                l_bytes.copy_from_slice(l_b);
+                let l = u32::from_le_bytes(l_bytes);
+                Ok(GadgetProof::Mini(l, bytes.to_vec()))
             }
             _ => Err(()),
         }
@@ -316,8 +330,14 @@ macro_rules! handle_gadget_prove {
                 }
             }
             Scheme::Bulletproofs => {
-                // TODO
-                Err(())
+                #[cfg(not(feature = "bulletproofs"))]
+                panic!("Cound not found bulletproofs feature");
+
+                #[cfg(feature = "bulletproofs")]
+                {
+                    use $gadget::bulletproofs_prove;
+                    handle_curve_prove!(bulletproofs_prove, $rng_name, $c, $g, $pk, $rng)
+                }
             }
         }
     };
@@ -358,20 +378,28 @@ macro_rules! handle_gadget_verify {
                 }
             }
             Scheme::Bulletproofs => {
-                // TODO
-                false
+                #[cfg(not(feature = "bulletproofs"))]
+                panic!("Cound not found bulletproofs feature");
+
+                #[cfg(feature = "bulletproofs")]
+                {
+                    use $gadget::bulletproofs_verify;
+                    handle_curve_verify!(bulletproofs_verify, $c, $gp, $vk, $pp)
+                }
             }
         }
     };
 }
 
 use gadget::mimc;
+use gadget::mini;
 use gadget::rangeproof;
 
 /// main prove functions.
 /// it will return Proof struct.
 pub fn prove<R: rand::Rng>(g: Gadget, s: Scheme, c: Curve, pk: &[u8], rng: R) -> Result<Proof, ()> {
     let p = match g {
+        Gadget::Mini(..) => handle_gadget_prove!(mini, R, s, c, &g, pk, rng)?,
         Gadget::MiMC(..) => handle_gadget_prove!(mimc, R, s, c, &g, pk, rng)?,
         Gadget::GreaterThan(..) | Gadget::LessThan(..) | Gadget::Between(..) => {
             handle_gadget_prove!(rangeproof, R, s, c, &g, pk, rng)?
@@ -397,6 +425,7 @@ pub fn prove_to_bytes<R: rand::Rng>(
 /// it will return bool.
 pub fn verify(proof: Proof, vk: &[u8]) -> bool {
     match proof.p {
+        GadgetProof::Mini(..) => handle_gadget_verify!(mini, proof.s, proof.c, proof.p, vk, false),
         GadgetProof::MiMC(..) => handle_gadget_verify!(mimc, proof.s, proof.c, proof.p, vk, false),
         GadgetProof::GreaterThan(..) | GadgetProof::LessThan(..) | GadgetProof::Between(..) => {
             handle_gadget_verify!(rangeproof, proof.s, proof.c, proof.p, vk, false)
