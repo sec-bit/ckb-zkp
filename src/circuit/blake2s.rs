@@ -6,6 +6,8 @@ use byteorder::{ByteOrder, LittleEndian};
 use math::PrimeField;
 use scheme::r1cs::{ConstraintSystem, SynthesisError};
 
+use crate::Vec;
+
 use super::{boolean::Boolean, multieq::MultiEq, uint32::UInt32};
 
 /*

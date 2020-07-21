@@ -1,6 +1,8 @@
 use math::{Field, PrimeField};
 use scheme::r1cs::{ConstraintSystem, LinearCombination, SynthesisError};
 
+use crate::Vec;
+
 use super::boolean::{AllocatedBit, Boolean};
 use super::multieq::MultiEq;
 

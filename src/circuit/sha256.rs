@@ -6,6 +6,8 @@
 use math::PrimeField;
 use scheme::r1cs::{ConstraintSystem, SynthesisError};
 
+use crate::Vec;
+
 use super::boolean::Boolean;
 use super::multieq::MultiEq;
 use super::uint32::UInt32;
@@ -263,7 +265,6 @@ mod test {
     #[test]
     fn test_blank_hash() {
         let iv = get_sha256_iv();
-
         let mut cs = TestConstraintSystem::<Fr>::new();
         let mut input_bits: Vec<_> = (0..512).map(|_| Boolean::Constant(false)).collect();
         input_bits[0] = Boolean::Constant(true);
