@@ -1,4 +1,4 @@
-use ckb_zkp::{Curve, Gadget, Scheme};
+use ckb_zkp::{Circuit, Curve, Scheme};
 use std::env;
 use std::path::PathBuf;
 
@@ -36,7 +36,7 @@ fn print_help() {
     print_common();
 }
 
-pub fn handle_args() -> Result<(Gadget, Scheme, Curve, String, bool), String> {
+pub fn handle_args() -> Result<(Circuit, Scheme, Curve, String, bool), String> {
     let args: Vec<_> = env::args().collect();
     if args.len() < 2 {
         print_help();
@@ -47,11 +47,11 @@ pub fn handle_args() -> Result<(Gadget, Scheme, Curve, String, bool), String> {
     let is_pp = args.contains(&"--prepare".to_owned());
 
     let g = match args[1].as_str() {
-        "mini" => Gadget::Mini(0, 0, 0),
-        "mimc" => Gadget::MiMC(vec![]),
-        "greater" => Gadget::GreaterThan(0, 0),
-        "less" => Gadget::GreaterThan(0, 0), // use some range setup
-        "between" => Gadget::GreaterThan(0, 0), // use some range setup
+        "mini" => Circuit::Mini(0, 0, 0),
+        "mimc" => Circuit::MiMC(vec![]),
+        "greater" => Circuit::GreaterThan(0, 0),
+        "less" => Circuit::GreaterThan(0, 0), // use some range setup
+        "between" => Circuit::GreaterThan(0, 0), // use some range setup
         _ => return Err(format!("{} unimplemented!", args[1])),
     };
 
@@ -118,10 +118,10 @@ fn main() -> Result<(), String> {
     let rng = rand::thread_rng();
 
     let (pk, vk) = match g {
-        Gadget::Mini(..) => handle_gadget!(mini, ThreadRng, s, c, rng, is_pp)?,
-        Gadget::MiMC(..) => handle_gadget!(mimc, ThreadRng, s, c, rng, is_pp)?,
-        Gadget::GreaterThan(..) => handle_gadget!(range, ThreadRng, s, c, rng, is_pp)?,
-        _ => return Err(format!("{} unimplemented!", "Gadget")),
+        Circuit::Mini(..) => handle_gadget!(mini, ThreadRng, s, c, rng, is_pp)?,
+        Circuit::MiMC(..) => handle_gadget!(mimc, ThreadRng, s, c, rng, is_pp)?,
+        Circuit::GreaterThan(..) => handle_gadget!(range, ThreadRng, s, c, rng, is_pp)?,
+        _ => return Err(format!("{} unimplemented!", "Circuit")),
     };
 
     let path = PathBuf::from(SETUP_DIR);

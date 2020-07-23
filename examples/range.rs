@@ -1,10 +1,10 @@
 use ckb_zkp::{
+    circuits::rangeproof::RangeProof,
     curve::bn_256::{Bn_256, Fr},
-    gadget::rangeproof::RangeProof,
     math::ToBytes,
     prove, prove_to_bytes,
     scheme::groth16::generate_random_parameters,
-    verify, verify_from_bytes, Curve, Gadget, Scheme,
+    verify, verify_from_bytes, Circuit, Curve, Scheme,
 };
 use rand::prelude::*;
 use std::time::Instant;
@@ -36,7 +36,7 @@ fn main() {
 
     println!("START PROVE GREATER...");
     let proof = prove(
-        Gadget::GreaterThan(secret, 10),
+        Circuit::GreaterThan(secret, 10),
         Scheme::Groth16,
         Curve::Bn_256,
         &pk_bytes,
@@ -50,7 +50,7 @@ fn main() {
 
     println!("START PROVE LESS...");
     let proof_l = prove(
-        Gadget::LessThan(secret, 1000),
+        Circuit::LessThan(secret, 1000),
         Scheme::Groth16,
         Curve::Bn_256,
         &pk_bytes,
@@ -64,7 +64,7 @@ fn main() {
 
     println!("START PROVE BETWEEN...");
     let proof_b = prove(
-        Gadget::Between(secret, 1, 10000),
+        Circuit::Between(secret, 1, 10000),
         Scheme::Groth16,
         Curve::Bn_256,
         &pk_bytes,
@@ -79,7 +79,7 @@ fn main() {
     println!("ANOTHER USE BYTES START PROVE...");
     let p_start = Instant::now();
     let proof_bytes = prove_to_bytes(
-        Gadget::GreaterThan(secret, 10),
+        Circuit::GreaterThan(secret, 10),
         Scheme::Groth16,
         Curve::Bn_256,
         &pk_bytes,

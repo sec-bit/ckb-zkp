@@ -1,7 +1,7 @@
 use std::env;
 use std::path::PathBuf;
 
-use ckb_zkp::{verify, verify_from_bytes, Curve, GadgetProof, Proof, Scheme};
+use ckb_zkp::{verify, verify_from_bytes, CircuitProof, Curve, Proof, Scheme};
 
 const SETUP_DIR: &'static str = "./trusted_setup";
 
@@ -24,9 +24,9 @@ fn print_common() {
 fn print_help() {
     println!("zkp-verify");
     println!("");
-    println!("Usage: zkp-verify [GADGET] <scheme> <curve> [FILE] <OPTIONS>");
+    println!("Usage: zkp-verify [CIRCUIT] <scheme> <curve> [FILE] <OPTIONS>");
     println!("");
-    println!("GADGET: ");
+    println!("CIRCUIT: ");
     println!("    mini    -- Mini circuit.");
     println!("    mimc    -- MiMC hash & proof.");
     println!("    greater -- Greater than comparison proof.");
@@ -106,7 +106,7 @@ pub fn main() -> Result<(), String> {
         if is_json {
             let content = std::fs::read_to_string(&path).expect("file not found!");
             let json: serde_json::Value = serde_json::from_str(&content).unwrap();
-            let g_str = json["gadget"].as_str().unwrap();
+            let g_str = json["circuit"].as_str().unwrap();
             let s_str = json["scheme"].as_str().unwrap();
             let c_str = json["curve"].as_str().unwrap();
             let params = &json["params"];
@@ -117,24 +117,24 @@ pub fn main() -> Result<(), String> {
             let p = match g_str {
                 "mini" => {
                     let z = params[0].as_str().unwrap().parse::<u32>().unwrap();
-                    GadgetProof::Mini(z, from_hex(p_str).unwrap())
+                    CircuitProof::Mini(z, from_hex(p_str).unwrap())
                 }
-                "mimc" => GadgetProof::MiMC(
+                "mimc" => CircuitProof::MiMC(
                     from_hex(params[0].as_str().unwrap()).unwrap(),
                     from_hex(p_str).unwrap(),
                 ),
                 "greater" => {
                     let n = params[0].as_str().unwrap().parse::<u64>().unwrap();
-                    GadgetProof::GreaterThan(n, from_hex(p_str).unwrap())
+                    CircuitProof::GreaterThan(n, from_hex(p_str).unwrap())
                 }
                 "less" => {
                     let n = params[0].as_str().unwrap().parse::<u64>().unwrap();
-                    GadgetProof::LessThan(n, from_hex(p_str).unwrap())
+                    CircuitProof::LessThan(n, from_hex(p_str).unwrap())
                 }
                 "between" => {
                     let l = params[0].as_str().unwrap().parse::<u64>().unwrap();
                     let r = params[1].as_str().unwrap().parse::<u64>().unwrap();
-                    GadgetProof::Between(l, r, from_hex(p_str).unwrap())
+                    CircuitProof::Between(l, r, from_hex(p_str).unwrap())
                 }
                 _ => return Err("unimplemented".to_owned()),
             };

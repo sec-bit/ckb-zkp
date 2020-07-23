@@ -1,5 +1,5 @@
 use ckb_zkp::{
-    gadget::mini::Mini,
+    circuits::mini::Mini,
     math::{PairingEngine, ToBytes},
     scheme::groth16::{generate_random_parameters, prepare_verifying_key},
 };

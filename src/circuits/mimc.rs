@@ -1,7 +1,7 @@
 use math::{Field, FromBytes, PairingEngine, PrimeField, ToBytes};
 use scheme::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
-use crate::{Gadget, GadgetProof, Vec};
+use crate::{Circuit, CircuitProof, Vec};
 
 /// This is an implementation of MiMC, specifically a
 /// variant named `LongsightF322p3` for BN-256.
@@ -194,13 +194,13 @@ fn hash_and_r1cs<'a, F: PrimeField>(b: &[u8], constants: &'a [F]) -> (F, MiMC<'a
 
 #[cfg(feature = "groth16")]
 pub fn groth16_prove<E: PairingEngine, R: rand::Rng>(
-    g: &Gadget,
+    g: &Circuit,
     pk: &[u8],
     mut rng: R,
-) -> Result<GadgetProof, ()> {
+) -> Result<CircuitProof, ()> {
     use scheme::groth16::{create_random_proof, Parameters};
     match g {
-        Gadget::MiMC(b) => {
+        Circuit::MiMC(b) => {
             let constants = constants();
             let (image, mc) = hash_and_r1cs(b, &constants);
 
@@ -214,7 +214,7 @@ pub fn groth16_prove<E: PairingEngine, R: rand::Rng>(
             let mut i_bytes = Vec::new();
             image.write(&mut i_bytes).map_err(|_| ())?;
 
-            Ok(GadgetProof::MiMC(i_bytes, p_bytes))
+            Ok(CircuitProof::MiMC(i_bytes, p_bytes))
         }
         _ => Err(()),
     }
@@ -222,7 +222,7 @@ pub fn groth16_prove<E: PairingEngine, R: rand::Rng>(
 
 #[cfg(feature = "groth16")]
 pub fn groth16_verify<E: PairingEngine>(
-    g: GadgetProof,
+    g: CircuitProof,
     vk: &[u8],
     is_pp: bool,
 ) -> Result<bool, ()> {
@@ -230,7 +230,7 @@ pub fn groth16_verify<E: PairingEngine>(
         prepare_verifying_key, verify_proof, PreparedVerifyingKey, Proof, VerifyingKey,
     };
     match g {
-        GadgetProof::MiMC(i_bytes, p_bytes) => {
+        CircuitProof::MiMC(i_bytes, p_bytes) => {
             let proof = Proof::<E>::read(&p_bytes[..]).map_err(|_| ())?;
             let image = <E::Fr>::read(&i_bytes[..]).map_err(|_| ())?;
 
@@ -249,14 +249,14 @@ pub fn groth16_verify<E: PairingEngine>(
 
 #[cfg(feature = "bulletproofs")]
 pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
-    g: &Gadget,
+    g: &Circuit,
     _pk: &[u8],
     mut rng: R,
-) -> Result<GadgetProof, ()> {
+) -> Result<CircuitProof, ()> {
     use scheme::bulletproofs::arithmetic_circuit::create_proof;
 
     match g {
-        Gadget::MiMC(b) => {
+        Circuit::MiMC(b) => {
             let constants = constants();
             let (image, mc) = hash_and_r1cs(b, &constants);
 
@@ -277,7 +277,7 @@ pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
             let mut i_bytes = Vec::new();
             image.write(&mut i_bytes).map_err(|_| ())?;
 
-            Ok(GadgetProof::MiMC(i_bytes, p_bytes))
+            Ok(CircuitProof::MiMC(i_bytes, p_bytes))
         }
         _ => Err(()),
     }
@@ -285,13 +285,13 @@ pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
 
 #[cfg(feature = "bulletproofs")]
 pub fn bulletproofs_verify<E: PairingEngine>(
-    g: GadgetProof,
+    g: CircuitProof,
     _vk: &[u8],
     _is_pp: bool,
 ) -> Result<bool, ()> {
     use scheme::bulletproofs::arithmetic_circuit::{verify_proof, Generators, Proof, R1csCircuit};
     match g {
-        GadgetProof::MiMC(_i_bytes, p_bytes) => {
+        CircuitProof::MiMC(_i_bytes, p_bytes) => {
             let mut bytes = &p_bytes[..];
             let generators = Generators::<E>::read(&mut bytes).map_err(|_| ())?;
             let r1cs_circuit = R1csCircuit::<E>::read(&mut bytes).map_err(|_| ())?;
