@@ -16,7 +16,7 @@ use ckb-zkp::curve::bn_256::{Bn_256, Fr};
 use ckb-zkp::gadget::mimc::{constants, MiMC};
 use ckb-zkp::math::ToBytes;
 use ckb-zkp::scheme::groth16::generate_random_parameters;
-use ckb-zkp::{prove, prove_to_bytes, verify, verify_from_bytes, Curve, Gadget, Scheme};
+use ckb-zkp::{prove, prove_to_bytes, verify, verify_from_bytes, Curve, Circuit, Scheme};
 
 /// testing for use groth16 & bn_256 & mimc gadget.
 fn main() {
@@ -45,7 +45,7 @@ fn main() {
 
     println!("START PROVE...");
     let proof = prove(
-        Gadget::MiMC(bytes),
+        Circuit::MiMC(bytes),
         Scheme::Groth16,
         Curve::Bn_256,
         &pk_bytes,

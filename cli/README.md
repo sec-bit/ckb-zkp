@@ -23,9 +23,9 @@ A cli toolkit for zkp.
 ```
 trusted-setup
 
-Usage: trusted-setup [GADGET] <scheme> <curve> <OPTIONS>
+Usage: trusted-setup [CIRCUIT] <scheme> <curve> <OPTIONS>
 
-GADGET: 
+CIRCUIT: 
     mimc    -- MiMC hash & proof.
     greater -- Greater than comparison proof.
     less    -- Less than comparison proof.
@@ -49,9 +49,9 @@ OPTIONS:
 ```
 zkp-prove
 
-Usage: zkp-prove [GADGET] <scheme> <curve> [GADGET OPTIONS] <OPTIONS>
+Usage: zkp-prove [CIRCUIT] <scheme> <curve> [CIRCUIT OPTIONS] <OPTIONS>
 
-GADGET:
+CIRCUIT:
     mimc    -- MiMC hash & proof.
     greater -- Greater than comparison proof.
     less    -- Less than comparison proof.
@@ -77,9 +77,9 @@ You can use the `--json` option to get the proof file in JSON format.
 ```
 zkp-verify
 
-Usage: zkp-verify [GADGET] <scheme> <curve> [FILE] <OPTIONS>
+Usage: zkp-verify [CIRCUIT] <scheme> <curve> [FILE] <OPTIONS>
 
-GADGET:
+CIRCUIT:
     mimc    -- MiMC hash & proof.
     greater -- Greater than comparison proof.
     less    -- Less than comparison proof.

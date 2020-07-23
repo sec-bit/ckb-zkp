@@ -1,7 +1,7 @@
 use math::{FromBytes, PairingEngine, PrimeField, ToBytes};
 use scheme::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
-use crate::{Gadget, GadgetProof, Vec};
+use crate::{Circuit, CircuitProof, Vec};
 
 pub struct Mini<F: PrimeField> {
     pub x: Option<F>,
@@ -36,13 +36,13 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for Mini<F> {
 
 #[cfg(feature = "groth16")]
 pub fn groth16_prove<E: PairingEngine, R: rand::Rng>(
-    g: &Gadget,
+    g: &Circuit,
     pk: &[u8],
     mut rng: R,
-) -> Result<GadgetProof, ()> {
+) -> Result<CircuitProof, ()> {
     use scheme::groth16::{create_random_proof, Parameters};
     match g {
-        Gadget::Mini(x, y, z) => {
+        Circuit::Mini(x, y, z) => {
             let repr_x = <E::Fr as PrimeField>::BigInt::from(*x as u64);
             let repr_y = <E::Fr as PrimeField>::BigInt::from(*y as u64);
             let repr_z = <E::Fr as PrimeField>::BigInt::from(*z as u64);
@@ -59,7 +59,7 @@ pub fn groth16_prove<E: PairingEngine, R: rand::Rng>(
             let mut p_bytes = Vec::new();
             proof.write(&mut p_bytes).map_err(|_| ())?;
 
-            Ok(GadgetProof::Mini(*z, p_bytes))
+            Ok(CircuitProof::Mini(*z, p_bytes))
         }
         _ => Err(()),
     }
@@ -67,7 +67,7 @@ pub fn groth16_prove<E: PairingEngine, R: rand::Rng>(
 
 #[cfg(feature = "groth16")]
 pub fn groth16_verify<E: PairingEngine>(
-    g: GadgetProof,
+    g: CircuitProof,
     vk: &[u8],
     is_pp: bool,
 ) -> Result<bool, ()> {
@@ -75,7 +75,7 @@ pub fn groth16_verify<E: PairingEngine>(
         prepare_verifying_key, verify_proof, PreparedVerifyingKey, Proof, VerifyingKey,
     };
     match g {
-        GadgetProof::Mini(z, p_bytes) => {
+        CircuitProof::Mini(z, p_bytes) => {
             let proof = Proof::<E>::read(&p_bytes[..]).map_err(|_| ())?;
 
             let pvk = if is_pp {
@@ -94,14 +94,14 @@ pub fn groth16_verify<E: PairingEngine>(
 
 #[cfg(feature = "bulletproofs")]
 pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
-    g: &Gadget,
+    g: &Circuit,
     _pk: &[u8],
     mut rng: R,
-) -> Result<GadgetProof, ()> {
+) -> Result<CircuitProof, ()> {
     use scheme::bulletproofs::arithmetic_circuit::create_proof;
 
     match g {
-        Gadget::Mini(x, y, z) => {
+        Circuit::Mini(x, y, z) => {
             let repr_x = <E::Fr as PrimeField>::BigInt::from(*x as u64);
             let repr_y = <E::Fr as PrimeField>::BigInt::from(*y as u64);
             let repr_z = <E::Fr as PrimeField>::BigInt::from(*z as u64);
@@ -125,7 +125,7 @@ pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
                 i.write(&mut p_bytes).map_err(|_| ())?;
             }
 
-            Ok(GadgetProof::Mini(*z, p_bytes))
+            Ok(CircuitProof::Mini(*z, p_bytes))
         }
         _ => Err(()),
     }
@@ -133,13 +133,13 @@ pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
 
 #[cfg(feature = "bulletproofs")]
 pub fn bulletproofs_verify<E: PairingEngine>(
-    g: GadgetProof,
+    g: CircuitProof,
     _vk: &[u8],
     _is_pp: bool,
 ) -> Result<bool, ()> {
     use scheme::bulletproofs::arithmetic_circuit::{verify_proof, Generators, Proof, R1csCircuit};
     match g {
-        GadgetProof::Mini(_z, p_bytes) => {
+        CircuitProof::Mini(_z, p_bytes) => {
             let mut bytes = &p_bytes[..];
             let generators = Generators::<E>::read(&mut bytes).map_err(|_| ())?;
             let r1cs_circuit = R1csCircuit::<E>::read(&mut bytes).map_err(|_| ())?;

@@ -1,4 +1,4 @@
-use math::{BitIterator,PrimeField};
+use math::{BitIterator, PrimeField};
 use scheme::r1cs::{
     ConstraintSynthesizer, ConstraintSystem, LinearCombination, SynthesisError, Variable,
 };
@@ -54,12 +54,12 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for RangeProof<F> {
 
         let alpha_value = match alpha_packed_value {
             Some(i) => i,
-            _ =>F::zero(),
+            _ => F::zero(),
         };
-        
+
         let mut alpha_bits: Vec<Option<F>> = Vec::new();
         let mut bits: Vec<Option<F>> = Vec::new();
-        
+
         for b in BitIterator::new(alpha_value.into_repr()) {
             if b {
                 bits.push(Some(F::one()));
@@ -67,8 +67,8 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for RangeProof<F> {
                 bits.push(Some(F::zero()));
             }
         }
-        for i in 0..(n+1){
-            alpha_bits.push(bits[bits.len()-1-i as usize]);
+        for i in 0..(n + 1) {
+            alpha_bits.push(bits[bits.len() - 1 - i as usize]);
         }
         assert_eq!(alpha_bits.len(), (n + 1) as usize);
 
@@ -209,21 +209,21 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for RangeProof<F> {
     }
 }
 
-use crate::{Gadget, GadgetProof};
+use crate::{Circuit, CircuitProof};
 use math::{FromBytes, PairingEngine, ToBytes};
 
 #[cfg(feature = "groth16")]
 pub fn groth16_prove<E: PairingEngine, R: rand::Rng>(
-    g: &Gadget,
+    g: &Circuit,
     pk: &[u8],
     mut rng: R,
-) -> Result<GadgetProof, ()> {
+) -> Result<CircuitProof, ()> {
     use scheme::groth16::{create_random_proof, Parameters};
     let params = Parameters::<E>::read(pk).map_err(|_| ())?;
     let n = 64;
 
     match g {
-        Gadget::GreaterThan(s, lhs) => {
+        Circuit::GreaterThan(s, lhs) => {
             let repr_s = <E::Fr as PrimeField>::BigInt::from(*s);
             let repr_lhs = <E::Fr as PrimeField>::BigInt::from(*lhs);
 
@@ -236,9 +236,9 @@ pub fn groth16_prove<E: PairingEngine, R: rand::Rng>(
             let proof = create_random_proof(c1, &params, &mut rng).map_err(|_| ())?;
             let mut p_bytes = Vec::new();
             proof.write(&mut p_bytes).map_err(|_| ())?;
-            Ok(GadgetProof::GreaterThan(*lhs, p_bytes))
+            Ok(CircuitProof::GreaterThan(*lhs, p_bytes))
         }
-        Gadget::LessThan(s, rhs) => {
+        Circuit::LessThan(s, rhs) => {
             let repr_s = <E::Fr as PrimeField>::BigInt::from(*s);
             let repr_rhs = <E::Fr as PrimeField>::BigInt::from(*rhs);
 
@@ -251,9 +251,9 @@ pub fn groth16_prove<E: PairingEngine, R: rand::Rng>(
             let proof = create_random_proof(c1, &params, &mut rng).map_err(|_| ())?;
             let mut p_bytes = Vec::new();
             proof.write(&mut p_bytes).map_err(|_| ())?;
-            Ok(GadgetProof::LessThan(*rhs, p_bytes))
+            Ok(CircuitProof::LessThan(*rhs, p_bytes))
         }
-        Gadget::Between(s, lhs, rhs) => {
+        Circuit::Between(s, lhs, rhs) => {
             let repr_s = <E::Fr as PrimeField>::BigInt::from(*s);
             let repr_lhs = <E::Fr as PrimeField>::BigInt::from(*lhs);
             let repr_rhs = <E::Fr as PrimeField>::BigInt::from(*rhs);
@@ -277,7 +277,7 @@ pub fn groth16_prove<E: PairingEngine, R: rand::Rng>(
             proof_l.write(&mut p_bytes).map_err(|_| ())?;
             proof_r.write(&mut p_bytes).map_err(|_| ())?;
 
-            Ok(GadgetProof::Between(*lhs, *rhs, p_bytes))
+            Ok(CircuitProof::Between(*lhs, *rhs, p_bytes))
         }
         _ => Err(()),
     }
@@ -285,7 +285,7 @@ pub fn groth16_prove<E: PairingEngine, R: rand::Rng>(
 
 #[cfg(feature = "groth16")]
 pub fn groth16_verify<E: PairingEngine>(
-    g: GadgetProof,
+    g: CircuitProof,
     vk: &[u8],
     is_pp: bool,
 ) -> Result<bool, ()> {
@@ -304,12 +304,12 @@ pub fn groth16_verify<E: PairingEngine>(
     let image = <E::Fr as PrimeField>::from_repr(repr_image).pow([64]);
 
     match g {
-        GadgetProof::GreaterThan(_, p_bytes) | GadgetProof::LessThan(_, p_bytes) => {
+        CircuitProof::GreaterThan(_, p_bytes) | CircuitProof::LessThan(_, p_bytes) => {
             let proof = Proof::<E>::read(&p_bytes[..]).map_err(|_| ())?;
 
             verify_proof(&pvk, &proof, &[image]).map_err(|_| ())
         }
-        GadgetProof::Between(_, _, p_bytes) => {
+        CircuitProof::Between(_, _, p_bytes) => {
             let len = p_bytes.len() / 2;
             let l_proof = Proof::<E>::read(&p_bytes[0..len]).map_err(|_| ())?;
             let r_proof = Proof::<E>::read(&p_bytes[len..]).map_err(|_| ())?;
@@ -323,15 +323,15 @@ pub fn groth16_verify<E: PairingEngine>(
 
 #[cfg(feature = "bulletproofs")]
 pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
-    g: &Gadget,
+    g: &Circuit,
     _pk: &[u8],
     mut rng: R,
-) -> Result<GadgetProof, ()> {
+) -> Result<CircuitProof, ()> {
     use scheme::bulletproofs::arithmetic_circuit::create_proof;
     let n = 64;
 
     match g {
-        Gadget::GreaterThan(s, lhs) => {
+        Circuit::GreaterThan(s, lhs) => {
             let repr_s = <E::Fr as PrimeField>::BigInt::from(*s);
             let repr_lhs = <E::Fr as PrimeField>::BigInt::from(*lhs);
 
@@ -358,9 +358,9 @@ pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
                 i.write(&mut p_bytes).map_err(|_| ())?;
             }
 
-            Ok(GadgetProof::GreaterThan(*lhs, p_bytes))
+            Ok(CircuitProof::GreaterThan(*lhs, p_bytes))
         }
-        Gadget::LessThan(s, rhs) => {
+        Circuit::LessThan(s, rhs) => {
             let repr_s = <E::Fr as PrimeField>::BigInt::from(*s);
             let repr_rhs = <E::Fr as PrimeField>::BigInt::from(*rhs);
 
@@ -384,9 +384,9 @@ pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
                 i.write(&mut p_bytes).map_err(|_| ())?;
             }
 
-            Ok(GadgetProof::LessThan(*rhs, p_bytes))
+            Ok(CircuitProof::LessThan(*rhs, p_bytes))
         }
-        Gadget::Between(s, lhs, rhs) => {
+        Circuit::Between(s, lhs, rhs) => {
             let repr_s = <E::Fr as PrimeField>::BigInt::from(*s);
             let repr_lhs = <E::Fr as PrimeField>::BigInt::from(*lhs);
             let repr_rhs = <E::Fr as PrimeField>::BigInt::from(*rhs);
@@ -429,7 +429,7 @@ pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
                 i.write(&mut p_bytes).map_err(|_| ())?;
             }
 
-            Ok(GadgetProof::Between(*lhs, *rhs, p_bytes))
+            Ok(CircuitProof::Between(*lhs, *rhs, p_bytes))
         }
         _ => Err(()),
     }
@@ -437,13 +437,13 @@ pub fn bulletproofs_prove<E: PairingEngine, R: rand::Rng>(
 
 #[cfg(feature = "bulletproofs")]
 pub fn bulletproofs_verify<E: PairingEngine>(
-    g: GadgetProof,
+    g: CircuitProof,
     _vk: &[u8],
     _is_pp: bool,
 ) -> Result<bool, ()> {
     use scheme::bulletproofs::arithmetic_circuit::{verify_proof, Generators, Proof, R1csCircuit};
     match g {
-        GadgetProof::GreaterThan(_, p_bytes) | GadgetProof::LessThan(_, p_bytes) => {
+        CircuitProof::GreaterThan(_, p_bytes) | CircuitProof::LessThan(_, p_bytes) => {
             let mut bytes = &p_bytes[..];
             let generators = Generators::<E>::read(&mut bytes).map_err(|_| ())?;
             let r1cs_circuit = R1csCircuit::<E>::read(&mut bytes).map_err(|_| ())?;
@@ -457,7 +457,7 @@ pub fn bulletproofs_verify<E: PairingEngine>(
 
             Ok(verify_proof(&generators, &proof, &r1cs_circuit, &s))
         }
-        GadgetProof::Between(_, _, p_bytes) => {
+        CircuitProof::Between(_, _, p_bytes) => {
             let mut bytes = &p_bytes[..];
             let generators = Generators::<E>::read(&mut bytes).map_err(|_| ())?;
             let r1cs_circuit = R1csCircuit::<E>::read(&mut bytes).map_err(|_| ())?;
