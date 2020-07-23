@@ -4,11 +4,12 @@
 //! [SHA-256]: https://tools.ietf.org/html/rfc6234
 
 use math::PrimeField;
-use scheme::r1cs::{ConstraintSystem, SynthesisError};
+use scheme::r1cs::{ConstraintSystem, SynthesisError, Variable};
 
 use crate::Vec;
 
-use super::boolean::Boolean;
+use super::abstract_hash::{AbstractHash, AbstractHashOutput};
+use super::boolean::{AllocatedBit, Boolean};
 use super::multieq::MultiEq;
 use super::uint32::UInt32;
 
@@ -249,6 +250,84 @@ where
     let h7 = UInt32::addmany(cs.ns(|| "new h7"), &[current_hash_value[7].clone(), h])?;
 
     Ok(vec![h0, h1, h2, h3, h4, h5, h6, h7])
+}
+
+/// implement AbstractHashSha256Output.
+#[derive(Clone)]
+pub struct AbstractHashSha256Output {
+    value: Option<Vec<Boolean>>,
+    variables: Vec<Variable>,
+}
+
+impl AbstractHashSha256Output {
+    pub fn alloc<F: PrimeField, CS: ConstraintSystem<F>>(
+        mut cs: CS,
+        bytes: Vec<u8>, // standard sha256 hash result.
+    ) -> Result<Self, SynthesisError> {
+        let s = bytes
+            .iter()
+            .flat_map(|&byte| (0..8).rev().map(move |i| (byte >> i) & 1u8 == 1u8));
+
+        let mut values = vec![];
+        let mut variables = vec![];
+        for (i, v) in s.enumerate() {
+            let alloc = AllocatedBit::alloc(cs.ns(|| format!("output_bit_{}", i)), Some(v))?;
+            variables.push(alloc.get_variable());
+            values.push(alloc.into());
+        }
+
+        Ok(Self {
+            value: Some(values),
+            variables: variables,
+        })
+    }
+
+    pub fn get_value(&self) -> Option<Vec<Boolean>> {
+        self.value.clone()
+    }
+}
+
+impl AbstractHashOutput for AbstractHashSha256Output {
+    fn get_variables(&self) -> Vec<Variable> {
+        self.variables.clone()
+    }
+}
+
+// implement AbstractHash.
+pub struct AbstractHashSha256<F>(core::marker::PhantomData<F>);
+
+impl<F: PrimeField> AbstractHash<F> for AbstractHashSha256<F> {
+    type Output = AbstractHashSha256Output;
+
+    fn hash_enforce<CS: ConstraintSystem<F>>(
+        mut cs: CS,
+        params: &[&Self::Output],
+    ) -> Result<Self::Output, SynthesisError> {
+        let mut inputs = Vec::new();
+        for o in params.iter() {
+            if let Some(l) = o.get_value() {
+                inputs.extend(&mut l.iter().map(|i| i.clone()));
+            } else {
+                return Err(SynthesisError::AssignmentMissing);
+            }
+        }
+
+        let booleans = sha256(cs.ns(|| "sha256"), &inputs)?;
+
+        let var: Vec<Variable> = booleans
+            .iter()
+            .enumerate()
+            .map(|(i, b)| {
+                let a = AllocatedBit::alloc(cs.ns(|| format!("bit_{}", i)), b.get_value()).unwrap(); // TODO
+                a.get_variable()
+            })
+            .collect();
+
+        Ok(AbstractHashSha256Output {
+            value: Some(booleans),
+            variables: var,
+        })
+    }
 }
 
 #[cfg(test)]
