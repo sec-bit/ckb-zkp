@@ -1,10 +1,10 @@
 use ckb_zkp::{
+    circuits::mimc::{constants, MiMC},
     curve::bn_256::{Bn_256, Fr},
-    gadget::mimc::{constants, MiMC},
     math::ToBytes,
     prove, prove_to_bytes,
     scheme::groth16::generate_random_parameters,
-    verify, verify_from_bytes, Curve, Gadget, Scheme,
+    verify, verify_from_bytes, Circuit, Curve, Scheme,
 };
 use rand::prelude::*;
 use std::time::Instant;
@@ -37,7 +37,7 @@ fn main() {
     let new_bytes = bytes.clone();
     println!("START PROVE...");
     let proof = prove(
-        Gadget::MiMC(new_bytes),
+        Circuit::MiMC(new_bytes),
         Scheme::Groth16,
         Curve::Bn_256,
         &pk_bytes,
@@ -52,7 +52,7 @@ fn main() {
     println!("ANOTHER USE BYTES START PROVE...");
     let p_start = Instant::now();
     let proof_bytes = prove_to_bytes(
-        Gadget::MiMC(bytes),
+        Circuit::MiMC(bytes),
         Scheme::Groth16,
         Curve::Bn_256,
         &pk_bytes,

@@ -1,5 +1,5 @@
 use ckb_zkp::{
-    circuits::rangeproof::RangeProof,
+    circuits::mini::Mini,
     math::{PairingEngine, ToBytes},
     scheme::groth16::{generate_random_parameters, prepare_verifying_key},
 };
@@ -11,10 +11,10 @@ pub fn groth16_setup<E: PairingEngine, R: rand::Rng>(
 ) -> Result<(Vec<u8>, Vec<u8>), String> {
     println!("Prepareing...");
 
-    let c = RangeProof::<E::Fr> {
-        lhs: None,
-        rhs: None,
-        n: 64, // u64
+    let c = Mini::<E::Fr> {
+        x: None,
+        y: None,
+        z: None,
     };
 
     let params = generate_random_parameters::<E, _, _>(c, &mut rng).unwrap();

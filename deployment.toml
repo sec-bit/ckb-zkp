@@ -3,6 +3,11 @@ name = "mimc-groth16-verifier"
 enable_type_id = false
 location = { file = "build/release/mimc-groth16-verifier" }
 
+[[cells]]
+name = "mimc-bulletproofs-verifier"
+enable_type_id = false
+location = { file = "build/release/mimc-bulletproofs-verifier" }
+
 # Dep group cells
 # [[dep_groups]]
 # name = "my_dep_group"

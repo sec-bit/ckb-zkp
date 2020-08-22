@@ -1,13 +1,14 @@
-use ckb_zkp::{prove, Curve, Gadget, GadgetProof, Scheme};
 use serde_json::json;
 use std::env;
 use std::path::PathBuf;
 
+use ckb_zkp::{prove, Circuit, CircuitProof, Curve, Scheme};
+
 const PROOFS_DIR: &'static str = "./proofs_files";
 const SETUP_DIR: &'static str = "./trusted_setup";
 
-trait GadgetName {
-    fn handle(&self, args: &[String]) -> Result<(Gadget, String), String>;
+trait CircuitName {
+    fn handle(&self, args: &[String]) -> Result<(Circuit, String), String>;
     fn options(&self) -> String;
 }
 
@@ -15,9 +16,10 @@ struct MiMC;
 struct Greater;
 struct Less;
 struct Between;
+struct Mini;
 
-impl GadgetName for MiMC {
-    fn handle(&self, args: &[String]) -> Result<(Gadget, String), String> {
+impl CircuitName for MiMC {
+    fn handle(&self, args: &[String]) -> Result<(Circuit, String), String> {
         if args.len() < 1 {
             return Err("unimplemented other file type.".to_owned());
         }
@@ -38,7 +40,7 @@ impl GadgetName for MiMC {
             panic!("unimplemented other file type.")
         };
 
-        Ok((Gadget::MiMC(bytes), filename))
+        Ok((Circuit::MiMC(bytes), filename))
     }
 
     fn options(&self) -> String {
@@ -46,8 +48,8 @@ impl GadgetName for MiMC {
     }
 }
 
-impl GadgetName for Greater {
-    fn handle(&self, args: &[String]) -> Result<(Gadget, String), String> {
+impl CircuitName for Greater {
+    fn handle(&self, args: &[String]) -> Result<(Circuit, String), String> {
         let sec = args[0]
             .as_str()
             .parse::<u64>()
@@ -57,7 +59,7 @@ impl GadgetName for Greater {
             .parse::<u64>()
             .expect("Interger parse error");
 
-        Ok((Gadget::GreaterThan(sec, com), "greater".to_owned()))
+        Ok((Circuit::GreaterThan(sec, com), "greater".to_owned()))
     }
 
     fn options(&self) -> String {
@@ -65,8 +67,8 @@ impl GadgetName for Greater {
     }
 }
 
-impl GadgetName for Less {
-    fn handle(&self, args: &[String]) -> Result<(Gadget, String), String> {
+impl CircuitName for Less {
+    fn handle(&self, args: &[String]) -> Result<(Circuit, String), String> {
         let sec = args[0]
             .as_str()
             .parse::<u64>()
@@ -76,7 +78,7 @@ impl GadgetName for Less {
             .parse::<u64>()
             .expect("Interger parse error");
 
-        Ok((Gadget::GreaterThan(sec, com), "less".to_owned()))
+        Ok((Circuit::GreaterThan(sec, com), "less".to_owned()))
     }
 
     fn options(&self) -> String {
@@ -84,8 +86,8 @@ impl GadgetName for Less {
     }
 }
 
-impl GadgetName for Between {
-    fn handle(&self, args: &[String]) -> Result<(Gadget, String), String> {
+impl CircuitName for Between {
+    fn handle(&self, args: &[String]) -> Result<(Circuit, String), String> {
         let sec = args[0]
             .as_str()
             .parse::<u64>()
@@ -99,11 +101,34 @@ impl GadgetName for Between {
             .parse::<u64>()
             .expect("Interger parse error");
 
-        Ok((Gadget::Between(sec, from, to), "between".to_owned()))
+        Ok((Circuit::Between(sec, from, to), "between".to_owned()))
     }
 
     fn options(&self) -> String {
         "[secret_integer] [start_interger] [end_interger]".to_owned()
+    }
+}
+
+impl CircuitName for Mini {
+    fn handle(&self, args: &[String]) -> Result<(Circuit, String), String> {
+        let x = args[0]
+            .as_str()
+            .parse::<u32>()
+            .expect("Interger parse error");
+        let y = args[1]
+            .as_str()
+            .parse::<u32>()
+            .expect("Interger parse error");
+        let z = args[2]
+            .as_str()
+            .parse::<u32>()
+            .expect("Interger parse error");
+
+        Ok((Circuit::Mini(x, y, z), "mini".to_owned()))
+    }
+
+    fn options(&self) -> String {
+        "[x] [y] [z]".to_owned()
     }
 }
 
@@ -123,24 +148,26 @@ fn print_common() {
     println!("");
 }
 
-fn parse_gadget_name(g: &str) -> Result<Box<(dyn GadgetName + 'static)>, String> {
+fn parse_gadget_name(g: &str) -> Result<Box<(dyn CircuitName + 'static)>, String> {
     match g {
         "mimc" => Ok(Box::new(MiMC)),
         "greater" => Ok(Box::new(Greater)),
         "less" => Ok(Box::new(Less)),
         "between" => Ok(Box::new(Between)),
+        "mini" => Ok(Box::new(Mini)),
         _ => Err(format!("{} unimplemented!", g)),
     }
 }
 
-pub fn handle_args() -> Result<(Gadget, Scheme, Curve, String, String, bool, bool), String> {
+pub fn handle_args() -> Result<(Circuit, Scheme, Curve, String, String, bool, bool), String> {
     let args: Vec<_> = env::args().collect();
     if args.len() < 2 {
         println!("zkp-prove");
         println!("");
-        println!("Usage: zkp-prove [GADGET] <scheme> <curve> [GADGET OPTIONS] <OPTIONS>");
+        println!("Usage: zkp-prove [CIRCUIT] <scheme> <curve> [GADGET OPTIONS] <OPTIONS>");
         println!("");
-        println!("GADGET: ");
+        println!("CIRCUIT: ");
+        println!("    mini    -- Mini circuit.");
         println!("    mimc    -- MiMC hash & proof.");
         println!("    greater -- Greater than comparison proof.");
         println!("    less    -- Less than comparison proof.");
@@ -200,13 +227,19 @@ fn to_hex(v: &[u8]) -> String {
 fn main() -> Result<(), String> {
     let (g, s, c, pk_file, mut filename, _is_pp, is_json) = handle_args()?;
 
-    // load pk file.
-    let mut pk_path = PathBuf::from(SETUP_DIR);
-    pk_path.push(pk_file);
-    if !pk_path.exists() {
-        return Err(format!("Cannot found setup file: {:?}", pk_path));
-    }
-    let pk = std::fs::read(&pk_path).unwrap();
+    let pk = match s {
+        Scheme::Groth16 => {
+            // load pk file.
+            let mut pk_path = PathBuf::from(SETUP_DIR);
+            pk_path.push(pk_file);
+            if !pk_path.exists() {
+                return Err(format!("Cannot found setup file: {:?}", pk_path));
+            }
+            std::fs::read(&pk_path).unwrap()
+        }
+        Scheme::Bulletproofs => vec![],
+    };
+
     let proof = prove(g, s, c, &pk, rand::thread_rng()).unwrap();
 
     let mut path = PathBuf::from(PROOFS_DIR);
@@ -223,12 +256,13 @@ fn main() -> Result<(), String> {
 
     if is_json {
         let (name, params, p) = match proof.p {
-            GadgetProof::MiMC(hash, proof) => ("mimc", vec![to_hex(&hash)], to_hex(&proof)),
-            GadgetProof::GreaterThan(n, proof) => {
+            CircuitProof::Mini(z, proof) => ("mini", vec![format!("{}", z)], to_hex(&proof)),
+            CircuitProof::MiMC(hash, proof) => ("mimc", vec![to_hex(&hash)], to_hex(&proof)),
+            CircuitProof::GreaterThan(n, proof) => {
                 ("greater", vec![format!("{}", n)], to_hex(&proof))
             }
-            GadgetProof::LessThan(n, proof) => ("less", vec![format!("{}", n)], to_hex(&proof)),
-            GadgetProof::Between(l, r, proof) => (
+            CircuitProof::LessThan(n, proof) => ("less", vec![format!("{}", n)], to_hex(&proof)),
+            CircuitProof::Between(l, r, proof) => (
                 "between",
                 vec![format!("{}", l), format!("{}", r)],
                 to_hex(&proof),
@@ -236,7 +270,7 @@ fn main() -> Result<(), String> {
         };
 
         let content = json!({
-            "gadget": name,
+            "circuit": name,
             "scheme": proof.s.to_str(),
             "curve": proof.c.to_str(),
             "params": params,

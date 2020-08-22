@@ -48,20 +48,27 @@ mod bn_256 {
     fn prove_and_verify() {
         let rng = &mut test_rng();
 
-        for _ in 0..10 {
+        for _ in 0..5 {
             let a = Fr::rand(rng);
             let b = Fr::rand(rng);
             let mut c = a;
             c.mul_assign(&b);
 
-            let (generators, r1cs_circuit, proof, assignment) =
-                create_proof::<Bn_256, _>(MySillyCircuit {
+            let (generators, r1cs_circuit, proof, assignment) = create_proof::<Bn_256, _, _>(
+                MySillyCircuit {
                     a: Some(a),
                     b: Some(b),
-                })
-                .unwrap();
+                },
+                rng,
+            )
+            .unwrap();
 
-            verify_proof(&generators, &proof, &r1cs_circuit, &assignment.s);
+            assert!(verify_proof(
+                &generators,
+                &proof,
+                &r1cs_circuit,
+                &assignment.s
+            ));
         }
     }
 }
@@ -78,20 +85,27 @@ mod bls12_381 {
     fn prove_and_verify() {
         let rng = &mut test_rng();
 
-        for _ in 0..10 {
+        for _ in 0..5 {
             let a = Fr::rand(rng);
             let b = Fr::rand(rng);
             let mut c = a;
             c.mul_assign(&b);
 
-            let (generators, r1cs_circuit, proof, assignment) =
-                create_proof::<Bls12_381, _>(MySillyCircuit {
+            let (generators, r1cs_circuit, proof, assignment) = create_proof::<Bls12_381, _, _>(
+                MySillyCircuit {
                     a: Some(a),
                     b: Some(b),
-                })
-                .unwrap();
+                },
+                rng,
+            )
+            .unwrap();
 
-            verify_proof(&generators, &proof, &r1cs_circuit, &assignment.s);
+            assert!(verify_proof(
+                &generators,
+                &proof,
+                &r1cs_circuit,
+                &assignment.s
+            ));
         }
     }
 }

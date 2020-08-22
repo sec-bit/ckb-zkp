@@ -47,7 +47,7 @@ impl<E: PairingEngine> FromBytes for Proof<E> {
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         let a = E::G1Affine::read(&mut reader)?;
         let b = E::G2Affine::read(&mut reader)?;
-        let c = E::G1Affine::read(reader)?;
+        let c = E::G1Affine::read(&mut reader)?;
         Ok(Self { a, b, c })
     }
 }
@@ -93,7 +93,7 @@ impl<E: PairingEngine> FromBytes for VerifyingKey<E> {
         let beta_g2 = E::G2Affine::read(&mut reader)?;
         let gamma_g2 = E::G2Affine::read(&mut reader)?;
         let delta_g2 = E::G2Affine::read(&mut reader)?;
-        let g_len = u64::read(&mut reader).unwrap();
+        let g_len = u64::read(&mut reader)?;
         let mut gamma_abc_g1 = vec![];
         for _ in 0..g_len {
             let v = E::G1Affine::read(&mut reader)?;
@@ -161,31 +161,31 @@ impl<E: PairingEngine> FromBytes for Parameters<E> {
         let beta_g1 = E::G1Affine::read(&mut reader)?;
         let delta_g1 = E::G1Affine::read(&mut reader)?;
 
-        let a_query_len = u64::read(&mut reader).unwrap();
+        let a_query_len = u64::read(&mut reader)?;
         let mut a_query = vec![];
         for _ in 0..a_query_len {
             a_query.push(E::G1Affine::read(&mut reader)?);
         }
 
-        let b_g1_query_len = u64::read(&mut reader).unwrap();
+        let b_g1_query_len = u64::read(&mut reader)?;
         let mut b_g1_query = vec![];
         for _ in 0..b_g1_query_len {
             b_g1_query.push(E::G1Affine::read(&mut reader)?);
         }
 
-        let b_g2_query_len = u64::read(&mut reader).unwrap();
+        let b_g2_query_len = u64::read(&mut reader)?;
         let mut b_g2_query = vec![];
         for _ in 0..b_g2_query_len {
             b_g2_query.push(E::G2Affine::read(&mut reader)?);
         }
 
-        let h_query_len = u64::read(&mut reader).unwrap();
+        let h_query_len = u64::read(&mut reader)?;
         let mut h_query = vec![];
         for _ in 0..h_query_len {
             h_query.push(E::G1Affine::read(&mut reader)?);
         }
 
-        let l_query_len = u64::read(&mut reader).unwrap();
+        let l_query_len = u64::read(&mut reader)?;
         let mut l_query = vec![];
         for _ in 0..l_query_len {
             l_query.push(E::G1Affine::read(&mut reader)?);

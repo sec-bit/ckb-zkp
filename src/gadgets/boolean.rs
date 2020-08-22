@@ -1,17 +1,16 @@
-use math::{BitIterator, PrimeField};
+use math::{BitIterator, Field, PrimeField};
 use scheme::r1cs::{ConstraintSystem, LinearCombination, SynthesisError, Variable};
 
 use crate::Vec;
 
 /// Represents a variable in the constraint system which is guaranteed
 /// to be either zero or one.
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub struct AllocatedBit {
     variable: Variable,
     value: Option<bool>,
 }
 
-#[allow(dead_code)]
 impl AllocatedBit {
     pub fn get_value(&self) -> Option<bool> {
         self.value
@@ -30,7 +29,7 @@ impl AllocatedBit {
         must_be_false: &AllocatedBit,
     ) -> Result<Self, SynthesisError>
     where
-        F: PrimeField,
+        F: Field,
         CS: ConstraintSystem<F>,
     {
         let var = cs.alloc(
@@ -67,7 +66,7 @@ impl AllocatedBit {
     /// boolean value.
     pub fn alloc<F, CS>(mut cs: CS, value: Option<bool>) -> Result<Self, SynthesisError>
     where
-        F: PrimeField,
+        F: Field,
         CS: ConstraintSystem<F>,
     {
         let var = cs.alloc(
@@ -100,7 +99,7 @@ impl AllocatedBit {
     /// an `AllocatedBit`.
     pub fn xor<F, CS>(mut cs: CS, a: &Self, b: &Self) -> Result<Self, SynthesisError>
     where
-        F: PrimeField,
+        F: Field,
         CS: ConstraintSystem<F>,
     {
         let mut result_value = None;
@@ -154,7 +153,7 @@ impl AllocatedBit {
     /// an `AllocatedBit`.
     pub fn and<F, CS>(mut cs: CS, a: &Self, b: &Self) -> Result<Self, SynthesisError>
     where
-        F: PrimeField,
+        F: Field,
         CS: ConstraintSystem<F>,
     {
         let mut result_value = None;
@@ -194,7 +193,7 @@ impl AllocatedBit {
     /// Calculates `a AND (NOT b)`.
     pub fn and_not<F, CS>(mut cs: CS, a: &Self, b: &Self) -> Result<Self, SynthesisError>
     where
-        F: PrimeField,
+        F: Field,
         CS: ConstraintSystem<F>,
     {
         let mut result_value = None;
@@ -234,7 +233,7 @@ impl AllocatedBit {
     /// Calculates `(NOT a) AND (NOT b)`.
     pub fn nor<F, CS>(mut cs: CS, a: &Self, b: &Self) -> Result<Self, SynthesisError>
     where
-        F: PrimeField,
+        F: Field,
         CS: ConstraintSystem<F>,
     {
         let mut result_value = None;
@@ -272,91 +271,9 @@ impl AllocatedBit {
     }
 }
 
-#[allow(dead_code)]
-pub fn u64_into_boolean_vec_le<F: PrimeField, CS: ConstraintSystem<F>>(
-    mut cs: CS,
-    value: Option<u64>,
-) -> Result<Vec<Boolean>, SynthesisError> {
-    let values = match value {
-        Some(ref value) => {
-            let mut tmp = Vec::with_capacity(64);
-
-            for i in 0..64 {
-                tmp.push(Some(*value >> i & 1 == 1));
-            }
-
-            tmp
-        }
-        None => vec![None; 64],
-    };
-
-    let bits = values
-        .into_iter()
-        .enumerate()
-        .map(|(i, b)| {
-            Ok(Boolean::from(AllocatedBit::alloc(
-                cs.ns(|| format!("bit {}", i)),
-                b,
-            )?))
-        })
-        .collect::<Result<Vec<_>, SynthesisError>>()?;
-
-    Ok(bits)
-}
-
-#[allow(dead_code)]
-pub fn field_into_boolean_vec_le<F: PrimeField, CS: ConstraintSystem<F>>(
-    cs: CS,
-    value: Option<F>,
-) -> Result<Vec<Boolean>, SynthesisError> {
-    let v = field_into_allocated_bits_le::<F, CS>(cs, value)?;
-
-    Ok(v.into_iter().map(Boolean::from).collect())
-}
-
-pub fn field_into_allocated_bits_le<F: PrimeField, CS: ConstraintSystem<F>>(
-    mut cs: CS,
-    value: Option<F>,
-) -> Result<Vec<AllocatedBit>, SynthesisError> {
-    // Deconstruct in big-endian bit order
-    let values = match value {
-        Some(ref value) => {
-            let mut field_char = BitIterator::new(F::characteristic());
-
-            let mut tmp = Vec::with_capacity(F::size_in_bits());
-
-            let mut found_one = false;
-            for b in BitIterator::new(value.into_repr()) {
-                // Skip leading bits
-                found_one |= field_char.next().unwrap();
-                if !found_one {
-                    continue;
-                }
-
-                tmp.push(Some(b));
-            }
-
-            assert_eq!(tmp.len(), F::size_in_bits());
-
-            tmp
-        }
-        None => vec![None; F::size_in_bits()],
-    };
-
-    // Allocate in little-endian order
-    let bits = values
-        .into_iter()
-        .rev()
-        .enumerate()
-        .map(|(i, b)| AllocatedBit::alloc(cs.ns(|| format!("bit {}", i)), b))
-        .collect::<Result<Vec<_>, SynthesisError>>()?;
-
-    Ok(bits)
-}
-
 /// This is a boolean value which may be either a constant or
 /// an interpretation of an `AllocatedBit`.
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub enum Boolean {
     /// Existential view of the boolean variable
     Is(AllocatedBit),
@@ -366,7 +283,6 @@ pub enum Boolean {
     Constant(bool),
 }
 
-#[allow(dead_code)]
 impl Boolean {
     pub fn is_constant(&self) -> bool {
         match *self {
@@ -377,7 +293,7 @@ impl Boolean {
 
     pub fn enforce_equal<F, CS>(mut cs: CS, a: &Self, b: &Self) -> Result<(), SynthesisError>
     where
-        F: PrimeField,
+        F: Field,
         CS: ConstraintSystem<F>,
     {
         match (a, b) {
@@ -429,7 +345,7 @@ impl Boolean {
         }
     }
 
-    pub fn lc<F: PrimeField>(&self, one: Variable, coeff: F) -> LinearCombination<F> {
+    pub fn lc<F: Field>(&self, one: Variable, coeff: F) -> LinearCombination<F> {
         match *self {
             Boolean::Constant(c) => {
                 if c {
@@ -454,19 +370,19 @@ impl Boolean {
     pub fn not(&self) -> Self {
         match *self {
             Boolean::Constant(c) => Boolean::Constant(!c),
-            Boolean::Is(ref v) => Boolean::Not(v.clone()),
-            Boolean::Not(ref v) => Boolean::Is(v.clone()),
+            Boolean::Is(ref v) => Boolean::Not(*v),
+            Boolean::Not(ref v) => Boolean::Is(*v),
         }
     }
 
     /// Perform XOR over two boolean operands
     pub fn xor<'a, F, CS>(cs: CS, a: &'a Self, b: &'a Self) -> Result<Self, SynthesisError>
     where
-        F: PrimeField,
+        F: Field,
         CS: ConstraintSystem<F>,
     {
         match (a, b) {
-            (&Boolean::Constant(false), x) | (x, &Boolean::Constant(false)) => Ok(x.clone()),
+            (&Boolean::Constant(false), x) | (x, &Boolean::Constant(false)) => Ok(*x),
             (&Boolean::Constant(true), x) | (x, &Boolean::Constant(true)) => Ok(x.not()),
             // a XOR (NOT b) = NOT(a XOR b)
             (is @ &Boolean::Is(_), not @ &Boolean::Not(_))
@@ -484,7 +400,7 @@ impl Boolean {
     /// Perform AND over two boolean operands
     pub fn and<'a, F, CS>(cs: CS, a: &'a Self, b: &'a Self) -> Result<Self, SynthesisError>
     where
-        F: PrimeField,
+        F: Field,
         CS: ConstraintSystem<F>,
     {
         match (a, b) {
@@ -493,7 +409,7 @@ impl Boolean {
                 Ok(Boolean::Constant(false))
             }
             // true AND x is always x
-            (&Boolean::Constant(true), x) | (x, &Boolean::Constant(true)) => Ok(x.clone()),
+            (&Boolean::Constant(true), x) | (x, &Boolean::Constant(true)) => Ok(*x),
             // a AND (NOT b)
             (&Boolean::Is(ref is), &Boolean::Not(ref not))
             | (&Boolean::Not(ref not), &Boolean::Is(ref is)) => {
@@ -518,7 +434,7 @@ impl Boolean {
         c: &'a Self,
     ) -> Result<Self, SynthesisError>
     where
-        F: PrimeField,
+        F: Field,
         CS: ConstraintSystem<F>,
     {
         let ch_value = match (a.get_value(), b.get_value(), c.get_value()) {
@@ -542,7 +458,7 @@ impl Boolean {
                 // (false) xor (c)
                 // equals
                 // c
-                return Ok(c.clone());
+                return Ok(*c);
             }
             (a, &Boolean::Constant(false), c) => {
                 // If b is false
@@ -625,7 +541,7 @@ impl Boolean {
         c: &'a Self,
     ) -> Result<Self, SynthesisError>
     where
-        F: PrimeField,
+        F: Field,
         CS: ConstraintSystem<F>,
     {
         let maj_value = match (a.get_value(), b.get_value(), c.get_value()) {
@@ -741,14 +657,94 @@ impl From<AllocatedBit> for Boolean {
     }
 }
 
+pub fn u64_into_boolean_vec_le<F: Field, CS: ConstraintSystem<F>>(
+    mut cs: CS,
+    value: Option<u64>,
+) -> Result<Vec<Boolean>, SynthesisError> {
+    let values = match value {
+        Some(ref value) => {
+            let mut tmp = Vec::with_capacity(64);
+
+            for i in 0..64 {
+                tmp.push(Some(*value >> i & 1 == 1));
+            }
+
+            tmp
+        }
+        None => vec![None; 64],
+    };
+
+    let bits = values
+        .into_iter()
+        .enumerate()
+        .map(|(i, b)| {
+            Ok(Boolean::from(AllocatedBit::alloc(
+                cs.ns(|| format!("bit {}", i)),
+                b,
+            )?))
+        })
+        .collect::<Result<Vec<_>, SynthesisError>>()?;
+
+    Ok(bits)
+}
+
+pub fn field_into_boolean_vec_le<F: PrimeField, CS: ConstraintSystem<F>>(
+    cs: CS,
+    value: Option<F>,
+) -> Result<Vec<Boolean>, SynthesisError> {
+    let v = field_into_allocated_bits_le::<F, CS>(cs, value)?;
+
+    Ok(v.into_iter().map(Boolean::from).collect())
+}
+
+pub fn field_into_allocated_bits_le<F: PrimeField, CS: ConstraintSystem<F>>(
+    mut cs: CS,
+    value: Option<F>,
+) -> Result<Vec<AllocatedBit>, SynthesisError> {
+    // Deconstruct in big-endian bit order
+    let values = match value {
+        Some(ref value) => {
+            let mut field_char = BitIterator::new(F::characteristic());
+
+            let mut tmp = Vec::with_capacity(F::size_in_bits());
+
+            let mut found_one = false;
+            for b in BitIterator::new(value.into_repr()) {
+                // Skip leading bits
+                found_one |= field_char.next().unwrap();
+                if !found_one {
+                    continue;
+                }
+
+                tmp.push(Some(b));
+            }
+
+            assert_eq!(tmp.len(), F::size_in_bits());
+
+            tmp
+        }
+        None => vec![None; F::size_in_bits()],
+    };
+
+    // Allocate in little-endian order
+    let bits = values
+        .into_iter()
+        .rev()
+        .enumerate()
+        .map(|(i, b)| AllocatedBit::alloc(cs.ns(|| format!("bit {}", i)), b))
+        .collect::<Result<Vec<_>, SynthesisError>>()?;
+
+    Ok(bits)
+}
+
 #[cfg(test)]
 mod test {
     use curve::bn_256::Fr;
     use num_traits::{One, Zero};
     use scheme::r1cs::ConstraintSystem;
 
+    use super::super::test_constraint_system::TestConstraintSystem;
     use super::{u64_into_boolean_vec_le, AllocatedBit, Boolean};
-    use crate::gadget::test_constraint_system::TestConstraintSystem;
 
     #[test]
     fn test_allocated_bit() {

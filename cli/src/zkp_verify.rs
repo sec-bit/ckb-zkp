@@ -1,6 +1,7 @@
-use ckb_zkp::{verify, verify_from_bytes, Curve, GadgetProof, Proof, Scheme};
 use std::env;
 use std::path::PathBuf;
+
+use ckb_zkp::{verify, verify_from_bytes, CircuitProof, Curve, Proof, Scheme};
 
 const SETUP_DIR: &'static str = "./trusted_setup";
 
@@ -23,9 +24,10 @@ fn print_common() {
 fn print_help() {
     println!("zkp-verify");
     println!("");
-    println!("Usage: zkp-verify [GADGET] <scheme> <curve> [FILE] <OPTIONS>");
+    println!("Usage: zkp-verify [CIRCUIT] <scheme> <curve> [FILE] <OPTIONS>");
     println!("");
-    println!("GADGET: ");
+    println!("CIRCUIT: ");
+    println!("    mini    -- Mini circuit.");
     println!("    mimc    -- MiMC hash & proof.");
     println!("    greater -- Greater than comparison proof.");
     println!("    less    -- Less than comparison proof.");
@@ -33,7 +35,7 @@ fn print_help() {
     print_common();
 }
 
-pub fn handle_args() -> Result<(String, String, bool, bool), String> {
+pub fn handle_args() -> Result<(String, Scheme, String, bool, bool), String> {
     let args: Vec<_> = env::args().collect();
     if args.len() < 3 {
         print_help();
@@ -62,7 +64,7 @@ pub fn handle_args() -> Result<(String, String, bool, bool), String> {
 
     let vk_file = format!("{}-{}-{}.vk", args[1], s.to_str(), c.to_str());
 
-    Ok((vk_file, args[n].clone(), is_pp, is_json))
+    Ok((vk_file, s, args[n].clone(), is_pp, is_json))
 }
 
 fn from_hex(s: &str) -> Result<Vec<u8>, ()> {
@@ -81,15 +83,20 @@ fn from_hex(s: &str) -> Result<Vec<u8>, ()> {
 }
 
 pub fn main() -> Result<(), String> {
-    let (vk_file, filename, _is_pp, is_json) = handle_args()?;
+    let (vk_file, s, filename, _is_pp, is_json) = handle_args()?;
 
-    // load pk file.
-    let mut vk_path = PathBuf::from(SETUP_DIR);
-    vk_path.push(vk_file);
-    if !vk_path.exists() {
-        return Err(format!("Cannot found setup file: {:?}", vk_path));
-    }
-    let vk = std::fs::read(&vk_path).unwrap();
+    let vk = match s {
+        Scheme::Groth16 => {
+            // load pk file.
+            let mut vk_path = PathBuf::from(SETUP_DIR);
+            vk_path.push(vk_file);
+            if !vk_path.exists() {
+                return Err(format!("Cannot found setup file: {:?}", vk_path));
+            }
+            std::fs::read(&vk_path).unwrap()
+        }
+        Scheme::Bulletproofs => vec![],
+    };
 
     let path = PathBuf::from(filename);
 
@@ -99,7 +106,7 @@ pub fn main() -> Result<(), String> {
         if is_json {
             let content = std::fs::read_to_string(&path).expect("file not found!");
             let json: serde_json::Value = serde_json::from_str(&content).unwrap();
-            let g_str = json["gadget"].as_str().unwrap();
+            let g_str = json["circuit"].as_str().unwrap();
             let s_str = json["scheme"].as_str().unwrap();
             let c_str = json["curve"].as_str().unwrap();
             let params = &json["params"];
@@ -108,22 +115,26 @@ pub fn main() -> Result<(), String> {
             let s = Scheme::from_str(s_str).unwrap();
             let c = Curve::from_str(c_str).unwrap();
             let p = match g_str {
-                "mimc" => GadgetProof::MiMC(
+                "mini" => {
+                    let z = params[0].as_str().unwrap().parse::<u32>().unwrap();
+                    CircuitProof::Mini(z, from_hex(p_str).unwrap())
+                }
+                "mimc" => CircuitProof::MiMC(
                     from_hex(params[0].as_str().unwrap()).unwrap(),
                     from_hex(p_str).unwrap(),
                 ),
                 "greater" => {
                     let n = params[0].as_str().unwrap().parse::<u64>().unwrap();
-                    GadgetProof::GreaterThan(n, from_hex(p_str).unwrap())
+                    CircuitProof::GreaterThan(n, from_hex(p_str).unwrap())
                 }
                 "less" => {
                     let n = params[0].as_str().unwrap().parse::<u64>().unwrap();
-                    GadgetProof::LessThan(n, from_hex(p_str).unwrap())
+                    CircuitProof::LessThan(n, from_hex(p_str).unwrap())
                 }
                 "between" => {
                     let l = params[0].as_str().unwrap().parse::<u64>().unwrap();
                     let r = params[1].as_str().unwrap().parse::<u64>().unwrap();
-                    GadgetProof::Between(l, r, from_hex(p_str).unwrap())
+                    CircuitProof::Between(l, r, from_hex(p_str).unwrap())
                 }
                 _ => return Err("unimplemented".to_owned()),
             };

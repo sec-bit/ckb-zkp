@@ -9,6 +9,12 @@ use crate::Vec;
 #[cfg(test)]
 mod test;
 
+#[cfg(not(feature = "std"))]
+use alloc::collections::BTreeMap;
+
+#[cfg(feature = "std")]
+use std::collections::BTreeMap;
+
 // Q (vector, zQ) * Qxn (matrix, WL, WR, WO) = n (vector, zQW)
 pub fn vector_matrix_product<E: PairingEngine>(v: &Vec<E::Fr>, m: &Vec<Vec<E::Fr>>) -> Vec<E::Fr> {
     let n = m[0].len();
@@ -23,6 +29,44 @@ pub fn vector_matrix_product<E: PairingEngine>(v: &Vec<E::Fr>, m: &Vec<Vec<E::Fr
     for col in 0..n {
         for row in 0..v.len() {
             out[col] += &(v[row] * &(m[row][col])); // z_i * w_ij
+        }
+    }
+    out
+}
+
+// Q (vector, zQ) * Qxn (matrix, WL, WR, WO) = n (vector, zQW)
+pub fn vector_map_product<E: PairingEngine>(
+    v: &Vec<E::Fr>,
+    ms: &BTreeMap<(u32, u32), E::Fr>,
+    n: usize,
+) -> Vec<E::Fr> {
+    let zero = E::Fr::zero();
+    let mut out = vec![zero; n];
+
+    for col in 0..n {
+        for row in 0..v.len() {
+            out[col] += &(v[row] * &ms.get(&(row as u32, col as u32)).unwrap_or(&zero));
+            // z_i * w_ij
+        }
+    }
+    out
+}
+
+// Q (vector, zQ) * Qxn (matrix, WL, WR, WO) = n (vector, zQW)
+pub fn vector_product<E: PairingEngine>(
+    v: &Vec<E::Fr>,
+    ms: &Vec<E::Fr>,
+    m: usize,
+    n: usize,
+) -> Vec<E::Fr> {
+    let zero = E::Fr::zero();
+    let mut out = vec![zero; m];
+    assert_eq!(v.len(), n, "len of v and m must be equal");
+
+    for col in 0..m {
+        for row in 0..v.len() {
+            out[col] += &(v[row] * (if row == col { &ms[row] } else { &zero }));
+            // z_i * w_ij
         }
     }
     out

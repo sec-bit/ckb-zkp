@@ -15,7 +15,11 @@ use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-pub mod gadget;
+/// gadgets can used in circuits.
+pub mod gadgets;
+
+/// circuits can learning who to use gadgets.
+pub mod circuits;
 
 /// Supported zero-knowledge proof schemes.
 /// Now include: Groth16, Bulletproofs.
@@ -98,10 +102,11 @@ impl Curve {
     }
 }
 
-/// Supported use-friendly gadgets for zkp.
+/// Supported use-friendly circuitss for zkp.
 /// Now include: MiMC hash proof.
 #[derive(Debug)]
-pub enum Gadget {
+pub enum Circuit {
+    Mini(u32, u32, u32),
     /// pre-image content (plaintext).
     MiMC(Vec<u8>),
     /// secret num, public compared num. secret > public.
@@ -112,11 +117,11 @@ pub enum Gadget {
     Between(u64, u64, u64),
 }
 
-impl Gadget {
+impl Circuit {
     pub fn to_byte(self) -> Vec<u8> {
         let mut bytes = vec![];
         match self {
-            Gadget::MiMC(mut p) => {
+            Circuit::MiMC(mut p) => {
                 bytes.extend_from_slice(&0u16.to_le_bytes());
                 bytes.extend_from_slice(&(p.len() as u64).to_le_bytes());
                 bytes.append(&mut p);
@@ -144,16 +149,17 @@ impl Gadget {
                 if bytes.len() < bytes_len {
                     return Err(());
                 }
-                Ok(Gadget::MiMC(bytes[..bytes_len].to_vec()))
+                Ok(Circuit::MiMC(bytes[..bytes_len].to_vec()))
             }
             _ => Err(()),
         }
     }
 }
 
-/// GadgetProof enum type. It include gadget's parameters and SchemeProof type.
+/// CircuitProof enum type. It include circuits's parameters and SchemeProof type.
 #[derive(Debug)]
-pub enum GadgetProof {
+pub enum CircuitProof {
+    Mini(u32, Vec<u8>),
     /// MiMC hash value, and proof.
     MiMC(Vec<u8>, Vec<u8>),
     /// compared num, and proof.
@@ -164,27 +170,32 @@ pub enum GadgetProof {
     Between(u64, u64, Vec<u8>),
 }
 
-impl GadgetProof {
+impl CircuitProof {
     pub fn to_bytes(self) -> Vec<u8> {
         let mut bytes = vec![];
         match self {
-            GadgetProof::MiMC(mut e, mut s) => {
+            CircuitProof::Mini(e, mut s) => {
+                bytes.extend_from_slice(&4u16.to_le_bytes());
+                bytes.append(&mut e.to_le_bytes().to_vec());
+                bytes.append(&mut s);
+            }
+            CircuitProof::MiMC(mut e, mut s) => {
                 bytes.extend_from_slice(&0u16.to_le_bytes());
                 bytes.append(&mut (e.len() as u32).to_le_bytes().to_vec());
                 bytes.append(&mut e);
                 bytes.append(&mut s);
-            } // ADD OTHER GADGET
-            GadgetProof::GreaterThan(n, mut p) => {
+            } // ADD OTHER CIRCUITS
+            CircuitProof::GreaterThan(n, mut p) => {
                 bytes.extend_from_slice(&1u16.to_le_bytes());
                 bytes.extend_from_slice(&n.to_le_bytes());
                 bytes.append(&mut p);
             }
-            GadgetProof::LessThan(n, mut p) => {
+            CircuitProof::LessThan(n, mut p) => {
                 bytes.extend_from_slice(&2u16.to_le_bytes());
                 bytes.extend_from_slice(&n.to_le_bytes());
                 bytes.append(&mut p);
             }
-            GadgetProof::Between(l, r, mut p) => {
+            CircuitProof::Between(l, r, mut p) => {
                 bytes.extend_from_slice(&3u16.to_le_bytes());
                 bytes.extend_from_slice(&l.to_le_bytes());
                 bytes.extend_from_slice(&r.to_le_bytes());
@@ -211,21 +222,21 @@ impl GadgetProof {
                 h_len_bytes.copy_from_slice(h_len_b);
                 let h_len = u32::from_le_bytes(h_len_bytes);
                 let (h, p) = bytes.split_at(h_len as usize);
-                Ok(GadgetProof::MiMC(h.to_vec(), p.to_vec()))
+                Ok(CircuitProof::MiMC(h.to_vec(), p.to_vec()))
             }
             1u16 => {
                 let mut n_bytes = [0u8; 8];
                 let (n_b, bytes) = bytes.split_at(8);
                 n_bytes.copy_from_slice(n_b);
                 let n = u64::from_le_bytes(n_bytes);
-                Ok(GadgetProof::GreaterThan(n, bytes.to_vec()))
+                Ok(CircuitProof::GreaterThan(n, bytes.to_vec()))
             }
             2u16 => {
                 let mut n_bytes = [0u8; 8];
                 let (n_b, bytes) = bytes.split_at(8);
                 n_bytes.copy_from_slice(n_b);
                 let n = u64::from_le_bytes(n_bytes);
-                Ok(GadgetProof::LessThan(n, bytes.to_vec()))
+                Ok(CircuitProof::LessThan(n, bytes.to_vec()))
             }
             3u16 => {
                 let mut l_bytes = [0u8; 8];
@@ -236,19 +247,26 @@ impl GadgetProof {
                 let (r_b, bytes) = bytes.split_at(8);
                 r_bytes.copy_from_slice(r_b);
                 let r = u64::from_le_bytes(r_bytes);
-                Ok(GadgetProof::Between(l, r, bytes.to_vec()))
+                Ok(CircuitProof::Between(l, r, bytes.to_vec()))
+            }
+            4u16 => {
+                let mut l_bytes = [0u8; 4];
+                let (l_b, bytes) = bytes.split_at(4);
+                l_bytes.copy_from_slice(l_b);
+                let l = u32::from_le_bytes(l_bytes);
+                Ok(CircuitProof::Mini(l, bytes.to_vec()))
             }
             _ => Err(()),
         }
     }
 }
 
-/// Proof struct type. It include used gadget, scheme, curve enum, and GadgetProof type.
+/// Proof struct type. It include used circuits, scheme, curve enum, and CircuitProof type.
 #[derive(Debug)]
 pub struct Proof {
     pub s: Scheme,
     pub c: Curve,
-    pub p: GadgetProof,
+    pub p: CircuitProof,
 }
 
 impl Proof {
@@ -267,7 +285,7 @@ impl Proof {
 
         let s = Scheme::from_byte(bytes[0])?;
         let c = Curve::from_byte(bytes[1])?;
-        let p = GadgetProof::from_bytes(&bytes[2..])?;
+        let p = CircuitProof::from_bytes(&bytes[2..])?;
 
         Ok(Self { s, c, p })
     }
@@ -302,8 +320,8 @@ macro_rules! handle_curve_prove {
     };
 }
 
-macro_rules! handle_gadget_prove {
-    ($gadget:ident, $rng_name:ident, $s:expr, $c:expr, $g:expr, $pk:expr, $rng:expr) => {
+macro_rules! handle_circuit_prove {
+    ($circuit:ident, $rng_name:ident, $s:expr, $c:expr, $g:expr, $pk:expr, $rng:expr) => {
         match $s {
             Scheme::Groth16 => {
                 #[cfg(not(feature = "groth16"))]
@@ -311,13 +329,19 @@ macro_rules! handle_gadget_prove {
 
                 #[cfg(feature = "groth16")]
                 {
-                    use $gadget::groth16_prove;
+                    use $circuit::groth16_prove;
                     handle_curve_prove!(groth16_prove, $rng_name, $c, $g, $pk, $rng)
                 }
             }
             Scheme::Bulletproofs => {
-                // TODO
-                Err(())
+                #[cfg(not(feature = "bulletproofs"))]
+                panic!("Cound not found bulletproofs feature");
+
+                #[cfg(feature = "bulletproofs")]
+                {
+                    use $circuit::bulletproofs_prove;
+                    handle_curve_prove!(bulletproofs_prove, $rng_name, $c, $g, $pk, $rng)
+                }
             }
         }
     };
@@ -344,8 +368,8 @@ macro_rules! handle_curve_verify {
     };
 }
 
-macro_rules! handle_gadget_verify {
-    ($gadget:ident, $s:expr, $c:expr, $gp:expr, $vk:expr, $pp:expr) => {
+macro_rules! handle_circuit_verify {
+    ($circuit:ident, $s:expr, $c:expr, $gp:expr, $vk:expr, $pp:expr) => {
         match $s {
             Scheme::Groth16 => {
                 #[cfg(not(feature = "groth16"))]
@@ -353,28 +377,42 @@ macro_rules! handle_gadget_verify {
 
                 #[cfg(feature = "groth16")]
                 {
-                    use $gadget::groth16_verify;
+                    use $circuit::groth16_verify;
                     handle_curve_verify!(groth16_verify, $c, $gp, $vk, $pp)
                 }
             }
             Scheme::Bulletproofs => {
-                // TODO
-                false
+                #[cfg(not(feature = "bulletproofs"))]
+                panic!("Cound not found bulletproofs feature");
+
+                #[cfg(feature = "bulletproofs")]
+                {
+                    use $circuit::bulletproofs_verify;
+                    handle_curve_verify!(bulletproofs_verify, $c, $gp, $vk, $pp)
+                }
             }
         }
     };
 }
 
-use gadget::mimc;
-use gadget::rangeproof;
+use circuits::mimc;
+use circuits::mini;
+use circuits::rangeproof;
 
 /// main prove functions.
 /// it will return Proof struct.
-pub fn prove<R: rand::Rng>(g: Gadget, s: Scheme, c: Curve, pk: &[u8], rng: R) -> Result<Proof, ()> {
+pub fn prove<R: rand::Rng>(
+    g: Circuit,
+    s: Scheme,
+    c: Curve,
+    pk: &[u8],
+    rng: R,
+) -> Result<Proof, ()> {
     let p = match g {
-        Gadget::MiMC(..) => handle_gadget_prove!(mimc, R, s, c, &g, pk, rng)?,
-        Gadget::GreaterThan(..) | Gadget::LessThan(..) | Gadget::Between(..) => {
-            handle_gadget_prove!(rangeproof, R, s, c, &g, pk, rng)?
+        Circuit::Mini(..) => handle_circuit_prove!(mini, R, s, c, &g, pk, rng)?,
+        Circuit::MiMC(..) => handle_circuit_prove!(mimc, R, s, c, &g, pk, rng)?,
+        Circuit::GreaterThan(..) | Circuit::LessThan(..) | Circuit::Between(..) => {
+            handle_circuit_prove!(rangeproof, R, s, c, &g, pk, rng)?
         }
     };
 
@@ -384,7 +422,7 @@ pub fn prove<R: rand::Rng>(g: Gadget, s: Scheme, c: Curve, pk: &[u8], rng: R) ->
 /// main prove functions, use Bytes.
 /// it will return Proof's Bytes.
 pub fn prove_to_bytes<R: rand::Rng>(
-    g: Gadget,
+    g: Circuit,
     s: Scheme,
     c: Curve,
     pk: &[u8],
@@ -397,9 +435,14 @@ pub fn prove_to_bytes<R: rand::Rng>(
 /// it will return bool.
 pub fn verify(proof: Proof, vk: &[u8]) -> bool {
     match proof.p {
-        GadgetProof::MiMC(..) => handle_gadget_verify!(mimc, proof.s, proof.c, proof.p, vk, false),
-        GadgetProof::GreaterThan(..) | GadgetProof::LessThan(..) | GadgetProof::Between(..) => {
-            handle_gadget_verify!(rangeproof, proof.s, proof.c, proof.p, vk, false)
+        CircuitProof::Mini(..) => {
+            handle_circuit_verify!(mini, proof.s, proof.c, proof.p, vk, false)
+        }
+        CircuitProof::MiMC(..) => {
+            handle_circuit_verify!(mimc, proof.s, proof.c, proof.p, vk, false)
+        }
+        CircuitProof::GreaterThan(..) | CircuitProof::LessThan(..) | CircuitProof::Between(..) => {
+            handle_circuit_verify!(rangeproof, proof.s, proof.c, proof.p, vk, false)
         }
     }
 }
@@ -419,8 +462,8 @@ pub fn verify_from_bytes(bytes: &[u8], vk: &[u8]) -> bool {
 pub fn verify_with_prepare(bytes: &[u8], pvk: &[u8]) -> bool {
     if let Ok(proof) = Proof::from_bytes(bytes) {
         match proof.p {
-            GadgetProof::MiMC(..) => {
-                handle_gadget_verify!(mimc, proof.s, proof.c, proof.p, pvk, true)
+            CircuitProof::MiMC(..) => {
+                handle_circuit_verify!(mimc, proof.s, proof.c, proof.p, pvk, true)
             }
             _ => false,
         }
