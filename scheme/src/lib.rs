@@ -19,14 +19,14 @@ use alloc::string::String;
 
 #[cfg(all(
     not(feature = "std"),
-    any(feature = "groth16", feature = "bulletproofs")
+    any(feature = "groth16", feature = "bulletproofs", feature = "asvc")
 ))]
 use alloc::vec::Vec;
 
 #[cfg(feature = "std")]
 use std::{string::String, vec::Vec};
 
-#[cfg(any(feature = "groth16", feature = "bulletproofs"))]
+#[cfg(any(feature = "groth16", feature = "bulletproofs", feature = "asvc"))]
 #[macro_use]
 extern crate math;
 
@@ -39,3 +39,6 @@ pub mod groth16;
 
 #[cfg(feature = "bulletproofs")]
 pub mod bulletproofs;
+
+#[cfg(feature = "asvc")]
+pub mod asvc;

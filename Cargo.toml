@@ -24,13 +24,14 @@ exclude = [
 
 [features]
 default = ["full"]
-full = ["parallel", "bn_256", "bls12_381", "groth16", "bulletproofs"]
+full = ["parallel", "bn_256", "bls12_381", "groth16", "bulletproofs", "asvc"]
 parallel = ["std", "math/parallel", "curve/parallel", "scheme/parallel"]
 std = ["math/std", "curve/std", "scheme/std"]
 bn_256 = ["curve/bn_256"]
 bls12_381 = ["curve/bls12_381"]
 groth16 = ["scheme/groth16"]
 bulletproofs = ["scheme/bulletproofs"]
+asvc = ["scheme/asvc"]
 
 [dependencies]
 math = { path = "math", default-features = false }
