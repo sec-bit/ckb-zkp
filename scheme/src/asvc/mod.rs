@@ -18,18 +18,21 @@ pub struct UpdateKey<E: PairingEngine> {
     pub ui: E::G1Affine,
 }
 
+#[derive(Clone)]
 pub struct ProvingKey<E: PairingEngine> {
     pub powers_of_g1: Vec<E::G1Affine>,
     pub l_of_g1: Vec<E::G1Affine>,
     pub update_keys: Vec<UpdateKey<E>>,
 }
 
+#[derive(Clone)]
 pub struct VerificationKey<E: PairingEngine> {
     pub powers_of_g1: Vec<E::G1Affine>,
     pub powers_of_g2: Vec<E::G2Affine>,
     pub a: E::G1Affine,
 }
 
+#[derive(Clone)]
 pub struct Parameters<E: PairingEngine> {
     pub proving_key: ProvingKey<E>,
     pub verification_key: VerificationKey<E>,
