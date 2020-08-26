@@ -139,6 +139,28 @@ pub trait BigInteger:
         *self = Self::read(reader)?;
         Ok(())
     }
+
+    fn change_pos(&mut self, i: usize, v: u64);
+
+    /// from u128 to BigInteger.
+    fn from_u128(val: u128) -> Self {
+        if Self::NUM_LIMBS < 1 {
+            return Self::default();
+        }
+
+        let u_bytes = val.to_le_bytes();
+        let mut f_u64 = [0u8; 8];
+        f_u64.copy_from_slice(&u_bytes[..8]);
+        let f = u64::from_le_bytes(f_u64);
+        let mut s_u64 = [0u8; 8];
+        s_u64.copy_from_slice(&u_bytes[8..]);
+        let s = u64::from_le_bytes(s_u64);
+        let mut v = Self::default();
+
+        v.change_pos(0, f);
+        v.change_pos(0, s);
+        v
+    }
 }
 
 pub mod arithmetic {
