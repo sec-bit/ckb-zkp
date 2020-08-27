@@ -2,12 +2,15 @@ use core::ops::{Add, AddAssign, Deref, Div, Mul, MulAssign, Neg, Sub, SubAssign}
 use math::{
     fft::{DenseOrSparsePolynomial, DensePolynomial as Polynomial, EvaluationDomain},
     fields::Field,
+    io::Result as IoResult,
     msm::{FixedBaseMSM, VariableBaseMSM},
-    AffineCurve, One, PairingEngine, PrimeField, ProjectiveCurve, UniformRand, Zero,
+    serialize::*,
+    AffineCurve, FromBytes, One, PairingEngine, PrimeField, ProjectiveCurve, ToBytes, UniformRand,
+    Zero,
 };
 use rand::Rng;
 
-use crate::r1cs::SynthesisError;
+use crate::{r1cs::SynthesisError, Vec};
 
 #[cfg(test)]
 pub mod test;
@@ -16,6 +19,24 @@ pub mod test;
 pub struct UpdateKey<E: PairingEngine> {
     pub ai: E::G1Affine,
     pub ui: E::G1Affine,
+}
+
+impl<E: PairingEngine> ToBytes for UpdateKey<E> {
+    #[inline]
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.ai.write(&mut writer)?;
+        self.ui.write(&mut writer)
+    }
+}
+
+impl<E: PairingEngine> FromBytes for UpdateKey<E> {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let ai = E::G1Affine::read(&mut reader)?;
+        let ui = E::G1Affine::read(&mut reader)?;
+
+        Ok(Self { ai, ui })
+    }
 }
 
 #[derive(Clone)]
@@ -32,6 +53,44 @@ pub struct VerificationKey<E: PairingEngine> {
     pub a: E::G1Affine,
 }
 
+impl<E: PairingEngine> ToBytes for VerificationKey<E> {
+    #[inline]
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.powers_of_g1.len() as u32).write(&mut writer)?;
+        for i in &self.powers_of_g1 {
+            i.write(&mut writer)?;
+        }
+        (self.powers_of_g2.len() as u32).write(&mut writer)?;
+        for i in &self.powers_of_g2 {
+            i.write(&mut writer)?;
+        }
+        self.a.write(&mut writer)
+    }
+}
+
+impl<E: PairingEngine> FromBytes for VerificationKey<E> {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let n = u32::read(&mut reader)?;
+        let mut powers_of_g1 = Vec::new();
+        for _ in 0..n {
+            powers_of_g1.push(E::G1Affine::read(&mut reader)?);
+        }
+        let m = u32::read(&mut reader)?;
+        let mut powers_of_g2 = Vec::new();
+        for _ in 0..m {
+            powers_of_g2.push(E::G2Affine::read(&mut reader)?);
+        }
+        let a = E::G1Affine::read(&mut reader)?;
+
+        Ok(Self {
+            powers_of_g1,
+            powers_of_g2,
+            a,
+        })
+    }
+}
+
 #[derive(Clone)]
 pub struct Parameters<E: PairingEngine> {
     pub proving_key: ProvingKey<E>,
@@ -43,9 +102,41 @@ pub struct Commitment<E: PairingEngine> {
     pub commit: E::G1Affine,
 }
 
+impl<E: PairingEngine> ToBytes for Commitment<E> {
+    #[inline]
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.commit.write(&mut writer)
+    }
+}
+
+impl<E: PairingEngine> FromBytes for Commitment<E> {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let commit = E::G1Affine::read(&mut reader)?;
+
+        Ok(Self { commit })
+    }
+}
+
 #[derive(Clone)]
 pub struct Proof<E: PairingEngine> {
     pub w: E::G1Affine,
+}
+
+impl<E: PairingEngine> ToBytes for Proof<E> {
+    #[inline]
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.w.write(&mut writer)
+    }
+}
+
+impl<E: PairingEngine> FromBytes for Proof<E> {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let w = E::G1Affine::read(&mut reader)?;
+
+        Ok(Self { w })
+    }
 }
 
 pub fn key_gen<E, R>(n: usize, rng: &mut R) -> Result<Parameters<E>, SynthesisError>

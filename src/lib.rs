@@ -10,10 +10,10 @@ pub use scheme;
 extern crate alloc;
 
 #[cfg(not(feature = "std"))]
-use alloc::vec::Vec;
+use alloc::{string::String, vec::Vec};
 
 #[cfg(feature = "std")]
-use std::vec::Vec;
+use std::{string::String, vec::Vec};
 
 /// gadgets can used in circuits.
 pub mod gadgets;
@@ -330,8 +330,11 @@ macro_rules! handle_circuit_prove {
                 #[cfg(feature = "groth16")]
                 {
                     use $circuit::groth16_prove;
-                    handle_curve_prove!(groth16_prove, $rng_name, $c, $g, $pk, $rng)
+                    return handle_curve_prove!(groth16_prove, $rng_name, $c, $g, $pk, $rng);
                 }
+
+                #[cfg(not(feature = "groth16"))]
+                Err(())
             }
             Scheme::Bulletproofs => {
                 #[cfg(not(feature = "bulletproofs"))]
@@ -340,8 +343,11 @@ macro_rules! handle_circuit_prove {
                 #[cfg(feature = "bulletproofs")]
                 {
                     use $circuit::bulletproofs_prove;
-                    handle_curve_prove!(bulletproofs_prove, $rng_name, $c, $g, $pk, $rng)
+                    return handle_curve_prove!(bulletproofs_prove, $rng_name, $c, $g, $pk, $rng);
                 }
+
+                #[cfg(not(feature = "bulletproofs"))]
+                Err(())
             }
         }
     };
