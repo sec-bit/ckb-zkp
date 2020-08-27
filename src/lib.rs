@@ -325,29 +325,29 @@ macro_rules! handle_circuit_prove {
         match $s {
             Scheme::Groth16 => {
                 #[cfg(not(feature = "groth16"))]
-                panic!("Cound not found groth16 feature");
+                {
+                    panic!("Cound not found groth16 feature");
+                    Err(())
+                }
 
                 #[cfg(feature = "groth16")]
                 {
                     use $circuit::groth16_prove;
-                    return handle_curve_prove!(groth16_prove, $rng_name, $c, $g, $pk, $rng);
+                    handle_curve_prove!(groth16_prove, $rng_name, $c, $g, $pk, $rng)
                 }
-
-                #[cfg(not(feature = "groth16"))]
-                Err(())
             }
             Scheme::Bulletproofs => {
                 #[cfg(not(feature = "bulletproofs"))]
-                panic!("Cound not found bulletproofs feature");
+                {
+                    panic!("Cound not found bulletproofs feature");
+                    Err(())
+                }
 
                 #[cfg(feature = "bulletproofs")]
                 {
                     use $circuit::bulletproofs_prove;
-                    return handle_curve_prove!(bulletproofs_prove, $rng_name, $c, $g, $pk, $rng);
+                    handle_curve_prove!(bulletproofs_prove, $rng_name, $c, $g, $pk, $rng)
                 }
-
-                #[cfg(not(feature = "bulletproofs"))]
-                Err(())
             }
         }
     };
@@ -379,7 +379,10 @@ macro_rules! handle_circuit_verify {
         match $s {
             Scheme::Groth16 => {
                 #[cfg(not(feature = "groth16"))]
-                panic!("Cound not found groth16 feature");
+                {
+                    panic!("Cound not found groth16 feature");
+                    return false;
+                }
 
                 #[cfg(feature = "groth16")]
                 {
@@ -389,7 +392,10 @@ macro_rules! handle_circuit_verify {
             }
             Scheme::Bulletproofs => {
                 #[cfg(not(feature = "bulletproofs"))]
-                panic!("Cound not found bulletproofs feature");
+                {
+                    panic!("Cound not found bulletproofs feature");
+                    return false;
+                }
 
                 #[cfg(feature = "bulletproofs")]
                 {
