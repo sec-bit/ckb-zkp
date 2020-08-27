@@ -15,7 +15,7 @@ use crate::{r1cs::SynthesisError, Vec};
 #[cfg(test)]
 pub mod test;
 
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct UpdateKey<E: PairingEngine> {
     pub ai: E::G1Affine,
     pub ui: E::G1Affine,
@@ -39,14 +39,14 @@ impl<E: PairingEngine> FromBytes for UpdateKey<E> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct ProvingKey<E: PairingEngine> {
     pub powers_of_g1: Vec<E::G1Affine>,
     pub l_of_g1: Vec<E::G1Affine>,
     pub update_keys: Vec<UpdateKey<E>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct VerificationKey<E: PairingEngine> {
     pub powers_of_g1: Vec<E::G1Affine>,
     pub powers_of_g2: Vec<E::G2Affine>,
@@ -97,7 +97,7 @@ pub struct Parameters<E: PairingEngine> {
     pub verification_key: VerificationKey<E>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Commitment<E: PairingEngine> {
     pub commit: E::G1Affine,
 }
@@ -118,7 +118,7 @@ impl<E: PairingEngine> FromBytes for Commitment<E> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Proof<E: PairingEngine> {
     pub w: E::G1Affine,
 }
