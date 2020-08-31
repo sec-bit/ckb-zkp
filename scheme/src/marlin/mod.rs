@@ -14,7 +14,7 @@ mod errors;
 use errors::Error;
 
 mod data_structures;
-use data_structures::*;
+pub use data_structures::*;
 
 mod fs_rng;
 use fs_rng::FiatShamirRng;

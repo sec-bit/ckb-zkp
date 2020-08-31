@@ -101,11 +101,11 @@ impl<F: Field> IndexerConstraintSystem<F> {
         let mut a_density = matrix_density(a);
         let mut b_density = matrix_density(b);
         let mut a_is_denser = a_density > b_density;
-        for (a_row, b_row) in a.iter_mut().zip(b) {
+        for (a_row, mut b_row) in a.0.iter_mut().zip(&mut b.0) {
             if a_is_denser {
                 let a_row_size = a_row.len();
                 let b_row_size = b_row.len();
-                core::mem::swap(a_row, b_row);
+                core::mem::swap(a_row, &mut b_row);
                 a_density += b_row_size - a_row_size;
                 b_density += a_row_size - b_row_size;
                 a_is_denser = a_density > b_density;
@@ -126,7 +126,7 @@ impl<F: Field> IndexerConstraintSystem<F> {
             }
             m.push(r);
         }
-        m
+        Matrix(m)
     }
 }
 

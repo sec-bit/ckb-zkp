@@ -116,8 +116,8 @@ impl<F: PrimeField> AHP<F> {
             }
             acc
         };
-        let z_a = index.a.iter().map(|row| inner_product(row)).collect();
-        let z_b = index.b.iter().map(|row| inner_product(row)).collect();
+        let z_a = index.a.0.iter().map(|row| inner_product(row)).collect();
+        let z_b = index.b.0.iter().map(|row| inner_product(row)).collect();
 
         let domain_x = EvaluationDomain::new(num_input_variables)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
@@ -256,7 +256,7 @@ impl<F: PrimeField> AHP<F> {
         let matrices = vec![&state.index.a, &state.index.b, &state.index.c];
         let etas = vec![eta_a, eta_b, eta_c];
         for (matrix, eta) in matrices.iter().zip(&etas) {
-            for (i, row) in matrix.iter().enumerate() {
+            for (i, row) in matrix.0.iter().enumerate() {
                 for (coeff, j) in row.iter() {
                     let index = domain_h.reindex_by_subdomain(domain_x, *j);
                     t_evals_on_h[index] += *eta * coeff * &r_alpha_evals_on_h[i];

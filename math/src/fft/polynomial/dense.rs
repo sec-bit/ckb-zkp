@@ -21,6 +21,31 @@ pub struct DensePolynomial<F: Field> {
     pub coeffs: Vec<F>,
 }
 
+impl<F: Field> crate::ToBytes for DensePolynomial<F> {
+    #[inline]
+    fn write<W: crate::io::Write>(&self, mut w: W) -> crate::io::Result<()> {
+        (self.coeffs.len() as u32).write(&mut w)?;
+        for i in &self.coeffs {
+            i.write(&mut w)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<F: Field> crate::FromBytes for DensePolynomial<F> {
+    #[inline]
+    fn read<R: crate::io::Read>(mut r: R) -> crate::io::Result<Self> {
+        let mut coeffs = Vec::new();
+        let len = u32::read(&mut r)?;
+        for _ in 0..len {
+            coeffs.push(F::read(&mut r)?);
+        }
+
+        Ok(Self { coeffs })
+    }
+}
+
 impl<F: Field> fmt::Debug for DensePolynomial<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         for (i, coeff) in self.coeffs.iter().enumerate().filter(|(_, c)| !c.is_zero()) {

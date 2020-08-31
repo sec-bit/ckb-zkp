@@ -49,11 +49,13 @@ impl<F: Field> ConstraintSynthesizer<F> for Circuit<F> {
 
 mod marlin {
     use super::*;
-    use crate::marlin::{index, prove, universal_setup, verify};
+    use crate::marlin::{
+        index, prove, universal_setup, verify, IndexProverKey, IndexVerifierKey, Proof,
+    };
 
     use core::ops::MulAssign;
     use curve::bls12_381::{Bls12_381, Fr};
-    use math::UniformRand;
+    use math::{FromBytes, ToBytes, UniformRand};
 
     fn test_circuit(num_constraints: usize, num_variables: usize) {
         let rng = &mut curve::test_rng();
@@ -73,11 +75,27 @@ mod marlin {
         println!("calling indexer...");
         let (ipk, ivk) = index(&srs, circuit.clone()).unwrap();
         println!("calling prover...");
-        let proof = prove(&ipk, circuit, rng).unwrap();
+        let proof = prove(&ipk, circuit.clone(), rng).unwrap();
         println!("calling verifier... should verify");
         assert!(verify(&ivk, &proof, &[c]).unwrap());
         println!("calling verifier... should not verify");
         assert!(!verify(&ivk, &proof, &[a]).unwrap());
+
+        let mut ipk_bytes = Vec::new();
+        ipk.write(&mut ipk_bytes).unwrap();
+        let new_ipk = IndexProverKey::<Bls12_381>::read(&ipk_bytes[..]).unwrap();
+
+        let next_proof = prove(&new_ipk, circuit, rng).unwrap();
+
+        let mut ivk_bytes = Vec::new();
+        ivk.write(&mut ivk_bytes).unwrap();
+        let new_ivk = IndexVerifierKey::<Bls12_381>::read(&ivk_bytes[..]).unwrap();
+
+        let mut bytes = Vec::new();
+        next_proof.write(&mut bytes).unwrap();
+        let new_proof = Proof::<Bls12_381>::read(&bytes[..]).unwrap();
+        assert!(verify(&new_ivk, &new_proof, &[c]).unwrap());
+        println!("serialize is ok");
     }
 
     #[test]

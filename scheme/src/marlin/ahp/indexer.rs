@@ -16,10 +16,26 @@ pub struct IndexInfo {
 }
 
 impl math::ToBytes for IndexInfo {
+    #[inline]
     fn write<W: math::io::Write>(&self, mut w: W) -> math::io::Result<()> {
         (self.num_variables as u64).write(&mut w)?;
         (self.num_constraints as u64).write(&mut w)?;
         (self.num_non_zeros as u64).write(&mut w)
+    }
+}
+
+impl math::FromBytes for IndexInfo {
+    #[inline]
+    fn read<R: math::io::Read>(mut r: R) -> math::io::Result<Self> {
+        let num_constraints = u64::read(&mut r)? as usize;
+        let num_variables = u64::read(&mut r)? as usize;
+        let num_non_zeros = u64::read(&mut r)? as usize;
+
+        Ok(Self {
+            num_constraints,
+            num_variables,
+            num_non_zeros,
+        })
     }
 }
 
@@ -34,6 +50,44 @@ pub struct Index<'a, F: PrimeField> {
     pub a_star_polys: MatrixPolynomials<'a, F>,
     pub b_star_polys: MatrixPolynomials<'a, F>,
     pub c_star_polys: MatrixPolynomials<'a, F>,
+}
+
+impl<'a, F: PrimeField> math::ToBytes for Index<'a, F> {
+    #[inline]
+    fn write<W: math::io::Write>(&self, mut w: W) -> math::io::Result<()> {
+        self.index_info.write(&mut w)?;
+        self.a.write(&mut w)?;
+        self.b.write(&mut w)?;
+        self.c.write(&mut w)?;
+
+        self.a_star_polys.write(&mut w)?;
+        self.b_star_polys.write(&mut w)?;
+        self.c_star_polys.write(&mut w)
+    }
+}
+
+impl<'a, F: PrimeField> math::FromBytes for Index<'a, F> {
+    #[inline]
+    fn read<R: math::io::Read>(mut r: R) -> math::io::Result<Self> {
+        let index_info = IndexInfo::read(&mut r)?;
+        let a = Matrix::read(&mut r)?;
+        let b = Matrix::read(&mut r)?;
+        let c = Matrix::read(&mut r)?;
+
+        let a_star_polys = MatrixPolynomials::read(&mut r)?;
+        let b_star_polys = MatrixPolynomials::read(&mut r)?;
+        let c_star_polys = MatrixPolynomials::read(&mut r)?;
+
+        Ok(Self {
+            index_info,
+            a,
+            b,
+            c,
+            a_star_polys,
+            b_star_polys,
+            c_star_polys,
+        })
+    }
 }
 
 impl<'a, F: PrimeField> Index<'a, F> {
