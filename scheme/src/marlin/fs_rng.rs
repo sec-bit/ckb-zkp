@@ -1,21 +1,19 @@
-use crate::Vec;
-use core::marker::PhantomData;
-use digest::{generic_array::GenericArray, Digest};
 use math::{FromBytes, ToBytes};
+use merlin::Transcript;
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaChaRng;
+
+use crate::Vec;
 
 /// A `SeedableRng` that refreshes its seed by hashing together the previous seed
 /// and the new seed material.
 // TODO: later: re-evaluate decision about ChaChaRng
-pub struct FiatShamirRng<D: Digest> {
+pub struct FiatShamirRng {
     r: ChaChaRng,
-    seed: GenericArray<u8, D::OutputSize>,
-    #[doc(hidden)]
-    digest: PhantomData<D>,
+    seed: [u8; 32],
 }
 
-impl<D: Digest> RngCore for FiatShamirRng<D> {
+impl RngCore for FiatShamirRng {
     #[inline]
     fn next_u32(&mut self) -> u32 {
         self.r.next_u32()
@@ -37,21 +35,21 @@ impl<D: Digest> RngCore for FiatShamirRng<D> {
     }
 }
 
-impl<D: Digest> FiatShamirRng<D> {
+impl FiatShamirRng {
     /// Create a new `Self` by initializing with a fresh seed.
     /// `self.seed = H(self.seed || new_seed)`.
     #[inline]
-    pub fn from_seed<'a, T: 'a + ToBytes>(seed: &'a T) -> Self {
+    pub fn from_seed<'a, T: 'a + ToBytes>(s: &'a T) -> Self {
         let mut bytes = Vec::new();
-        seed.write(&mut bytes).expect("failed to convert to bytes");
-        let seed = D::digest(&bytes);
-        let r_seed: [u8; 32] = FromBytes::read(seed.as_ref()).expect("failed to get [u32; 8]");
-        let r = ChaChaRng::from_seed(r_seed);
-        Self {
-            r,
-            seed,
-            digest: PhantomData,
-        }
+        s.write(&mut bytes).expect("failed to convert to bytes");
+
+        let mut seed: [u8; 32] = [0u8; 32];
+        let mut transcript = Transcript::new(b"MARLINSEED");
+        transcript.append_message(b"Seed", &bytes);
+        transcript.challenge_bytes(b"x", &mut seed);
+
+        let r = ChaChaRng::from_seed(seed.clone());
+        Self { r, seed }
     }
 
     /// Refresh `self.seed` with new material. Achieved by setting
@@ -61,7 +59,11 @@ impl<D: Digest> FiatShamirRng<D> {
         let mut bytes = Vec::new();
         seed.write(&mut bytes).expect("failed to convert to bytes");
         bytes.extend_from_slice(&self.seed);
-        self.seed = D::digest(&bytes);
+
+        let mut transcript = Transcript::new(b"MARLINSEED");
+        transcript.append_message(b"Seed", &bytes);
+        transcript.challenge_bytes(b"x", &mut self.seed);
+
         let seed: [u8; 32] = FromBytes::read(self.seed.as_ref()).expect("failed to get [u32; 8]");
         self.r = ChaChaRng::from_seed(seed);
     }

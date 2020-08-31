@@ -49,15 +49,11 @@ impl<F: Field> ConstraintSynthesizer<F> for Circuit<F> {
 
 mod marlin {
     use super::*;
-    use crate::marlin::Marlin;
+    use crate::marlin::{index, prove, universal_setup, verify};
 
+    use core::ops::MulAssign;
     use curve::bls12_381::{Bls12_381, Fr};
     use math::UniformRand;
-
-    use blake2::Blake2s;
-    use core::ops::MulAssign;
-
-    type MarlinInst = Marlin<Bls12_381, Blake2s>;
 
     fn test_circuit(num_constraints: usize, num_variables: usize) {
         let rng = &mut curve::test_rng();
@@ -73,16 +69,15 @@ mod marlin {
             num_variables,
         };
         println!("calling setup...");
-        let srs = MarlinInst::universal_setup(num_constraints, num_variables, num_constraints, rng)
-            .unwrap();
+        let srs = universal_setup::<Bls12_381, _>(2 ^ 32, rng).unwrap();
         println!("calling indexer...");
-        let (ipk, ivk) = MarlinInst::index(&srs, circuit.clone()).unwrap();
+        let (ipk, ivk) = index(&srs, circuit.clone()).unwrap();
         println!("calling prover...");
-        let proof = MarlinInst::prove(&ipk, circuit, rng).unwrap();
+        let proof = prove(&ipk, circuit, rng).unwrap();
         println!("calling verifier... should verify");
-        assert!(MarlinInst::verify(&ivk, &[c], &proof).unwrap());
+        assert!(verify(&ivk, &proof, &[c]).unwrap());
         println!("calling verifier... should not verify");
-        assert!(!MarlinInst::verify(&ivk, &[a], &proof).unwrap());
+        assert!(!verify(&ivk, &proof, &[a]).unwrap());
     }
 
     #[test]
