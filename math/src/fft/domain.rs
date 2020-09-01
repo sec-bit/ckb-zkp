@@ -40,6 +40,42 @@ pub struct EvaluationDomain<F: PrimeField> {
     pub generator_inv: F,
 }
 
+impl<F: PrimeField> crate::ToBytes for EvaluationDomain<F> {
+    #[inline]
+    fn write<W: crate::io::Write>(&self, mut w: W) -> crate::io::Result<()> {
+        self.size.write(&mut w)?;
+        self.log_size_of_group.write(&mut w)?;
+        self.size_as_field_element.write(&mut w)?;
+        self.size_inv.write(&mut w)?;
+        self.group_gen.write(&mut w)?;
+        self.group_gen_inv.write(&mut w)?;
+        self.generator_inv.write(&mut w)
+    }
+}
+
+impl<F: PrimeField> crate::FromBytes for EvaluationDomain<F> {
+    #[inline]
+    fn read<R: crate::io::Read>(mut r: R) -> crate::io::Result<Self> {
+        let size = u64::read(&mut r)?;
+        let log_size_of_group = u32::read(&mut r)?;
+        let size_as_field_element = F::read(&mut r)?;
+        let size_inv = F::read(&mut r)?;
+        let group_gen = F::read(&mut r)?;
+        let group_gen_inv = F::read(&mut r)?;
+        let generator_inv = F::read(&mut r)?;
+
+        Ok(Self {
+            size,
+            log_size_of_group,
+            size_as_field_element,
+            size_inv,
+            group_gen,
+            group_gen_inv,
+            generator_inv,
+        })
+    }
+}
+
 impl<F: PrimeField> fmt::Debug for EvaluationDomain<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Multiplicative subgroup of size {}", self.size)

@@ -24,20 +24,21 @@ exclude = [
 
 [features]
 default = ["full"]
-full = ["parallel", "bn_256", "bls12_381", "groth16", "bulletproofs"]
+full = ["parallel", "bn_256", "bls12_381", "groth16", "bulletproofs", "marlin"]
 parallel = ["std", "math/parallel", "curve/parallel", "scheme/parallel"]
 std = ["math/std", "curve/std", "scheme/std"]
 bn_256 = ["curve/bn_256"]
 bls12_381 = ["curve/bls12_381"]
 groth16 = ["scheme/groth16"]
 bulletproofs = ["scheme/bulletproofs"]
+marlin = ["scheme/marlin"]
 
 [dependencies]
 math = { path = "math", default-features = false }
 scheme = { path = "scheme", default-features = false }
 curve = { path = "curve", default-features = false }
 rand = { version = "0.7", default-features = false }
-byteorder = { version = "1", default-feautres = false }
+byteorder = { version = "1", default-features = false }
 
 [dev-dependencies]
 rand = "0.7"
