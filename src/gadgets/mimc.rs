@@ -16,7 +16,7 @@ pub const MIMC_ROUNDS: usize = 322;
 pub const SEED: [u8; 32] = [0; 32];
 
 /// it will return MiMC's constants, when use pairing curve as generic type.
-fn constants<F: Field>() -> [F; MIMC_ROUNDS] {
+pub fn constants<F: Field>() -> [F; MIMC_ROUNDS] {
     constants_with_seed(SEED)
 }
 

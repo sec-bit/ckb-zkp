@@ -1,14 +1,12 @@
 [package]
 name = "groth16-verifier"
 version = "0.1.0"
-edition = "2018"
-license = "MIT/Apache-2.0"
 authors = ["SECBIT Labs"]
+license = "MIT/Apache-2.0"
+edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-ckb-std = "0.3.0"
-ckb-types = { package = "ckb-standalone-types", version = "0.0.1-pre.1", default-features = false }
+ckb-std = "0.6.1"
 
 [dependencies.ckb-zkp]
 path = "../../"
