@@ -3,7 +3,7 @@
 //! [`Groth16`]: https://eprint.iacr.org/2016/260.pdf
 #![cfg_attr(not(feature = "std"), no_std)]
 #![deny(unused_import_braces, unused_qualifications, trivial_casts)]
-#![deny(trivial_numeric_casts, private_in_public, variant_size_differences)]
+#![deny(trivial_numeric_casts, private_in_public)]
 #![deny(stable_features, /* unreachable_pub, */ non_shorthand_field_patterns)]
 #![deny(unused_attributes, unused_imports, unused_mut)]
 #![deny(renamed_and_removed_lints, stable_features, unused_allocation)]
@@ -14,29 +14,24 @@
 extern crate alloc;
 
 #[cfg(not(feature = "std"))]
-use alloc::string::String;
-
-#[cfg(all(
-    not(feature = "std"),
-    any(feature = "groth16", feature = "bulletproofs", feature = "marlin")
-))]
+#[allow(unused_imports)]
 use alloc::{
     borrow::Cow,
     collections::{BTreeMap, BTreeSet},
-    ops::AddAssign,
+    string::{String, ToString},
     vec::Vec,
 };
 
 #[cfg(feature = "std")]
+#[allow(unused_imports)]
 use std::{
     borrow::Cow,
     collections::{BTreeMap, BTreeSet},
-    ops::AddAssign,
-    string::String,
+    string::{String, ToString},
     vec::Vec,
 };
 
-#[cfg(all(feature = "groth16", feature = "marlin"))]
+#[cfg(any(feature = "groth16", feature = "marlin"))]
 #[macro_use]
 extern crate math;
 

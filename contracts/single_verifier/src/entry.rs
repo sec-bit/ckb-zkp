@@ -1,10 +1,10 @@
 use core::result::Result;
 
-use ckb_std::{ckb_constants::Source, error::SysError, high_level::load_cell_data};
+use ckb_std::{ckb_constants::Source, high_level::load_cell_data};
 
 use crate::error::Error;
 
-use ckb_zkp::verify_from_bytes;
+use ckb_zkp::{verify_from_bytes_with_curve, Curve, Scheme};
 
 pub fn main() -> Result<(), Error> {
     // load verify key.
@@ -25,9 +25,14 @@ pub fn main() -> Result<(), Error> {
         Err(err) => return Err(err.into()),
     };
 
-    if verify_from_bytes(&vk_data, &proof_data, &public_data) {
-        Ok(())
-    } else {
-        Err(Error::Verify)
+    match verify_from_bytes_with_curve(
+        Curve::Bn_256,
+        Scheme::Groth16,
+        &vk_data,
+        &proof_data,
+        &public_data,
+    ) {
+        Ok(true) => Ok(()),
+        _ => Err(Error::Verify),
     }
 }

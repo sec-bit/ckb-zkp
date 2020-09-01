@@ -3,6 +3,7 @@ use math::Field;
 use crate::r1cs::{
     ConstraintSystem, Index as VariableIndex, LinearCombination, SynthesisError, Variable,
 };
+use crate::{String, Vec};
 
 use crate::marlin::ahp::arithmetic::{matrix_density, sort_matrix_columns, Matrix};
 

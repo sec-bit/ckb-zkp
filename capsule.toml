@@ -1,9 +1,9 @@
 deployment = "deployment.toml"
 
 [[contracts]]
-name = "groth16-verifier"
+name = "single_verifier"
 template_type = "Rust"
 
 [[contracts]]
-name = "bulletproofs-verifier"
+name = "multipe_verifier"
 template_type = "Rust"

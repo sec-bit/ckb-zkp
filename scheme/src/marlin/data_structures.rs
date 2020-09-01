@@ -1,5 +1,7 @@
 use math::PairingEngine;
 
+use crate::Vec;
+
 use crate::marlin::ahp::indexer::{Index, IndexInfo};
 use crate::marlin::pc::{Commitment, CommitterKey, Proof as PCProof, Randomness, VerifierKey};
 

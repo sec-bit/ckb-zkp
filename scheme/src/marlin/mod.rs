@@ -3,6 +3,7 @@ use math::{PairingEngine, ToBytes, UniformRand};
 use rand::RngCore;
 
 use crate::r1cs::{ConstraintSynthesizer, SynthesisError};
+use crate::{ToString, Vec};
 
 mod pc;
 use pc::{Evaluations, LabeledCommitment, UniversalParams, PC};

@@ -3,6 +3,7 @@ use math::fft::EvaluationDomain;
 use math::PrimeField;
 
 use crate::r1cs::SynthesisError;
+use crate::{String, ToString};
 
 pub mod indexer;
 

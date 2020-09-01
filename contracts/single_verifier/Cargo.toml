@@ -1,8 +1,6 @@
 [package]
-name = "groth16-verifier"
+name = "single_verifier"
 version = "0.1.0"
-authors = ["SECBIT Labs"]
-license = "MIT/Apache-2.0"
 edition = "2018"
 
 [dependencies]
@@ -11,7 +9,7 @@ ckb-std = "0.6.1"
 [dependencies.ckb-zkp]
 path = "../../"
 default-features = false
-features = [ "groth16", "bn_256", "bls12_381"]
+features = [ "groth16", "bn_256"]
 
 [profile.release]
 # set debug-assertions to true to enable debug macro.

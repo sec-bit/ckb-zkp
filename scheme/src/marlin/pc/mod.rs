@@ -4,7 +4,7 @@ pub use math::fft::DensePolynomial as Polynomial;
 use math::{AffineCurve, Field, One, PairingEngine, ProjectiveCurve, Zero};
 use rand::RngCore;
 
-use crate::{BTreeMap, BTreeSet};
+use crate::{BTreeMap, BTreeSet, ToString, Vec};
 
 mod data_structures;
 pub use data_structures::*;

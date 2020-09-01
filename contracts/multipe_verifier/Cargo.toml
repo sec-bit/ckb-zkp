@@ -1,8 +1,6 @@
 [package]
-name = "bulletproofs-verifier"
+name = "multipe_verifier"
 version = "0.1.0"
-authors = ["SECBIT Labs"]
-license = "MIT/Apache-2.0"
 edition = "2018"
 
 [dependencies]
@@ -11,7 +9,7 @@ ckb-std = "0.6.1"
 [dependencies.ckb-zkp]
 path = "../../"
 default-features = false
-features = [ "bulletproofs", "bn_256", "bls12_381"]
+features = ["groth16", "bulletproofs", "marlin", "bn_256", "bls12_381"]
 
 [profile.release]
 # set debug-assertions to true to enable debug macro.

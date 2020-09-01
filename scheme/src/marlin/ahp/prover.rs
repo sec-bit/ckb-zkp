@@ -6,6 +6,7 @@ use math::PrimeField;
 use rand::RngCore;
 
 use crate::r1cs::{ConstraintSynthesizer, SynthesisError};
+use crate::{ToString, Vec};
 
 use crate::marlin::ahp::arithmetic::BivariatePoly;
 use crate::marlin::ahp::constraint_systems::ProverConstraintSystem;

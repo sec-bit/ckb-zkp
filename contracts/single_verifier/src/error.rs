@@ -7,6 +7,7 @@ pub enum Error {
     ItemMissing,
     LengthNotEnough,
     Encoding,
+    // Add customized errors here...
     Verify,
 }
 
