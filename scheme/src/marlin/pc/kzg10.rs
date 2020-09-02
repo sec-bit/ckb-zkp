@@ -100,7 +100,9 @@ impl<E: PairingEngine> KZG10<E> {
         hiding_bound: Option<usize>,
         rng: Option<&mut R>,
     ) -> Result<(Comm<E>, Rand<E::Fr>), Error> {
+        println!("here is commit");
         Self::check_degree_is_within_bounds(p.degree(), ck.supported_degree())?;
+        println!("here is commit");
         let (num_leading_zeros, coeffs) = Self::skip_leading_zeros_and_convert_to_bigints(p);
         let mut comm =
             VariableBaseMSM::multi_scalar_mul(&ck.powers_of_g[num_leading_zeros..], &coeffs);
@@ -125,8 +127,10 @@ impl<E: PairingEngine> KZG10<E> {
         point: E::Fr,
         rand: &Rand<E::Fr>,
     ) -> Result<Proof<E>, Error> {
+        println!("here is open");
         let max_degree = ck.powers_of_g.len();
         Self::check_degree_is_within_bounds(p.degree(), max_degree)?;
+        println!("here is open");
 
         let (poly, rand_poly) = Self::compute_witness_polynomial(p, point, rand);
         let (num_leading_zeros, witness_coeffs) =

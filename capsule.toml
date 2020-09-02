@@ -5,5 +5,5 @@ name = "single_verifier"
 template_type = "Rust"
 
 [[contracts]]
-name = "multipe_verifier"
+name = "multiple_verifier"
 template_type = "Rust"
