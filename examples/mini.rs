@@ -19,7 +19,7 @@ fn main() {
         x: None,
         y: None,
         z: None,
-        constraints: 10, // 10-times constraints
+        num: 10, // 10-times constraints
     };
     let params = generate_random_parameters::<Bn_256, _, _>(c, &mut rng).unwrap();
 
@@ -41,7 +41,7 @@ fn main() {
         x: Some(x),
         y: Some(y),
         z: Some(z),
-        constraints: 10,
+        num: 10,
     };
 
     println!("USE BYTES START PROVE...");
