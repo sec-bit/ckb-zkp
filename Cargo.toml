@@ -13,7 +13,7 @@ members = [
     "math",
     "curve",
     "scheme",
-    "cli",
+    #"cli",
     "tests",
 ]
 exclude = [
