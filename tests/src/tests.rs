@@ -21,7 +21,7 @@ use rand::prelude::*;
 
 const MAX_CYCLES: u64 = 1_000_000_000_000;
 
-fn test_groth16_verfier<E: PairingEngine>() -> (Bytes, Bytes, Bytes) {
+fn test_groth16_verfier<E: PairingEngine>(num: u32) -> (Bytes, Bytes, Bytes) {
     let mut rng = thread_rng();
     // TRUSTED SETUP
     println!("Groth16 setup...");
@@ -29,13 +29,14 @@ fn test_groth16_verfier<E: PairingEngine>() -> (Bytes, Bytes, Bytes) {
         x: None,
         y: None,
         z: None,
+        num: num,
     };
     let params = generate_random_parameters::<E, _, _>(c, &mut rng).unwrap();
 
-    prove_unify::<E, _, _>(Scheme::Groth16, &params, &params.vk)
+    prove_unify::<E, _, _>(Scheme::Groth16, &params, &params.vk, num)
 }
 
-fn test_marlin_verfier<E: PairingEngine>() -> (Bytes, Bytes, Bytes) {
+fn test_marlin_verfier<E: PairingEngine>(num: u32) -> (Bytes, Bytes, Bytes) {
     let mut rng = thread_rng();
     // TRUSTED SETUP
     println!("Marlin setup...");
@@ -43,19 +44,21 @@ fn test_marlin_verfier<E: PairingEngine>() -> (Bytes, Bytes, Bytes) {
         x: None,
         y: None,
         z: None,
+        num: num,
     };
 
-    let srs = universal_setup::<E, _>(2 ^ 32, &mut rng).unwrap();
+    let srs = universal_setup::<E, _>(2usize.pow(10), &mut rng).unwrap();
     println!("marlin indexer...");
     let (ipk, ivk) = index(&srs, c).unwrap();
 
-    prove_unify::<E, _, _>(Scheme::Marlin, &ipk, &ivk)
+    prove_unify::<E, _, _>(Scheme::Marlin, &ipk, &ivk, num)
 }
 
 fn prove_unify<E: PairingEngine, P: ToBytes, V: ToBytes>(
     s: Scheme,
     p: &P,
     v: &V,
+    num: u32,
 ) -> (Bytes, Bytes, Bytes) {
     let mut rng = thread_rng();
 
@@ -77,6 +80,7 @@ fn prove_unify<E: PairingEngine, P: ToBytes, V: ToBytes>(
         x: Some(x),
         y: Some(y),
         z: Some(z),
+        num: num,
     };
 
     println!("start prove");
@@ -94,13 +98,13 @@ fn prove_unify<E: PairingEngine, P: ToBytes, V: ToBytes>(
 
 #[test]
 fn test_single_verifier() {
-    let (vk, proof, publics) = test_groth16_verfier::<Bn_256>();
+    let (vk, proof, publics) = test_groth16_verfier::<Bn_256>(10);
     proving_test(vk, proof, publics, "single_verifier", "single (bn256)");
 }
 
 #[test]
 fn test_multiple_verifier() {
-    let (vk, proof, publics) = test_groth16_verfier::<Bn_256>();
+    let (vk, proof, publics) = test_groth16_verfier::<Bn_256>(10);
 
     // use groth16
     let mut new_proof = vec![];
@@ -120,7 +124,7 @@ fn test_multiple_verifier() {
         "multiple (bn256)",
     );
 
-    let (vk2, proof2, publics2) = test_marlin_verfier::<ckb_zkp::curve::Bls12_381>();
+    let (vk2, proof2, publics2) = test_marlin_verfier::<ckb_zkp::curve::Bls12_381>(10);
 
     // use groth16
     let mut new_proof2 = vec![];

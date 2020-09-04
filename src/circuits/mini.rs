@@ -5,6 +5,7 @@ pub struct Mini<F: PrimeField> {
     pub x: Option<F>,
     pub y: Option<F>,
     pub z: Option<F>,
+    pub num: u32,
 }
 
 impl<F: PrimeField> ConstraintSynthesizer<F> for Mini<F> {
@@ -21,12 +22,14 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for Mini<F> {
             || self.z.ok_or(SynthesisError::AssignmentMissing),
         )?;
 
-        cs.enforce(
-            || "x * (y + 2) = z",
-            |lc| lc + var_x,
-            |lc| lc + var_y + (F::from(2u32), CS::one()),
-            |lc| lc + var_z,
-        );
+        for _ in 0..self.num {
+            cs.enforce(
+                || "x * (y + 2) = z",
+                |lc| lc + var_x,
+                |lc| lc + var_y + (F::from(2u32), CS::one()),
+                |lc| lc + var_z,
+            );
+        }
 
         Ok(())
     }
