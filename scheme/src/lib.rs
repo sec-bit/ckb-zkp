@@ -2,13 +2,17 @@
 //!
 //! [`Groth16`]: https://eprint.iacr.org/2016/260.pdf
 #![cfg_attr(not(feature = "std"), no_std)]
-#![deny(unused_import_braces, unused_qualifications, trivial_casts)]
+#![deny(unused_import_braces, unused_qualifications)]
 #![deny(trivial_numeric_casts, private_in_public)]
 #![deny(stable_features, /* unreachable_pub, */ non_shorthand_field_patterns)]
-#![deny(unused_attributes, unused_imports, unused_mut)]
+//#![deny(unused_attributes, unused_imports, unused_mut)]
 #![deny(renamed_and_removed_lints, stable_features, unused_allocation)]
 #![deny(unused_comparisons, bare_trait_objects, unused_must_use, const_err)]
-#![forbid(unsafe_code)]
+//#![forbid(unsafe_code)]
+//#![deny(trivial_casts)]
+
+#[macro_use]
+extern crate derivative;
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
@@ -47,3 +51,6 @@ pub mod bulletproofs;
 
 #[cfg(feature = "marlin")]
 pub mod marlin;
+
+#[cfg(feature = "clinkv2")]
+pub mod clinkv2;

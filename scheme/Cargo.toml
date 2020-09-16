@@ -10,12 +10,13 @@ edition = "2018"
 
 [features]
 default = ["full"]
-full = ["parallel", "groth16", "bulletproofs", "marlin"]
+full = ["parallel", "groth16", "bulletproofs", "marlin", "clinkv2"]
 std = ["math/std"]
 parallel = ["std", "rayon", "math/parallel"]
 groth16 = []
 bulletproofs = ["merlin"]
 marlin = ["rand_chacha", "merlin"]
+clinkv2 = []
 
 [dependencies]
 math = { path = "../math", default-features = false, features = [ "derive" ] }
@@ -24,9 +25,8 @@ rand = { version = "0.7", default-features = false }
 rayon = { version = "1", optional = true }
 smallvec = "1.1.0"
 merlin = { version = "2.0.0", default-features = false, optional = true }
-#sha3 = { version = "0.8", default-features = false, optional = true }
-#digest = { version = "0.8", default-features = false, optional = true }
 rand_chacha = { version = "0.2.1", default-features = false, optional = true }
+derivative = { version = "2", features = [ "use_core" ] }
 
 [dev-dependencies]
 csv = { version = "1" }
