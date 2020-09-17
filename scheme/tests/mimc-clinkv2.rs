@@ -251,9 +251,7 @@ fn mimc_clinkv2() {
 
     println!("Start verify...");
     // Check the proof
-    assert!(verifier_pa
-        .verify_proof(&kzg10_vk, &proof, &io, rng)
-        .unwrap());
+    assert!(verifier_pa.verify_proof(&kzg10_vk, &proof, &io).unwrap());
     total_verifying += start.elapsed();
 
     // Compute time

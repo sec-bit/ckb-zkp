@@ -18,14 +18,15 @@ use math::fft::{DensePolynomial, EvaluationDomain, SparsePolynomial};
 
 // Transcript
 use merlin::Transcript;
+use rand::Rng;
 
 // KZG10
 use super::kzg10::{self, KZG10};
 
+use std::time::{Duration, Instant};
+
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
-
-use rand::Rng;
 
 pub type KZG10_Proof<E> = kzg10::Proof<E>;
 pub type KZG10_Comm<E> = kzg10::Commitment<E>;
@@ -188,79 +189,42 @@ impl<E: PairingEngine> ProvingAssignment<E> {
 
         let mut transcript = Transcript::new(b"CLINKv2");
 
-        println!("=== DEBUG 1 ===");
-
-        // let mut transpose_time = Duration::new(0, 0);
-        // let start = Instant::now();
-
-        // let mut r_assignment:Vec<Vec<E::Fr>> = vec![];
-        // for j in 0..m_io {
-        //     let mut tmp:Vec<E::Fr> = vec![];
-        //     for i in 0..n {
-        //         tmp.push(self.input_assignment[i][j].clone());
-        //     }
-        //     r_assignment.push(tmp);
-        // }
-
-        // for j in 0..m_mid {
-        //     let mut tmp:Vec<E::Fr> = vec![];
-        //     for i in 0..n {
-        //         tmp.push(self.aux_assignment[i][j].clone());
-        //     }
-        //     r_assignment.push(tmp);
-        // }
-
-        // transpose_time += start.elapsed();
-        // let transpose_time =
-        // transpose_time.subsec_nanos() as f64 / 1_000_000_000f64 + (transpose_time.as_secs() as f64);
-        // println!("transpose_time: {:?}", transpose_time);
-
-        //let pp = KZG10::<E>::setup(degree, false, & mut rng)?;
-        //let (ck, _) = KZG10::<E>::trim(&kzg10_params, degree)?;
-
         // Compute and commit witness polynomials
-
-        // 对rj做ifft，rj长度为n，domain_size为n
         let domain =
             EvaluationDomain::<E::Fr>::new(n).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
         let domain_size = domain.size();
 
-        let mut r_polys = vec![];
+        let mut r_q_polys = vec![];
         let mut r_mid_comms = vec![];
-        let mut r_mid_values = vec![];
-        let mut r_mid_rands = vec![];
+        let mut r_mid_q_values = vec![];
+        let mut r_mid_q_rands = vec![];
 
         let zero = E::Fr::zero();
         let one = E::Fr::one();
         let hiding_bound = Some(2);
 
-        println!("=== DEBUG 2 ===");
-
-        //let mut rj_commit_time = Duration::new(0, 0);
-
-        //let mut rj_ifft_time = Duration::new(0, 0);
+        let mut rj_commit_time = Duration::new(0, 0);
+        let mut rj_ifft_time = Duration::new(0, 0);
 
         for j in 0..m_io {
-            //let start = Instant::now();
+            let start = Instant::now();
 
             let rj_coeffs = domain.ifft(&self.input_assignment[j]);
 
-            //rj_ifft_time += start.elapsed();
+            rj_ifft_time += start.elapsed();
 
             let mut rj_poly = DensePolynomial::from_coefficients_vec(rj_coeffs);
-            r_polys.push(rj_poly);
+            r_q_polys.push(rj_poly);
         }
-
-        println!("=== DEBUG 3 ===");
 
         for j in 0..m_mid {
             // IFFT
-            //let start = Instant::now();
+            let start = Instant::now();
 
             let rj_coeffs = domain.ifft(&self.aux_assignment[j]);
 
-            //rj_ifft_time += start.elapsed();
+            rj_ifft_time += start.elapsed();
 
             let mut rj_poly = DensePolynomial::from_coefficients_vec(rj_coeffs);
 
@@ -286,108 +250,37 @@ impl<E: PairingEngine> ProvingAssignment<E> {
             // let vanishing_poly = DensePolynomial::from_coefficients_vec(vanishing_coeffs);
             // rj_poly += &(&vanishing_poly * &(DensePolynomial::from_coefficients_vec(vec![rho; 1])));
 
-            //println!("r_polys[{:?}]: {:?}", j, &rj_poly);
+            //println!("r_q_polys[{:?}]: {:?}", j, &rj_poly);
             // Commit to rj mid polynomial
-            //let start2 = Instant::now();
+            let start2 = Instant::now();
             let (rj_comm, rj_rand) =
                 KZG10::<E>::commit(&kzg10_ck, &rj_poly, hiding_bound, Some(rng))?;
-            //rj_commit_time += start2.elapsed();
-            r_polys.push(rj_poly);
+            rj_commit_time += start2.elapsed();
+            r_q_polys.push(rj_poly);
             r_mid_comms.push(rj_comm);
-            r_mid_rands.push(rj_rand);
+            r_mid_q_rands.push(rj_rand);
         }
+        println!("rj_ifft_time: {:?}", rj_ifft_time);
+        println!("rj_commit_time: {:?}", rj_commit_time);
 
-        println!("=== DEBUG 4 ===");
-
-        // let rj_ifft_commit_time =
-        // rj_ifft_commit_time.subsec_nanos() as f64 / 1_000_000_000f64 + (rj_ifft_commit_time.as_secs() as f64);
-        //println!("rj_ifft_time: {:?}", rj_ifft_time);
-
-        // let rj_commit_time =
-        // rj_commit_time.subsec_nanos() as f64 / 1_000_000_000f64 + (rj_commit_time.as_secs() as f64);
-        //println!("rj_commit_time: {:?}", rj_commit_time);
-
-        //println!("r_polys.len(): {:?}", r_polys.len());
         transcript.append_message(b"witness polynomial commitments", as_bytes(&r_mid_comms));
+        // println!("r_mid_comms: \n{:?}",&r_mid_comms);
+        // println!("as_bytes(r_mid_comms): \n{:?}",as_bytes(&r_mid_comms));
 
         let mut c = [0u8; 31];
-        transcript.challenge_bytes(b"opening challenge", &mut c);
-        let opening_challenge = E::Fr::from_random_bytes(&c).unwrap();
+        transcript.challenge_bytes(b"batching challenge", &mut c);
         let eta = E::Fr::from_random_bytes(&c).unwrap();
 
         // Compute and commit quotient polynomials
         let m_abc = self.at.len();
-        // let mut q_polys = vec![];
-        // let mut q_comms = vec![];
-        // let mut q_values = vec![];
-        // let mut q_rands = vec![];
+        let mut sum_coset_ab = vec![zero; domain_size];
+        let mut sum_c = vec![zero; domain_size];
 
-        // for i in 0..self.at.len() {
-        //     println!("at[{:?}]: {:?}", i, &self.at[i]);
-        //     println!("---------------------------------------------");
-        // }
+        let mut eta_i = one;
 
-        // println!("self.at[i].len(): {:?}", &self.at.len());
-        // println!("self.at[i].len(): {:?}", &self.bt.len());
-        // println!("self.at[i].len(): {:?}", &self.ct.len());
-
-        // Test Passed
-        // for i in 0..m_abc {
-        //     let mut ai = vec![zero; n];
-        //     for (coeff, index) in (&self.at[i]).into_iter() {
-        //         let id = match index {
-        //             Index::Input(j) => *j,
-        //             Index::Aux(j) => m_io + *j,
-        //         };
-
-        //         for k in 0..n {
-        //             ai[k] += &(r_assignment[id][k] * coeff);
-        //         }
-        //     }
-
-        //     let mut bi = vec![zero; n];
-        //     for (coeff, index) in (&self.bt[i]).into_iter() {
-        //         let id = match index {
-        //             Index::Input(j) => *j,
-        //             Index::Aux(j) => m_io + *j,
-        //         };
-
-        //         for k in 0..n {
-        //             bi[k] += &(r_assignment[id][k] * coeff);
-        //         }
-        //     }
-
-        //     let mut ci = vec![zero; n];
-        //     for (coeff, index) in (&self.ct[i]).into_iter() {
-        //         let id = match index {
-        //             Index::Input(j) => *j,
-        //             Index::Aux(j) => m_io + *j,
-        //         };
-
-        //         for k in 0..n {
-        //             ci[k] += &(r_assignment[id][k] * coeff);
-        //         }
-        //     }
-
-        //     for k in 0..n {
-        //         assert_eq!(ai[k] * &bi[k], ci[k]);
-        //     }
-        // }
-
-        //let mut q_commit_time = Duration::new(0, 0);
-        // let mut rj_lc_time = Duration::new(0, 0);
-
-        //let mut abci_fft_time = Duration::new(0, 0);
-
-        // let mut ab_c_poly = DensePolynomial::from_coefficients_vec(vec![zero; domain_size]);
-        let mut ab_c_coeffs = vec![zero; domain_size];
-        // println!("domain_size:{}", domain_size);
-
-        //let start = Instant::now();
-
-        let mut mul = one;
-
-        println!("=== DEBUG 5 ===");
+        let mut q_commit_time = Duration::new(0, 0);
+        let mut abci_fft_time = Duration::new(0, 0);
+        let start = Instant::now();
 
         for i in 0..m_abc {
             // let start3 = Instant::now();
@@ -398,12 +291,10 @@ impl<E: PairingEngine> ProvingAssignment<E> {
                     Index::Input(j) => *j,
                     Index::Aux(j) => m_io + *j,
                 };
-                // ai += &(&r_polys[id] * &(DensePolynomial::from_coefficients_vec(vec![*coeff; 1])));
                 for k in 0..ai_coeffs.len() {
-                    ai_coeffs[k] += &(r_polys[id].coeffs[k] * coeff);
+                    ai_coeffs[k] += &(r_q_polys[id].coeffs[k] * coeff);
                 }
             }
-            //println!("ai_coeffs: {:?}", ai_coeffs);
             let mut ai = DensePolynomial::from_coefficients_vec(ai_coeffs);
 
             let mut bi_coeffs = vec![zero; domain_size];
@@ -412,229 +303,176 @@ impl<E: PairingEngine> ProvingAssignment<E> {
                     Index::Input(j) => *j,
                     Index::Aux(j) => m_io + *j,
                 };
-                // bi += &(&r_polys[id] * &(DensePolynomial::from_coefficients_vec(vec![*coeff; 1])));
                 for k in 0..bi_coeffs.len() {
-                    bi_coeffs[k] += &(r_polys[id].coeffs[k] * coeff);
+                    bi_coeffs[k] += &(r_q_polys[id].coeffs[k] * coeff);
                 }
             }
             let mut bi = DensePolynomial::from_coefficients_vec(bi_coeffs);
-            //println!("bi.coeffs: {:?}", bi.coeffs);
-
-            let mut ci_coeffs = vec![zero; domain_size];
-            for (coeff, index) in (&self.ct[i]).into_iter() {
-                let id = match index {
-                    Index::Input(j) => *j,
-                    Index::Aux(j) => m_io + *j,
-                };
-                //ci += &(&r_polys[id] * &(DensePolynomial::from_coefficients_vec(vec![*coeff; 1])));
-                for k in 0..ci_coeffs.len() {
-                    ci_coeffs[k] += &(r_polys[id].coeffs[k] * coeff);
-                }
-            }
-            let mut ci = DensePolynomial::from_coefficients_vec(ci_coeffs);
-
-            // rj_lc_time += start3.elapsed();
-
-            // let alpha = E::Fr::rand(&mut rng);
-            // let a = ai.evaluate(alpha);
-            // let b = bi.evaluate(alpha);
-            // let c = ci.evaluate(alpha);
 
             domain.coset_fft_in_place(&mut ai.coeffs);
             domain.coset_fft_in_place(&mut bi.coeffs);
-            domain.coset_fft_in_place(&mut ci.coeffs);
 
-            let mut abi = domain.mul_polynomials_in_evaluation_domain(&ai, &bi);
-
-            // println!("ai.coeffs.len():{}", &ai.coeffs.len());
-
-            // println!("abi: {:?}", abi);
-            // println!("ci: {:?}", ci.coeffs);
+            // on coset: n values of a*b on coset
+            let mut coset_ab_values = domain.mul_polynomials_in_evaluation_domain(&ai, &bi);
 
             drop(ai);
             drop(bi);
 
-            cfg_iter_mut!(abi)
-                .zip(ci.coeffs)
-                .zip(&mut ab_c_coeffs)
-                .for_each(|((abij, cij), ab_c_j)| *ab_c_j += &(mul * &(*abij - &cij)));
+            // on coset: n values of \sum{eta^i * ab} on coset
+            cfg_iter_mut!(coset_ab_values)
+                .zip(&mut sum_coset_ab)
+                .for_each(|(coset_abij, sum_coset_ab_j)| *sum_coset_ab_j += &(eta_i * coset_abij));
 
-            // cfg_iter_mut!(abi)
-            //     .zip(ci.coeffs)
-            //     .for_each(|(abij, cij)| *abij -= &cij);
+            let mut ci_values = vec![zero; domain_size];
+            for (coeff, index) in (&self.ct[i]).into_iter() {
+                match index {
+                    Index::Input(j) => {
+                        cfg_iter_mut!(&mut ci_values)
+                            .zip(&self.input_assignment[*j])
+                            .for_each(|(cij, rij)| *cij += &(*rij * coeff));
+                    }
+                    Index::Aux(j) => {
+                        cfg_iter_mut!(&mut ci_values)
+                            .zip(&self.aux_assignment[*j])
+                            .for_each(|(cij, rij)| *cij += &(*rij * coeff));
+                    }
+                };
+            }
+            // on original domain: n values of \sum{eta^i * c} on original domain
+            cfg_iter_mut!(ci_values)
+                .zip(&mut sum_c)
+                .for_each(|(cij, sum_c_j)| *sum_c_j += &(eta_i * cij));
 
-            // let eta_mul_poly = DensePolynomial::from_coefficients_vec(vec![mul; 1]);
-            // ab_c_poly += &(&eta_mul_poly * &DensePolynomial::from_coefficients_vec(abi));
-
-            mul = mul * &eta;
+            eta_i = eta_i * &eta;
         }
 
-        println!("=== DEBUG 6 ===");
+        domain.ifft_in_place(&mut sum_c);
+        // on coset: n values of \sum{eta^i * c} on coset
+        domain.coset_fft_in_place(&mut sum_c);
 
-        println!("ab_c_coeffs: {:?}", ab_c_coeffs.last());
+        // on coset: n values of \sum{eta^i * (ab - c)} on coset
+        cfg_iter_mut!(sum_coset_ab)
+            .zip(sum_c)
+            .for_each(|(sum_coset_ab_j, sum_coset_c_j)| *sum_coset_ab_j -= &sum_coset_c_j);
 
-        let mut ab_c_poly = DensePolynomial::from_coefficients_vec(ab_c_coeffs);
+        domain.divide_by_vanishing_poly_on_coset_in_place(&mut sum_coset_ab);
+        domain.coset_ifft_in_place(&mut sum_coset_ab);
 
-        println!("=== DEBUG 6-1 ===");
+        abci_fft_time += start.elapsed();
+        println!("abci_fft_time: {:?}", abci_fft_time);
 
-        domain.divide_by_vanishing_poly_on_coset_in_place(&mut ab_c_poly.coeffs);
-        println!("ab_c_poly: {:?}", ab_c_poly.coeffs.last());
-        println!("=== DEBUG 6-2 ===");
-        domain.coset_ifft_in_place(&mut ab_c_poly.coeffs);
-        println!("ab_c_poly: {:?}", ab_c_poly.coeffs.last());
-        println!("=== DEBUG 6-3 ===");
-        //abci_fft_time += start.elapsed();
-
-        // println!("ab_c_poly: {:?}", ab_c_poly.coeffs);
-
-        let q_poly = ab_c_poly;
-        // println!("q_poly: {:?}", q_poly.coeffs);
+        let q_poly = DensePolynomial::from_coefficients_vec(sum_coset_ab);
+        // println!("q_ploy: {:?}", q_poly.coeffs);
 
         //let q = qi_poly.evaluate(alpha);
 
         // Commit to quotient polynomial
-        //let qi_poly = Polynomial::from_coefficients_slice(&abi[..]);
-        //let start2 = Instant::now();
-        println!("=== DEBUG 6-4 ===");
+        let start2 = Instant::now();
+
         let (q_comm, q_rand) = KZG10::<E>::commit(&kzg10_ck, &q_poly, hiding_bound, Some(rng))?;
 
-        //q_commit_time += start2.elapsed();
+        q_commit_time += start2.elapsed();
+        println!("q_commit_time: {:?}", q_commit_time);
 
-        // q_comms.push(qi_comm);
-        // q_rands.push(qi_rand);
-        // q_polys.push(qi_poly);
+        // let m_mid_q = &r_mid_comms.len();
+        // println!("m_mid_q:{}", m_mid_q);
+        // println!("m_mid:{}", m_mid);
+
+        // println!("&r_mid_comms[0..m_mid].to_vec(): \n{:?}", &r_mid_comms[0..m_mid]);
+        // println!("as_bytes(r_mid_comms): \n{:?}",as_bytes(&r_mid_comms));
 
         //let vanishing_poly = domain.vanishing_polynomial();
         //let t = vanishing_poly.evaluate(alpha);
 
-        //println!("verifying q[{:?}](x): {:?}", i, &q_polys[i]);
+        //println!("verifying q(x)");
         //assert_eq!(a * &b - &c, q * &t);
-
-        // let qi_4fft_commit_time =
-        // qi_4fft_commit_time.subsec_nanos() as f64 / 1_000_000_000f64 + (qi_4fft_commit_time.as_secs() as f64);
-        //println!("abci_fft_time: {:?}", abci_fft_time);
-
-        // let rj_lc_time =
-        // rj_lc_time.subsec_nanos() as f64 / 1_000_000_000f64 + (rj_lc_time.as_secs() as f64);
-        // println!("rj_lc_time: {:?}", rj_lc_time);
-
-        // let q_commit_time =
-        // q_commit_time.subsec_nanos() as f64 / 1_000_000_000f64 + (q_commit_time.as_secs() as f64);
-        //println!("q_commit_time: {:?}", q_commit_time);
-        //println!("qi_fft_time: {:?}", qi_4fft_commit_time - qi_4fft_commit_time);
-        println!("=== DEBUG 7 ===");
 
         transcript.append_message(b"quotient polynomial commitments", as_bytes(&q_comm));
 
         // Prove
-
-        // let mut transcript_hash_time = Duration::new(0, 0);
-        // let start = Instant::now();
-
         // Generate a challenge
         let mut c = [0u8; 31];
         transcript.challenge_bytes(b"random point", &mut c);
-        //println!("c: {:?}", c);
         let zeta = E::Fr::from_random_bytes(&c).unwrap();
-        //println!("zeta: {:?}", zeta);
+        // println!("zeta: {:?}", zeta);
 
-        // transcript_hash_time += start.elapsed();
-        // let transcript_hash_time =
-        // transcript_hash_time.subsec_nanos() as f64 / 1_000_000_000f64 + (transcript_hash_time.as_secs() as f64);
-        // println!("transcript_hash_time: {:?}", transcript_hash_time);
+        r_q_polys.push(q_poly);
+        r_mid_q_rands.push(q_rand);
 
-        // let mut r_mid_values = vec![];
-        //let mut r_mid_combined_proof = vec![];
-        //let mut q_values = vec![];
-        //let mut q_combined_proof = vec![];
+        let mut open_r_mid_q_time = Duration::new(0, 0);
+        let start = Instant::now();
 
-        //let mut open_r_mid_time = Duration::new(0, 0);
-        //let start = Instant::now();
-
-        //rintln!("r_mid_rands.len(): {:?}", r_mid_rands.len());
-        for j in 0..m_mid {
-            //let rj_poly = Polynomial::from_coefficients_slice(&r_assignment[j][..]);
-            let rj_value = r_polys[j + m_io].evaluate(zeta);
-            // //println!("j: {:?}", j);
-            // let rj_proof = KZG10::<E>::open(&kzg10_ck, &rj_poly, zeta, &r_mid_rands[j])?;
-            r_mid_values.push(rj_value);
-            // r_mid_combined_proof.push(rj_proof);
+        // println!("m:{}", m);
+        // println!("r_q_polys.len():{}",r_q_polys.len());
+        for j in 0..(m_mid + 1) {
+            let value = r_q_polys[j + m_io].evaluate(zeta);
+            r_mid_q_values.push(value);
         }
 
-        println!("=== DEBUG 8 ===");
+        // println!("r_mid_q_values[m_io+m_mid]:{:?}", r_mid_q_values[m_mid]);
 
-        let r_mid_combined_proof = KZG10::<E>::batch_open(
+        let opening_challenge = E::Fr::rand(rng);
+        let r_mid_q_proof = KZG10::<E>::batch_open(
             &kzg10_ck,
-            &r_polys[m_io..m],
+            &r_q_polys[m_io..],
             zeta,
             opening_challenge,
-            &r_mid_rands,
+            &r_mid_q_rands,
         )?;
 
-        println!("=== DEBUG 9 ===");
+        open_r_mid_q_time += start.elapsed();
+        println!("open_r_mid_q_time: {:?}", open_r_mid_q_time);
 
-        //open_r_mid_time += start.elapsed();
-        //println!("open_r_mid_time: {:?}", open_r_mid_time);
+        // let mut open_q_time = Duration::new(0, 0);
+        // let start = Instant::now();
 
-        //let mut open_q_time = Duration::new(0, 0);
-        //let start = Instant::now();
+        // let q_value = q_poly.evaluate(zeta);
+        // let q_proof = KZG10::<E>::open(&kzg10_ck, &q_poly, zeta, &q_rand)?;
 
-        // for i in 0..m_abc {
-        //     let qi_value = q_polys[i].evaluate(zeta);
-        //     // let qi_proof = KZG10::<E>::open(&kzg10_ck, &qi_poly, zeta, &q_rands[i])?;
-        //     q_values.push(qi_value);
-        //     // q_combined_proof.push(qi_proof);
-        // }
+        // open_q_time += start.elapsed();
+        // println!("open_q_time: {:?}", open_q_time);
 
-        let q_value = q_poly.evaluate(zeta);
-
-        let q_proof = KZG10::<E>::open(&kzg10_ck, &q_poly, zeta, &q_rand)?;
-
-        //open_q_time += start.elapsed();
-        //println!("open_q_time: {:?}", open_q_time);
-
-        // let mut io:Vec<Vec<E::Fr>> = vec![];
-        //println!("io.len(): {:?}", io.len());
-        //let io = Cow::Owned(r_assignment[..m_io]);//r_assignment[..m_io].to_owned();
-        // for i in 0..m_io {
-        //     io.push((&r_assignment[i]).to_vec());
-        // }
-        //println!("io: {:?}", io);
-        //println!("io.len(): {:?}", io.len());
-
-        println!("=== DEBUG 10 ===");
+        // let proof_size = mem::size_of_val(&*r_mid_comms)
+        //                 + mem::size_of_val(&*r_mid_q_values)
+        //                 + mem::size_of_val(&r_mid_q_proof)
+        //                 + mem::size_of_val(&opening_challenge);
+        // println!("{:?}", proof_size);
 
         let proof = Proof {
             r_mid_comms,
-            r_mid_values,
-            r_mid_combined_proof,
             q_comm,
-            q_value,
-            q_proof,
+            r_mid_q_values,
+            r_mid_q_proof,
             opening_challenge,
         };
-        // println!("size_of_val(proof.r_mid_comms): {:?}", mem::size_of_val(&proof.r_mid_comms));
-        // println!("proof.r_mid_comms.len(): {:?}", proof.r_mid_comms.len());
 
         Ok(proof)
     }
 
-    pub fn verify_proof<R: Rng>(
+    pub fn verify_proof(
         self,
         kzg10_vk: &KZG10_vk<E>,
         proof: &Proof<E>,
         io: &Vec<Vec<E::Fr>>,
-        rng: &mut R,
     ) -> Result<bool, SynthesisError> {
         let mut transcript = Transcript::new(b"CLINKv2");
+        let zero = E::Fr::zero();
+        let one = E::Fr::one();
+        let m_abc = self.at.len();
+        let m_io = io.len();
+        let m_mid = proof.r_mid_comms.len();
+        let n = io[0].len();
 
+        // println!("&proof.r_mid_comms[..(m_mid_q - 1)].to_vec(): \n{:?}",&proof.r_mid_comms[0..(m_mid_q - 1)]);
+        // println!("as_bytes(&proof.r_mid_comms[..(m_mid_q - 1)].to_vec()): \n{:?}",as_bytes(&proof.r_mid_comms[0..(m_mid_q - 1)].to_vec()));
+        // println!("as_bytes(&proof.r_mid_comms[..(m_mid_q - 1)].to_vec()): \n{:?}",as_bytes(&proof.r_mid_comms));
+        // transcript.append_message(b"witness polynomial commitments", as_bytes(&proof.r_mid_comms[0..m_mid].to_vec()));
         transcript.append_message(
             b"witness polynomial commitments",
             as_bytes(&proof.r_mid_comms),
         );
         let mut c = [0u8; 31];
-        transcript.challenge_bytes(b"opening challenge", &mut c);
-        let opening_challenge = E::Fr::from_random_bytes(&c).unwrap();
+        transcript.challenge_bytes(b"batching challenge", &mut c);
         let eta = E::Fr::from_random_bytes(&c).unwrap();
 
         transcript.append_message(b"quotient polynomial commitments", as_bytes(&proof.q_comm));
@@ -642,34 +480,17 @@ impl<E: PairingEngine> ProvingAssignment<E> {
         transcript.challenge_bytes(b"random point", &mut c);
         let zeta = E::Fr::from_random_bytes(&c).unwrap();
 
-        // println!("opening challenge: {:?}", opening_challenge);
         // println!("zeta: {:?}", zeta);
 
-        let one = E::Fr::one();
+        let r_mid_q_comms = [&proof.r_mid_comms, &[proof.q_comm][..]].concat();
 
-        let m_io = io.len();
-        let m = m_io + proof.r_mid_values.len();
-        let n = io[0].len();
-
-        //println!("m_io: {:?}, m: {:?}, n: {:?}", m_io, m, n);
-
-        //let mut points = vec![zeta; proof.r_mid_comms.len()];
         assert!(KZG10::<E>::batch_check(
             &kzg10_vk,
-            &proof.r_mid_comms,
+            &r_mid_q_comms,
             zeta,
-            &proof.r_mid_values,
-            &proof.r_mid_combined_proof,
-            opening_challenge
-        )?);
-
-        //points = vec![zeta; proof.q_comms.len()];
-        assert!(KZG10::<E>::check(
-            &kzg10_vk,
-            &proof.q_comm,
-            zeta,
-            proof.q_value,
-            &proof.q_proof
+            &proof.r_mid_q_values,
+            &proof.r_mid_q_proof,
+            proof.opening_challenge
         )?);
 
         let domain =
@@ -678,18 +499,6 @@ impl<E: PairingEngine> ProvingAssignment<E> {
         let domain_size = domain.size();
 
         let mut r_io_values = vec![];
-
-        // for j in 0..m_io {
-        //     // IFFT
-        //     let rj_coeffs = domain.ifft(&io[j][..]);
-        //     let rj_poly = DensePolynomial::from_coefficients_vec(rj_coeffs);
-        //     let rj_value = rj_poly.evaluate(zeta);
-        //     //println!("r_io_values[{:?}]: {:?}", j, &rj_value);
-        //     r_io_values.push(rj_value);
-        //     //println!("r_polys[{:?}]: {:?}", j, rj_poly);
-        // }
-
-        let zero = E::Fr::zero();
         let mut lag_values = domain.evaluate_all_lagrange_coefficients(zeta);
         for j in 0..m_io {
             let mut rj_value = zero;
@@ -699,25 +508,18 @@ impl<E: PairingEngine> ProvingAssignment<E> {
             r_io_values.push(rj_value);
         }
 
-        //let r_values = [&r_io_values[..], &proof.r_mid_values[..]].concat();
-
         let vanishing_poly = domain.vanishing_polynomial();
         let vanishing_value = vanishing_poly.evaluate(zeta);
 
-        let zero = E::Fr::zero();
-
-        let m_abc = self.at.len();
-
         let mut ab_c = zero;
-
-        let mut mul = one;
+        let mut eta_i = one;
 
         for i in 0..m_abc {
             let mut ai = zero;
             for (coeff, index) in (&self.at[i]).into_iter() {
                 let id = match index {
                     Index::Input(j) => ai += &(r_io_values[*j] * coeff),
-                    Index::Aux(j) => ai += &(proof.r_mid_values[*j] * coeff),
+                    Index::Aux(j) => ai += &(proof.r_mid_q_values[*j] * coeff),
                 };
             }
 
@@ -725,7 +527,7 @@ impl<E: PairingEngine> ProvingAssignment<E> {
             for (coeff, index) in (&self.bt[i]).into_iter() {
                 let id = match index {
                     Index::Input(j) => bi += &(r_io_values[*j] * coeff),
-                    Index::Aux(j) => bi += &(proof.r_mid_values[*j] * coeff),
+                    Index::Aux(j) => bi += &(proof.r_mid_q_values[*j] * coeff),
                 };
             }
 
@@ -733,15 +535,14 @@ impl<E: PairingEngine> ProvingAssignment<E> {
             for (coeff, index) in (&self.ct[i]).into_iter() {
                 let id = match index {
                     Index::Input(j) => ci += &(r_io_values[*j] * coeff),
-                    Index::Aux(j) => ci += &(proof.r_mid_values[*j] * coeff),
+                    Index::Aux(j) => ci += &(proof.r_mid_q_values[*j] * coeff),
                 };
             }
 
-            ab_c += &(mul * &(ai * &bi - &ci));
-            mul = mul * &eta;
+            ab_c += &(eta_i * &(ai * &bi - &ci));
+            eta_i = eta_i * &eta;
         }
-
-        assert_eq!(ab_c, proof.q_value * &vanishing_value);
+        assert_eq!(ab_c, proof.r_mid_q_values[m_mid] * &vanishing_value);
 
         Ok(true)
     }

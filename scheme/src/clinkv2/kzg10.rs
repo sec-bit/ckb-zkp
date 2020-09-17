@@ -397,7 +397,6 @@ impl<E: PairingEngine> KZG10<E> {
         rng: Option<&mut R>,
     ) -> Result<(Commitment<E>, Randomness<E>), Error> {
         Self::check_degree_is_within_bounds(polynomial.degree(), powers.size())?;
-        println!("DEBUG IS HERE?");
 
         // let commit_time = start_timer!(|| format!(
         //     "Committing to polynomial of degree {} with hiding_bound: {:?}",
