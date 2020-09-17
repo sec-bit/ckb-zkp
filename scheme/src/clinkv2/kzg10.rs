@@ -45,7 +45,7 @@ pub struct UniversalParams<E: PairingEngine> {
 }
 
 impl<E: PairingEngine> UniversalParams<E> {
-    fn max_degree(&self) -> usize {
+    fn _max_degree(&self) -> usize {
         self.powers_of_g.len() - 1
     }
 }
@@ -118,15 +118,15 @@ impl<E: PairingEngine> ToBytes for Commitment<E> {
 
 impl<E: PairingEngine> Commitment<E> {
     #[inline]
-    fn empty() -> Self {
+    fn _empty() -> Self {
         Commitment(E::G1Affine::zero())
     }
 
-    fn has_degree_bound(&self) -> bool {
+    fn _has_degree_bound(&self) -> bool {
         false
     }
 
-    fn size_in_bytes(&self) -> usize {
+    fn _size_in_bytes(&self) -> usize {
         math::to_bytes![E::G1Affine::zero()].unwrap().len() / 2
     }
 }
@@ -237,7 +237,7 @@ pub struct Proof<E: PairingEngine> {
 }
 
 impl<E: PairingEngine> Proof<E> {
-    fn size_in_bytes(&self) -> usize {
+    fn _size_in_bytes(&self) -> usize {
         let hiding_size = if self.random_v.is_some() {
             math::to_bytes![E::Fr::zero()].unwrap().len()
         } else {

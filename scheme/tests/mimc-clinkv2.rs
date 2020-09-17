@@ -14,10 +14,8 @@ use math::{test_rng, Field};
 
 // We'll use these interfaces to construct our circuit.
 use scheme::clinkv2::kzg10::*;
-use scheme::clinkv2::prover::ProvingAssignment;
 use scheme::clinkv2::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
-
-use std::mem;
+use scheme::clinkv2::{create_proof, verify_proof, ProvingAssignment};
 
 const MIMC_ROUNDS: usize = 25;
 const SAMPLES: usize = 16380; //1048576//131070;//1048570;//131070;//16380;//16380;//16384
@@ -210,7 +208,7 @@ fn mimc_clinkv2() {
                 xr: Some(xr),
                 constants: &constants,
             };
-            c.generate_constraints(&mut prover_pa, i);
+            c.generate_constraints(&mut prover_pa, i).unwrap();
         }
         total_proving += start.elapsed();
     }
@@ -221,37 +219,40 @@ fn mimc_clinkv2() {
     println!("Start prove...");
     let start = Instant::now();
     // Create a clinkv2 proof with our parameters.
-    let proof = prover_pa.create_proof(&kzg10_ck, rng).unwrap();
+    let proof = create_proof(&prover_pa, &kzg10_ck, rng).unwrap();
     total_proving += start.elapsed();
 
+    println!("Start First verify...");
+    assert!(verify_proof(&prover_pa, &kzg10_vk, &proof, &io).unwrap());
+
     // Verifier
-    println!("Start verify prepare...");
+    println!("Start Secound verify prepare...");
 
     let mut verifier_pa = ProvingAssignment::<Bn_256>::default();
 
     let start = Instant::now();
 
     {
-        //let xl = rng.gen();
-        //let xr = rng.gen();
+        let xl = rng.gen();
+        let xr = rng.gen();
         //let image = mimc(xl, xr, &constants);
 
         let start = Instant::now();
         {
             // Create an instance of our circuit (with the witness)
             let c = MiMCDemo {
-                xl: None,
-                xr: None,
+                xl: Some(xl),
+                xr: Some(xr),
                 constants: &constants,
             };
-            c.generate_constraints(&mut verifier_pa, 0usize);
+            c.generate_constraints(&mut verifier_pa, 0usize).unwrap();
         }
         total_proving += start.elapsed();
     }
 
-    println!("Start verify...");
+    println!("Start Secound verify...");
     // Check the proof
-    assert!(verifier_pa.verify_proof(&kzg10_vk, &proof, &io).unwrap());
+    assert!(verify_proof(&verifier_pa, &kzg10_vk, &proof, &io).unwrap());
     total_verifying += start.elapsed();
 
     // Compute time
