@@ -3,6 +3,7 @@ use math::PrimeField;
 use rand::RngCore;
 
 use crate::r1cs::SynthesisError;
+use crate::ToString;
 
 use crate::marlin::ahp::arithmetic::BivariatePoly;
 use crate::marlin::ahp::constraint_systems::ProverConstraintSystem;
@@ -160,7 +161,6 @@ impl<F: PrimeField> AHP<F> {
             - t_at_beta * (v_x_at_beta * w_at_beta + x_at_beta);
         let rhs = h_1_at_beta * v_h_at_beta + beta * g_1_at_beta;
         if lhs != rhs {
-            println!("outer sumcheck");
             return Ok(false);
         }
 

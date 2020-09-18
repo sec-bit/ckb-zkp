@@ -10,6 +10,8 @@ use math::{
 };
 use rand::RngCore;
 
+use crate::Vec;
+
 use crate::marlin::pc::data_structures::*;
 
 /// KZG10 implements KZG10 polynomial commitment scheme,

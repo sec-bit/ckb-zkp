@@ -1,8 +1,9 @@
+use core::ops::AddAssign;
 use math::fft::DensePolynomial as Polynomial;
 use math::{Field, PairingEngine, Zero};
 use rand::RngCore;
 
-use crate::{AddAssign, BTreeMap, BTreeSet, Cow};
+use crate::{BTreeMap, BTreeSet, Cow, String, Vec};
 
 #[derive(Debug)]
 pub enum Error {

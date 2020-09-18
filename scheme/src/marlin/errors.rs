@@ -1,6 +1,8 @@
 use crate::marlin::ahp::Error as AHPError;
 use crate::marlin::pc::Error as PCError;
 
+use crate::String;
+
 #[derive(Debug)]
 pub enum Error {
     IndexTooLarge,

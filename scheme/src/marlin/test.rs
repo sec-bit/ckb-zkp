@@ -71,7 +71,7 @@ mod marlin {
             num_variables,
         };
         println!("calling setup...");
-        let srs = universal_setup::<Bls12_381, _>(2 ^ 32, rng).unwrap();
+        let srs = universal_setup::<Bls12_381, _>(2usize.pow(10), rng).unwrap();
         println!("calling indexer...");
         let (ipk, ivk) = index(&srs, circuit.clone()).unwrap();
         println!("calling prover...");

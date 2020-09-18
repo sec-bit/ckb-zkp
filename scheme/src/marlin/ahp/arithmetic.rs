@@ -7,7 +7,7 @@ use math::PrimeField;
 
 use crate::marlin::ahp::Error;
 use crate::marlin::pc::LabeledPolynomial;
-use crate::Cow;
+use crate::{Cow, ToString, Vec};
 
 pub trait BivariatePoly<F: PrimeField> {
     fn bivariate_eval(&self, x: F, y: F) -> F;

@@ -1,6 +1,8 @@
 use math::PrimeField;
 use scheme::r1cs::{ConstraintSystem, SynthesisError, Variable};
 
+use crate::Vec;
+
 pub trait AbstractHashOutput: Clone {
     fn get_variables(&self) -> Vec<Variable>;
 }
