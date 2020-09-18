@@ -31,7 +31,7 @@ pub fn create_proof<E: PairingEngine, R: Rng>(
     // Number of copies
     let n = circuit.input_assignment[0].len();
 
-    //println!("m_io: {:?}, m_mid: {:?}, m: {:?}, n: {:?}", m_io, m_mid, m, n);
+    // println!("m_io: {:?}, m_mid: {:?}, n: {:?}", m_io, m_mid, n);
 
     let mut transcript = Transcript::new(b"CLINKv2");
 
@@ -40,6 +40,7 @@ pub fn create_proof<E: PairingEngine, R: Rng>(
         EvaluationDomain::<E::Fr>::new(n).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
     let domain_size = domain.size();
+    // println!("domain_size: {:?}", domain_size);
 
     let mut r_q_polys = vec![];
     let mut r_mid_comms = vec![];
@@ -56,7 +57,9 @@ pub fn create_proof<E: PairingEngine, R: Rng>(
     for j in 0..m_io {
         let start = Instant::now();
 
+        // println!("circuit.input_assignment: {:?}", &circuit.input_assignment);
         let rj_coeffs = domain.ifft(&circuit.input_assignment[j]);
+        // println!("rj_coeffs: {:?}", rj_coeffs);
 
         rj_ifft_time += start.elapsed();
 
@@ -107,6 +110,9 @@ pub fn create_proof<E: PairingEngine, R: Rng>(
     let mut abci_fft_time = Duration::new(0, 0);
     let start = Instant::now();
 
+    // println!("r_q_polys: {:?} * {:?}", &r_q_polys.len(), &r_q_polys[0].len());
+    // println!("r_q_polys: {:?}", &r_q_polys);
+
     for i in 0..m_abc {
         let mut ai_coeffs = vec![zero; domain_size];
         for (coeff, index) in (&circuit.at[i]).into_iter() {
@@ -114,7 +120,7 @@ pub fn create_proof<E: PairingEngine, R: Rng>(
                 Index::Input(j) => *j,
                 Index::Aux(j) => m_io + *j,
             };
-            for k in 0..ai_coeffs.len() {
+            for k in 0..r_q_polys[id].coeffs.len() {
                 ai_coeffs[k] += &(r_q_polys[id].coeffs[k] * coeff);
             }
         }
@@ -126,7 +132,7 @@ pub fn create_proof<E: PairingEngine, R: Rng>(
                 Index::Input(j) => *j,
                 Index::Aux(j) => m_io + *j,
             };
-            for k in 0..bi_coeffs.len() {
+            for k in 0..r_q_polys[id].coeffs.len() {
                 bi_coeffs[k] += &(r_q_polys[id].coeffs[k] * coeff);
             }
         }

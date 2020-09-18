@@ -17,8 +17,8 @@ use scheme::clinkv2::kzg10::*;
 use scheme::clinkv2::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 use scheme::clinkv2::{create_proof, verify_proof, ProvingAssignment};
 
-const MIMC_ROUNDS: usize = 25;
-const SAMPLES: usize = 16380; //1048576//131070;//1048570;//131070;//16380;//16380;//16384
+const MIMC_ROUNDS: usize = 5;
+const SAMPLES: usize = 8; //1048576//131070;//1048570;//131070;//16380;//16380;//16384
 
 /// This is an implementation of MiMC, specifically a
 /// variant named `LongsightF322p3` for BN-256.
@@ -166,12 +166,12 @@ fn mimc_clinkv2() {
     // Generate the MiMC round constants
     let constants = (0..MIMC_ROUNDS).map(|_| rng.gen()).collect::<Vec<_>>();
 
-    let n: usize = SAMPLES; //131070;//1048576
+    let n: usize = SAMPLES;
 
     println!("Running mimc_clinkv2...");
 
     //println!("Creating KZG10 parameters...");
-    let degree: usize = n.next_power_of_two() - 1;
+    let degree: usize = n.next_power_of_two();
     let mut crs_time = Duration::new(0, 0);
 
     // Create parameters for our circuit
