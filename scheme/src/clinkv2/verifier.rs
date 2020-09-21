@@ -9,11 +9,11 @@ use super::{
     as_bytes,
     kzg10::KZG10,
     r1cs::{Index, SynthesisError},
-    Proof, ProvingAssignment, VerifyKey,
+    Proof, VerifyAssignment, VerifyKey,
 };
 
 pub fn verify_proof<E: PairingEngine>(
-    circuit: &ProvingAssignment<E>,
+    circuit: &VerifyAssignment<E>,
     kzg10_vk: &VerifyKey<E>,
     proof: &Proof<E>,
     io: &Vec<Vec<E::Fr>>,

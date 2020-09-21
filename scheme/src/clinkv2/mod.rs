@@ -40,8 +40,7 @@ fn push_constraints<F: Field>(
     }
 }
 
-// #[derive(Default)]
-pub struct ProvingAssignment<E: PairingEngine> {
+pub struct ProveAssignment<E: PairingEngine> {
     // Constraints
     pub at: Vec<Vec<(E::Fr, Index)>>,
     pub bt: Vec<Vec<(E::Fr, Index)>>,
@@ -56,9 +55,9 @@ pub struct ProvingAssignment<E: PairingEngine> {
     pub(crate) aux_cur: usize,
 }
 
-impl<E: PairingEngine> Default for ProvingAssignment<E> {
-    fn default() -> ProvingAssignment<E> {
-        ProvingAssignment {
+impl<E: PairingEngine> Default for ProveAssignment<E> {
+    fn default() -> ProveAssignment<E> {
+        ProveAssignment {
             at: vec![],
             bt: vec![],
             ct: vec![],
@@ -78,7 +77,7 @@ fn as_bytes<T>(x: &T) -> &[u8] {
     unsafe { slice::from_raw_parts(x as *const T as *const u8, mem::size_of_val(x)) }
 }
 
-impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
+impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProveAssignment<E> {
     type Root = Self;
 
     #[inline]
@@ -135,6 +134,103 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
             self.io_cur += 1;
             Ok(Variable::new_unchecked(Index::Input(index)))
         }
+    }
+
+    #[inline]
+    fn enforce<A, AR, LA, LB, LC>(&mut self, _: A, a: LA, b: LB, c: LC)
+    where
+        A: FnOnce() -> AR,
+        AR: Into<String>,
+        LA: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
+        LB: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
+        LC: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
+    {
+        let num_constraints = self.num_constraints();
+
+        self.at.push(Vec::new());
+        self.bt.push(Vec::new());
+        self.ct.push(Vec::new());
+
+        push_constraints(a(LinearCombination::zero()), &mut self.at, num_constraints);
+        push_constraints(b(LinearCombination::zero()), &mut self.bt, num_constraints);
+        push_constraints(c(LinearCombination::zero()), &mut self.ct, num_constraints);
+    }
+
+    fn push_namespace<NR, N>(&mut self, _: N)
+    where
+        NR: Into<String>,
+        N: FnOnce() -> NR,
+    {
+        // Do nothing; we don't care about namespaces in this context.
+    }
+
+    fn pop_namespace(&mut self) {
+        // Do nothing; we don't care about namespaces in this context.
+    }
+
+    fn get_root(&mut self) -> &mut Self::Root {
+        self
+    }
+
+    fn num_constraints(&self) -> usize {
+        self.at.len()
+    }
+}
+
+pub struct VerifyAssignment<E: PairingEngine> {
+    // Constraints
+    pub at: Vec<Vec<(E::Fr, Index)>>,
+    pub bt: Vec<Vec<(E::Fr, Index)>>,
+    pub ct: Vec<Vec<(E::Fr, Index)>>,
+
+    // Assignments of variables
+    // Two-demension vector
+    pub input_assignment: Vec<Vec<E::Fr>>,
+    pub aux_assignment: Vec<Vec<E::Fr>>,
+
+    pub(crate) io_cur: usize,
+    pub(crate) aux_cur: usize,
+}
+
+impl<E: PairingEngine> Default for VerifyAssignment<E> {
+    fn default() -> VerifyAssignment<E> {
+        VerifyAssignment {
+            at: vec![],
+            bt: vec![],
+            ct: vec![],
+            input_assignment: vec![],
+            aux_assignment: vec![],
+            io_cur: 0usize,
+            aux_cur: 0usize,
+        }
+    }
+}
+
+impl<E: PairingEngine> ConstraintSystem<E::Fr> for VerifyAssignment<E> {
+    type Root = Self;
+
+    #[inline]
+    fn alloc<F, A, AR>(&mut self, _: A, _f: F, _i: usize) -> Result<Variable, SynthesisError>
+    where
+        F: FnOnce() -> Result<E::Fr, SynthesisError>,
+        A: FnOnce() -> AR,
+        AR: Into<String>,
+    {
+        let index = self.aux_cur;
+        self.aux_cur += 1;
+        Ok(Variable::new_unchecked(Index::Aux(index)))
+    }
+
+    #[inline]
+    fn alloc_input<F, A, AR>(&mut self, _: A, _f: F, _i: usize) -> Result<Variable, SynthesisError>
+    where
+        F: FnOnce() -> Result<E::Fr, SynthesisError>,
+        A: FnOnce() -> AR,
+        AR: Into<String>,
+    {
+        let index = self.io_cur;
+        self.io_cur += 1;
+        Ok(Variable::new_unchecked(Index::Input(index)))
     }
 
     #[inline]

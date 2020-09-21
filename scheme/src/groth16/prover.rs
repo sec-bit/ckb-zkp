@@ -1,3 +1,5 @@
+// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
+
 use math::{
     msm::VariableBaseMSM, AffineCurve, One, PairingEngine, PrimeField, ProjectiveCurve,
     UniformRand, Zero,
@@ -7,7 +9,6 @@ use rand::Rng;
 use crate::r1cs::{
     ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable,
 };
-// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
 
 use crate::{String, Vec};
 

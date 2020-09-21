@@ -15,24 +15,11 @@ use math::{test_rng, Field};
 // We'll use these interfaces to construct our circuit.
 use scheme::clinkv2::kzg10::*;
 use scheme::clinkv2::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
-use scheme::clinkv2::{create_proof, verify_proof, ProvingAssignment};
+use scheme::clinkv2::{create_proof, verify_proof, ProveAssignment, VerifyAssignment};
 
 const MIMC_ROUNDS: usize = 5;
 const SAMPLES: usize = 8; //1048576//131070;//1048570;//131070;//16380;//16380;//16384
 
-/// This is an implementation of MiMC, specifically a
-/// variant named `LongsightF322p3` for BN-256.
-/// See http://eprint.iacr.org/2016/492 for more
-/// information about this construction.
-///
-/// ```
-/// function LongsightF322p3(xL ⦂ Fp, xR ⦂ Fp) {
-///     for i from 0 up to 321 {
-///         xL, xR := xR + (xL + Ci)^3, xL
-///     }
-///     return xL
-/// }
-/// ```
 fn mimc<F: Field>(mut xl: F, mut xr: F, constants: &[F]) -> F {
     assert_eq!(constants.len(), MIMC_ROUNDS);
 
@@ -50,17 +37,12 @@ fn mimc<F: Field>(mut xl: F, mut xr: F, constants: &[F]) -> F {
     xl
 }
 
-/// This is our demo circuit for proving knowledge of the
-/// preimage of a MiMC hash invocation.
 struct MiMCDemo<'a, F: Field> {
     xl: Option<F>,
     xr: Option<F>,
     constants: &'a [F],
 }
 
-/// Our demo circuit implements this `Circuit` trait which
-/// is used during paramgen and proving in order to
-/// synthesize the constraint system.
 impl<'a, F: Field> ConstraintSynthesizer<F> for MiMCDemo<'a, F> {
     fn generate_constraints<CS: ConstraintSystem<F>>(
         self,
@@ -170,7 +152,7 @@ fn mimc_clinkv2() {
 
     println!("Running mimc_clinkv2...");
 
-    //println!("Creating KZG10 parameters...");
+    // println!("Creating KZG10 parameters...");
     let degree: usize = n.next_power_of_two();
     let mut crs_time = Duration::new(0, 0);
 
@@ -182,13 +164,11 @@ fn mimc_clinkv2() {
 
     crs_time += start.elapsed();
 
-    // Let's benchmark stuff!
-    let mut total_proving = Duration::new(0, 0);
-    let mut total_verifying = Duration::new(0, 0);
-
     println!("Start prove prepare...");
     // Prover
-    let mut prover_pa = ProvingAssignment::<Bn_256>::default();
+    let prove_start = Instant::now();
+
+    let mut prover_pa = ProveAssignment::<Bn_256>::default();
 
     let mut io: Vec<Vec<Fr>> = vec![];
     let mut output: Vec<Fr> = vec![];
@@ -200,7 +180,6 @@ fn mimc_clinkv2() {
         let image = mimc(xl, xr, &constants);
         output.push(image);
 
-        let start = Instant::now();
         {
             // Create an instance of our circuit (with the witness)
             let c = MiMCDemo {
@@ -210,60 +189,44 @@ fn mimc_clinkv2() {
             };
             c.generate_constraints(&mut prover_pa, i).unwrap();
         }
-        total_proving += start.elapsed();
     }
     let one = vec![Fr::one(); n];
     io.push(one);
     io.push(output);
 
-    println!("Start prove...");
-    let start = Instant::now();
+    println!("Create prove...");
     // Create a clinkv2 proof with our parameters.
     let proof = create_proof(&prover_pa, &kzg10_ck, rng).unwrap();
-    total_proving += start.elapsed();
-
-    println!("Start First verify...");
-    assert!(verify_proof(&prover_pa, &kzg10_vk, &proof, &io).unwrap());
+    let prove_time = prove_start.elapsed();
 
     // Verifier
-    println!("Start Secound verify prepare...");
+    println!("Start verify prepare...");
+    let verify_start = Instant::now();
 
-    let mut verifier_pa = ProvingAssignment::<Bn_256>::default();
+    let mut verifier_pa = VerifyAssignment::<Bn_256>::default();
 
-    let start = Instant::now();
+    // Create an instance of our circuit (with the witness)
+    let verify_c = MiMCDemo {
+        xl: None,
+        xr: None,
+        constants: &constants,
+    };
+    verify_c
+        .generate_constraints(&mut verifier_pa, 0usize)
+        .unwrap();
 
-    {
-        let xl = rng.gen();
-        let xr = rng.gen();
-        //let image = mimc(xl, xr, &constants);
+    println!("Start verify...");
 
-        let start = Instant::now();
-        {
-            // Create an instance of our circuit (with the witness)
-            let c = MiMCDemo {
-                xl: Some(xl),
-                xr: Some(xr),
-                constants: &constants,
-            };
-            c.generate_constraints(&mut verifier_pa, 0usize).unwrap();
-        }
-        total_proving += start.elapsed();
-    }
-
-    println!("Start Secound verify...");
     // Check the proof
     assert!(verify_proof(&verifier_pa, &kzg10_vk, &proof, &io).unwrap());
-    total_verifying += start.elapsed();
+    let verify_time = verify_start.elapsed();
 
     // Compute time
 
-    let proving_avg = total_proving; // / n as u32;
     let proving_avg =
-        proving_avg.subsec_nanos() as f64 / 1_000_000_000f64 + (proving_avg.as_secs() as f64);
-
-    let verifying_avg = total_verifying; // / n as u32;
+        prove_time.subsec_nanos() as f64 / 1_000_000_000f64 + (prove_time.as_secs() as f64);
     let verifying_avg =
-        verifying_avg.subsec_nanos() as f64 / 1_000_000_000f64 + (verifying_avg.as_secs() as f64);
+        verify_time.subsec_nanos() as f64 / 1_000_000_000f64 + (verify_time.as_secs() as f64);
     let crs_time = crs_time.subsec_nanos() as f64 / 1_000_000_000f64 + (crs_time.as_secs() as f64);
 
     println!("Generating CRS time: {:?}", crs_time);

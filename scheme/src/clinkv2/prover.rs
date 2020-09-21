@@ -14,11 +14,11 @@ use super::{
     as_bytes,
     kzg10::KZG10,
     r1cs::{Index, SynthesisError},
-    Proof, ProveKey, ProvingAssignment,
+    Proof, ProveAssignment, ProveKey,
 };
 
 pub fn create_proof<E: PairingEngine, R: Rng>(
-    circuit: &ProvingAssignment<E>,
+    circuit: &ProveAssignment<E>,
     kzg10_ck: &ProveKey<E>,
     rng: &mut R,
 ) -> Result<Proof<E>, SynthesisError> {
