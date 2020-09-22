@@ -45,30 +45,30 @@ pub fn prove_to_bytes<E: PairingEngine, R: Rng>(
 }
 
 /// standard interface for verify proof from bytes.
-// pub fn verify_from_bytes<E: PairingEngine>(
-//     assignment: &VerifyAssignment<E>,
-//     vk_bytes: &[u8],
-//     proof_bytes: &[u8],
-//     mut publics_bytes: &[u8],
-// ) -> Result<bool, SynthesisError> {
-//     let vk = VerifyKey::read(vk_bytes)?;
-//     let proof = Proof::read(proof_bytes)?;
-//     let mut publics = vec![];
-//     let publics_len = u32::read(&mut publics_bytes)?;
-//     for _ in 0..publics_len {
-//         let i = u32::read(&mut publics_bytes)?;
-//         let mut tmp_publics = vec![];
-//         for _ in 0..i {
-//             tmp_publics.push(E::Fr::read(&mut publics_bytes)?);
-//         }
-//         publics.push(tmp_publics);
-//     }
+pub fn verify_from_bytes<E: PairingEngine>(
+    assignment: &VerifyAssignment<E>,
+    vk_bytes: &[u8],
+    proof_bytes: &[u8],
+    mut publics_bytes: &[u8],
+) -> Result<bool, SynthesisError> {
+    let vk = VerifyKey::read(vk_bytes)?;
+    let proof = Proof::<E>::read(proof_bytes)?;
+    let mut publics = vec![];
+    let publics_len = u32::read(&mut publics_bytes)?;
+    for _ in 0..publics_len {
+        let i = u32::read(&mut publics_bytes)?;
+        let mut tmp_publics = vec![];
+        for _ in 0..i {
+            tmp_publics.push(E::Fr::read(&mut publics_bytes)?);
+        }
+        publics.push(tmp_publics);
+    }
 
-//     verify_proof::<E>(assignment, &vk, &proof, &publics)
-// }
+    verify_proof::<E>(assignment, &vk, &proof, &publics)
+}
 
 /// The proof in Clinkv2.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Proof<E: PairingEngine> {
     pub r_mid_comms: Vec<Kzg10Comm<E>>,
     pub q_comm: Kzg10Comm<E>,
@@ -111,13 +111,15 @@ impl<E: PairingEngine> FromBytes for Proof<E> {
         let r_mid_q_proof = Kzg10Proof::read(&mut reader)?;
         let opening_challenge = E::Fr::read(&mut reader)?;
 
-        Ok(Self {
+        let proof = Self {
             r_mid_comms,
             q_comm,
             r_mid_q_values,
             r_mid_q_proof,
             opening_challenge,
-        })
+        };
+
+        Ok(proof)
     }
 }
 

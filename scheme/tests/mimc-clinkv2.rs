@@ -8,14 +8,17 @@ use math::One;
 
 // Bring in some tools for using pairing-friendly curves
 use curve::bn_256::{Bn_256, Fr};
-use math::{test_rng, Field};
+use math::{test_rng, Field, ToBytes};
 
 // We're going to use the BN-256 pairing-friendly elliptic curve.
 
 // We'll use these interfaces to construct our circuit.
 use scheme::clinkv2::kzg10::*;
 use scheme::clinkv2::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
-use scheme::clinkv2::{create_random_proof, verify_proof, ProveAssignment, VerifyAssignment};
+use scheme::clinkv2::{
+    create_random_proof, prove_to_bytes, verify_from_bytes, verify_proof, ProveAssignment,
+    VerifyAssignment,
+};
 
 const MIMC_ROUNDS: usize = 5;
 const SAMPLES: usize = 8; //1048576//131070;//1048570;//131070;//16380;//16380;//16384
@@ -162,6 +165,9 @@ fn mimc_clinkv2() {
     let kzg10_pp = KZG10::<Bn_256>::setup(degree, false, &mut rng).unwrap();
     let (kzg10_ck, kzg10_vk) = KZG10::<Bn_256>::trim(&kzg10_pp, degree).unwrap();
 
+    let mut vk_bytes = vec![];
+    kzg10_vk.write(&mut vk_bytes).unwrap();
+
     crs_time += start.elapsed();
 
     println!("Start prove prepare...");
@@ -199,6 +205,9 @@ fn mimc_clinkv2() {
     let proof = create_random_proof(&prover_pa, &kzg10_ck, rng).unwrap();
     let prove_time = prove_start.elapsed();
 
+    let (proof_bytes, publics_bytes) = prove_to_bytes(&prover_pa, &kzg10_ck, rng, &io).unwrap();
+    println!("proof bytes: {}", proof_bytes.len());
+
     // Verifier
     println!("Start verify prepare...");
     let verify_start = Instant::now();
@@ -220,6 +229,10 @@ fn mimc_clinkv2() {
     // Check the proof
     assert!(verify_proof(&verifier_pa, &kzg10_vk, &proof, &io).unwrap());
     let verify_time = verify_start.elapsed();
+
+    println!("Start verify with bytes...");
+
+    assert!(verify_from_bytes(&verifier_pa, &vk_bytes, &proof_bytes, &publics_bytes,).unwrap());
 
     // Compute time
 

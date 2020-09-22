@@ -37,7 +37,7 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for Mini<F> {
 }
 
 #[test]
-fn test_mini_groth16() {
+fn mini_groth16() {
     use scheme::groth16::{
         create_random_proof, generate_random_parameters, verifier::prepare_verifying_key,
         verify_proof,
@@ -81,7 +81,7 @@ fn test_mini_groth16() {
 }
 
 #[test]
-fn test_mini_marlin() {
+fn mini_marlin() {
     use scheme::marlin::{create_random_proof, index, universal_setup, verify_proof};
 
     let rng = &mut test_rng();
@@ -112,7 +112,7 @@ fn test_mini_marlin() {
 }
 
 #[test]
-fn test_mini_bulletproofs() {
+fn mini_bulletproofs() {
     use scheme::bulletproofs::{create_random_proof, verify_proof};
 
     let rng = &mut test_rng();
@@ -195,7 +195,7 @@ impl<F: PrimeField> clinkv2_r1cs::ConstraintSynthesizer<F> for Clinkv2Mini<F> {
 }
 
 #[test]
-fn test_mini_clinkv2() {
+fn mini_clinkv2() {
     use scheme::clinkv2::{
         create_random_proof, kzg10::KZG10, r1cs::ConstraintSynthesizer, verify_proof,
         ProveAssignment, VerifyAssignment,
