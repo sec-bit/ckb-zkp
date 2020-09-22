@@ -1,19 +1,62 @@
-pub mod arithmetic_circuit;
-pub mod inner_product_proof;
+use math::{msm::VariableBaseMSM, Field, FromBytes, PairingEngine, PrimeField, ToBytes, Zero};
+use rand::Rng;
 
-use math::{msm::VariableBaseMSM, Field, PairingEngine, PrimeField, Zero};
-
-use crate::r1cs::{Index, LinearCombination};
+use crate::r1cs::{ConstraintSynthesizer, Index, LinearCombination, SynthesisError};
 use crate::Vec;
 
-#[cfg(test)]
-mod test;
+pub mod arithmetic_circuit;
+pub mod inner_product_proof;
 
 #[cfg(not(feature = "std"))]
 use alloc::collections::BTreeMap;
 
 #[cfg(feature = "std")]
 use std::collections::BTreeMap;
+
+/// standard interface for create proof.
+pub use arithmetic_circuit::create_random_proof;
+
+/// standard interface for verify proof.
+pub use arithmetic_circuit::verify_proof;
+
+pub use arithmetic_circuit::{Generators, Proof};
+
+/// standard interface for create proof and to bytes.
+pub fn prove_to_bytes<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, R: Rng>(
+    circuit: C,
+    rng: &mut R,
+    publics: &[E::Fr],
+) -> Result<(Vec<u8>, Vec<u8>), SynthesisError> {
+    let (gens, proof) = create_random_proof::<E, _, _>(circuit, rng)?;
+    let mut proof_bytes = vec![];
+    gens.write(&mut proof_bytes)?;
+    proof.write(&mut proof_bytes)?;
+    let mut publics_bytes = vec![];
+    (publics.len() as u32).write(&mut publics_bytes)?;
+    for i in publics {
+        i.write(&mut publics_bytes)?;
+    }
+
+    Ok((proof_bytes, publics_bytes))
+}
+
+/// standard interface for verify proof from bytes.
+pub fn verify_from_bytes<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>>(
+    circuit: C,
+    mut proof_bytes: &[u8],
+    mut publics_bytes: &[u8],
+) -> Result<bool, SynthesisError> {
+    let gens = Generators::<E>::read(&mut proof_bytes)?;
+    let proof = Proof::read(&mut proof_bytes)?;
+
+    let mut publics = vec![];
+    let publics_len = u32::read(&mut publics_bytes)?;
+    for _ in 0..publics_len {
+        publics.push(E::Fr::read(&mut publics_bytes)?);
+    }
+
+    verify_proof(circuit, &gens, &proof, &publics)
+}
 
 // Q (vector, zQ) * Qxn (matrix, WL, WR, WO) = n (vector, zQW)
 pub fn vector_matrix_product<E: PairingEngine>(v: &Vec<E::Fr>, m: &Vec<Vec<E::Fr>>) -> Vec<E::Fr> {

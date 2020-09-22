@@ -35,7 +35,7 @@ use std::{
     vec::Vec,
 };
 
-#[cfg(any(feature = "groth16", feature = "marlin"))]
+#[cfg(any(feature = "groth16", feature = "marlin", feature = "clinkv2"))]
 #[macro_use]
 extern crate math;
 

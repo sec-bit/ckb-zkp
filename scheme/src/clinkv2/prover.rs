@@ -2,7 +2,7 @@ use merlin::Transcript;
 use rand::Rng;
 
 // DEV
-use std::time::{Duration, Instant};
+//use std::time::{Duration, Instant};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -17,7 +17,7 @@ use super::{
     Proof, ProveAssignment, ProveKey,
 };
 
-pub fn create_proof<E: PairingEngine, R: Rng>(
+pub fn create_random_proof<E: PairingEngine, R: Rng>(
     circuit: &ProveAssignment<E>,
     kzg10_ck: &ProveKey<E>,
     rng: &mut R,
@@ -51,17 +51,17 @@ pub fn create_proof<E: PairingEngine, R: Rng>(
     let one = E::Fr::one();
     let hiding_bound = Some(2);
 
-    let mut rj_commit_time = Duration::new(0, 0);
-    let mut rj_ifft_time = Duration::new(0, 0);
+    //let mut rj_commit_time = Duration::new(0, 0);
+    //let mut rj_ifft_time = Duration::new(0, 0);
 
     for j in 0..m_io {
-        let start = Instant::now();
+        //let start = Instant::now();
 
         // println!("circuit.input_assignment: {:?}", &circuit.input_assignment);
         let rj_coeffs = domain.ifft(&circuit.input_assignment[j]);
         // println!("rj_coeffs: {:?}", rj_coeffs);
 
-        rj_ifft_time += start.elapsed();
+        //rj_ifft_time += start.elapsed();
 
         let rj_poly = DensePolynomial::from_coefficients_vec(rj_coeffs);
         r_q_polys.push(rj_poly);
@@ -69,11 +69,11 @@ pub fn create_proof<E: PairingEngine, R: Rng>(
 
     for j in 0..m_mid {
         // IFFT
-        let start = Instant::now();
+        //let start = Instant::now();
 
         let rj_coeffs = domain.ifft(&circuit.aux_assignment[j]);
 
-        rj_ifft_time += start.elapsed();
+        //rj_ifft_time += start.elapsed();
 
         let mut rj_poly = DensePolynomial::from_coefficients_vec(rj_coeffs);
 
@@ -83,15 +83,15 @@ pub fn create_proof<E: PairingEngine, R: Rng>(
         let vanishing_poly = domain.vanishing_polynomial();
         rj_poly += &(&rho_poly * &vanishing_poly.into());
 
-        let start2 = Instant::now();
+        //let start2 = Instant::now();
         let (rj_comm, rj_rand) = KZG10::<E>::commit(&kzg10_ck, &rj_poly, hiding_bound, Some(rng))?;
-        rj_commit_time += start2.elapsed();
+        //rj_commit_time += start2.elapsed();
         r_q_polys.push(rj_poly);
         r_mid_comms.push(rj_comm);
         r_mid_q_rands.push(rj_rand);
     }
-    println!("rj_ifft_time: {:?}", rj_ifft_time);
-    println!("rj_commit_time: {:?}", rj_commit_time);
+    //println!("rj_ifft_time: {:?}", rj_ifft_time);
+    //println!("rj_commit_time: {:?}", rj_commit_time);
 
     transcript.append_message(b"witness polynomial commitments", as_bytes(&r_mid_comms));
 
@@ -106,9 +106,9 @@ pub fn create_proof<E: PairingEngine, R: Rng>(
 
     let mut eta_i = one;
 
-    let mut q_commit_time = Duration::new(0, 0);
-    let mut abci_fft_time = Duration::new(0, 0);
-    let start = Instant::now();
+    //let mut q_commit_time = Duration::new(0, 0);
+    //let mut abci_fft_time = Duration::new(0, 0);
+    //let start = Instant::now();
 
     // println!("r_q_polys: {:?} * {:?}", &r_q_polys.len(), &r_q_polys[0].len());
     // println!("r_q_polys: {:?}", &r_q_polys);
@@ -187,18 +187,18 @@ pub fn create_proof<E: PairingEngine, R: Rng>(
     domain.divide_by_vanishing_poly_on_coset_in_place(&mut sum_coset_ab);
     domain.coset_ifft_in_place(&mut sum_coset_ab);
 
-    abci_fft_time += start.elapsed();
-    println!("abci_fft_time: {:?}", abci_fft_time);
+    //abci_fft_time += start.elapsed();
+    //println!("abci_fft_time: {:?}", abci_fft_time);
 
     let q_poly = DensePolynomial::from_coefficients_vec(sum_coset_ab);
 
     // Commit to quotient polynomial
-    let start2 = Instant::now();
+    //let start2 = Instant::now();
 
     let (q_comm, q_rand) = KZG10::<E>::commit(&kzg10_ck, &q_poly, hiding_bound, Some(rng))?;
 
-    q_commit_time += start2.elapsed();
-    println!("q_commit_time: {:?}", q_commit_time);
+    //q_commit_time += start2.elapsed();
+    //println!("q_commit_time: {:?}", q_commit_time);
 
     transcript.append_message(b"quotient polynomial commitments", as_bytes(&q_comm));
 
@@ -211,8 +211,8 @@ pub fn create_proof<E: PairingEngine, R: Rng>(
     r_q_polys.push(q_poly);
     r_mid_q_rands.push(q_rand);
 
-    let mut open_r_mid_q_time = Duration::new(0, 0);
-    let start = Instant::now();
+    //let mut open_r_mid_q_time = Duration::new(0, 0);
+    //let start = Instant::now();
 
     for j in 0..(m_mid + 1) {
         let value = r_q_polys[j + m_io].evaluate(zeta);
@@ -228,8 +228,8 @@ pub fn create_proof<E: PairingEngine, R: Rng>(
         &r_mid_q_rands,
     )?;
 
-    open_r_mid_q_time += start.elapsed();
-    println!("open_r_mid_q_time: {:?}", open_r_mid_q_time);
+    //open_r_mid_q_time += start.elapsed();
+    //println!("open_r_mid_q_time: {:?}", open_r_mid_q_time);
 
     let proof = Proof {
         r_mid_comms,

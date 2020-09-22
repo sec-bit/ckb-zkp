@@ -1,5 +1,3 @@
-// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
-
 use math::{
     msm::VariableBaseMSM, AffineCurve, One, PairingEngine, PrimeField, ProjectiveCurve,
     UniformRand, Zero,
@@ -99,8 +97,8 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
 }
 
 pub fn create_random_proof<E, C, R>(
-    circuit: C,
     params: &Parameters<E>,
+    circuit: C,
     rng: &mut R,
 ) -> Result<Proof<E>, SynthesisError>
 where
@@ -111,23 +109,23 @@ where
     let r = E::Fr::rand(rng);
     let s = E::Fr::rand(rng);
 
-    create_proof::<E, C>(circuit, params, r, s)
+    create_proof::<E, C>(params, circuit, r, s)
 }
 
 pub fn create_proof_no_zk<E, C>(
-    circuit: C,
     params: &Parameters<E>,
+    circuit: C,
 ) -> Result<Proof<E>, SynthesisError>
 where
     E: PairingEngine,
     C: ConstraintSynthesizer<E::Fr>,
 {
-    create_proof::<E, C>(circuit, params, E::Fr::zero(), E::Fr::zero())
+    create_proof::<E, C>(params, circuit, E::Fr::zero(), E::Fr::zero())
 }
 
 pub fn create_proof<E, C>(
-    circuit: C,
     params: &Parameters<E>,
+    circuit: C,
     r: E::Fr,
     s: E::Fr,
 ) -> Result<Proof<E>, SynthesisError>

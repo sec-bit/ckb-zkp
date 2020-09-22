@@ -7,8 +7,10 @@
 
 use math::{
     fft::DensePolynomial as Polynomial,
+    io::Result as IoResult,
     msm::{FixedBaseMSM, VariableBaseMSM},
-    AffineCurve, Field, Group, One, PairingEngine, PrimeField, ProjectiveCurve, ToBytes,
+    serialize::*,
+    AffineCurve, Field, FromBytes, Group, One, PairingEngine, PrimeField, ProjectiveCurve, ToBytes,
     UniformRand, Zero,
 };
 
@@ -93,6 +95,39 @@ pub struct VerifierKey<E: PairingEngine> {
     pub prepared_beta_h: E::G2Prepared,
 }
 
+impl<E: PairingEngine> ToBytes for VerifierKey<E> {
+    #[inline]
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.g.write(&mut writer)?;
+        self.gamma_g.write(&mut writer)?;
+        self.h.write(&mut writer)?;
+        self.beta_h.write(&mut writer)?;
+        self.prepared_h.write(&mut writer)?;
+        self.prepared_beta_h.write(&mut writer)
+    }
+}
+
+impl<E: PairingEngine> FromBytes for VerifierKey<E> {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let g = E::G1Affine::read(&mut reader)?;
+        let gamma_g = E::G1Affine::read(&mut reader)?;
+        let h = E::G2Affine::read(&mut reader)?;
+        let beta_h = E::G2Affine::read(&mut reader)?;
+        let prepared_h = E::G2Prepared::read(&mut reader)?;
+        let prepared_beta_h = E::G2Prepared::read(&mut reader)?;
+
+        Ok(Self {
+            g,
+            gamma_g,
+            h,
+            beta_h,
+            prepared_h,
+            prepared_beta_h,
+        })
+    }
+}
+
 /// `Commitment` commits to a polynomial. It is output by `KZG10::commit`.
 #[derive(Derivative)]
 #[derivative(
@@ -111,8 +146,16 @@ pub struct Commitment<E: PairingEngine>(
 
 impl<E: PairingEngine> ToBytes for Commitment<E> {
     #[inline]
-    fn write<W: math::io::Write>(&self, writer: W) -> math::io::Result<()> {
-        self.0.write(writer)
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.0.write(&mut writer)
+    }
+}
+
+impl<E: PairingEngine> FromBytes for Commitment<E> {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let g = E::G1Affine::read(&mut reader)?;
+        Ok(Self(g))
     }
 }
 
@@ -249,12 +292,26 @@ impl<E: PairingEngine> Proof<E> {
 
 impl<E: PairingEngine> ToBytes for Proof<E> {
     #[inline]
-    fn write<W: math::io::Write>(&self, mut writer: W) -> math::io::Result<()> {
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.w.write(&mut writer)?;
+        let v_exists = self.random_v.is_some();
+        v_exists.write(&mut writer)?;
         self.random_v
             .as_ref()
             .unwrap_or(&E::Fr::zero())
             .write(&mut writer)
+    }
+}
+
+impl<E: PairingEngine> FromBytes for Proof<E> {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let w = E::G1Affine::read(&mut reader)?;
+        let v_exists = bool::read(&mut reader)?;
+        let random_value = E::Fr::read(&mut reader)?;
+        let random_v = if v_exists { Some(random_value) } else { None };
+
+        Ok(Self { w, random_v })
     }
 }
 

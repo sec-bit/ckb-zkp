@@ -15,7 +15,7 @@ use math::{test_rng, Field};
 // We'll use these interfaces to construct our circuit.
 use scheme::clinkv2::kzg10::*;
 use scheme::clinkv2::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
-use scheme::clinkv2::{create_proof, verify_proof, ProveAssignment, VerifyAssignment};
+use scheme::clinkv2::{create_random_proof, verify_proof, ProveAssignment, VerifyAssignment};
 
 const MIMC_ROUNDS: usize = 5;
 const SAMPLES: usize = 8; //1048576//131070;//1048570;//131070;//16380;//16380;//16384
@@ -196,7 +196,7 @@ fn mimc_clinkv2() {
 
     println!("Create prove...");
     // Create a clinkv2 proof with our parameters.
-    let proof = create_proof(&prover_pa, &kzg10_ck, rng).unwrap();
+    let proof = create_random_proof(&prover_pa, &kzg10_ck, rng).unwrap();
     let prove_time = prove_start.elapsed();
 
     // Verifier

@@ -16,7 +16,7 @@ parallel = ["std", "rayon", "math/parallel"]
 groth16 = []
 bulletproofs = ["merlin"]
 marlin = ["rand_chacha", "merlin"]
-clinkv2 = []
+clinkv2 = ["merlin"]
 
 [dependencies]
 math = { path = "../math", default-features = false, features = [ "derive" ] }
