@@ -1,6 +1,8 @@
 use math::{FpParameters, PrimeField};
 use scheme::r1cs::{ConstraintSystem, LinearCombination, SynthesisError, Variable};
 
+use crate::String;
+
 pub struct MultiEq<F: PrimeField, CS: ConstraintSystem<F>> {
     cs: CS,
     ops: usize,

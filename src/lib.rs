@@ -10,10 +10,10 @@ pub use scheme;
 extern crate alloc;
 
 #[cfg(not(feature = "std"))]
-use alloc::vec::Vec;
+use alloc::{string::String, vec::Vec};
 
 #[cfg(feature = "std")]
-use std::vec::Vec;
+use std::{string::String, vec::Vec};
 
 /// gadgets can used in circuits.
 pub mod gadgets;
@@ -27,6 +27,7 @@ pub mod circuits;
 pub enum Scheme {
     Groth16,
     Bulletproofs,
+    Marlin,
 }
 
 impl Scheme {
@@ -34,6 +35,7 @@ impl Scheme {
         match self {
             Scheme::Groth16 => 0,
             Scheme::Bulletproofs => 1,
+            Scheme::Marlin => 2,
         }
     }
 
@@ -41,6 +43,7 @@ impl Scheme {
         match bytes {
             0u8 => Ok(Scheme::Groth16),
             1u8 => Ok(Scheme::Bulletproofs),
+            2u8 => Ok(Scheme::Marlin),
             _ => Err(()),
         }
     }
@@ -49,6 +52,7 @@ impl Scheme {
         match self {
             Scheme::Groth16 => "groth16",
             Scheme::Bulletproofs => "bulletproofs",
+            Scheme::Marlin => "marlin",
         }
     }
 
@@ -56,6 +60,7 @@ impl Scheme {
         match s {
             "groth16" => Ok(Scheme::Groth16),
             "bulletproofs" => Ok(Scheme::Bulletproofs),
+            "marlin" => Ok(Scheme::Marlin),
             _ => Err(()),
         }
     }
@@ -102,372 +107,147 @@ impl Curve {
     }
 }
 
-/// Supported use-friendly circuitss for zkp.
-/// Now include: MiMC hash proof.
-#[derive(Debug)]
-pub enum Circuit {
-    Mini(u32, u32, u32),
-    /// pre-image content (plaintext).
-    MiMC(Vec<u8>),
-    /// secret num, public compared num. secret > public.
-    GreaterThan(u64, u64),
-    /// secret num, public compared num. secret < public.
-    LessThan(u64, u64),
-    /// secret num, public compared nums. public_a < secret < public_b.
-    Between(u64, u64, u64),
-}
-
-impl Circuit {
-    pub fn to_byte(self) -> Vec<u8> {
-        let mut bytes = vec![];
-        match self {
-            Circuit::MiMC(mut p) => {
-                bytes.extend_from_slice(&0u16.to_le_bytes());
-                bytes.extend_from_slice(&(p.len() as u64).to_le_bytes());
-                bytes.append(&mut p);
-            }
-            _ => {}
-        }
-        bytes
-    }
-
-    pub fn from_byte(bytes: &[u8]) -> Result<Self, ()> {
-        if bytes.len() < 2 {
-            return Err(());
-        }
-
-        let mut g_len = [0u8; 2];
-        let (g, bytes) = bytes.split_at(2);
-        g_len.copy_from_slice(g);
-
-        match u16::from_le_bytes(g_len) {
-            0u16 => {
-                let (len_bytes, bytes) = bytes.split_at(8);
-                let mut tmp_len = [0u8; 8];
-                tmp_len.copy_from_slice(len_bytes);
-                let bytes_len = u64::from_le_bytes(tmp_len) as usize;
-                if bytes.len() < bytes_len {
-                    return Err(());
-                }
-                Ok(Circuit::MiMC(bytes[..bytes_len].to_vec()))
-            }
-            _ => Err(()),
-        }
-    }
-}
-
-/// CircuitProof enum type. It include circuits's parameters and SchemeProof type.
-#[derive(Debug)]
-pub enum CircuitProof {
-    Mini(u32, Vec<u8>),
-    /// MiMC hash value, and proof.
-    MiMC(Vec<u8>, Vec<u8>),
-    /// compared num, and proof.
-    GreaterThan(u64, Vec<u8>),
-    /// compared num, and proof.
-    LessThan(u64, Vec<u8>),
-    /// compared left num and right num, and proof.
-    Between(u64, u64, Vec<u8>),
-}
-
-impl CircuitProof {
-    pub fn to_bytes(self) -> Vec<u8> {
-        let mut bytes = vec![];
-        match self {
-            CircuitProof::Mini(e, mut s) => {
-                bytes.extend_from_slice(&4u16.to_le_bytes());
-                bytes.append(&mut e.to_le_bytes().to_vec());
-                bytes.append(&mut s);
-            }
-            CircuitProof::MiMC(mut e, mut s) => {
-                bytes.extend_from_slice(&0u16.to_le_bytes());
-                bytes.append(&mut (e.len() as u32).to_le_bytes().to_vec());
-                bytes.append(&mut e);
-                bytes.append(&mut s);
-            } // ADD OTHER CIRCUITS
-            CircuitProof::GreaterThan(n, mut p) => {
-                bytes.extend_from_slice(&1u16.to_le_bytes());
-                bytes.extend_from_slice(&n.to_le_bytes());
-                bytes.append(&mut p);
-            }
-            CircuitProof::LessThan(n, mut p) => {
-                bytes.extend_from_slice(&2u16.to_le_bytes());
-                bytes.extend_from_slice(&n.to_le_bytes());
-                bytes.append(&mut p);
-            }
-            CircuitProof::Between(l, r, mut p) => {
-                bytes.extend_from_slice(&3u16.to_le_bytes());
-                bytes.extend_from_slice(&l.to_le_bytes());
-                bytes.extend_from_slice(&r.to_le_bytes());
-                bytes.append(&mut p);
-            }
-        }
-
-        bytes
-    }
-
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, ()> {
-        if bytes.len() < 2 {
-            return Err(());
-        }
-
-        let mut g_len = [0u8; 2];
-        let (g, bytes) = bytes.split_at(2);
-        g_len.copy_from_slice(g);
-
-        match u16::from_le_bytes(g_len) {
-            0u16 => {
-                let mut h_len_bytes = [0u8; 4];
-                let (h_len_b, bytes) = bytes.split_at(4);
-                h_len_bytes.copy_from_slice(h_len_b);
-                let h_len = u32::from_le_bytes(h_len_bytes);
-                let (h, p) = bytes.split_at(h_len as usize);
-                Ok(CircuitProof::MiMC(h.to_vec(), p.to_vec()))
-            }
-            1u16 => {
-                let mut n_bytes = [0u8; 8];
-                let (n_b, bytes) = bytes.split_at(8);
-                n_bytes.copy_from_slice(n_b);
-                let n = u64::from_le_bytes(n_bytes);
-                Ok(CircuitProof::GreaterThan(n, bytes.to_vec()))
-            }
-            2u16 => {
-                let mut n_bytes = [0u8; 8];
-                let (n_b, bytes) = bytes.split_at(8);
-                n_bytes.copy_from_slice(n_b);
-                let n = u64::from_le_bytes(n_bytes);
-                Ok(CircuitProof::LessThan(n, bytes.to_vec()))
-            }
-            3u16 => {
-                let mut l_bytes = [0u8; 8];
-                let (l_b, bytes) = bytes.split_at(8);
-                l_bytes.copy_from_slice(l_b);
-                let l = u64::from_le_bytes(l_bytes);
-                let mut r_bytes = [0u8; 8];
-                let (r_b, bytes) = bytes.split_at(8);
-                r_bytes.copy_from_slice(r_b);
-                let r = u64::from_le_bytes(r_bytes);
-                Ok(CircuitProof::Between(l, r, bytes.to_vec()))
-            }
-            4u16 => {
-                let mut l_bytes = [0u8; 4];
-                let (l_b, bytes) = bytes.split_at(4);
-                l_bytes.copy_from_slice(l_b);
-                let l = u32::from_le_bytes(l_bytes);
-                Ok(CircuitProof::Mini(l, bytes.to_vec()))
-            }
-            _ => Err(()),
-        }
-    }
-}
-
-/// Proof struct type. It include used circuits, scheme, curve enum, and CircuitProof type.
-#[derive(Debug)]
-pub struct Proof {
-    pub s: Scheme,
-    pub c: Curve,
-    pub p: CircuitProof,
-}
-
-impl Proof {
-    pub fn to_bytes(self) -> Vec<u8> {
-        let mut bytes = vec![];
-        bytes.push(self.s.to_byte());
-        bytes.push(self.c.to_byte());
-        bytes.append(&mut self.p.to_bytes());
-        bytes
-    }
-
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, ()> {
-        if bytes.len() < 2 {
-            return Err(());
-        }
-
-        let s = Scheme::from_byte(bytes[0])?;
-        let c = Curve::from_byte(bytes[1])?;
-        let p = CircuitProof::from_bytes(&bytes[2..])?;
-
-        Ok(Self { s, c, p })
-    }
-
-    pub fn to_hex() {
-        todo!();
-    }
-
-    pub fn from_hex() {
-        todo!();
-    }
-}
-
-macro_rules! handle_curve_prove {
-    ($func_name:ident, $rng_name:ident, $c:expr, $g:expr, $pk:expr, $rng:expr) => {
-        match $c {
-            Curve::Bls12_381 => {
-                #[cfg(not(feature = "bls12_381"))]
-                panic!("Cound not found bls12_381 feature");
-
-                #[cfg(feature = "bls12_381")]
-                $func_name::<curve::Bls12_381, $rng_name>($g, $pk, $rng)
-            }
-            Curve::Bn_256 => {
-                #[cfg(not(feature = "bn_256"))]
-                panic!("Cound not found bn_256 feature");
-
-                #[cfg(feature = "bn_256")]
-                $func_name::<curve::Bn_256, $rng_name>($g, $pk, $rng)
-            }
-        }
-    };
-}
-
-macro_rules! handle_circuit_prove {
-    ($circuit:ident, $rng_name:ident, $s:expr, $c:expr, $g:expr, $pk:expr, $rng:expr) => {
-        match $s {
-            Scheme::Groth16 => {
-                #[cfg(not(feature = "groth16"))]
-                panic!("Cound not found groth16 feature");
-
-                #[cfg(feature = "groth16")]
-                {
-                    use $circuit::groth16_prove;
-                    handle_curve_prove!(groth16_prove, $rng_name, $c, $g, $pk, $rng)
-                }
-            }
-            Scheme::Bulletproofs => {
-                #[cfg(not(feature = "bulletproofs"))]
-                panic!("Cound not found bulletproofs feature");
-
-                #[cfg(feature = "bulletproofs")]
-                {
-                    use $circuit::bulletproofs_prove;
-                    handle_curve_prove!(bulletproofs_prove, $rng_name, $c, $g, $pk, $rng)
-                }
-            }
-        }
-    };
-}
-
-macro_rules! handle_curve_verify {
-    ($func_name:ident, $c:expr, $gp:expr, $vk:expr, $pp:expr) => {
-        match $c {
-            Curve::Bls12_381 => {
-                #[cfg(not(feature = "bls12_381"))]
-                panic!("Cound not found bls12_381 feature");
-
-                #[cfg(feature = "bls12_381")]
-                $func_name::<curve::Bls12_381>($gp, $vk, $pp).unwrap_or(false)
-            }
-            Curve::Bn_256 => {
-                #[cfg(not(feature = "bn_256"))]
-                panic!("Cound not found bn_256 feature");
-
-                #[cfg(feature = "bn_256")]
-                $func_name::<curve::Bn_256>($gp, $vk, $pp).unwrap_or(false)
-            }
-        }
-    };
-}
-
-macro_rules! handle_circuit_verify {
-    ($circuit:ident, $s:expr, $c:expr, $gp:expr, $vk:expr, $pp:expr) => {
-        match $s {
-            Scheme::Groth16 => {
-                #[cfg(not(feature = "groth16"))]
-                panic!("Cound not found groth16 feature");
-
-                #[cfg(feature = "groth16")]
-                {
-                    use $circuit::groth16_verify;
-                    handle_curve_verify!(groth16_verify, $c, $gp, $vk, $pp)
-                }
-            }
-            Scheme::Bulletproofs => {
-                #[cfg(not(feature = "bulletproofs"))]
-                panic!("Cound not found bulletproofs feature");
-
-                #[cfg(feature = "bulletproofs")]
-                {
-                    use $circuit::bulletproofs_verify;
-                    handle_curve_verify!(bulletproofs_verify, $c, $gp, $vk, $pp)
-                }
-            }
-        }
-    };
-}
-
-use circuits::mimc;
-use circuits::mini;
-use circuits::rangeproof;
+#[allow(unused_imports)] // for when no-default-features
+use math::{FromBytes, PairingEngine, ToBytes};
+use scheme::r1cs::ConstraintSynthesizer;
 
 /// main prove functions.
-/// it will return Proof struct.
-pub fn prove<R: rand::Rng>(
-    g: Circuit,
+/// it will return Proof bytes struct.
+#[allow(unused_mut)] // for when no-default-features
+#[allow(unused_variables)] // for when no-default-features
+pub fn prove_to_bytes<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, R: rand::Rng>(
     s: Scheme,
-    c: Curve,
     pk: &[u8],
-    rng: R,
-) -> Result<Proof, ()> {
-    let p = match g {
-        Circuit::Mini(..) => handle_circuit_prove!(mini, R, s, c, &g, pk, rng)?,
-        Circuit::MiMC(..) => handle_circuit_prove!(mimc, R, s, c, &g, pk, rng)?,
-        Circuit::GreaterThan(..) | Circuit::LessThan(..) | Circuit::Between(..) => {
-            handle_circuit_prove!(rangeproof, R, s, c, &g, pk, rng)?
-        }
-    };
-
-    Ok(Proof { s, c, p })
-}
-
-/// main prove functions, use Bytes.
-/// it will return Proof's Bytes.
-pub fn prove_to_bytes<R: rand::Rng>(
-    g: Circuit,
-    s: Scheme,
-    c: Curve,
-    pk: &[u8],
-    rng: R,
+    circuit: C,
+    mut rng: R,
 ) -> Result<Vec<u8>, ()> {
-    prove(g, s, c, pk, rng).map(|p| p.to_bytes())
-}
+    match s {
+        #[cfg(feature = "groth16")]
+        Scheme::Groth16 => {
+            use scheme::groth16::{create_random_proof, Parameters};
+            let params = Parameters::<E>::read(pk).map_err(|_| ())?;
+            let proof = create_random_proof(circuit, &params, &mut rng).map_err(|_| ())?;
 
-/// main verify functions.
-/// it will return bool.
-pub fn verify(proof: Proof, vk: &[u8]) -> bool {
-    match proof.p {
-        CircuitProof::Mini(..) => {
-            handle_circuit_verify!(mini, proof.s, proof.c, proof.p, vk, false)
+            let mut p_bytes = Vec::new();
+            proof.write(&mut p_bytes).map_err(|_| ())?;
+            Ok(p_bytes)
         }
-        CircuitProof::MiMC(..) => {
-            handle_circuit_verify!(mimc, proof.s, proof.c, proof.p, vk, false)
+        #[cfg(feature = "bulletproofs")]
+        Scheme::Bulletproofs => {
+            use scheme::bulletproofs::arithmetic_circuit::create_proof;
+            let (generators, r1cs_circuit, proof, _assignment) =
+                create_proof::<E, C, R>(circuit, &mut rng).map_err(|_| ())?;
+
+            let mut p_bytes = Vec::new();
+            generators.write(&mut p_bytes).map_err(|_| ())?;
+            r1cs_circuit.write(&mut p_bytes).map_err(|_| ())?;
+            proof.write(&mut p_bytes).map_err(|_| ())?;
+            Ok(p_bytes)
         }
-        CircuitProof::GreaterThan(..) | CircuitProof::LessThan(..) | CircuitProof::Between(..) => {
-            handle_circuit_verify!(rangeproof, proof.s, proof.c, proof.p, vk, false)
+        #[cfg(feature = "marlin")]
+        Scheme::Marlin => {
+            use scheme::marlin::{prove, IndexProverKey};
+            let ipk = IndexProverKey::<E>::read(pk).map_err(|_| ())?;
+            let proof = prove(&ipk, circuit, &mut rng).map_err(|_| ())?;
+
+            let mut p_bytes = Vec::new();
+            proof.write(&mut p_bytes).map_err(|_| ())?;
+            Ok(p_bytes)
         }
+        #[cfg(any(
+            not(feature = "groth16"),
+            not(feature = "bulletproofs"),
+            not(feature = "marlin")
+        ))]
+        _ => Err(()),
     }
 }
 
 /// main verify functions, use Bytes.
 /// it will return bool.
-pub fn verify_from_bytes(bytes: &[u8], vk: &[u8]) -> bool {
-    if let Ok(proof) = Proof::from_bytes(bytes) {
-        return verify(proof, vk);
-    }
-
-    return false;
-}
-
-/// main verify functions, use Bytes.
-/// it will return bool.
-pub fn verify_with_prepare(bytes: &[u8], pvk: &[u8]) -> bool {
-    if let Ok(proof) = Proof::from_bytes(bytes) {
-        match proof.p {
-            CircuitProof::MiMC(..) => {
-                handle_circuit_verify!(mimc, proof.s, proof.c, proof.p, pvk, true)
+#[allow(unused_mut)] // for when no-default-features
+#[allow(unused_variables)] // for when no-default-features
+pub fn verify_from_bytes<E: PairingEngine>(
+    s: Scheme,
+    vk_bytes: &[u8],
+    mut proof_bytes: &[u8],
+    mut publics_bytes: &[u8],
+) -> Result<bool, ()> {
+    match s {
+        #[cfg(feature = "groth16")]
+        Scheme::Groth16 => {
+            use scheme::groth16::{prepare_verifying_key, verify_proof, Proof, VerifyingKey};
+            let proof = Proof::<E>::read(proof_bytes).map_err(|_| ())?;
+            let vk = VerifyingKey::<E>::read(vk_bytes).map_err(|_| ())?;
+            let pvk = prepare_verifying_key(&vk);
+            let publics_len = u32::read(&mut publics_bytes).map_err(|_| ())?;
+            let mut publics = Vec::new();
+            for _ in 0..publics_len {
+                publics.push(E::Fr::read(publics_bytes).map_err(|_| ())?);
             }
-            _ => false,
+            verify_proof(&pvk, &proof, &publics).map_err(|_| ())
         }
-    } else {
-        false
+        #[cfg(feature = "bulletproofs")]
+        Scheme::Bulletproofs => {
+            use scheme::bulletproofs::arithmetic_circuit::{
+                verify_proof, Generators, Proof, R1csCircuit,
+            };
+            let generators = Generators::<E>::read(&mut proof_bytes).map_err(|_| ())?;
+            let r1cs_circuit = R1csCircuit::<E>::read(&mut proof_bytes).map_err(|_| ())?;
+            let proof = Proof::<E>::read(&mut proof_bytes).map_err(|_| ())?;
+
+            let publics_len = u32::read(&mut publics_bytes).map_err(|_| ())?;
+            let mut publics = Vec::new();
+            for _ in 0..publics_len {
+                publics.push(E::Fr::read(&mut publics_bytes).map_err(|_| ())?);
+            }
+
+            Ok(verify_proof(&generators, &proof, &r1cs_circuit, &publics))
+        }
+        #[cfg(feature = "marlin")]
+        Scheme::Marlin => {
+            use scheme::marlin::{verify, IndexVerifierKey, Proof};
+
+            let proof = Proof::<E>::read(proof_bytes).map_err(|_| ())?;
+            let vk = IndexVerifierKey::<E>::read(vk_bytes).unwrap();
+
+            let publics_len = u32::read(&mut publics_bytes).map_err(|_| ())?;
+            let mut publics = Vec::new();
+            for _ in 0..publics_len {
+                publics.push(E::Fr::read(&mut publics_bytes).map_err(|_| ())?);
+            }
+
+            verify(&vk, &proof, &publics).map_err(|_| ())
+        }
+        #[cfg(any(
+            not(feature = "groth16"),
+            not(feature = "bulletproofs"),
+            not(feature = "marlin")
+        ))]
+        _ => Err(()),
+    }
+}
+
+/// main verify functions, use curve.
+/// it will return bool.
+#[allow(unused_variables)] // for when no-default-features
+pub fn verify_from_bytes_with_curve(
+    c: Curve,
+    s: Scheme,
+    vk: &[u8],
+    proof: &[u8],
+    public: &[u8],
+) -> Result<bool, ()> {
+    if public.len() == 0 {
+        return Err(());
+    }
+
+    match c {
+        #[cfg(feature = "bn_256")]
+        Curve::Bn_256 => verify_from_bytes::<curve::Bn_256>(s, vk, proof, public),
+        #[cfg(feature = "bls12_381")]
+        Curve::Bls12_381 => verify_from_bytes::<curve::Bls12_381>(s, vk, proof, public),
+        #[cfg(any(not(feature = "bn_256"), not(feature = "bls12_381"),))]
+        _ => Err(()),
     }
 }

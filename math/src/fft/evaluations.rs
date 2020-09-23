@@ -15,6 +15,31 @@ pub struct Evaluations<F: PrimeField> {
     domain: EvaluationDomain<F>,
 }
 
+impl<F: PrimeField> crate::ToBytes for Evaluations<F> {
+    #[inline]
+    fn write<W: crate::io::Write>(&self, mut w: W) -> crate::io::Result<()> {
+        (self.evals.len() as u32).write(&mut w)?;
+        for i in &self.evals {
+            i.write(&mut w)?;
+        }
+        self.domain.write(&mut w)
+    }
+}
+
+impl<F: PrimeField> crate::FromBytes for Evaluations<F> {
+    #[inline]
+    fn read<R: crate::io::Read>(mut r: R) -> crate::io::Result<Self> {
+        let len = u32::read(&mut r)?;
+        let mut evals = Vec::new();
+        for _ in 0..len {
+            evals.push(F::read(&mut r)?);
+        }
+
+        let domain = EvaluationDomain::read(&mut r)?;
+        Ok(Self { evals, domain })
+    }
+}
+
 impl<F: PrimeField> Evaluations<F> {
     /// Construct `Self` from evaluations and a domain.
     pub fn from_vec_and_domain(evals: Vec<F>, domain: EvaluationDomain<F>) -> Self {
