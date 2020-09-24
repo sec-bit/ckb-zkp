@@ -52,7 +52,7 @@ pub fn verify_from_bytes<E: PairingEngine>(
     mut publics_bytes: &[u8],
 ) -> Result<bool, SynthesisError> {
     let vk = VerifyKey::read(vk_bytes)?;
-    let proof = Proof::<E>::read(proof_bytes)?;
+    let proof = Proof::read(proof_bytes)?;
     let mut publics = vec![];
     let publics_len = u32::read(&mut publics_bytes)?;
     for _ in 0..publics_len {

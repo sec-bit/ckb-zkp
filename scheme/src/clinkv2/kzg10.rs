@@ -95,6 +95,16 @@ pub struct VerifierKey<E: PairingEngine> {
     pub prepared_beta_h: E::G2Prepared,
 }
 
+impl<E: PairingEngine> PartialEq for VerifierKey<E> {
+    fn eq(&self, other: &Self) -> bool {
+        self.g == other.g
+            && self.gamma_g == other.gamma_g
+            && self.h == other.h
+            && self.beta_h == other.beta_h
+    }
+}
+impl<E: PairingEngine> Eq for VerifierKey<E> {}
+
 impl<E: PairingEngine> ToBytes for VerifierKey<E> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {

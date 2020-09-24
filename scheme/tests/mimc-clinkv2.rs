@@ -8,16 +8,16 @@ use math::One;
 
 // Bring in some tools for using pairing-friendly curves
 use curve::bn_256::{Bn_256, Fr};
-use math::{test_rng, Field, ToBytes};
+use math::{test_rng, Field, FromBytes, ToBytes};
 
 // We're going to use the BN-256 pairing-friendly elliptic curve.
 
 // We'll use these interfaces to construct our circuit.
-use scheme::clinkv2::kzg10::*;
+use scheme::clinkv2::kzg10::KZG10;
 use scheme::clinkv2::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 use scheme::clinkv2::{
-    create_random_proof, prove_to_bytes, verify_from_bytes, verify_proof, ProveAssignment,
-    VerifyAssignment,
+    create_random_proof, prove_to_bytes, verify_from_bytes, verify_proof, Proof, ProveAssignment,
+    VerifyAssignment, VerifyKey,
 };
 
 const MIMC_ROUNDS: usize = 5;
@@ -167,6 +167,8 @@ fn mimc_clinkv2() {
 
     let mut vk_bytes = vec![];
     kzg10_vk.write(&mut vk_bytes).unwrap();
+    let new_vk = VerifyKey::read(&vk_bytes[..]).unwrap();
+    assert_eq!(kzg10_vk, new_vk);
 
     crs_time += start.elapsed();
 
@@ -205,8 +207,10 @@ fn mimc_clinkv2() {
     let proof = create_random_proof(&prover_pa, &kzg10_ck, rng).unwrap();
     let prove_time = prove_start.elapsed();
 
-    let (proof_bytes, publics_bytes) = prove_to_bytes(&prover_pa, &kzg10_ck, rng, &io).unwrap();
-    println!("proof bytes: {}", proof_bytes.len());
+    let mut tmp_proof_bytes = vec![];
+    proof.write(&mut tmp_proof_bytes).unwrap();
+    let new_proof = Proof::read(&tmp_proof_bytes[..]).unwrap();
+    assert_eq!(proof, new_proof);
 
     // Verifier
     println!("Start verify prepare...");
@@ -228,10 +232,14 @@ fn mimc_clinkv2() {
 
     // Check the proof
     assert!(verify_proof(&verifier_pa, &kzg10_vk, &proof, &io).unwrap());
+    println!("Tmp verify with bytes");
+    assert!(verify_proof(&verifier_pa, &new_vk, &new_proof, &io).unwrap());
     let verify_time = verify_start.elapsed();
 
-    println!("Start verify with bytes...");
+    println!("Start prove & verify with bytes...");
 
+    let (proof_bytes, publics_bytes) = prove_to_bytes(&prover_pa, &kzg10_ck, rng, &io).unwrap();
+    println!("proof bytes: {}", proof_bytes.len());
     assert!(verify_from_bytes(&verifier_pa, &vk_bytes, &proof_bytes, &publics_bytes,).unwrap());
 
     // Compute time
