@@ -230,21 +230,13 @@ fn mimc_clinkv2() {
 
     let mut tmp_proof_bytes = vec![];
     proof.write(&mut tmp_proof_bytes).unwrap();
-    let mut new_proof = Proof::read(&tmp_proof_bytes[..]).unwrap();
+    let new_proof = Proof::read(&tmp_proof_bytes[..]).unwrap();
     assert_eq!(proof, new_proof);
 
     println!("Tmp verify with bytes 1");
     assert!(verify_proof(&verifier_pa, &new_vk, &proof, &io).unwrap());
 
     println!("Tmp verify with bytes 2");
-    assert_eq!(new_proof.r_mid_comms, proof.r_mid_comms);
-    assert_eq!(new_proof.q_comm, proof.q_comm);
-
-    new_proof.r_mid_comms = proof.r_mid_comms;
-    new_proof.q_comm = proof.q_comm;
-    //new_proof.r_mid_q_values = proof.r_mid_q_values;
-    //new_proof.r_mid_q_proof = proof.r_mid_q_proof;
-    //new_proof.opening_challenge = proof.opening_challenge;
     assert!(verify_proof(&verifier_pa, &kzg10_vk, &new_proof, &io).unwrap());
 
     println!("Tmp verify with bytes 3");
