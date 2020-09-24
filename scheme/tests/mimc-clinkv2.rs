@@ -165,11 +165,6 @@ fn mimc_clinkv2() {
     let kzg10_pp = KZG10::<Bn_256>::setup(degree, false, &mut rng).unwrap();
     let (kzg10_ck, kzg10_vk) = KZG10::<Bn_256>::trim(&kzg10_pp, degree).unwrap();
 
-    let mut vk_bytes = vec![];
-    kzg10_vk.write(&mut vk_bytes).unwrap();
-    let new_vk = VerifyKey::read(&vk_bytes[..]).unwrap();
-    assert_eq!(kzg10_vk, new_vk);
-
     crs_time += start.elapsed();
 
     println!("Start prove prepare...");
@@ -207,11 +202,6 @@ fn mimc_clinkv2() {
     let proof = create_random_proof(&prover_pa, &kzg10_ck, rng).unwrap();
     let prove_time = prove_start.elapsed();
 
-    let mut tmp_proof_bytes = vec![];
-    proof.write(&mut tmp_proof_bytes).unwrap();
-    let new_proof = Proof::read(&tmp_proof_bytes[..]).unwrap();
-    assert_eq!(proof, new_proof);
-
     // Verifier
     println!("Start verify prepare...");
     let verify_start = Instant::now();
@@ -232,7 +222,32 @@ fn mimc_clinkv2() {
 
     // Check the proof
     assert!(verify_proof(&verifier_pa, &kzg10_vk, &proof, &io).unwrap());
-    println!("Tmp verify with bytes");
+
+    let mut vk_bytes = vec![];
+    kzg10_vk.write(&mut vk_bytes).unwrap();
+    let new_vk = VerifyKey::read(&vk_bytes[..]).unwrap();
+    assert_eq!(kzg10_vk, new_vk);
+
+    let mut tmp_proof_bytes = vec![];
+    proof.write(&mut tmp_proof_bytes).unwrap();
+    let mut new_proof = Proof::read(&tmp_proof_bytes[..]).unwrap();
+    assert_eq!(proof, new_proof);
+
+    println!("Tmp verify with bytes 1");
+    assert!(verify_proof(&verifier_pa, &new_vk, &proof, &io).unwrap());
+
+    println!("Tmp verify with bytes 2");
+    assert_eq!(new_proof.r_mid_comms, proof.r_mid_comms);
+    assert_eq!(new_proof.q_comm, proof.q_comm);
+
+    new_proof.r_mid_comms = proof.r_mid_comms;
+    new_proof.q_comm = proof.q_comm;
+    //new_proof.r_mid_q_values = proof.r_mid_q_values;
+    //new_proof.r_mid_q_proof = proof.r_mid_q_proof;
+    //new_proof.opening_challenge = proof.opening_challenge;
+    assert!(verify_proof(&verifier_pa, &kzg10_vk, &new_proof, &io).unwrap());
+
+    println!("Tmp verify with bytes 3");
     assert!(verify_proof(&verifier_pa, &new_vk, &new_proof, &io).unwrap());
     let verify_time = verify_start.elapsed();
 

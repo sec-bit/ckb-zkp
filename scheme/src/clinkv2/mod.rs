@@ -74,7 +74,7 @@ pub struct Proof<E: PairingEngine> {
     pub q_comm: Kzg10Comm<E>,
     pub r_mid_q_values: Vec<E::Fr>,
     pub r_mid_q_proof: Kzg10Proof<E>,
-    opening_challenge: E::Fr,
+    pub opening_challenge: E::Fr,
 }
 
 impl<E: PairingEngine> ToBytes for Proof<E> {
