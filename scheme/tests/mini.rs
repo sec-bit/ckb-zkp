@@ -154,6 +154,9 @@ impl<F: PrimeField> clinkv2_r1cs::ConstraintSynthesizer<F> for Clinkv2Mini<F> {
         cs: &mut CS,
         index: usize,
     ) -> Result<(), clinkv2_r1cs::SynthesisError> {
+
+        cs.alloc_input(|| "", || Ok(F::one()), index)?;
+
         let var_x = cs.alloc(
             || "x",
             || {
@@ -181,7 +184,7 @@ impl<F: PrimeField> clinkv2_r1cs::ConstraintSynthesizer<F> for Clinkv2Mini<F> {
             index,
         )?;
 
-        for _ in 0..self.num {
+        if index == 0 {
             cs.enforce(
                 || "x * (y + 2) = z",
                 |lc| lc + var_x,
