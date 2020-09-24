@@ -8,10 +8,9 @@ use rand::Rng;
 use rayon::prelude::*;
 
 use math::fft::{DensePolynomial, EvaluationDomain};
-use math::{Field, One, PairingEngine, UniformRand, Zero};
+use math::{Field, One, PairingEngine, ToBytes, UniformRand, Zero};
 
 use super::{
-    as_bytes,
     kzg10::KZG10,
     r1cs::{Index, SynthesisError},
     Proof, ProveAssignment, ProveKey,
@@ -92,8 +91,9 @@ pub fn create_random_proof<E: PairingEngine, R: Rng>(
     }
     //println!("rj_ifft_time: {:?}", rj_ifft_time);
     //println!("rj_commit_time: {:?}", rj_commit_time);
-
-    transcript.append_message(b"witness polynomial commitments", as_bytes(&r_mid_comms));
+    let mut r_mid_comms_bytes = vec![];
+    r_mid_comms.write(&mut r_mid_comms_bytes)?;
+    transcript.append_message(b"witness polynomial commitments", &r_mid_comms_bytes);
 
     let mut c = [0u8; 31];
     transcript.challenge_bytes(b"batching challenge", &mut c);
@@ -200,7 +200,9 @@ pub fn create_random_proof<E: PairingEngine, R: Rng>(
     //q_commit_time += start2.elapsed();
     //println!("q_commit_time: {:?}", q_commit_time);
 
-    transcript.append_message(b"quotient polynomial commitments", as_bytes(&q_comm));
+    let mut q_comm_bytes = vec![];
+    q_comm.write(&mut q_comm_bytes)?;
+    transcript.append_message(b"quotient polynomial commitments", &q_comm_bytes);
 
     // Prove
     // Generate a challenge

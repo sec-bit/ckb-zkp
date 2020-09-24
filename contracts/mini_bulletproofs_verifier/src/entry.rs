@@ -6,7 +6,7 @@ use crate::error::Error;
 
 use ckb_zkp::{
     bn_256, bulletproofs,
-    math::{test_rng, PrimeField},
+    math::PrimeField,
     r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError},
 };
 

@@ -136,14 +136,6 @@ fn push_constraints<F: Field>(
     }
 }
 
-// TODO need del.
-fn as_bytes<T>(x: &T) -> &[u8] {
-    use core::mem;
-    use core::slice;
-
-    unsafe { slice::from_raw_parts(x as *const T as *const u8, mem::size_of_val(x)) }
-}
-
 pub struct ProveAssignment<E: PairingEngine> {
     // Constraints
     pub at: Vec<Vec<(E::Fr, Index)>>,

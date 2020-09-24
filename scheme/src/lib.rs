@@ -8,7 +8,7 @@
 //#![deny(unused_attributes, unused_imports, unused_mut)]
 #![deny(renamed_and_removed_lints, stable_features, unused_allocation)]
 #![deny(unused_comparisons, bare_trait_objects, unused_must_use, const_err)]
-//#![forbid(unsafe_code)]
+#![forbid(unsafe_code)]
 //#![deny(trivial_casts)]
 
 #[macro_use]
@@ -35,7 +35,6 @@ use std::{
     vec::Vec,
 };
 
-#[cfg(any(feature = "groth16", feature = "marlin", feature = "clinkv2"))]
 #[macro_use]
 extern crate math;
 

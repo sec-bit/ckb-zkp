@@ -1,12 +1,11 @@
 use merlin::Transcript;
 
 use math::fft::EvaluationDomain;
-use math::{Field, One, PairingEngine, Zero};
+use math::{Field, One, PairingEngine, ToBytes, Zero};
 
 use crate::Vec;
 
 use super::{
-    as_bytes,
     kzg10::KZG10,
     r1cs::{Index, SynthesisError},
     Proof, VerifyAssignment, VerifyKey,
@@ -26,15 +25,18 @@ pub fn verify_proof<E: PairingEngine>(
     let m_mid = proof.r_mid_comms.len();
     let n = io[0].len();
 
-    transcript.append_message(
-        b"witness polynomial commitments",
-        as_bytes(&proof.r_mid_comms),
-    );
+    let mut r_mid_comms_bytes = vec![];
+    proof.r_mid_comms.write(&mut r_mid_comms_bytes)?;
+    transcript.append_message(b"witness polynomial commitments", &r_mid_comms_bytes);
+
     let mut c = [0u8; 31];
     transcript.challenge_bytes(b"batching challenge", &mut c);
     let eta = E::Fr::from_random_bytes(&c).unwrap();
 
-    transcript.append_message(b"quotient polynomial commitments", as_bytes(&proof.q_comm));
+    let mut q_comm_bytes = vec![];
+    proof.q_comm.write(&mut q_comm_bytes)?;
+    transcript.append_message(b"quotient polynomial commitments", &q_comm_bytes);
+
     c = [0u8; 31];
     transcript.challenge_bytes(b"random point", &mut c);
     let zeta = E::Fr::from_random_bytes(&c).unwrap();
