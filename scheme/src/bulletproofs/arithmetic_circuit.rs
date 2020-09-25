@@ -29,7 +29,7 @@ use super::{
 
 // use rayon::prelude::*; // TODO: use rayon to accelerate
 
-pub struct ProveAssignment<E: PairingEngine> {
+pub struct ProvingAssignment<E: PairingEngine> {
     // Constraints
     pub(crate) at: Vec<Vec<(E::Fr, Index)>>,
     pub(crate) bt: Vec<Vec<(E::Fr, Index)>>,
@@ -40,7 +40,7 @@ pub struct ProveAssignment<E: PairingEngine> {
     pub(crate) aux_assignment: Vec<E::Fr>,
 }
 
-impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProveAssignment<E> {
+impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
     type Root = Self;
 
     #[inline]
@@ -86,85 +86,6 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProveAssignment<E> {
 
         push_constraints(b(LinearCombination::zero()), &mut self.bt, num_constraints);
 
-        push_constraints(c(LinearCombination::zero()), &mut self.ct, num_constraints);
-    }
-
-    fn push_namespace<NR, N>(&mut self, _: N)
-    where
-        NR: Into<String>,
-        N: FnOnce() -> NR,
-    {
-        // Do nothing; we don't care about namespaces in this context.
-    }
-
-    fn pop_namespace(&mut self) {
-        // Do nothing; we don't care about namespaces in this context.
-    }
-
-    fn get_root(&mut self) -> &mut Self::Root {
-        self
-    }
-
-    fn num_constraints(&self) -> usize {
-        self.at.len()
-    }
-}
-
-pub struct VerifyAssignment<E: PairingEngine> {
-    // Constraints
-    pub(crate) at: Vec<Vec<(E::Fr, Index)>>,
-    pub(crate) bt: Vec<Vec<(E::Fr, Index)>>,
-    pub(crate) ct: Vec<Vec<(E::Fr, Index)>>,
-
-    // Assignments of variables
-    pub(crate) input_assignment: Vec<E::Fr>,
-    pub(crate) aux_assignment: Vec<E::Fr>,
-}
-
-impl<E: PairingEngine> ConstraintSystem<E::Fr> for VerifyAssignment<E> {
-    type Root = Self;
-
-    #[inline]
-    fn alloc<F, A, AR>(&mut self, _: A, _f: F) -> Result<Variable, SynthesisError>
-    where
-        F: FnOnce() -> Result<E::Fr, SynthesisError>,
-        A: FnOnce() -> AR,
-        AR: Into<String>,
-    {
-        let index = self.aux_assignment.len();
-        self.aux_assignment.push(E::Fr::zero());
-        Ok(Variable::new_unchecked(Index::Aux(index)))
-    }
-
-    #[inline]
-    fn alloc_input<F, A, AR>(&mut self, _: A, _f: F) -> Result<Variable, SynthesisError>
-    where
-        F: FnOnce() -> Result<E::Fr, SynthesisError>,
-        A: FnOnce() -> AR,
-        AR: Into<String>,
-    {
-        let index = self.input_assignment.len();
-        self.input_assignment.push(E::Fr::zero());
-        Ok(Variable::new_unchecked(Index::Input(index)))
-    }
-
-    #[inline]
-    fn enforce<A, AR, LA, LB, LC>(&mut self, _: A, a: LA, b: LB, c: LC)
-    where
-        A: FnOnce() -> AR,
-        AR: Into<String>,
-        LA: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
-        LB: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
-        LC: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
-    {
-        let num_constraints = self.num_constraints();
-
-        self.at.push(Vec::new());
-        self.bt.push(Vec::new());
-        self.ct.push(Vec::new());
-
-        push_constraints(a(LinearCombination::zero()), &mut self.at, num_constraints);
-        push_constraints(b(LinearCombination::zero()), &mut self.bt, num_constraints);
         push_constraints(c(LinearCombination::zero()), &mut self.ct, num_constraints);
     }
 
@@ -267,6 +188,16 @@ impl<E: PairingEngine> FromBytes for Generators<E> {
     }
 }
 
+// pub struct BpCircuit<E: PairingEngine> {
+//     n: usize,
+//     N: usize,
+//     WL: Vec<Vec<E::Fr>>,
+//     WR: Vec<Vec<E::Fr>>,
+//     WO: Vec<Vec<E::Fr>>,
+//     WV: Vec<Vec<E::Fr>>,
+//     c: Vec<E::Fr>,
+// }
+
 pub struct R1csCircuit<E: PairingEngine> {
     pub CL: Vec<Vec<E::Fr>>,
     pub CR: Vec<Vec<E::Fr>>,
@@ -274,11 +205,10 @@ pub struct R1csCircuit<E: PairingEngine> {
     pub CL_T: BTreeMap<(u32, u32), E::Fr>,
     pub CR_T: BTreeMap<(u32, u32), E::Fr>,
     pub CO_T: BTreeMap<(u32, u32), E::Fr>,
-    pub num_constraints: usize,
 }
 
 impl<E: PairingEngine> R1csCircuit<E> {
-    pub fn matrix_to_map(mut self) -> Self {
+    fn matrix_to_map(mut self) -> Self {
         let m = self.CL.len();
         if self.CL.len() != 0 {
             let n = self.CL[0].len();
@@ -303,12 +233,227 @@ impl<E: PairingEngine> R1csCircuit<E> {
     }
 }
 
+impl<E: PairingEngine> ToBytes for R1csCircuit<E> {
+    #[inline]
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        let zero = E::Fr::zero();
+
+        let x = self.CL.len();
+        let y = if x > 0 { self.CL[0].len() } else { 0 };
+
+        (x as u32).write(&mut writer)?;
+        (y as u32).write(&mut writer)?;
+
+        let mut cl_bytes = Vec::new();
+        let mut cr_bytes = Vec::new();
+        let mut co_bytes = Vec::new();
+
+        let mut l_i = 0u32;
+        let mut r_i = 0u32;
+        let mut o_i = 0u32;
+
+        for i in 0..x {
+            let mut l_n = 0u32;
+            let mut l_bytes = Vec::new();
+
+            let mut r_n = 0u32;
+            let mut r_bytes = Vec::new();
+
+            let mut o_n = 0u32;
+            let mut o_bytes = Vec::new();
+
+            for j in 0..y {
+                let l_t = self.CL[i][j];
+                let r_t = self.CR[i][j];
+                let o_t = self.CO[i][j];
+
+                if l_t != zero {
+                    (j as u32).write(&mut l_bytes)?;
+                    l_t.write(&mut l_bytes)?;
+                    l_n += 1
+                }
+
+                if r_t != zero {
+                    (j as u32).write(&mut r_bytes)?;
+                    r_t.write(&mut r_bytes)?;
+                    r_n += 1
+                }
+
+                if o_t != zero {
+                    (j as u32).write(&mut o_bytes)?;
+                    o_t.write(&mut o_bytes)?;
+                    o_n += 1
+                }
+            }
+
+            if l_n > 0 {
+                l_i += 1;
+                (i as u32).write(&mut cl_bytes)?;
+                l_n.write(&mut cl_bytes)?;
+                l_bytes.write(&mut cl_bytes)?;
+            }
+
+            if r_n > 0 {
+                r_i += 1;
+                (i as u32).write(&mut cr_bytes)?;
+                r_n.write(&mut cr_bytes)?;
+                r_bytes.write(&mut cr_bytes)?;
+            }
+
+            if o_n > 0 {
+                o_i += 1;
+                (i as u32).write(&mut co_bytes)?;
+                o_n.write(&mut co_bytes)?;
+                o_bytes.write(&mut co_bytes)?;
+            }
+        }
+
+        l_i.write(&mut writer)?;
+        cl_bytes.write(&mut writer)?;
+
+        r_i.write(&mut writer)?;
+        cr_bytes.write(&mut writer)?;
+
+        o_i.write(&mut writer)?;
+        co_bytes.write(&mut writer)?;
+
+        Ok(())
+    }
+}
+
+impl<E: PairingEngine> FromBytes for R1csCircuit<E> {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        //let zero = E::Fr::zero();
+        let _x = u32::read(&mut reader)? as usize;
+        let _y = u32::read(&mut reader)? as usize;
+        //println!("x: {}, y: {}", _x, _y);
+
+        let mut CL_T = BTreeMap::new();
+        let mut CR_T = BTreeMap::new();
+        let mut CO_T = BTreeMap::new();
+
+        let l_i = u32::read(&mut reader)?;
+        for _ in 0..l_i {
+            let i = u32::read(&mut reader)? as usize;
+            let i_n = u32::read(&mut reader)?;
+            for _ in 0..i_n {
+                let j = u32::read(&mut reader)? as usize;
+                CL_T.insert((i as u32, j as u32), E::Fr::read(&mut reader)?);
+            }
+        }
+
+        let r_i = u32::read(&mut reader)?;
+        for _ in 0..r_i {
+            let i = u32::read(&mut reader)? as usize;
+            let i_n = u32::read(&mut reader)?;
+            for _ in 0..i_n {
+                let j = u32::read(&mut reader)? as usize;
+                CR_T.insert((i as u32, j as u32), E::Fr::read(&mut reader)?);
+            }
+        }
+
+        let o_i = u32::read(&mut reader)?;
+        for _ in 0..o_i {
+            let i = u32::read(&mut reader)? as usize;
+            let i_n = u32::read(&mut reader)?;
+            for _ in 0..i_n {
+                let j = u32::read(&mut reader)? as usize;
+                CO_T.insert((i as u32, j as u32), E::Fr::read(&mut reader)?);
+            }
+        }
+
+        Ok(Self {
+            CL_T,
+            CR_T,
+            CO_T,
+            CL: Default::default(),
+            CR: Default::default(),
+            CO: Default::default(),
+        })
+    }
+}
+
 pub struct Assignment<E: PairingEngine> {
     pub aL: Vec<E::Fr>,
     aR: Vec<E::Fr>,
     aO: Vec<E::Fr>,
     pub s: Vec<E::Fr>,
     pub w: Vec<E::Fr>,
+}
+
+impl<E: PairingEngine> ToBytes for Assignment<E> {
+    #[inline]
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.aL.len() as u64).write(&mut writer)?;
+        for i in &self.aL {
+            i.write(&mut writer)?;
+        }
+
+        (self.aR.len() as u64).write(&mut writer)?;
+        for i in &self.aR {
+            i.write(&mut writer)?;
+        }
+
+        (self.aO.len() as u64).write(&mut writer)?;
+        for i in &self.aO {
+            i.write(&mut writer)?;
+        }
+
+        (self.s.len() as u64).write(&mut writer)?;
+        for i in &self.s {
+            i.write(&mut writer)?;
+        }
+
+        (self.w.len() as u64).write(&mut writer)?;
+        for i in &self.w {
+            i.write(&mut writer)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<E: PairingEngine> FromBytes for Assignment<E> {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let l_len = u64::read(&mut reader)?;
+        let mut aL = vec![];
+        for _ in 0..l_len {
+            let v = E::Fr::read(&mut reader)?;
+            aL.push(v);
+        }
+
+        let r_len = u64::read(&mut reader)?;
+        let mut aR = vec![];
+        for _ in 0..r_len {
+            let v = E::Fr::read(&mut reader)?;
+            aR.push(v);
+        }
+
+        let o_len = u64::read(&mut reader)?;
+        let mut aO = vec![];
+        for _ in 0..o_len {
+            let v = E::Fr::read(&mut reader)?;
+            aO.push(v);
+        }
+
+        let s_len = u64::read(&mut reader)?;
+        let mut s = vec![];
+        for _ in 0..s_len {
+            let v = E::Fr::read(&mut reader)?;
+            s.push(v);
+        }
+
+        let w_len = u64::read(&mut reader)?;
+        let mut w = vec![];
+        for _ in 0..w_len {
+            let v = E::Fr::read(&mut reader)?;
+            w.push(v);
+        }
+
+        Ok(Self { aL, aR, aO, s, w })
+    }
 }
 
 pub struct Proof<E: PairingEngine> {
@@ -433,13 +578,13 @@ impl<E: PairingEngine> FromBytes for Proof<E> {
 pub fn create_random_proof<E, C, R>(
     circuit: C,
     rng: &mut R,
-) -> Result<(Generators<E>, Proof<E>), SynthesisError>
+) -> Result<(Generators<E>, R1csCircuit<E>, Proof<E>, Assignment<E>), SynthesisError>
 where
     E: PairingEngine,
     C: ConstraintSynthesizer<E::Fr>,
     R: Rng,
 {
-    let mut prover = ProveAssignment::<E> {
+    let mut prover = ProvingAssignment::<E> {
         at: vec![],
         bt: vec![],
         ct: vec![],
@@ -451,8 +596,7 @@ where
     prover.alloc_input(|| "", || Ok(E::Fr::one()))?;
 
     // Synthesize the circuit.
-    // TODO: maybe we should move this out becasue we do not need a trusted setup for bp.
-    circuit.generate_constraints(&mut prover)?;
+    circuit.generate_constraints(&mut prover)?; // TODO: maybe we should move this out becasue we do not need a trusted setup for bp
 
     let num_constraints = prover.at.len();
     assert_eq!(num_constraints, prover.bt.len());
@@ -500,7 +644,6 @@ where
         CL,
         CR,
         CO,
-        num_constraints,
         CL_T: Default::default(),
         CR_T: Default::default(),
         CO_T: Default::default(),
@@ -529,7 +672,7 @@ where
     let h = gh[1];
     let u = E::G1Projective::rand(rng).into_affine();
 
-    let n = r1cs_circuit.num_constraints;
+    let n = num_constraints;
     let k = input.s.len();
     let n_w = input.w.len();
     let generators = Generators {
@@ -546,7 +689,7 @@ where
 
     let proof = prove(&generators, &r1cs_circuit, &input, rng);
 
-    Ok((generators, proof))
+    Ok((generators, r1cs_circuit.matrix_to_map(), proof, input))
 }
 
 // bulletproofs arithmetic circuit proof with R1CS format
@@ -838,88 +981,12 @@ where
     proof
 }
 
-pub fn verify_proof<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>>(
-    circuit: C,
+pub fn verify_proof<E: PairingEngine>(
     gens: &Generators<E>,
     proof: &Proof<E>,
-    public_inputs: &[E::Fr],
-) -> Result<bool, SynthesisError> {
-    let mut prover = VerifyAssignment::<E> {
-        at: vec![],
-        bt: vec![],
-        ct: vec![],
-        input_assignment: vec![],
-        aux_assignment: vec![],
-    };
-
-    // Allocate the "one" input variable
-    prover.alloc_input(|| "", || Ok(E::Fr::one()))?;
-
-    // Synthesize the circuit.
-    // TODO: maybe we should move this out becasue we do not need a trusted setup for bp.
-    circuit.generate_constraints(&mut prover)?;
-
-    let num_constraints = prover.at.len();
-    assert_eq!(num_constraints, prover.bt.len());
-    assert_eq!(num_constraints, prover.ct.len());
-
-    let f = [&prover.input_assignment[..], &prover.aux_assignment[..]].concat();
-    let num_inputs = prover.input_assignment.len();
-    let num_assignments = f.len();
-    // println!(
-    //     "num_constraints = {}, num_inputs = {}, num_assignments = {}",
-    //     num_constraints, num_inputs, num_assignments
-    // );
-
-    let mut CL: Vec<Vec<E::Fr>> = vec![vec![E::Fr::zero(); num_assignments]; num_constraints];
-    let mut CR: Vec<Vec<E::Fr>> = vec![vec![E::Fr::zero(); num_assignments]; num_constraints];
-    let mut CO: Vec<Vec<E::Fr>> = vec![vec![E::Fr::zero(); num_assignments]; num_constraints];
-
-    // Convert vec with index to full matrix
-    // TODO: compute with at, bt, ct directly
-    for i in 0..num_constraints {
-        for &(ref coeff, index) in prover.at[i].iter() {
-            let index = match index {
-                Index::Input(i) => i,
-                Index::Aux(i) => num_inputs + i,
-            };
-            CL[i][index] = *coeff;
-        }
-        for &(ref coeff, index) in prover.bt[i].iter() {
-            let index = match index {
-                Index::Input(i) => i,
-                Index::Aux(i) => num_inputs + i,
-            };
-            CR[i][index] = *coeff;
-        }
-        for &(ref coeff, index) in prover.ct[i].iter() {
-            let index = match index {
-                Index::Input(i) => i,
-                Index::Aux(i) => num_inputs + i,
-            };
-            CO[i][index] = *coeff;
-        }
-    }
-
-    let r1cs_circuit = R1csCircuit::<E> {
-        CL,
-        CR,
-        CO,
-        num_constraints,
-        CL_T: Default::default(),
-        CR_T: Default::default(),
-        CO_T: Default::default(),
-    };
-
-    verify(gens, &r1cs_circuit, proof, public_inputs)
-}
-
-pub fn verify<E: PairingEngine>(
-    gens: &Generators<E>,
     r1cs_circuit: &R1csCircuit<E>,
-    proof: &Proof<E>,
     public_inputs: &[E::Fr],
-) -> Result<bool, SynthesisError> {
+) -> bool {
     let mut transcript = Transcript::new(b"protocol3");
     let zero = E::Fr::zero();
     let one = E::Fr::one();
@@ -1089,7 +1156,7 @@ pub fn verify<E: PairingEngine>(
         &proof.IPP_P,
         &proof.IPP,
     ) {
-        return Ok(false);
+        return false;
     }
 
     // check ti
@@ -1127,7 +1194,7 @@ pub fn verify<E: PairingEngine>(
         + &quick_multiexp::<E>(&proof.l_x, &g_vec)
         + &quick_multiexp::<E>(&proof.r_x, &h_vec_inv);
 
-    Ok(P == checkP)
+    P == checkP
 }
 
 pub fn create_generators<E: PairingEngine, R: Rng>(rng: &mut R, len: usize) -> Vec<E::G1Affine> {
@@ -1149,7 +1216,6 @@ mod tests {
         CO: Vec<Vec<E::Fr>>,
         statement: Vec<E::Fr>,
         witness: Vec<E::Fr>,
-        num_constraints: usize,
     ) {
         let rng = &mut math::test_rng();
 
@@ -1157,7 +1223,6 @@ mod tests {
             CL,
             CR,
             CO,
-            num_constraints,
             CL_T: Default::default(),
             CR_T: Default::default(),
             CO_T: Default::default(),
@@ -1205,7 +1270,7 @@ mod tests {
 
         let proof = prove(&generators, &r1cs_circuit, &input, rng);
 
-        assert!(verify(&generators, &r1cs_circuit, &proof, &input.s).unwrap());
+        verify_proof(&generators, &proof, &r1cs_circuit, &input.s);
     }
 
     #[test]
@@ -1249,7 +1314,7 @@ mod tests {
             E::Fr::from(30u8),
         ];
 
-        run_protocol3_r1cs_helper::<E>(CL, CR, CO, statement, witness, 4);
+        run_protocol3_r1cs_helper::<E>(CL, CR, CO, statement, witness);
     }
 
     // test cases from Dalek
@@ -1280,7 +1345,7 @@ mod tests {
         let statement: Vec<E::Fr> = vec![one];
         let witness: Vec<E::Fr> = vec![E::Fr::from(2u8), E::Fr::from(3u8), E::Fr::from(6u8)];
 
-        run_protocol3_r1cs_helper::<E>(CL, CR, CO, statement, witness, 1);
+        run_protocol3_r1cs_helper::<E>(CL, CR, CO, statement, witness);
     }
 
     #[test]
@@ -1334,7 +1399,7 @@ mod tests {
             E::Fr::from(15u8),
         ];
 
-        run_protocol3_r1cs_helper::<E>(CL, CR, CO, statement, witness, 3);
+        run_protocol3_r1cs_helper::<E>(CL, CR, CO, statement, witness);
     }
 
     #[test]
@@ -1391,7 +1456,7 @@ mod tests {
             (seven - &zx) * &(three - &zx),
         ];
 
-        run_protocol3_r1cs_helper::<E>(CL, CR, CO, statement, witness, 3);
+        run_protocol3_r1cs_helper::<E>(CL, CR, CO, statement, witness);
     }
 
     #[test]
@@ -1418,6 +1483,6 @@ mod tests {
         let statement: Vec<E::Fr> = vec![one];
         let witness: Vec<E::Fr> = vec![E::Fr::from(4u8), E::Fr::from(5u8), E::Fr::from(9u8)];
 
-        run_protocol3_r1cs_helper::<E>(CL, CR, CO, statement, witness, 1);
+        run_protocol3_r1cs_helper::<E>(CL, CR, CO, statement, witness);
     }
 }

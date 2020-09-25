@@ -127,16 +127,16 @@ fn mini_bulletproofs() {
         num: num,
     };
 
-    let (gens, proof) = create_random_proof::<E, _, _>(c, rng).unwrap();
+    let (gens, r1cs, proof, publics) = create_random_proof::<E, _, _>(c, rng).unwrap();
 
     println!("Bulletproof verify...");
-    let c = Mini::<Fr> {
+    let _c = Mini::<Fr> {
         x: None,
         y: None,
         z: None,
         num: num,
     };
-    assert!(verify_proof(c, &gens, &proof, &[Fr::from(10u32)]).unwrap());
+    assert!(verify_proof(&gens, &proof, &r1cs, &publics.s));
 }
 
 use scheme::clinkv2::r1cs as clinkv2_r1cs;
@@ -154,7 +154,6 @@ impl<F: PrimeField> clinkv2_r1cs::ConstraintSynthesizer<F> for Clinkv2Mini<F> {
         cs: &mut CS,
         index: usize,
     ) -> Result<(), clinkv2_r1cs::SynthesisError> {
-
         cs.alloc_input(|| "", || Ok(F::one()), index)?;
 
         let var_x = cs.alloc(

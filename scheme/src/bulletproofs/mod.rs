@@ -19,21 +19,21 @@ pub use arithmetic_circuit::create_random_proof;
 /// standard interface for verify proof.
 pub use arithmetic_circuit::verify_proof;
 
-pub use arithmetic_circuit::{Generators, Proof};
+pub use arithmetic_circuit::{Generators, Proof, R1csCircuit};
 
 /// standard interface for create proof and to bytes.
 pub fn prove_to_bytes<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, R: Rng>(
     circuit: C,
     rng: &mut R,
-    publics: &[E::Fr],
 ) -> Result<(Vec<u8>, Vec<u8>), SynthesisError> {
-    let (gens, proof) = create_random_proof::<E, _, _>(circuit, rng)?;
+    let (gens, r1cs, proof, publics) = create_random_proof::<E, _, _>(circuit, rng)?;
     let mut proof_bytes = vec![];
     gens.write(&mut proof_bytes)?;
+    r1cs.write(&mut proof_bytes)?;
     proof.write(&mut proof_bytes)?;
     let mut publics_bytes = vec![];
-    (publics.len() as u32).write(&mut publics_bytes)?;
-    for i in publics {
+    (publics.s.len() as u32).write(&mut publics_bytes)?;
+    for i in publics.s {
         i.write(&mut publics_bytes)?;
     }
 
@@ -42,11 +42,12 @@ pub fn prove_to_bytes<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, R: Rng>
 
 /// standard interface for verify proof from bytes.
 pub fn verify_from_bytes<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>>(
-    circuit: C,
+    _circuit: C,
     mut proof_bytes: &[u8],
     mut publics_bytes: &[u8],
 ) -> Result<bool, SynthesisError> {
     let gens = Generators::<E>::read(&mut proof_bytes)?;
+    let r1cs = R1csCircuit::<E>::read(&mut proof_bytes)?;
     let proof = Proof::read(&mut proof_bytes)?;
 
     let mut publics = vec![];
@@ -55,7 +56,8 @@ pub fn verify_from_bytes<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>>(
         publics.push(E::Fr::read(&mut publics_bytes)?);
     }
 
-    verify_proof(circuit, &gens, &proof, &publics)
+    //verify_proof(circuit, &gens, &proof, &publics)
+    Ok(verify_proof(&gens, &proof, &r1cs, &publics))
 }
 
 // Q (vector, zQ) * Qxn (matrix, WL, WR, WO) = n (vector, zQW)
