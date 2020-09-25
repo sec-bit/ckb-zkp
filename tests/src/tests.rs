@@ -146,7 +146,7 @@ fn test_bulletproofs_mini() {
         num: num,
     };
 
-    let (proof, publics) = prove_to_bytes::<E, _, _>(c, rng, &[Fr::from(10u32)]).unwrap();
+    let (proof, publics) = prove_to_bytes::<E, _, _>(c, rng).unwrap();
 
     println!("Bulletproofs verifying...");
 
@@ -185,6 +185,8 @@ impl<F: PrimeField> clinkv2_r1cs::ConstraintSynthesizer<F> for Clinkv2Mini<F> {
         cs: &mut CS,
         index: usize,
     ) -> Result<(), clinkv2_r1cs::SynthesisError> {
+        cs.alloc_input(|| "r1", || Ok(F::one()), index)?;
+
         let var_x = cs.alloc(
             || "x",
             || {
@@ -212,13 +214,15 @@ impl<F: PrimeField> clinkv2_r1cs::ConstraintSynthesizer<F> for Clinkv2Mini<F> {
             index,
         )?;
 
-        for _ in 0..self.num {
-            cs.enforce(
-                || "x * (y + 2) = z",
-                |lc| lc + var_x,
-                |lc| lc + var_y + (F::from(2u32), CS::one()),
-                |lc| lc + var_z,
-            );
+        if index == 0 {
+            for _ in 0..self.num {
+                cs.enforce(
+                    || "x * (y + 2) = z",
+                    |lc| lc + var_x,
+                    |lc| lc + var_y + (F::from(2u32), CS::one()),
+                    |lc| lc + var_z,
+                );
+            }
         }
 
         Ok(())

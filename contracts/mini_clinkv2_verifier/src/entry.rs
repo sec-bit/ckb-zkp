@@ -24,6 +24,8 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for Mini<F> {
         cs: &mut CS,
         index: usize,
     ) -> Result<(), SynthesisError> {
+        cs.alloc_input(|| "r1", || Ok(F::one()), index)?;
+
         let var_x = cs.alloc(
             || "x",
             || self.x.ok_or(SynthesisError::AssignmentMissing),
@@ -42,13 +44,15 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for Mini<F> {
             index,
         )?;
 
-        for _ in 0..self.num {
-            cs.enforce(
-                || "x * (y + 2) = z",
-                |lc| lc + var_x,
-                |lc| lc + var_y + (F::from(2u32), CS::one()),
-                |lc| lc + var_z,
-            );
+        if index == 0 {
+            for _ in 0..self.num {
+                cs.enforce(
+                    || "x * (y + 2) = z",
+                    |lc| lc + var_x,
+                    |lc| lc + var_y + (F::from(2u32), CS::one()),
+                    |lc| lc + var_z,
+                );
+            }
         }
 
         Ok(())
