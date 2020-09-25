@@ -24,7 +24,7 @@ exclude = [
 
 [features]
 default = ["full"]
-full = ["parallel", "gadgets", "bn_256", "bls12_381", "groth16", "bulletproofs", "marlin", "clinkv2"]
+full = ["parallel", "gadgets", "bn_256", "bls12_381", "groth16", "bulletproofs", "marlin", "clinkv2", "spartan"]
 parallel = ["std", "math/parallel", "curve/parallel", "scheme/parallel"]
 std = ["math/std", "curve/std", "scheme/std"]
 gadgets = []
@@ -34,6 +34,8 @@ groth16 = ["scheme/groth16"]
 bulletproofs = ["scheme/bulletproofs"]
 marlin = ["scheme/marlin"]
 clinkv2 = ["scheme/clinkv2"]
+spartan = ["scheme/spartan"]
+
 
 [dependencies]
 math = { path = "math", default-features = false }

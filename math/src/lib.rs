@@ -178,7 +178,13 @@ pub fn log2(x: usize) -> u32 {
     }
 
     let n = x.leading_zeros();
-    core::mem::size_of::<usize>() as u32 * 8 - n
+    let r = core::mem::size_of::<usize>() as u32 * 8 - n;
+    if 1usize << (r - 1) == x
+    {
+        r - 1
+    } else {
+        r
+    }
 }
 
 /// Creates parallel iterator over refs if `parallel` feature is enabled.
