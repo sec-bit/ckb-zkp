@@ -4,8 +4,9 @@ use math::{
     serialize::*,
     Field, PairingEngine,
 };
+use rand::Rng;
 
-use crate::r1cs::{Index, LinearCombination, SynthesisError};
+use crate::r1cs::{ConstraintSynthesizer, Index, LinearCombination, SynthesisError};
 use crate::Vec;
 
 /// Reduce an R1CS instance to a *Quadratic Arithmetic Program* instance.
@@ -20,10 +21,52 @@ pub mod prover;
 /// Verify proofs for the Groth16 zkSNARK construction.
 pub mod verifier;
 
-#[cfg(test)]
-mod test;
+/// standard interface for setup with circuit.
+pub use generator::generate_random_parameters;
 
-pub use self::{generator::*, prover::*, verifier::*};
+/// standard interface for create proof.
+pub use prover::create_random_proof;
+
+/// standard interface for verify proof.
+pub use verifier::verify_proof;
+
+/// standard interface for create proof and to bytes.
+pub fn prove_to_bytes<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, R: Rng>(
+    params: &Parameters<E>,
+    circuit: C,
+    rng: &mut R,
+    publics: &[E::Fr],
+) -> Result<(Vec<u8>, Vec<u8>), SynthesisError> {
+    let proof = create_random_proof(params, circuit, rng)?;
+    let mut proof_bytes = vec![];
+    proof.write(&mut proof_bytes)?;
+    let mut publics_bytes = vec![];
+    (publics.len() as u32).write(&mut publics_bytes)?;
+    for i in publics {
+        i.write(&mut publics_bytes)?;
+    }
+
+    Ok((proof_bytes, publics_bytes))
+}
+
+/// standard interface for verify proof from bytes.
+pub fn verify_from_bytes<E: PairingEngine>(
+    vk_bytes: &[u8],
+    proof_bytes: &[u8],
+    mut publics_bytes: &[u8],
+) -> Result<bool, SynthesisError> {
+    let vk = VerifyingKey::read(vk_bytes)?;
+    let proof = Proof::read(proof_bytes)?;
+    let mut publics = vec![];
+    let publics_len = u32::read(&mut publics_bytes)?;
+    for _ in 0..publics_len {
+        publics.push(E::Fr::read(&mut publics_bytes)?);
+    }
+
+    let pvk = verifier::prepare_verifying_key(&vk);
+
+    verify_proof::<E>(&pvk, &proof, &publics)
+}
 
 /// A proof in the Groth16 SNARK.
 #[derive(Clone, Debug, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
@@ -223,7 +266,7 @@ impl<E: PairingEngine> From<PreparedVerifyingKey<E>> for VerifyingKey<E> {
 
 impl<E: PairingEngine> From<VerifyingKey<E>> for PreparedVerifyingKey<E> {
     fn from(other: VerifyingKey<E>) -> Self {
-        prepare_verifying_key(&other)
+        verifier::prepare_verifying_key(&other)
     }
 }
 

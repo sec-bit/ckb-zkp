@@ -1,5 +1,5 @@
 [package]
-name = "single_verifier"
+name = "universal_marlin_verifier"
 version = "0.1.0"
 edition = "2018"
 
@@ -9,7 +9,7 @@ ckb-std = "0.6.1"
 [dependencies.ckb-zkp]
 path = "../../"
 default-features = false
-features = [ "groth16", "bn_256"]
+features = ["marlin", "bn_256"]
 
 [profile.release]
 # set debug-assertions to true to enable debug macro.

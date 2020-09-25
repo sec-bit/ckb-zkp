@@ -1,6 +1,8 @@
 use crate::marlin::ahp::Error as AHPError;
 use crate::marlin::pc::Error as PCError;
 
+use crate::r1cs::SynthesisError;
+
 use crate::String;
 
 #[derive(Debug)]
@@ -20,5 +22,23 @@ impl From<AHPError> for Error {
 impl From<PCError> for Error {
     fn from(err: PCError) -> Self {
         Error::PCError(err)
+    }
+}
+
+impl From<Error> for SynthesisError {
+    fn from(_err: Error) -> SynthesisError {
+        SynthesisError::Unsatisfiable // Maybe can better.
+    }
+}
+
+impl From<PCError> for SynthesisError {
+    fn from(_err: PCError) -> SynthesisError {
+        SynthesisError::Unsatisfiable // Maybe can better.
+    }
+}
+
+impl From<AHPError> for SynthesisError {
+    fn from(_err: AHPError) -> SynthesisError {
+        SynthesisError::Unsatisfiable // Maybe can better.
     }
 }
