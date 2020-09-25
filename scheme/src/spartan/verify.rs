@@ -109,7 +109,7 @@ pub fn r1cs_satisfied_verify<E: PairingEngine>(
     // calculate τ
     let tau: Vec<E::Fr> = (0..num_rounds_x)
         .map(|_i| {
-            let mut buf = [0u8; 32];
+            let mut buf = [0u8; 31];
             transcript.challenge_bytes(b"challenge_tau", &mut buf);
             random_bytes_to_fr::<E>(&buf)
         })
@@ -189,15 +189,15 @@ pub fn r1cs_satisfied_verify<E: PairingEngine>(
     .unwrap();
     assert!(result);
     // sumcheck #2 verify
-    let mut buf = [0u8; 32];
+    let mut buf = [0u8; 31];
     transcript.challenge_bytes(b"challenege_Az", &mut buf);
     let r_a = random_bytes_to_fr::<E>(&buf);
 
-    let mut buf = [0u8; 32];
+    let mut buf = [0u8; 31];
     transcript.challenge_bytes(b"challenege_Bz", &mut buf);
     let r_b = random_bytes_to_fr::<E>(&buf);
 
-    let mut buf = [0u8; 32];
+    let mut buf = [0u8; 31];
     transcript.challenge_bytes(b"challenege_Cz", &mut buf);
     let r_c = random_bytes_to_fr::<E>(&buf);
     let claim_commit_two = (proof
@@ -292,7 +292,7 @@ fn sum_check_verify<E: PairingEngine>(
 
         transcript.append_message(b"comm_poly", &math::to_bytes!(commit_poly).unwrap());
 
-        let mut buf = [0u8; 32];
+        let mut buf = [0u8; 31];
         transcript.challenge_bytes(b"challenge_nextround", &mut buf);
         let r_i = random_bytes_to_fr::<E>(&buf);
 
@@ -336,7 +336,7 @@ fn sum_check_eval_verify<E: PairingEngine>(
 ) -> Result<bool, SynthesisError> {
     let w = (0..2)
         .map(|_i| {
-            let mut buf = [0u8; 32];
+            let mut buf = [0u8; 31];
             transcript.challenge_bytes(b"combine_two_claims_to_one", &mut buf);
             random_bytes_to_fr::<E>(&buf)
         })
@@ -348,7 +348,7 @@ fn sum_check_eval_verify<E: PairingEngine>(
     transcript.append_message(b"delta", &math::to_bytes!(proof.d_commit).unwrap());
     transcript.append_message(b"beta", &math::to_bytes!(proof.dot_cd_commit).unwrap());
 
-    let mut buf = [0u8; 32];
+    let mut buf = [0u8; 31];
     transcript.challenge_bytes(b"c", &mut buf);
     let c = random_bytes_to_fr::<E>(&buf);
 
@@ -402,7 +402,7 @@ fn knowledge_verify<E: PairingEngine>(
 ) -> Result<bool, SynthesisError> {
     transcript.append_message(b"C", &math::to_bytes!(commit).unwrap());
     transcript.append_message(b"alpha", &math::to_bytes!(proof.t_commit).unwrap());
-    let mut buf = [0u8; 32];
+    let mut buf = [0u8; 31];
     transcript.challenge_bytes(b"c", &mut buf);
     let c = random_bytes_to_fr::<E>(&buf);
 
@@ -436,7 +436,7 @@ fn product_verify<E: PairingEngine>(
     transcript.append_message(b"beta", &math::to_bytes!(proof.commit_beta).unwrap());
     transcript.append_message(b"delta", &math::to_bytes!(proof.commit_delta).unwrap());
 
-    let mut buf = [0u8; 32];
+    let mut buf = [0u8; 31];
     transcript.challenge_bytes(b"c", &mut buf);
     let c = random_bytes_to_fr::<E>(&buf);
 
@@ -472,7 +472,7 @@ fn eq_verify<E: PairingEngine>(
     transcript.append_message(b"C2", &math::to_bytes!(commit2).unwrap());
     transcript.append_message(b"alpha", &math::to_bytes!(proof.alpha).unwrap());
 
-    let mut buf = [0u8; 32];
+    let mut buf = [0u8; 31];
     transcript.challenge_bytes(b"c", &mut buf);
     let c = random_bytes_to_fr::<E>(&buf);
 
@@ -525,7 +525,7 @@ fn inner_product_verify<E: PairingEngine>(
     .unwrap();
     transcript.append_message(b"delta", &math::to_bytes!(proof.delta).unwrap());
     transcript.append_message(b"beta", &math::to_bytes!(proof.beta).unwrap());
-    let mut buf = [0u8; 32];
+    let mut buf = [0u8; 31];
     transcript.challenge_bytes(b"challenge_tau", &mut buf);
     let c = random_bytes_to_fr::<E>(&buf);
     let lhs = (gamma_hat.mul(c) + &proof.beta.into_projective()).mul(b_s)
@@ -566,7 +566,7 @@ fn sparse_poly_eval_verify<E: PairingEngine>(
     // gamma1, gamma2
     let gamma = (0..2)
         .map(|_i| {
-            let mut buf = [0u8; 32];
+            let mut buf = [0u8; 31];
             transcript.challenge_bytes(b"challenge_gamma_hash", &mut buf);
             random_bytes_to_fr::<E>(&buf)
         })
@@ -760,7 +760,7 @@ pub fn product_circuit_eval_verify<E: PairingEngine>(
 
         let coeffs = (0..claims_to_verify.len())
             .map(|_i| {
-                let mut buf = [0u8; 32];
+                let mut buf = [0u8; 31];
                 transcript.challenge_bytes(b"rand_coeffs_next_layer", &mut buf);
                 random_bytes_to_fr::<E>(&buf)
             })
@@ -825,7 +825,7 @@ pub fn product_circuit_eval_verify<E: PairingEngine>(
         }
 
         assert_eq!(claim_expected, claim_final);
-        let mut buf = [0u8; 32];
+        let mut buf = [0u8; 31];
         transcript.challenge_bytes(b"challenge_r_layer", &mut buf);
         let r_layer = random_bytes_to_fr::<E>(&buf);
 
@@ -867,7 +867,7 @@ pub fn sum_check_cubic_verify<E: PairingEngine>(
     for poly in proof_poly.iter() {
         transcript.append_message(b"comm_poly", &math::to_bytes!(poly.coeffs).unwrap());
 
-        let mut buf = [0u8; 32];
+        let mut buf = [0u8; 31];
         transcript.challenge_bytes(b"challenge_nextround", &mut buf);
         let r_j = random_bytes_to_fr::<E>(&buf);
         claim_per_round = poly.evaluate(r_j);
@@ -911,7 +911,7 @@ pub fn hash_layer_verify<E: PairingEngine>(
 
     let cs = (0..log2(evals.len()))
         .map(|_i| {
-            let mut buf = [0u8; 32];
+            let mut buf = [0u8; 31];
             transcript.challenge_bytes(b"challenge_combine_n_to_one", &mut buf);
             random_bytes_to_fr::<E>(&buf)
         })
@@ -970,7 +970,7 @@ pub fn hash_layer_verify<E: PairingEngine>(
 
     let cs_ops = (0..log2(evals_ops.len()))
         .map(|_i| {
-            let mut buf = [0u8; 32];
+            let mut buf = [0u8; 31];
             transcript.challenge_bytes(b"challenge_combine_n_to_one", &mut buf);
             random_bytes_to_fr::<E>(&buf)
         })
@@ -1010,7 +1010,7 @@ pub fn hash_layer_verify<E: PairingEngine>(
     transcript.append_message(b"claim_evals_mem", &math::to_bytes!(evals_mem).unwrap());
     let cs_mem = (0..log2(evals_mem.len()))
         .map(|_i| {
-            let mut buf = [0u8; 32];
+            let mut buf = [0u8; 31];
             transcript.challenge_bytes(b"challenge_combine_two_to_one", &mut buf);
             random_bytes_to_fr::<E>(&buf)
         })
