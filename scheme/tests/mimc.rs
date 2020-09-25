@@ -190,3 +190,74 @@ fn test_mimc_groth_16() {
     println!("verifing...");
     assert!(verify_proof(&pvk, &proof, &[image]).unwrap());
 }
+
+#[test]
+fn test_mimc_spartan() {
+    use merlin::Transcript;
+    use scheme::spartan::prover::snark_prover;
+    use scheme::spartan::r1cs::generate_r1cs;
+    use scheme::spartan::setup::*;
+    use scheme::spartan::spark::encode;
+    use scheme::spartan::verify::snark_verify;
+
+    println!("\n spartan snark...");
+    // This may not be cryptographically safe, use
+    // `OsRng` (for example) in production software.
+    let rng = &mut test_rng();
+
+    // Generate the MiMC round constants
+    let constants = (0..MIMC_ROUNDS).map(|_| rng.gen()).collect::<Vec<_>>();
+    let c = MiMCDemo::<Fr> {
+        xl: None,
+        xr: None,
+        constants: &constants,
+    };
+
+    println!("[snark_spartan]Generate parameters...");
+    let r1cs = generate_r1cs::<Bn_256, _>(c).unwrap();
+
+    let params = generate_setup_parameters_with_spark::<Bn_256, _>(
+        rng,
+        r1cs.num_aux,
+        r1cs.num_inputs,
+        r1cs.num_constraints,
+    )
+    .unwrap();
+    println!("[snark_spartan]Generate parameters...ok");
+
+    println!("[snark_spartan]Encode...");
+    let (encode, encode_commit) = encode::<Bn_256, _>(&params, &r1cs, rng).unwrap();
+    println!("[snark_spartan]Encode...ok");
+
+    let mut transcript = Transcript::new(b"spartan snark");
+    println!("[snark_spartan]Creating proof...");
+    // Generate a random preimage and compute the image
+    let xl = rng.gen();
+    let xr = rng.gen();
+    let image = mimc(xl, xr, &constants);
+
+    // Create an instance of our circuit (with the
+    // witness)
+    let c1 = MiMCDemo {
+        xl: Some(xl),
+        xr: Some(xr),
+        constants: &constants,
+    };
+    let proof = snark_prover(&params, &r1cs, c1, &encode, rng, &mut transcript).unwrap();
+    println!("[snark_spartan]Creating proof...ok");
+
+    println!("[snark_spartan]Verify proof...");
+    let mut transcript = Transcript::new(b"spartan snark");
+    let result = snark_verify::<Bn_256>(
+        &params,
+        &r1cs,
+        vec![image].to_vec(),
+        proof,
+        encode_commit,
+        &mut transcript,
+    )
+    .is_ok();
+    println!("[snark_spartan]Verify proof...ok");
+
+    assert!(result);
+}
