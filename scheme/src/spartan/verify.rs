@@ -16,13 +16,13 @@ use crate::spartan::polynomial::{
 };
 use crate::spartan::r1cs::R1CSInstance;
 use crate::spartan::spark::equalize_length;
+use crate::Vec;
+use core::{cmp, ops::Add};
 use math::fft::DensePolynomial as Polynomial;
 use math::{
     bytes::ToBytes, log2, AffineCurve, One, PairingEngine, PrimeField, ProjectiveCurve, Zero,
 };
 use merlin::Transcript;
-use std::cmp;
-use std::ops::Add;
 
 pub fn nizk_verify<E: PairingEngine>(
     params: &R1CSSatisfiedSetupParameters<E>,

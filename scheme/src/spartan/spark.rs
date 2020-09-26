@@ -8,9 +8,9 @@ use math::{log2, One, PairingEngine, Zero};
 // use scheme::r1cs::constraint_system::ConstraintSystem;
 use crate::math::PrimeField;
 use crate::r1cs::SynthesisError;
-
+use crate::Vec;
+use core::cmp;
 use rand::Rng;
-use std::cmp;
 
 pub fn encode<E: PairingEngine, R: Rng>(
     params: &SetupParametersWithSpark<E>,

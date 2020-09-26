@@ -22,6 +22,7 @@ use crate::spartan::r1cs::R1CSInstance;
 use crate::spartan::spark::{
     circuit_eval_opt, equalize_length, evaluate_dot_product_circuit, evaluate_product_circuit,
 };
+use crate::{String, Vec};
 use math::fft::DensePolynomial as Polynomial;
 use math::{
     bytes::ToBytes, log2, AffineCurve, Field, One, PairingEngine, ProjectiveCurve, UniformRand,
@@ -29,8 +30,10 @@ use math::{
 };
 use merlin::Transcript;
 use rand::Rng;
-use std::cmp;
-use std::ops::{Deref, Neg};
+use std::{
+    cmp,
+    ops::{Deref, Neg},
+};
 
 pub struct ProvingAssignment<E: PairingEngine> {
     pub num_constraints: usize,
@@ -118,8 +121,6 @@ where
         r1cs_satisfied_proof: r1cs_sat_proof,
         r: (rx, ry),
     };
-    println!("[nizk_prover] generate proof for nizk spartan finish.\n");
-
     Ok(proof)
 }
 
@@ -169,8 +170,6 @@ where
         matrix_evals: evals,
         r1cs_evals_proof: r1cs_evals_proof,
     };
-    println!("[snark_prover] generate proof for zk-snark spartan finish.\n");
-
     Ok(proof)
 }
 

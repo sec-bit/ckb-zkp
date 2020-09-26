@@ -1,3 +1,4 @@
+use crate::Vec;
 use math::fft::DensePolynomial as Polynomial;
 use math::{Field, PairingEngine};
 

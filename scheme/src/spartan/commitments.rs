@@ -1,9 +1,10 @@
 use crate::r1cs::SynthesisError;
 use crate::spartan::data_structure::PolyCommitments;
+use crate::Vec;
+use core::ops::AddAssign;
 use curve::ProjectiveCurve;
 use math::{log2, msm::VariableBaseMSM, AffineCurve, PairingEngine, PrimeField, UniformRand, Zero};
 use rand::Rng;
-use std::ops::AddAssign;
 
 pub fn packing_poly_commit<E: PairingEngine, R: Rng>(
     generators: &Vec<E::G1Affine>,

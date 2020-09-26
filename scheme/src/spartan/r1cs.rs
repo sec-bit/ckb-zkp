@@ -1,9 +1,8 @@
 use crate::r1cs::{
     ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable,
 };
-
+use crate::{String, Vec};
 use math::{log2, Field, One, PairingEngine, Zero};
-use std::collections::HashMap;
 
 pub struct R1CSInstance<E: PairingEngine> {
     pub num_inputs: usize,
@@ -156,35 +155,24 @@ pub fn switch_matrix_to_list<E: PairingEngine>(
     let mut cols = Vec::new();
 
     for (row, m_vec) in m_matrix.iter().enumerate() {
-        let mut m_map = HashMap::new();
-
+        let mut ms = vec![E::Fr::zero(); witness_len * 2];
         for (val, col) in m_vec.iter() {
             match col {
                 Index::Aux(i) => {
-                    let mut o = E::Fr::zero();
-                    if m_map.contains_key(i) {
-                        if let Some(v) = m_map.get(i) {
-                            o = *v;
-                        }
-                    }
-                    m_map.insert(*i, o + val);
+                    ms[*i] += val;
                 }
                 Index::Input(i) => {
-                    let mut o = E::Fr::zero();
-                    if m_map.contains_key(&(i + witness_len)) {
-                        if let Some(v) = m_map.get(&(i + witness_len)) {
-                            o = *v;
-                        }
-                    }
-                    m_map.insert(*i + witness_len, o + val);
+                    ms[*i + witness_len] += val;
                 }
             }
         }
 
-        for (col, val) in m_map {
-            rows.push(row);
-            cols.push(col);
-            vals.push(val);
+        for (col, val) in ms.iter().enumerate() {
+            if *val != E::Fr::zero() {
+                rows.push(row);
+                cols.push(col);
+                vals.push(*val);
+            }
         }
     }
 
