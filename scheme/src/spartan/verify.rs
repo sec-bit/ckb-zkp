@@ -29,9 +29,8 @@ pub fn nizk_verify<E: PairingEngine>(
     r1cs: &R1CSInstance<E>,
     inputs: Vec<E::Fr>,
     proof: NIZKProof<E>,
-    transcript: &mut Transcript,
 ) -> Result<bool, SynthesisError> {
-    transcript.append_message(b"protocol-name", b"Spartan NIZK proof");
+    let mut transcript = Transcript::new(b"Spartan NIZK proof");
 
     let (rx, ry) = proof.r;
     let eval_a_r = evaluate_mle::<E>(&r1cs.a_matrix, &rx, &ry);
@@ -43,7 +42,7 @@ pub fn nizk_verify<E: PairingEngine>(
         inputs,
         proof.r1cs_satisfied_proof,
         (eval_a_r, eval_b_r, eval_c_r),
-        transcript,
+        &mut transcript,
     )
     .unwrap();
 
@@ -56,9 +55,8 @@ pub fn snark_verify<E: PairingEngine>(
     inputs: Vec<E::Fr>,
     proof: SNARKProof<E>,
     encode_commit: EncodeCommit<E>,
-    transcript: &mut Transcript,
 ) -> Result<(), SynthesisError> {
-    transcript.append_message(b"protocol-name", b"Spartan SNARK proof");
+    let mut transcript = Transcript::new(b"Spartan SNARK proof");
 
     let (result, rx, ry) = r1cs_satisfied_verify::<E>(
         &params.r1cs_satisfied_params,
@@ -66,7 +64,7 @@ pub fn snark_verify<E: PairingEngine>(
         inputs,
         proof.r1cs_satisfied_proof,
         proof.matrix_evals,
-        transcript,
+        &mut transcript,
     )
     .unwrap();
     assert!(result);
@@ -82,7 +80,7 @@ pub fn snark_verify<E: PairingEngine>(
         encode_commit,
         (rx, ry),
         proof.matrix_evals,
-        transcript,
+        &mut transcript,
     )
     .is_ok();
     assert!(result);

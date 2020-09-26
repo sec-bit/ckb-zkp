@@ -194,7 +194,6 @@ fn mimc_groth16() {
 
 #[test]
 fn test_mimc_spartan() {
-    use merlin::Transcript;
     use scheme::spartan::prover::snark_prover;
     use scheme::spartan::r1cs::generate_r1cs;
     use scheme::spartan::setup::*;
@@ -230,7 +229,6 @@ fn test_mimc_spartan() {
     let (encode, encode_commit) = encode::<Bn_256, _>(&params, &r1cs, rng).unwrap();
     println!("[snark_spartan]Encode...ok");
 
-    let mut transcript = Transcript::new(b"spartan snark");
     println!("[snark_spartan]Creating proof...");
     // Generate a random preimage and compute the image
     let xl = rng.gen();
@@ -244,20 +242,12 @@ fn test_mimc_spartan() {
         xr: Some(xr),
         constants: &constants,
     };
-    let proof = snark_prover(&params, &r1cs, c1, &encode, rng, &mut transcript).unwrap();
+    let proof = snark_prover(&params, &r1cs, c1, &encode, rng).unwrap();
     println!("[snark_spartan]Creating proof...ok");
 
     println!("[snark_spartan]Verify proof...");
-    let mut transcript = Transcript::new(b"spartan snark");
-    let result = snark_verify::<Bn_256>(
-        &params,
-        &r1cs,
-        vec![image].to_vec(),
-        proof,
-        encode_commit,
-        &mut transcript,
-    )
-    .is_ok();
+    let result =
+        snark_verify::<Bn_256>(&params, &r1cs, vec![image].to_vec(), proof, encode_commit).is_ok();
     println!("[snark_spartan]Verify proof...ok");
 
     assert!(result);

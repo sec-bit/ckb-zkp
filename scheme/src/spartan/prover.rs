@@ -106,17 +106,16 @@ pub fn nizk_prover<E, C, R>(
     r1cs: &R1CSInstance<E>,
     circuit: C,
     rng: &mut R,
-    transcript: &mut Transcript,
 ) -> Result<NIZKProof<E>, SynthesisError>
 where
     E: PairingEngine,
     C: ConstraintSynthesizer<E::Fr>,
     R: Rng,
 {
-    transcript.append_message(b"protocol-name", b"Spartan NIZK proof");
+    let mut transcript = Transcript::new(b"Spartan NIZK proof");
 
     let (r1cs_sat_proof, (rx, ry)) =
-        r1cs_satisfied_prover::<E, C, R>(params, r1cs, circuit, rng, transcript).unwrap();
+        r1cs_satisfied_prover::<E, C, R>(params, r1cs, circuit, rng, &mut transcript).unwrap();
     let proof = NIZKProof::<E> {
         r1cs_satisfied_proof: r1cs_sat_proof,
         r: (rx, ry),
@@ -130,21 +129,20 @@ pub fn snark_prover<E, C, R>(
     circuit: C,
     encode: &EncodeMemory<E>,
     rng: &mut R,
-    transcript: &mut Transcript,
 ) -> Result<SNARKProof<E>, SynthesisError>
 where
     E: PairingEngine,
     C: ConstraintSynthesizer<E::Fr>,
     R: Rng,
 {
-    transcript.append_message(b"protocol-name", b"Spartan SNARK proof");
+    let mut transcript = Transcript::new(b"Spartan SNARK proof");
 
     let (r1cs_sat_proof, (rx, ry)) = r1cs_satisfied_prover::<E, C, R>(
         &params.r1cs_satisfied_params,
         r1cs,
         circuit,
         rng,
-        transcript,
+        &mut transcript,
     )
     .unwrap();
 
@@ -161,7 +159,7 @@ where
         evals,
         encode,
         rng,
-        transcript,
+        &mut transcript,
     )
     .unwrap();
 
