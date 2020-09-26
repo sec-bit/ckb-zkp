@@ -4,7 +4,7 @@ use ckb_std::{ckb_constants::Source, high_level::load_cell_data};
 
 use crate::error::Error;
 
-use ckb_zkp::{verify_from_bytes_with_curve, Curve, Scheme};
+use ckb_zkp::{bn_256, marlin};
 
 pub fn main() -> Result<(), Error> {
     // load verify key.
@@ -25,13 +25,7 @@ pub fn main() -> Result<(), Error> {
         Err(err) => return Err(err.into()),
     };
 
-    match verify_from_bytes_with_curve(
-        Curve::Bn_256,
-        Scheme::Groth16,
-        &vk_data,
-        &proof_data,
-        &public_data,
-    ) {
+    match marlin::verify_from_bytes::<bn_256::Bn_256>(&vk_data, &proof_data, &public_data) {
         Ok(true) => Ok(()),
         _ => Err(Error::Verify),
     }

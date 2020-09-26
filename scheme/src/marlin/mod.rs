@@ -1,6 +1,6 @@
 use math::fft::EvaluationDomain;
-use math::{PairingEngine, ToBytes, UniformRand};
-use rand::RngCore;
+use math::{FromBytes, PairingEngine, ToBytes, UniformRand};
+use rand::Rng;
 
 use crate::r1cs::{ConstraintSynthesizer, SynthesisError};
 use crate::{ToString, Vec};
@@ -20,10 +20,7 @@ pub use data_structures::*;
 mod fs_rng;
 use fs_rng::FiatShamirRng;
 
-#[cfg(test)]
-mod test;
-
-pub fn universal_setup<E: PairingEngine, R: RngCore>(
+pub fn universal_setup<E: PairingEngine, R: Rng>(
     max_degree: usize,
     rng: &mut R,
 ) -> Result<UniversalParams<E>, SynthesisError> {
@@ -63,11 +60,48 @@ pub fn index<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>>(
     Ok((ipk, ivk))
 }
 
-pub fn prove<E: PairingEngine, R: RngCore, C: ConstraintSynthesizer<E::Fr>>(
+/// standard interface for create proof and to bytes.
+pub fn prove_to_bytes<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, R: Rng>(
+    ipk: &IndexProverKey<E>,
+    circuit: C,
+    rng: &mut R,
+    publics: &[E::Fr],
+) -> Result<(Vec<u8>, Vec<u8>), SynthesisError> {
+    let proof = create_random_proof(ipk, circuit, rng)?;
+    let mut proof_bytes = vec![];
+    proof.write(&mut proof_bytes)?;
+    let mut publics_bytes = vec![];
+    (publics.len() as u32).write(&mut publics_bytes)?;
+    for i in publics {
+        i.write(&mut publics_bytes)?;
+    }
+
+    Ok((proof_bytes, publics_bytes))
+}
+
+/// standard interface for verify proof from bytes.
+pub fn verify_from_bytes<E: PairingEngine>(
+    vk_bytes: &[u8],
+    proof_bytes: &[u8],
+    mut publics_bytes: &[u8],
+) -> Result<bool, SynthesisError> {
+    let vk = IndexVerifierKey::read(vk_bytes)?;
+    let proof = Proof::read(proof_bytes)?;
+    let mut publics = vec![];
+    let publics_len = u32::read(&mut publics_bytes)?;
+    for _ in 0..publics_len {
+        publics.push(E::Fr::read(&mut publics_bytes)?);
+    }
+
+    verify_proof::<E>(&vk, &proof, &publics)
+}
+
+/// standard interface for create proof.
+pub fn create_random_proof<E: PairingEngine, R: Rng, C: ConstraintSynthesizer<E::Fr>>(
     ipk: &IndexProverKey<E>,
     c: C,
     zk_rng: &mut R,
-) -> Result<Proof<E>, Error> {
+) -> Result<Proof<E>, SynthesisError> {
     // init
     let pstate = AHP::<E::Fr>::prover_init(&ipk.index, c)?;
     let public_input = pstate.public_input();
@@ -149,11 +183,12 @@ pub fn prove<E: PairingEngine, R: RngCore, C: ConstraintSynthesizer<E::Fr>>(
     })
 }
 
-pub fn verify<E: PairingEngine>(
+/// standard interface for verify proof.
+pub fn verify_proof<E: PairingEngine>(
     ivk: &IndexVerifierKey<E>,
     proof: &Proof<E>,
     public_input: &[E::Fr],
-) -> Result<bool, Error> {
+) -> Result<bool, SynthesisError> {
     let mut fs_rng = FiatShamirRng::from_seed(&to_bytes![&ivk, &public_input].unwrap());
 
     let first_comms = &proof.commitments[0];
