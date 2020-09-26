@@ -3,40 +3,44 @@ use math::fft::DensePolynomial as Polynomial;
 use math::{Field, PairingEngine};
 
 #[derive(Clone)]
-pub struct PolyCommitmentSetupParameters<E: PairingEngine> {
+pub struct PolyCommitmentParameters<E: PairingEngine> {
     pub n: usize,
-    pub gen_n: MultiCommitmentSetupParameters<E>,
-    pub gen_1: MultiCommitmentSetupParameters<E>,
+    pub gen_n: MultiCommitmentParameters<E>,
+    pub gen_1: MultiCommitmentParameters<E>,
 }
 
 #[derive(Clone)]
-pub struct MultiCommitmentSetupParameters<E: PairingEngine> {
+pub struct MultiCommitmentParameters<E: PairingEngine> {
     pub n: usize,
     pub generators: Vec<E::G1Affine>,
     pub h: E::G1Affine,
 }
 
-pub struct SumCheckCommitmentSetupParameters<E: PairingEngine> {
-    pub gen_1: MultiCommitmentSetupParameters<E>,
-    pub gen_3: MultiCommitmentSetupParameters<E>,
-    pub gen_4: MultiCommitmentSetupParameters<E>,
+pub struct SumCheckCommitmentParameters<E: PairingEngine> {
+    pub gen_1: MultiCommitmentParameters<E>,
+    pub gen_3: MultiCommitmentParameters<E>,
+    pub gen_4: MultiCommitmentParameters<E>,
 }
 
-pub struct R1CSSatisfiedSetupParameters<E: PairingEngine> {
-    pub pc_params: PolyCommitmentSetupParameters<E>,
-    pub sc_params: SumCheckCommitmentSetupParameters<E>,
+pub struct R1CSSatisfiedParameters<E: PairingEngine> {
+    pub pc_params: PolyCommitmentParameters<E>,
+    pub sc_params: SumCheckCommitmentParameters<E>,
     pub n: usize,
 }
 
-pub struct R1CSEvalsSetupParameters<E: PairingEngine> {
-    pub ops_params: PolyCommitmentSetupParameters<E>,
-    pub mem_params: PolyCommitmentSetupParameters<E>,
-    pub derefs_params: PolyCommitmentSetupParameters<E>,
+pub struct R1CSEvalsParameters<E: PairingEngine> {
+    pub ops_params: PolyCommitmentParameters<E>,
+    pub mem_params: PolyCommitmentParameters<E>,
+    pub derefs_params: PolyCommitmentParameters<E>,
 }
 
-pub struct SetupParametersWithSpark<E: PairingEngine> {
-    pub r1cs_eval_params: R1CSEvalsSetupParameters<E>,
-    pub r1cs_satisfied_params: R1CSSatisfiedSetupParameters<E>,
+pub struct NizkParameters<E: PairingEngine> {
+    pub r1cs_satisfied_params: R1CSSatisfiedParameters<E>,
+}
+
+pub struct SnarkParameters<E: PairingEngine> {
+    pub r1cs_eval_params: R1CSEvalsParameters<E>,
+    pub r1cs_satisfied_params: R1CSSatisfiedParameters<E>,
 }
 
 pub struct AddrTimestamps<E: PairingEngine> {

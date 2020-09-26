@@ -1,7 +1,7 @@
 use crate::spartan::commitments::packing_poly_commit;
 use crate::spartan::data_structure::{
     AddrTimestamps, EncodeCommit, EncodeMemory, HashForMemoryChecking, MemoryLayer,
-    ProdForMemoryChecking, ProductCircuit, SetupParametersWithSpark,
+    ProdForMemoryChecking, ProductCircuit, SnarkParameters,
 };
 use crate::spartan::r1cs::{switch_matrix_to_list, R1CSInstance};
 use math::{log2, One, PairingEngine, Zero};
@@ -13,7 +13,7 @@ use core::cmp;
 use rand::Rng;
 
 pub fn encode<E: PairingEngine, R: Rng>(
-    params: &SetupParametersWithSpark<E>,
+    params: &SnarkParameters<E>,
     r1cs: &R1CSInstance<E>,
     rng: &mut R,
 ) -> Result<(EncodeMemory<E>, EncodeCommit<E>), SynthesisError> {

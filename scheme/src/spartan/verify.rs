@@ -1,9 +1,8 @@
 use crate::r1cs::SynthesisError;
 use crate::spartan::commitments::poly_commit_vec;
 use crate::spartan::data_structure::{
-    random_bytes_to_fr, EncodeCommit, MultiCommitmentSetupParameters,
-    PolyCommitmentSetupParameters, R1CSEvalsSetupParameters, R1CSSatisfiedSetupParameters,
-    SetupParametersWithSpark,
+    random_bytes_to_fr, EncodeCommit, MultiCommitmentParameters, NizkParameters,
+    PolyCommitmentParameters, R1CSEvalsParameters, R1CSSatisfiedParameters, SnarkParameters,
 };
 use crate::spartan::data_structure::{
     DotProductProof, EqProof, HashLayerProof, KnowledgeProof, NIZKProof, ProductCircuitEvalProof,
@@ -24,8 +23,8 @@ use math::{
 };
 use merlin::Transcript;
 
-pub fn nizk_verify<E: PairingEngine>(
-    params: &R1CSSatisfiedSetupParameters<E>,
+pub fn verify_nizk_proof<E: PairingEngine>(
+    params: &NizkParameters<E>,
     r1cs: &R1CSInstance<E>,
     inputs: Vec<E::Fr>,
     proof: NIZKProof<E>,
@@ -37,7 +36,7 @@ pub fn nizk_verify<E: PairingEngine>(
     let eval_b_r = evaluate_mle::<E>(&r1cs.b_matrix, &rx, &ry);
     let eval_c_r = evaluate_mle::<E>(&r1cs.c_matrix, &rx, &ry);
     let (result, _, _) = r1cs_satisfied_verify::<E>(
-        params,
+        &params.r1cs_satisfied_params,
         r1cs,
         inputs,
         proof.r1cs_satisfied_proof,
@@ -49,8 +48,8 @@ pub fn nizk_verify<E: PairingEngine>(
     Ok(result)
 }
 
-pub fn snark_verify<E: PairingEngine>(
-    params: &SetupParametersWithSpark<E>,
+pub fn verify_snark_proof<E: PairingEngine>(
+    params: &SnarkParameters<E>,
     r1cs: &R1CSInstance<E>,
     inputs: Vec<E::Fr>,
     proof: SNARKProof<E>,
@@ -88,7 +87,7 @@ pub fn snark_verify<E: PairingEngine>(
 }
 
 pub fn r1cs_satisfied_verify<E: PairingEngine>(
-    params: &R1CSSatisfiedSetupParameters<E>,
+    params: &R1CSSatisfiedParameters<E>,
     r1cs: &R1CSInstance<E>,
     inputs: Vec<E::Fr>,
     proof: R1CSSatProof<E>,
@@ -272,8 +271,8 @@ pub fn r1cs_satisfied_verify<E: PairingEngine>(
 }
 
 fn sum_check_verify<E: PairingEngine>(
-    params_gen_1: &MultiCommitmentSetupParameters<E>,
-    params_gen_n: &MultiCommitmentSetupParameters<E>,
+    params_gen_1: &MultiCommitmentParameters<E>,
+    params_gen_n: &MultiCommitmentParameters<E>,
     proof: &SumCheckProof<E>,
     commit_claim: E::G1Affine,
     size: usize,
@@ -322,8 +321,8 @@ fn sum_check_verify<E: PairingEngine>(
 }
 
 fn sum_check_eval_verify<E: PairingEngine>(
-    params_gen_1: &MultiCommitmentSetupParameters<E>,
-    params_gen_n: &MultiCommitmentSetupParameters<E>,
+    params_gen_1: &MultiCommitmentParameters<E>,
+    params_gen_n: &MultiCommitmentParameters<E>,
     commit_poly: E::G1Affine,
     commit_eval: E::G1Affine,
     commit_claim: E::G1Affine,
@@ -393,7 +392,7 @@ fn sum_check_eval_verify<E: PairingEngine>(
 }
 
 fn knowledge_verify<E: PairingEngine>(
-    params: &MultiCommitmentSetupParameters<E>,
+    params: &MultiCommitmentParameters<E>,
     proof: KnowledgeProof<E>,
     commit: E::G1Affine,
     transcript: &mut Transcript,
@@ -414,7 +413,7 @@ fn knowledge_verify<E: PairingEngine>(
 }
 
 fn product_verify<E: PairingEngine>(
-    params: &MultiCommitmentSetupParameters<E>,
+    params: &MultiCommitmentParameters<E>,
     proof: ProductProof<E>,
     va_commit: E::G1Affine,
     vb_commit: E::G1Affine,
@@ -460,7 +459,7 @@ fn product_verify<E: PairingEngine>(
 }
 
 fn eq_verify<E: PairingEngine>(
-    params: &MultiCommitmentSetupParameters<E>,
+    params: &MultiCommitmentParameters<E>,
     commit1: E::G1Affine,
     commit2: E::G1Affine,
     proof: EqProof<E>,
@@ -483,7 +482,7 @@ fn eq_verify<E: PairingEngine>(
 }
 
 fn inner_product_verify<E: PairingEngine>(
-    params: &PolyCommitmentSetupParameters<E>,
+    params: &PolyCommitmentParameters<E>,
     ry: &Vec<E::Fr>,
     commits_witness: Vec<E::G1Affine>,
     commit_ry: E::G1Affine,
@@ -537,7 +536,7 @@ fn inner_product_verify<E: PairingEngine>(
 }
 
 fn sparse_poly_eval_verify<E: PairingEngine>(
-    params: &R1CSEvalsSetupParameters<E>,
+    params: &R1CSEvalsParameters<E>,
     proof: R1CSEvalsProof<E>,
     encode_commit: EncodeCommit<E>,
     r: (Vec<E::Fr>, Vec<E::Fr>),
@@ -876,7 +875,7 @@ pub fn sum_check_cubic_verify<E: PairingEngine>(
 }
 
 pub fn hash_layer_verify<E: PairingEngine>(
-    params: &R1CSEvalsSetupParameters<E>,
+    params: &R1CSEvalsParameters<E>,
     proof: HashLayerProof<E>,
     r: (&Vec<E::Fr>, &Vec<E::Fr>),
     rands: (&Vec<E::Fr>, &Vec<E::Fr>),

@@ -4,9 +4,9 @@ use crate::r1cs::{
 use crate::spartan::commitments::{packing_poly_commit, poly_commit_vec};
 use crate::spartan::data_structure::{
     random_bytes_to_fr, AddrTimestamps, EncodeMemory, KnowledgeProductCommit,
-    MultiCommitmentSetupParameters, PolyCommitmentSetupParameters, ProdForMemoryChecking,
-    ProductCircuit, R1CSEvalsSetupParameters, R1CSSatisfiedSetupParameters,
-    SetupParametersWithSpark, SumCheckCommitmentSetupParameters,
+    MultiCommitmentParameters, NizkParameters, PolyCommitmentParameters, ProdForMemoryChecking,
+    ProductCircuit, R1CSEvalsParameters, R1CSSatisfiedParameters, SnarkParameters,
+    SumCheckCommitmentParameters,
 };
 use crate::spartan::data_structure::{
     DotProductProof, EqProof, HashLayerProof, KnowledgeProductProof, KnowledgeProof,
@@ -101,8 +101,8 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
     }
 }
 
-pub fn nizk_prover<E, C, R>(
-    params: &R1CSSatisfiedSetupParameters<E>,
+pub fn create_nizk_proof<E, C, R>(
+    params: &NizkParameters<E>,
     r1cs: &R1CSInstance<E>,
     circuit: C,
     rng: &mut R,
@@ -114,8 +114,14 @@ where
 {
     let mut transcript = Transcript::new(b"Spartan NIZK proof");
 
-    let (r1cs_sat_proof, (rx, ry)) =
-        r1cs_satisfied_prover::<E, C, R>(params, r1cs, circuit, rng, &mut transcript).unwrap();
+    let (r1cs_sat_proof, (rx, ry)) = r1cs_satisfied_prover::<E, C, R>(
+        &params.r1cs_satisfied_params,
+        r1cs,
+        circuit,
+        rng,
+        &mut transcript,
+    )
+    .unwrap();
     let proof = NIZKProof::<E> {
         r1cs_satisfied_proof: r1cs_sat_proof,
         r: (rx, ry),
@@ -123,8 +129,8 @@ where
     Ok(proof)
 }
 
-pub fn snark_prover<E, C, R>(
-    params: &SetupParametersWithSpark<E>,
+pub fn create_snark_proof<E, C, R>(
+    params: &SnarkParameters<E>,
     r1cs: &R1CSInstance<E>,
     circuit: C,
     encode: &EncodeMemory<E>,
@@ -172,7 +178,7 @@ where
 }
 
 pub fn r1cs_satisfied_prover<E, C, R>(
-    params: &R1CSSatisfiedSetupParameters<E>,
+    params: &R1CSSatisfiedParameters<E>,
     r1cs: &R1CSInstance<E>,
     circuit: C,
     rng: &mut R,
@@ -404,7 +410,7 @@ where
 
 fn sum_check_proof_phase_one<E: PairingEngine, R: Rng>(
     num_rounds: usize,
-    params: &SumCheckCommitmentSetupParameters<E>,
+    params: &SumCheckCommitmentParameters<E>,
     claim: E::Fr,
     poly_a: &Vec<E::Fr>,
     poly_b: &Vec<E::Fr>,
@@ -574,7 +580,7 @@ fn sum_check_proof_phase_one<E: PairingEngine, R: Rng>(
 
 fn sum_check_proof_phase_two<E: PairingEngine, R: Rng>(
     num_rounds: usize,
-    params: &SumCheckCommitmentSetupParameters<E>,
+    params: &SumCheckCommitmentParameters<E>,
     claim: E::Fr,
     blind_claim: E::Fr,
     poly_abc: &Vec<E::Fr>,
@@ -708,8 +714,8 @@ fn sum_check_proof_phase_two<E: PairingEngine, R: Rng>(
 }
 
 fn sum_check_eval_prover<E: PairingEngine, R: Rng>(
-    params_gen_1: &MultiCommitmentSetupParameters<E>,
-    params_gen_n: &MultiCommitmentSetupParameters<E>,
+    params_gen_1: &MultiCommitmentParameters<E>,
+    params_gen_n: &MultiCommitmentParameters<E>,
     poly: &Vec<E::Fr>,
     poly_commit: E::G1Affine,
     blind_poly: E::Fr,
@@ -816,7 +822,7 @@ fn sum_check_eval_prover<E: PairingEngine, R: Rng>(
 }
 
 fn knowledge_proof<E: PairingEngine, R: Rng>(
-    params: &MultiCommitmentSetupParameters<E>,
+    params: &MultiCommitmentParameters<E>,
     claim: E::Fr,
     blind: E::Fr,
     rng: &mut R,
@@ -852,7 +858,7 @@ fn knowledge_proof<E: PairingEngine, R: Rng>(
 }
 
 fn product_proof<E: PairingEngine, R: Rng>(
-    params: &MultiCommitmentSetupParameters<E>,
+    params: &MultiCommitmentParameters<E>,
     claim_a: E::Fr,
     blind_a: E::Fr,
     claim_b: E::Fr,
@@ -919,7 +925,7 @@ fn product_proof<E: PairingEngine, R: Rng>(
 }
 
 fn eq_proof<E: PairingEngine, R: Rng>(
-    params: &MultiCommitmentSetupParameters<E>,
+    params: &MultiCommitmentParameters<E>,
     claim1: E::Fr,
     blind1: E::Fr,
     claim2: E::Fr,
@@ -953,7 +959,7 @@ fn eq_proof<E: PairingEngine, R: Rng>(
     Ok(proof)
 }
 fn inner_product_proof<E: PairingEngine, R: Rng>(
-    params: &PolyCommitmentSetupParameters<E>,
+    params: &PolyCommitmentParameters<E>,
     poly: &Vec<E::Fr>,
     blind_poly: &Vec<E::Fr>,
     ry: &Vec<E::Fr>,
@@ -1058,7 +1064,7 @@ fn inner_product_proof<E: PairingEngine, R: Rng>(
 }
 
 fn sparse_poly_eval_proof<E, R>(
-    params: &R1CSEvalsSetupParameters<E>,
+    params: &R1CSEvalsParameters<E>,
     r: (&Vec<E::Fr>, &Vec<E::Fr>),
     evals: (E::Fr, E::Fr, E::Fr),
     encode: &EncodeMemory<E>,
@@ -1640,7 +1646,7 @@ pub fn sum_check_cubic_prover<E: PairingEngine>(
 }
 
 pub fn hash_layer_prover<E: PairingEngine, R: Rng>(
-    params: &R1CSEvalsSetupParameters<E>,
+    params: &R1CSEvalsParameters<E>,
     encode: &EncodeMemory<E>,
     rands: (&Vec<E::Fr>, &Vec<E::Fr>),
     e_list: (&Vec<Vec<E::Fr>>, &Vec<Vec<E::Fr>>, &Vec<E::Fr>),

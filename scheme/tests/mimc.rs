@@ -194,11 +194,11 @@ fn mimc_groth16() {
 
 #[test]
 fn test_mimc_spartan() {
-    use scheme::spartan::prover::snark_prover;
+    use scheme::spartan::prover::create_snark_proof;
     use scheme::spartan::r1cs::generate_r1cs;
     use scheme::spartan::setup::*;
     use scheme::spartan::spark::encode;
-    use scheme::spartan::verify::snark_verify;
+    use scheme::spartan::verify::verify_snark_proof;
 
     println!("\n spartan snark...");
     // This may not be cryptographically safe, use
@@ -216,7 +216,7 @@ fn test_mimc_spartan() {
     println!("[snark_spartan]Generate parameters...");
     let r1cs = generate_r1cs::<Bn_256, _>(c).unwrap();
 
-    let params = generate_setup_parameters_with_spark::<Bn_256, _>(
+    let params = generate_setup_snark_parameters::<Bn_256, _>(
         rng,
         r1cs.num_aux,
         r1cs.num_inputs,
@@ -242,12 +242,13 @@ fn test_mimc_spartan() {
         xr: Some(xr),
         constants: &constants,
     };
-    let proof = snark_prover(&params, &r1cs, c1, &encode, rng).unwrap();
+    let proof = create_snark_proof(&params, &r1cs, c1, &encode, rng).unwrap();
     println!("[snark_spartan]Creating proof...ok");
 
     println!("[snark_spartan]Verify proof...");
     let result =
-        snark_verify::<Bn_256>(&params, &r1cs, vec![image].to_vec(), proof, encode_commit).is_ok();
+        verify_snark_proof::<Bn_256>(&params, &r1cs, vec![image].to_vec(), proof, encode_commit)
+            .is_ok();
     println!("[snark_spartan]Verify proof...ok");
 
     assert!(result);
