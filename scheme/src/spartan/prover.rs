@@ -248,7 +248,7 @@ where
     let mb = evaluate_matrix_vec::<E>(r1cs.b_matrix.clone(), z.clone());
     let mc = evaluate_matrix_vec::<E>(r1cs.c_matrix.clone(), z.clone());
     //5. sumcheck #1: ex = G_τ(rx)
-    let (proof_sc1, rx) = sum_check_proof_phase_one::<E, R>(
+    let (proof_sc1, rx, polys_value_at_rx, blinds_eval1) = sum_check_proof_phase_one::<E, R>(
         num_rounds_x,
         &params.sc_params,
         E::Fr::zero(),
@@ -261,10 +261,7 @@ where
     )
     .unwrap();
     //6. compute va, vb, vc with proofs
-    let v_a = proof_sc1.polys_value_at_r[0];
-    let v_b = proof_sc1.polys_value_at_r[1];
-    let v_c = proof_sc1.polys_value_at_r[2];
-    let eq_tau = proof_sc1.polys_value_at_r[3];
+    let (v_a, v_b, v_c, eq_tau) = polys_value_at_rx;
     let prod = v_a * &v_b;
 
     let blind_a = E::Fr::rand(rng);
@@ -313,7 +310,7 @@ where
         claim_sc1,
         blind_claim_sc1,
         claim_sc1,
-        proof_sc1.blinds_eval,
+        blinds_eval1,
         rng,
         transcript,
     )
@@ -345,7 +342,7 @@ where
         .map(|i| r_a * &evals_a[i] + &(r_b * &evals_b[i]) + &(r_c * &evals_c[i]))
         .collect::<Vec<E::Fr>>();
     //11. sumcheck #2
-    let (proof_sc2, ry) = sum_check_proof_phase_two::<E, R>(
+    let (proof_sc2, ry, polys_value_at_ry, blinds_eval2) = sum_check_proof_phase_two::<E, R>(
         num_rounds_y,
         &params.sc_params,
         claim_phase2,
@@ -357,8 +354,7 @@ where
     )
     .unwrap();
 
-    let v1 = proof_sc2.polys_value_at_r[0];
-    let v2 = proof_sc2.polys_value_at_r[1];
+    let (v1, v2) = polys_value_at_ry;
     let claim_sc2 = v1 * &v2;
 
     // 12. w(ry[1...])
@@ -386,7 +382,7 @@ where
         claim_sc2,
         eval_at_zy_blind_claim,
         claim_sc2,
-        proof_sc2.blinds_eval,
+        blinds_eval2,
         rng,
         transcript,
     )
@@ -418,7 +414,15 @@ fn sum_check_proof_phase_one<E: PairingEngine, R: Rng>(
     poly_eq: &Vec<E::Fr>,
     rng: &mut R,
     transcript: &mut Transcript,
-) -> Result<(SumCheckProof<E>, Vec<E::Fr>), SynthesisError> {
+) -> Result<
+    (
+        SumCheckProof<E>,
+        Vec<E::Fr>,
+        (E::Fr, E::Fr, E::Fr, E::Fr),
+        E::Fr,
+    ),
+    SynthesisError,
+> {
     let mut poly_a = poly_a.clone();
     let mut poly_b = poly_b.clone();
     let mut poly_c = poly_c.clone();
@@ -565,17 +569,14 @@ fn sum_check_proof_phase_one<E: PairingEngine, R: Rng>(
     assert_eq!(poly_b.len(), 1);
     assert_eq!(poly_c.len(), 1);
     assert_eq!(poly_eq.len(), 1);
-    let polys_value_at_rx = vec![poly_a[0], poly_b[0], poly_c[0], poly_eq[0]];
+    let polys_value_at_rx = (poly_a[0], poly_b[0], poly_c[0], poly_eq[0]);
     let proof = SumCheckProof::<E> {
         comm_polys: comm_polys,
         comm_evals: comm_evals,
         proofs: proofs,
-        // r: rx,
-        polys_value_at_r: polys_value_at_rx,
-        blinds_eval: blind_poly_eval,
     };
 
-    Ok((proof, rx))
+    Ok((proof, rx, polys_value_at_rx, blind_poly_eval))
 }
 
 fn sum_check_proof_phase_two<E: PairingEngine, R: Rng>(
@@ -587,7 +588,7 @@ fn sum_check_proof_phase_two<E: PairingEngine, R: Rng>(
     poly_z: &Vec<E::Fr>,
     rng: &mut R,
     transcript: &mut Transcript,
-) -> Result<(SumCheckProof<E>, Vec<E::Fr>), SynthesisError> {
+) -> Result<(SumCheckProof<E>, Vec<E::Fr>, (E::Fr, E::Fr), E::Fr), SynthesisError> {
     let mut poly_abc = poly_abc.clone();
     let mut poly_z = poly_z.clone();
     assert_eq!(poly_abc.len(), poly_z.len());
@@ -699,18 +700,15 @@ fn sum_check_proof_phase_two<E: PairingEngine, R: Rng>(
         commit_claim = commit_eval;
     }
 
-    let polys_value_at_ry = vec![poly_abc[0], poly_z[0]];
+    let polys_value_at_ry = (poly_abc[0], poly_z[0]);
 
     let proof = SumCheckProof::<E> {
         comm_polys: comm_polys,
         comm_evals: comm_evals,
         proofs: proofs,
-        // r: ry,
-        polys_value_at_r: polys_value_at_ry,
-        blinds_eval: blind_poly_eval,
     };
 
-    Ok((proof, ry))
+    Ok((proof, ry, polys_value_at_ry, blind_poly_eval))
 }
 
 fn sum_check_eval_prover<E: PairingEngine, R: Rng>(

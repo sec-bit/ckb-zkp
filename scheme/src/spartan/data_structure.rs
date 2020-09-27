@@ -111,9 +111,6 @@ pub struct SumCheckProof<E: PairingEngine> {
     pub comm_polys: Vec<E::G1Affine>,
     pub comm_evals: Vec<E::G1Affine>,
     pub proofs: Vec<SumCheckEvalProof<E>>,
-    // pub r: Vec<E::Fr>,
-    pub polys_value_at_r: Vec<E::Fr>,
-    pub blinds_eval: E::Fr,
 }
 
 pub struct WitnessProof<E: PairingEngine> {
