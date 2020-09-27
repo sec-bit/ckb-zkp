@@ -107,14 +107,13 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for TestDemo<F> {
 #[cfg(test)]
 mod bls12_381 {
     use super::*;
-    use crate::spartan::prover::{nizk_prover, snark_prover};
+    use crate::spartan::prover::{create_nizk_proof, create_snark_proof};
     use crate::spartan::r1cs::generate_r1cs;
     use crate::spartan::setup::*;
     use crate::spartan::spark::encode;
-    use crate::spartan::verify::{nizk_verify, snark_verify};
+    use crate::spartan::verify::{verify_nizk_proof, verify_snark_proof};
     use curve::bls12_381::{Bls12_381, Fr};
     use math::{One, PairingEngine};
-    use merlin::Transcript;
     use rand::thread_rng;
 
     #[test]
@@ -130,7 +129,8 @@ mod bls12_381 {
         println!("Generate parameters...");
         let r1cs = generate_r1cs::<Bls12_381, _>(c).unwrap();
         let params =
-            generate_setup_parameters::<Bls12_381, _>(rng, r1cs.num_aux, r1cs.num_inputs).unwrap();
+            generate_setup_nizk_parameters::<Bls12_381, _>(rng, r1cs.num_aux, r1cs.num_inputs)
+                .unwrap();
         let c1 = TestDemo::<Fr> {
             lhs: Some(<Bls12_381 as PairingEngine>::Fr::one()),
             rhs: Some(
@@ -140,18 +140,17 @@ mod bls12_381 {
             phs: Some(<Bls12_381 as PairingEngine>::Fr::one()),
         };
 
-        let mut transcript = Transcript::new(b"spartan nizk");
+        // let mut transcript = Transcript::new(b"spartan nizk");
         println!("Creating proof...");
-        let proof = nizk_prover(&params, &r1cs, c1, rng, &mut transcript).unwrap();
+        let proof = create_nizk_proof(&params, &r1cs, c1, rng).unwrap();
 
         println!("Verify proof...");
-        let mut transcript = Transcript::new(b"spartan nizk");
-        let result = nizk_verify::<Bls12_381>(
+        // let mut transcript = Transcript::new(b"spartan nizk");
+        let result = verify_nizk_proof::<Bls12_381>(
             &params,
             &r1cs,
             vec![<Bls12_381 as PairingEngine>::Fr::one()],
             proof,
-            &mut transcript,
         )
         .unwrap();
 
@@ -172,7 +171,7 @@ mod bls12_381 {
         println!("[snark_spartan]Generate parameters...");
         let r1cs = generate_r1cs::<Bls12_381, _>(c).unwrap();
 
-        let params = generate_setup_parameters_with_spark::<Bls12_381, _>(
+        let params = generate_setup_snark_parameters::<Bls12_381, _>(
             rng,
             r1cs.num_aux,
             r1cs.num_inputs,
@@ -194,20 +193,19 @@ mod bls12_381 {
         let (encode, encode_commit) = encode::<Bls12_381, _>(&params, &r1cs, rng).unwrap();
         println!("[snark_spartan]Encode...ok");
 
-        let mut transcript = Transcript::new(b"spartan snark");
+        // let mut transcript = Transcript::new(b"spartan snark");
         println!("[snark_spartan]Creating proof...");
-        let proof = snark_prover(&params, &r1cs, c1, &encode, rng, &mut transcript).unwrap();
+        let proof = create_snark_proof(&params, &r1cs, c1, &encode, rng).unwrap();
         println!("[snark_spartan]Creating proof...ok");
 
         println!("[snark_spartan]Verify proof...");
-        let mut transcript = Transcript::new(b"spartan snark");
-        let result = snark_verify::<Bls12_381>(
+        // let mut transcript = Transcript::new(b"spartan snark");
+        let result = verify_snark_proof::<Bls12_381>(
             &params,
             &r1cs,
             vec![<Bls12_381 as PairingEngine>::Fr::one()],
             proof,
             encode_commit,
-            &mut transcript,
         )
         .is_ok();
         println!("[snark_spartan]Verify proof...ok");
@@ -219,14 +217,13 @@ mod bls12_381 {
 #[cfg(test)]
 mod bn_256 {
     use super::*;
-    use crate::spartan::prover::{nizk_prover, snark_prover};
+    use crate::spartan::prover::{create_nizk_proof, create_snark_proof};
     use crate::spartan::r1cs::generate_r1cs;
     use crate::spartan::setup::*;
     use crate::spartan::spark::encode;
-    use crate::spartan::verify::{nizk_verify, snark_verify};
+    use crate::spartan::verify::{verify_nizk_proof, verify_snark_proof};
     use curve::bn_256::{Bn_256, Fr};
     use math::{One, PairingEngine};
-    use merlin::Transcript;
     use rand::thread_rng;
 
     #[test]
@@ -242,7 +239,8 @@ mod bn_256 {
         println!("Generate parameters...");
         let r1cs = generate_r1cs::<Bn_256, _>(c).unwrap();
         let params =
-            generate_setup_parameters::<Bn_256, _>(rng, r1cs.num_aux, r1cs.num_inputs).unwrap();
+            generate_setup_nizk_parameters::<Bn_256, _>(rng, r1cs.num_aux, r1cs.num_inputs)
+                .unwrap();
         let c1 = TestDemo::<Fr> {
             lhs: Some(<Bn_256 as PairingEngine>::Fr::one()),
             rhs: Some(<Bn_256 as PairingEngine>::Fr::one() + &<Bn_256 as PairingEngine>::Fr::one()),
@@ -250,18 +248,15 @@ mod bn_256 {
             phs: Some(<Bn_256 as PairingEngine>::Fr::one()),
         };
 
-        let mut transcript = Transcript::new(b"spartan nizk");
         println!("Creating proof...");
-        let proof = nizk_prover(&params, &r1cs, c1, rng, &mut transcript).unwrap();
+        let proof = create_nizk_proof(&params, &r1cs, c1, rng).unwrap();
 
         println!("Verify proof...");
-        let mut transcript = Transcript::new(b"spartan nizk");
-        let result = nizk_verify::<Bn_256>(
+        let result = verify_nizk_proof::<Bn_256>(
             &params,
             &r1cs,
             vec![<Bn_256 as PairingEngine>::Fr::one()],
             proof,
-            &mut transcript,
         )
         .unwrap();
 
@@ -282,7 +277,7 @@ mod bn_256 {
         println!("[snark_spartan]Generate parameters...");
         let r1cs = generate_r1cs::<Bn_256, _>(c).unwrap();
 
-        let params = generate_setup_parameters_with_spark::<Bn_256, _>(
+        let params = generate_setup_snark_parameters::<Bn_256, _>(
             rng,
             r1cs.num_aux,
             r1cs.num_inputs,
@@ -302,20 +297,17 @@ mod bn_256 {
         let (encode, encode_commit) = encode::<Bn_256, _>(&params, &r1cs, rng).unwrap();
         println!("[snark_spartan]Encode...ok");
 
-        let mut transcript = Transcript::new(b"spartan snark");
         println!("[snark_spartan]Creating proof...");
-        let proof = snark_prover(&params, &r1cs, c1, &encode, rng, &mut transcript).unwrap();
+        let proof = create_snark_proof(&params, &r1cs, c1, &encode, rng).unwrap();
         println!("[snark_spartan]Creating proof...ok");
 
         println!("[snark_spartan]Verify proof...");
-        let mut transcript = Transcript::new(b"spartan snark");
-        let result = snark_verify::<Bn_256>(
+        let result = verify_snark_proof::<Bn_256>(
             &params,
             &r1cs,
             vec![<Bn_256 as PairingEngine>::Fr::one()],
             proof,
             encode_commit,
-            &mut transcript,
         )
         .is_ok();
         println!("[snark_spartan]Verify proof...ok");

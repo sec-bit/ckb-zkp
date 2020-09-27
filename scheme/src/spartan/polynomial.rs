@@ -1,4 +1,5 @@
 use crate::r1cs::Index;
+use crate::Vec;
 use math::{One, PairingEngine, Zero};
 
 // ~eq(x, rx)

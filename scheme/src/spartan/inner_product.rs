@@ -1,5 +1,6 @@
 use crate::r1cs::SynthesisError;
 use crate::spartan::data_structure::{random_bytes_to_fr, InnerProductProof};
+use crate::Vec;
 use math::{
     bytes::ToBytes, log2, msm::VariableBaseMSM, AffineCurve, Field, One, PairingEngine, PrimeField,
     ProjectiveCurve,

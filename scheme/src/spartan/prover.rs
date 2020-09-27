@@ -4,9 +4,9 @@ use crate::r1cs::{
 use crate::spartan::commitments::{packing_poly_commit, poly_commit_vec};
 use crate::spartan::data_structure::{
     random_bytes_to_fr, AddrTimestamps, EncodeMemory, KnowledgeProductCommit,
-    MultiCommitmentSetupParameters, PolyCommitmentSetupParameters, ProdForMemoryChecking,
-    ProductCircuit, R1CSEvalsSetupParameters, R1CSSatisfiedSetupParameters,
-    SetupParametersWithSpark, SumCheckCommitmentSetupParameters,
+    MultiCommitmentParameters, NizkParameters, PolyCommitmentParameters, ProdForMemoryChecking,
+    ProductCircuit, R1CSEvalsParameters, R1CSSatisfiedParameters, SnarkParameters,
+    SumCheckCommitmentParameters,
 };
 use crate::spartan::data_structure::{
     DotProductProof, EqProof, HashLayerProof, KnowledgeProductProof, KnowledgeProof,
@@ -22,6 +22,7 @@ use crate::spartan::r1cs::R1CSInstance;
 use crate::spartan::spark::{
     circuit_eval_opt, equalize_length, evaluate_dot_product_circuit, evaluate_product_circuit,
 };
+use crate::{String, Vec};
 use math::fft::DensePolynomial as Polynomial;
 use math::{
     bytes::ToBytes, log2, AffineCurve, Field, One, PairingEngine, ProjectiveCurve, UniformRand,
@@ -29,8 +30,10 @@ use math::{
 };
 use merlin::Transcript;
 use rand::Rng;
-use std::cmp;
-use std::ops::{Deref, Neg};
+use std::{
+    cmp,
+    ops::{Deref, Neg},
+};
 
 pub struct ProvingAssignment<E: PairingEngine> {
     pub num_constraints: usize,
@@ -98,52 +101,54 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
     }
 }
 
-pub fn nizk_prover<E, C, R>(
-    params: &R1CSSatisfiedSetupParameters<E>,
+pub fn create_nizk_proof<E, C, R>(
+    params: &NizkParameters<E>,
     r1cs: &R1CSInstance<E>,
     circuit: C,
     rng: &mut R,
-    transcript: &mut Transcript,
 ) -> Result<NIZKProof<E>, SynthesisError>
 where
     E: PairingEngine,
     C: ConstraintSynthesizer<E::Fr>,
     R: Rng,
 {
-    transcript.append_message(b"protocol-name", b"Spartan NIZK proof");
-
-    let (r1cs_sat_proof, (rx, ry)) =
-        r1cs_satisfied_prover::<E, C, R>(params, r1cs, circuit, rng, transcript).unwrap();
-    let proof = NIZKProof::<E> {
-        r1cs_satisfied_proof: r1cs_sat_proof,
-        r: (rx, ry),
-    };
-    println!("[nizk_prover] generate proof for nizk spartan finish.\n");
-
-    Ok(proof)
-}
-
-pub fn snark_prover<E, C, R>(
-    params: &SetupParametersWithSpark<E>,
-    r1cs: &R1CSInstance<E>,
-    circuit: C,
-    encode: &EncodeMemory<E>,
-    rng: &mut R,
-    transcript: &mut Transcript,
-) -> Result<SNARKProof<E>, SynthesisError>
-where
-    E: PairingEngine,
-    C: ConstraintSynthesizer<E::Fr>,
-    R: Rng,
-{
-    transcript.append_message(b"protocol-name", b"Spartan SNARK proof");
+    let mut transcript = Transcript::new(b"Spartan NIZK proof");
 
     let (r1cs_sat_proof, (rx, ry)) = r1cs_satisfied_prover::<E, C, R>(
         &params.r1cs_satisfied_params,
         r1cs,
         circuit,
         rng,
-        transcript,
+        &mut transcript,
+    )
+    .unwrap();
+    let proof = NIZKProof::<E> {
+        r1cs_satisfied_proof: r1cs_sat_proof,
+        r: (rx, ry),
+    };
+    Ok(proof)
+}
+
+pub fn create_snark_proof<E, C, R>(
+    params: &SnarkParameters<E>,
+    r1cs: &R1CSInstance<E>,
+    circuit: C,
+    encode: &EncodeMemory<E>,
+    rng: &mut R,
+) -> Result<SNARKProof<E>, SynthesisError>
+where
+    E: PairingEngine,
+    C: ConstraintSynthesizer<E::Fr>,
+    R: Rng,
+{
+    let mut transcript = Transcript::new(b"Spartan SNARK proof");
+
+    let (r1cs_sat_proof, (rx, ry)) = r1cs_satisfied_prover::<E, C, R>(
+        &params.r1cs_satisfied_params,
+        r1cs,
+        circuit,
+        rng,
+        &mut transcript,
     )
     .unwrap();
 
@@ -160,7 +165,7 @@ where
         evals,
         encode,
         rng,
-        transcript,
+        &mut transcript,
     )
     .unwrap();
 
@@ -169,13 +174,11 @@ where
         matrix_evals: evals,
         r1cs_evals_proof: r1cs_evals_proof,
     };
-    println!("[snark_prover] generate proof for zk-snark spartan finish.\n");
-
     Ok(proof)
 }
 
 pub fn r1cs_satisfied_prover<E, C, R>(
-    params: &R1CSSatisfiedSetupParameters<E>,
+    params: &R1CSSatisfiedParameters<E>,
     r1cs: &R1CSInstance<E>,
     circuit: C,
     rng: &mut R,
@@ -245,7 +248,7 @@ where
     let mb = evaluate_matrix_vec::<E>(r1cs.b_matrix.clone(), z.clone());
     let mc = evaluate_matrix_vec::<E>(r1cs.c_matrix.clone(), z.clone());
     //5. sumcheck #1: ex = G_τ(rx)
-    let (proof_sc1, rx) = sum_check_proof_phase_one::<E, R>(
+    let (proof_sc1, rx, polys_value_at_rx, blinds_eval1) = sum_check_proof_phase_one::<E, R>(
         num_rounds_x,
         &params.sc_params,
         E::Fr::zero(),
@@ -258,10 +261,7 @@ where
     )
     .unwrap();
     //6. compute va, vb, vc with proofs
-    let v_a = proof_sc1.polys_value_at_r[0];
-    let v_b = proof_sc1.polys_value_at_r[1];
-    let v_c = proof_sc1.polys_value_at_r[2];
-    let eq_tau = proof_sc1.polys_value_at_r[3];
+    let (v_a, v_b, v_c, eq_tau) = polys_value_at_rx;
     let prod = v_a * &v_b;
 
     let blind_a = E::Fr::rand(rng);
@@ -310,7 +310,7 @@ where
         claim_sc1,
         blind_claim_sc1,
         claim_sc1,
-        proof_sc1.blinds_eval,
+        blinds_eval1,
         rng,
         transcript,
     )
@@ -342,7 +342,7 @@ where
         .map(|i| r_a * &evals_a[i] + &(r_b * &evals_b[i]) + &(r_c * &evals_c[i]))
         .collect::<Vec<E::Fr>>();
     //11. sumcheck #2
-    let (proof_sc2, ry) = sum_check_proof_phase_two::<E, R>(
+    let (proof_sc2, ry, polys_value_at_ry, blinds_eval2) = sum_check_proof_phase_two::<E, R>(
         num_rounds_y,
         &params.sc_params,
         claim_phase2,
@@ -354,8 +354,7 @@ where
     )
     .unwrap();
 
-    let v1 = proof_sc2.polys_value_at_r[0];
-    let v2 = proof_sc2.polys_value_at_r[1];
+    let (v1, v2) = polys_value_at_ry;
     let claim_sc2 = v1 * &v2;
 
     // 12. w(ry[1...])
@@ -383,7 +382,7 @@ where
         claim_sc2,
         eval_at_zy_blind_claim,
         claim_sc2,
-        proof_sc2.blinds_eval,
+        blinds_eval2,
         rng,
         transcript,
     )
@@ -407,7 +406,7 @@ where
 
 fn sum_check_proof_phase_one<E: PairingEngine, R: Rng>(
     num_rounds: usize,
-    params: &SumCheckCommitmentSetupParameters<E>,
+    params: &SumCheckCommitmentParameters<E>,
     claim: E::Fr,
     poly_a: &Vec<E::Fr>,
     poly_b: &Vec<E::Fr>,
@@ -415,7 +414,15 @@ fn sum_check_proof_phase_one<E: PairingEngine, R: Rng>(
     poly_eq: &Vec<E::Fr>,
     rng: &mut R,
     transcript: &mut Transcript,
-) -> Result<(SumCheckProof<E>, Vec<E::Fr>), SynthesisError> {
+) -> Result<
+    (
+        SumCheckProof<E>,
+        Vec<E::Fr>,
+        (E::Fr, E::Fr, E::Fr, E::Fr),
+        E::Fr,
+    ),
+    SynthesisError,
+> {
     let mut poly_a = poly_a.clone();
     let mut poly_b = poly_b.clone();
     let mut poly_c = poly_c.clone();
@@ -562,29 +569,26 @@ fn sum_check_proof_phase_one<E: PairingEngine, R: Rng>(
     assert_eq!(poly_b.len(), 1);
     assert_eq!(poly_c.len(), 1);
     assert_eq!(poly_eq.len(), 1);
-    let polys_value_at_rx = vec![poly_a[0], poly_b[0], poly_c[0], poly_eq[0]];
+    let polys_value_at_rx = (poly_a[0], poly_b[0], poly_c[0], poly_eq[0]);
     let proof = SumCheckProof::<E> {
         comm_polys: comm_polys,
         comm_evals: comm_evals,
         proofs: proofs,
-        // r: rx,
-        polys_value_at_r: polys_value_at_rx,
-        blinds_eval: blind_poly_eval,
     };
 
-    Ok((proof, rx))
+    Ok((proof, rx, polys_value_at_rx, blind_poly_eval))
 }
 
 fn sum_check_proof_phase_two<E: PairingEngine, R: Rng>(
     num_rounds: usize,
-    params: &SumCheckCommitmentSetupParameters<E>,
+    params: &SumCheckCommitmentParameters<E>,
     claim: E::Fr,
     blind_claim: E::Fr,
     poly_abc: &Vec<E::Fr>,
     poly_z: &Vec<E::Fr>,
     rng: &mut R,
     transcript: &mut Transcript,
-) -> Result<(SumCheckProof<E>, Vec<E::Fr>), SynthesisError> {
+) -> Result<(SumCheckProof<E>, Vec<E::Fr>, (E::Fr, E::Fr), E::Fr), SynthesisError> {
     let mut poly_abc = poly_abc.clone();
     let mut poly_z = poly_z.clone();
     assert_eq!(poly_abc.len(), poly_z.len());
@@ -696,23 +700,20 @@ fn sum_check_proof_phase_two<E: PairingEngine, R: Rng>(
         commit_claim = commit_eval;
     }
 
-    let polys_value_at_ry = vec![poly_abc[0], poly_z[0]];
+    let polys_value_at_ry = (poly_abc[0], poly_z[0]);
 
     let proof = SumCheckProof::<E> {
         comm_polys: comm_polys,
         comm_evals: comm_evals,
         proofs: proofs,
-        // r: ry,
-        polys_value_at_r: polys_value_at_ry,
-        blinds_eval: blind_poly_eval,
     };
 
-    Ok((proof, ry))
+    Ok((proof, ry, polys_value_at_ry, blind_poly_eval))
 }
 
 fn sum_check_eval_prover<E: PairingEngine, R: Rng>(
-    params_gen_1: &MultiCommitmentSetupParameters<E>,
-    params_gen_n: &MultiCommitmentSetupParameters<E>,
+    params_gen_1: &MultiCommitmentParameters<E>,
+    params_gen_n: &MultiCommitmentParameters<E>,
     poly: &Vec<E::Fr>,
     poly_commit: E::G1Affine,
     blind_poly: E::Fr,
@@ -819,7 +820,7 @@ fn sum_check_eval_prover<E: PairingEngine, R: Rng>(
 }
 
 fn knowledge_proof<E: PairingEngine, R: Rng>(
-    params: &MultiCommitmentSetupParameters<E>,
+    params: &MultiCommitmentParameters<E>,
     claim: E::Fr,
     blind: E::Fr,
     rng: &mut R,
@@ -855,7 +856,7 @@ fn knowledge_proof<E: PairingEngine, R: Rng>(
 }
 
 fn product_proof<E: PairingEngine, R: Rng>(
-    params: &MultiCommitmentSetupParameters<E>,
+    params: &MultiCommitmentParameters<E>,
     claim_a: E::Fr,
     blind_a: E::Fr,
     claim_b: E::Fr,
@@ -922,7 +923,7 @@ fn product_proof<E: PairingEngine, R: Rng>(
 }
 
 fn eq_proof<E: PairingEngine, R: Rng>(
-    params: &MultiCommitmentSetupParameters<E>,
+    params: &MultiCommitmentParameters<E>,
     claim1: E::Fr,
     blind1: E::Fr,
     claim2: E::Fr,
@@ -956,7 +957,7 @@ fn eq_proof<E: PairingEngine, R: Rng>(
     Ok(proof)
 }
 fn inner_product_proof<E: PairingEngine, R: Rng>(
-    params: &PolyCommitmentSetupParameters<E>,
+    params: &PolyCommitmentParameters<E>,
     poly: &Vec<E::Fr>,
     blind_poly: &Vec<E::Fr>,
     ry: &Vec<E::Fr>,
@@ -1061,7 +1062,7 @@ fn inner_product_proof<E: PairingEngine, R: Rng>(
 }
 
 fn sparse_poly_eval_proof<E, R>(
-    params: &R1CSEvalsSetupParameters<E>,
+    params: &R1CSEvalsParameters<E>,
     r: (&Vec<E::Fr>, &Vec<E::Fr>),
     evals: (E::Fr, E::Fr, E::Fr),
     encode: &EncodeMemory<E>,
@@ -1643,7 +1644,7 @@ pub fn sum_check_cubic_prover<E: PairingEngine>(
 }
 
 pub fn hash_layer_prover<E: PairingEngine, R: Rng>(
-    params: &R1CSEvalsSetupParameters<E>,
+    params: &R1CSEvalsParameters<E>,
     encode: &EncodeMemory<E>,
     rands: (&Vec<E::Fr>, &Vec<E::Fr>),
     e_list: (&Vec<Vec<E::Fr>>, &Vec<Vec<E::Fr>>, &Vec<E::Fr>),

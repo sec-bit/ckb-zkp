@@ -260,12 +260,11 @@ fn mini_clinkv2() {
 fn test_mini_spartan() {
     use curve::bn_256::{Bn_256, Fr};
     use math::test_rng;
-    use merlin::Transcript;
-    use scheme::spartan::prover::snark_prover;
+    use scheme::spartan::prover::create_snark_proof;
     use scheme::spartan::r1cs::generate_r1cs;
     use scheme::spartan::setup::*;
     use scheme::spartan::spark::encode;
-    use scheme::spartan::verify::snark_verify;
+    use scheme::spartan::verify::verify_snark_proof;
 
     println!("\n spartan snark...");
     // This may not be cryptographically safe, use
@@ -282,7 +281,7 @@ fn test_mini_spartan() {
     println!("[snark_spartan]Generate parameters...");
     let r1cs = generate_r1cs::<Bn_256, _>(c).unwrap();
 
-    let params = generate_setup_parameters_with_spark::<Bn_256, _>(
+    let params = generate_setup_snark_parameters::<Bn_256, _>(
         rng,
         r1cs.num_aux,
         r1cs.num_inputs,
@@ -295,7 +294,6 @@ fn test_mini_spartan() {
     let (encode, encode_commit) = encode::<Bn_256, _>(&params, &r1cs, rng).unwrap();
     println!("[snark_spartan]Encode...ok");
 
-    let mut transcript = Transcript::new(b"spartan snark");
     println!("[snark_spartan]Creating proof...");
     let c1 = Mini::<Fr> {
         x: Some(Fr::from(2u32)),
@@ -303,18 +301,16 @@ fn test_mini_spartan() {
         z: Some(Fr::from(10u32)),
         num: 10,
     };
-    let proof = snark_prover(&params, &r1cs, c1, &encode, rng, &mut transcript).unwrap();
+    let proof = create_snark_proof(&params, &r1cs, c1, &encode, rng).unwrap();
     println!("[snark_spartan]Creating proof...ok");
 
     println!("[snark_spartan]Verify proof...");
-    let mut transcript = Transcript::new(b"spartan snark");
-    let result = snark_verify::<Bn_256>(
+    let result = verify_snark_proof::<Bn_256>(
         &params,
         &r1cs,
         vec![Fr::from(10u32)].to_vec(),
         proof,
         encode_commit,
-        &mut transcript,
     )
     .is_ok();
     println!("[snark_spartan]Verify proof...ok");
