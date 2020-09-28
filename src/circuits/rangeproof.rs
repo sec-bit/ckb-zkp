@@ -189,21 +189,13 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for RangeProof<F> {
             |lc| lc + alpha_packed,
         );
 
-        // less * 1 = 1 A < B 额外加的
+        // less * 1 = 1 A < B
         cs.enforce(
             || "less * 1 = 1",
             |lc| lc + less,
             |lc| lc + CS::one(),
             |lc| lc + CS::one(),
         );
-
-        // less_or_eq * 1 = 1 A <= B 额外加的
-        // cs.enforce(
-        //     || "less_or_eq  * 1 = 1",
-        //     |lc| lc + less_or_equal,
-        //     |lc| lc + CS::one(),
-        //     |lc| lc + CS::one(),
-        // );
 
         Ok(())
     }
