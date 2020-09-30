@@ -575,7 +575,7 @@ impl<E: PairingEngine> FromBytes for Proof<E> {
 
 // very basic support for R1CS ConstraintSystem
 // TODO: refactor this then we do not need to return Generators, R1csCircuit, and Assignment.
-pub fn create_proof<E, C, R>(
+pub fn create_random_proof<E, C, R>(
     circuit: C,
     rng: &mut R,
 ) -> Result<(Generators<E>, R1csCircuit<E>, Proof<E>, Assignment<E>), SynthesisError>

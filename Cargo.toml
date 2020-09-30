@@ -13,7 +13,7 @@ members = [
     "math",
     "curve",
     "scheme",
-    "cli",
+    #"cli",
     "tests",
 ]
 exclude = [
@@ -24,19 +24,24 @@ exclude = [
 
 [features]
 default = ["full"]
-full = ["parallel", "bn_256", "bls12_381", "groth16", "bulletproofs", "asvc"]
+full = ["std", "gadgets", "bn_256", "bls12_381", "groth16", "bulletproofs", "marlin", "clinkv2", "spartan", "asvc"]
 parallel = ["std", "math/parallel", "curve/parallel", "scheme/parallel"]
 std = ["math/std", "curve/std", "scheme/std"]
+gadgets = []
 bn_256 = ["curve/bn_256"]
 bls12_381 = ["curve/bls12_381"]
 groth16 = ["scheme/groth16"]
 bulletproofs = ["scheme/bulletproofs"]
 asvc = ["scheme/asvc"]
+marlin = ["scheme/marlin"]
+clinkv2 = ["scheme/clinkv2"]
+spartan = ["scheme/spartan"]
+
 
 [dependencies]
 math = { path = "math", default-features = false }
-scheme = { path = "scheme", default-features = false }
 curve = { path = "curve", default-features = false }
+scheme = { path = "scheme", default-features = false }
 rand = { version = "0.7", default-features = false }
 byteorder = { version = "1", default-features = false }
 

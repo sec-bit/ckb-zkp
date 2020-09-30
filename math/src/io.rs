@@ -7,6 +7,10 @@ use core::{cmp, fmt, mem};
 #[derive(Debug)]
 pub struct Error;
 
+pub fn new_err() -> Error {
+    Error
+}
+
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "Error")
