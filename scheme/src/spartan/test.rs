@@ -205,7 +205,7 @@ mod bls12_381 {
             &r1cs,
             vec![<Bls12_381 as PairingEngine>::Fr::one()],
             proof,
-            encode_commit,
+            &encode_commit,
         )
         .is_ok();
         println!("[snark_spartan]Verify proof...ok");
@@ -307,7 +307,7 @@ mod bn_256 {
             &r1cs,
             vec![<Bn_256 as PairingEngine>::Fr::one()],
             proof,
-            encode_commit,
+            &encode_commit,
         )
         .is_ok();
         println!("[snark_spartan]Verify proof...ok");

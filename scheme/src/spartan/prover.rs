@@ -23,6 +23,10 @@ use crate::spartan::spark::{
     circuit_eval_opt, equalize_length, evaluate_dot_product_circuit, evaluate_product_circuit,
 };
 use crate::{String, Vec};
+use core::{
+    cmp,
+    ops::{Deref, Neg},
+};
 use math::fft::DensePolynomial as Polynomial;
 use math::{
     bytes::ToBytes, log2, AffineCurve, Field, One, PairingEngine, ProjectiveCurve, UniformRand,
@@ -30,10 +34,6 @@ use math::{
 };
 use merlin::Transcript;
 use rand::Rng;
-use std::{
-    cmp,
-    ops::{Deref, Neg},
-};
 
 pub struct ProvingAssignment<E: PairingEngine> {
     pub num_constraints: usize,
@@ -302,7 +302,7 @@ where
         knowledge_proof: vc_proof,
         product_proof: prod_proof,
     };
-    // 7. ex ?= (va*vb - vc) * eq(rx, τ) with proof
+    // 7. ex ?= (va * vb - vc) * eq(rx, τ) with proof
     let blind_claim_sc1 = eq_tau * &(blind_prod_ab - &blind_c);
     let claim_sc1 = eq_tau * &(prod - &v_c);
     let sc1_eq_proof = eq_proof::<E, R>(
@@ -354,8 +354,8 @@ where
     )
     .unwrap();
 
-    let (v1, v2) = polys_value_at_ry;
-    let claim_sc2 = v1 * &v2;
+    let (vs, vz) = polys_value_at_ry;
+    let claim_sc2 = vs * &vz;
 
     // 12. w(ry[1...])
     let eq_ry_arr = eval_eq::<E>(&ry[1..].to_vec());
@@ -375,7 +375,7 @@ where
     )
     .unwrap();
     let eval_at_zy_blind = (E::Fr::one() - &ry[0]) * &blind_eval;
-    let eval_at_zy_blind_claim = eval_at_zy_blind * &v1;
+    let eval_at_zy_blind_claim = eval_at_zy_blind * &vs;
 
     let sc2_eq_proof = eq_proof::<E, R>(
         &params.pc_params.gen_1,
@@ -389,7 +389,6 @@ where
     .unwrap();
     let proof = R1CSSatProof::<E> {
         commit_witness: commit_witness,
-        // r: (proof_sc1.r.clone(), proof_sc2.r.clone()),
         proof_one: proof_sc1,
         proof_two: proof_sc2,
         w_ry: eval_w_ry,

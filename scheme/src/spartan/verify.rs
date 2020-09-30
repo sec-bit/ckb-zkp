@@ -53,7 +53,7 @@ pub fn verify_snark_proof<E: PairingEngine>(
     r1cs: &R1CSInstance<E>,
     inputs: Vec<E::Fr>,
     proof: SNARKProof<E>,
-    encode_commit: EncodeCommit<E>,
+    encode_commit: &EncodeCommit<E>,
 ) -> Result<(), SynthesisError> {
     let mut transcript = Transcript::new(b"Spartan SNARK proof");
 
@@ -227,7 +227,7 @@ pub fn r1cs_satisfied_verify<E: PairingEngine>(
     let result = inner_product_verify::<E>(
         &params.pc_params,
         &ry[1..].to_vec(),
-        proof.commit_witness,
+        &proof.commit_witness,
         proof.commit_ry,
         &proof.product_proof,
         transcript,
@@ -484,7 +484,7 @@ fn eq_verify<E: PairingEngine>(
 fn inner_product_verify<E: PairingEngine>(
     params: &PolyCommitmentParameters<E>,
     ry: &Vec<E::Fr>,
-    commits_witness: Vec<E::G1Affine>,
+    commits_witness: &Vec<E::G1Affine>,
     commit_ry: E::G1Affine,
     proof: &DotProductProof<E>,
     transcript: &mut Transcript,
@@ -499,7 +499,7 @@ fn inner_product_verify<E: PairingEngine>(
     let r_eq_ry = eval_eq::<E>(&ry[size / 2..size].to_vec());
 
     let commit_lz = poly_commit_vec::<E>(
-        &commits_witness,
+        commits_witness,
         &l_eq_ry.clone(),
         &params.gen_1.h,
         E::Fr::zero(),
@@ -538,7 +538,7 @@ fn inner_product_verify<E: PairingEngine>(
 fn sparse_poly_eval_verify<E: PairingEngine>(
     params: &R1CSEvalsParameters<E>,
     proof: R1CSEvalsProof<E>,
-    encode_commit: EncodeCommit<E>,
+    encode_commit: &EncodeCommit<E>,
     r: (Vec<E::Fr>, Vec<E::Fr>),
     evals: (E::Fr, E::Fr, E::Fr),
     transcript: &mut Transcript,
@@ -883,7 +883,7 @@ pub fn hash_layer_verify<E: PairingEngine>(
     claims_row: (E::Fr, Vec<E::Fr>, Vec<E::Fr>, E::Fr),
     claims_col: (E::Fr, Vec<E::Fr>, Vec<E::Fr>, E::Fr),
     claims_dotp: Vec<E::Fr>,
-    encode_commit: EncodeCommit<E>,
+    encode_commit: &EncodeCommit<E>,
     derefs_commit: Vec<E::G1Affine>,
     transcript: &mut Transcript,
 ) -> Result<(), SynthesisError> {
@@ -936,7 +936,7 @@ pub fn hash_layer_verify<E: PairingEngine>(
     let result = inner_product_verify::<E>(
         &params.derefs_params,
         &rs,
-        derefs_commit,
+        &derefs_commit,
         claim_eval_commit,
         &proof.proof_derefs,
         transcript,
@@ -996,7 +996,7 @@ pub fn hash_layer_verify<E: PairingEngine>(
     let result = inner_product_verify::<E>(
         &params.ops_params,
         &rs_ops,
-        encode_commit.ops_commit,
+        &encode_commit.ops_commit,
         claim_eval_commit,
         &proof.proof_ops,
         transcript,
@@ -1039,7 +1039,7 @@ pub fn hash_layer_verify<E: PairingEngine>(
     let result = inner_product_verify::<E>(
         &params.mem_params,
         &rs_mem,
-        encode_commit.mem_commit,
+        &encode_commit.mem_commit,
         claim_eval_commit,
         &proof.proof_mem,
         transcript,

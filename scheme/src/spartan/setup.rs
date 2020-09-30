@@ -3,9 +3,10 @@ use crate::spartan::data_structure::{
     MultiCommitmentParameters, NizkParameters, PolyCommitmentParameters, R1CSEvalsParameters,
     R1CSSatisfiedParameters, SnarkParameters, SumCheckCommitmentParameters,
 };
+use crate::Vec;
+use core::cmp;
 use math::{log2, PairingEngine, ProjectiveCurve, UniformRand};
 use rand::Rng;
-use std::cmp;
 
 pub fn generate_setup_nizk_parameters<E, R>(
     rng: &mut R,
