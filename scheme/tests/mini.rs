@@ -310,7 +310,7 @@ fn test_mini_spartan() {
         &r1cs,
         vec![Fr::from(10u32)].to_vec(),
         proof,
-        encode_commit,
+        &encode_commit,
     )
     .is_ok();
     println!("[snark_spartan]Verify proof...ok");
