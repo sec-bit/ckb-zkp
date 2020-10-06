@@ -7,6 +7,8 @@ pub mod mimc;
 pub mod multieq;
 pub mod sha256;
 pub mod uint32;
+pub mod rescue;
+pub mod poseidon;
 
 // traits
 pub mod abstract_hash;

@@ -17,7 +17,7 @@ const N: usize = RF+ RP; // round number
 
 const ALPH: [u64;1] = [5];
 
-/// This is an implementation of Resuce
+/// This is an implementation of Poseidon
 /// See https://eprint.iacr.org/2019/458 for more
 /// information about this construction.
 pub struct PoseidonConstant<F: PrimeField> {
@@ -578,7 +578,7 @@ const _CONSTANTS_CONSTANT:[[&str;M];N] = [
 ];
 
 /// This is our demo circuit for proving knowledge of the
-/// preimage of a Rescue hash invocation.
+/// preimage of a Poseidon hash invocation.
 
 pub struct PoseidonDemo<'a, F: PrimeField> {
   pub xl: Option<F>,
@@ -728,7 +728,6 @@ fn pow_with_constraint<F: PrimeField, CS: ConstraintSystem<F>, S: AsRef<[u64]>> 
       cs: &mut CS
   ) -> Result<(Option<F>, scheme::r1cs::Variable), SynthesisError> {
     let mut res_value: Option<F> = Some(F::one());
-    
     let mut res = cs.alloc(
         ||"res", 
         || res_value.ok_or(SynthesisError::AssignmentMissing),

@@ -557,6 +557,7 @@ fn pow_with_constraint<F: PrimeField, CS: ConstraintSystem<F>, S: AsRef<[u64]>>(
 
         res_value = tmp_value;
         res = tmp;
+        
         if i {
             let tmp_value = res_value.map(|mut e| {
                 e.mul_assign(&(*state_value).unwrap());
