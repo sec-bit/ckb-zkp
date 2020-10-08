@@ -35,7 +35,12 @@ use std::{
     vec::Vec,
 };
 
-#[cfg(any(feature = "groth16", feature = "bulletproofs", feature = "spartan"))]
+#[cfg(any(
+    feature = "groth16",
+    feature = "bulletproofs",
+    feature = "spartan",
+    feature = "asvc"
+))]
 #[macro_use]
 extern crate math;
 
@@ -49,6 +54,8 @@ pub mod groth16;
 #[cfg(feature = "bulletproofs")]
 pub mod bulletproofs;
 
+#[cfg(feature = "asvc")]
+pub mod asvc;
 #[cfg(feature = "marlin")]
 pub mod marlin;
 
@@ -57,4 +64,3 @@ pub mod clinkv2;
 
 #[cfg(feature = "spartan")]
 pub mod spartan;
-

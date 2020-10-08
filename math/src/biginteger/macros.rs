@@ -200,6 +200,11 @@ macro_rules! bigint_impl {
 
                 res
             }
+
+            #[inline]
+            fn change_pos(&mut self, i: usize, v: u64) {
+                self.0[i] = v;
+            }
         }
 
         impl ToBytes for $name {
