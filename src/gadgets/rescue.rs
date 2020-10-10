@@ -33,7 +33,7 @@ const INVALPH: [u64; 4] = [
 /// See https://eprint.iacr.org/2019/426 for more
 /// information about this construction.
 ///
-/// ```no_run
+/// ```ignore
 /// $Input:\ Plaintext\ P,\ round\ keys\ K_s\ for \ 0 ≤ s ≤ 2N$
 /// $Output:\ Rescue\ (K, P)$
 /// ​	$S_0 = P + K_0 $
@@ -46,7 +46,7 @@ const INVALPH: [u64; 4] = [
 /// ​	$end $
 /// ​	$end$
 /// ​$return\ S_N$
-///
+/// ```
 
 const _CONSTANTS_MATRIX: [[&str; 3]; 3] = [
     [
