@@ -114,6 +114,7 @@ fn mini_marlin() {
 #[test]
 fn mini_bulletproofs() {
     use scheme::bulletproofs::{create_random_proof, verify_proof};
+    use curve::baby_jubjub::{Fr, BabyJubJub};
 
     let rng = &mut test_rng();
     let num = 10;
@@ -127,7 +128,7 @@ fn mini_bulletproofs() {
         num: num,
     };
 
-    let (gens, r1cs, proof, publics) = create_random_proof::<E, _, _>(c, rng).unwrap();
+    let (gens, r1cs, proof, publics) = create_random_proof::<BabyJubJub, _, _>(c, rng).unwrap();
 
     println!("Bulletproof verify...");
     let _c = Mini::<Fr> {
