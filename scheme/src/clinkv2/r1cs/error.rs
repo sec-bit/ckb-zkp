@@ -3,7 +3,8 @@
 use core::fmt;
 use math::io;
 
-use super::super::kzg10::Error;
+use super::super::kzg10::Error as KZG10Error;
+use super::super::clinkv2_ipa::ipa::Error as IPAError;
 
 /// This is an error that could occur during circuit synthesis contexts,
 /// such as CRS generation, proving or verification.
@@ -28,7 +29,9 @@ pub enum SynthesisError {
     /// Incorrect Index during Variable allocation.
     IncorrectIndex,
     /// Error when committing polynomials.
-    PolyCommitError(Error),
+    KZG10PolyComError(KZG10Error),
+    /// Error when committing polynomials.
+    IPAPolyComError(IPAError),
 }
 
 impl From<io::Error> for SynthesisError {
@@ -37,9 +40,15 @@ impl From<io::Error> for SynthesisError {
     }
 }
 
-impl From<Error> for SynthesisError {
-    fn from(e: Error) -> SynthesisError {
-        SynthesisError::PolyCommitError(e)
+impl From<KZG10Error> for SynthesisError {
+    fn from(e: KZG10Error) -> SynthesisError {
+        SynthesisError::KZG10PolyComError(e)
+    }
+}
+
+impl From<IPAError> for SynthesisError {
+    fn from(e: IPAError) -> SynthesisError {
+        SynthesisError::IPAPolyComError(e)
     }
 }
 
@@ -73,7 +82,8 @@ impl fmt::Display for SynthesisError {
             /*SynthesisError::PolyCommitError => {
                 write!(f, "Error when committing polynomials")
             }*/
-            SynthesisError::PolyCommitError(err) => write!(f, "PolyCommit error: {:?}", err),
+            SynthesisError::KZG10PolyComError(err) => write!(f, "KZG10 PolyCommit error: {:?}", err),
+            SynthesisError::IPAPolyComError(err) => write!(f, "IPA PolyCommit error: {:?}", err),
         }
     }
 }

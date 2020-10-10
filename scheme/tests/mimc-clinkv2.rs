@@ -10,15 +10,11 @@ use math::One;
 use curve::bn_256::{Bn_256, Fr};
 use math::{test_rng, Field, FromBytes, ToBytes};
 
+use scheme::clinkv2::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
+
 // We're going to use the BN-256 pairing-friendly elliptic curve.
 
 // We'll use these interfaces to construct our circuit.
-use scheme::clinkv2::kzg10::KZG10;
-use scheme::clinkv2::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
-use scheme::clinkv2::{
-    create_random_proof, prove_to_bytes, verify_from_bytes, verify_proof, Proof, ProveAssignment,
-    VerifyAssignment, VerifyKey,
-};
 
 const MIMC_ROUNDS: usize = 5;
 const SAMPLES: usize = 8; //1048576//131070;//1048570;//131070;//16380;//16380;//16384
@@ -146,7 +142,14 @@ impl<'a, F: Field> ConstraintSynthesizer<F> for MiMCDemo<'a, F> {
 }
 
 #[test]
-fn mimc_clinkv2() {
+fn mimc_clinkv2_kzg10() {
+    
+    use scheme::clinkv2::kzg10::KZG10;
+    use scheme::clinkv2::{
+        create_random_proof, prove_to_bytes, verify_from_bytes, verify_proof, Proof, ProveAssignment,
+        VerifyAssignment, VerifyKey,
+    };
+
     let mut rng = &mut test_rng();
     // Generate the MiMC round constants
     let constants = (0..MIMC_ROUNDS).map(|_| rng.gen()).collect::<Vec<_>>();
@@ -248,6 +251,134 @@ fn mimc_clinkv2() {
     let (proof_bytes, publics_bytes) = prove_to_bytes(&prover_pa, &kzg10_ck, rng, &io).unwrap();
     println!("proof bytes: {}", proof_bytes.len());
     assert!(verify_from_bytes(&verifier_pa, &vk_bytes, &proof_bytes, &publics_bytes,).unwrap());
+
+    // Compute time
+
+    let proving_avg =
+        prove_time.subsec_nanos() as f64 / 1_000_000_000f64 + (prove_time.as_secs() as f64);
+    let verifying_avg =
+        verify_time.subsec_nanos() as f64 / 1_000_000_000f64 + (verify_time.as_secs() as f64);
+    let crs_time = crs_time.subsec_nanos() as f64 / 1_000_000_000f64 + (crs_time.as_secs() as f64);
+
+    println!("Generating CRS time: {:?}", crs_time);
+    println!("Proving time: {:?}", proving_avg);
+    println!("Verifying time: {:?}", verifying_avg);
+}
+
+
+#[test]
+fn mimc_clinkv2_ipa() {
+    
+    use scheme::clinkv2::clinkv2_ipa::{
+        create_random_proof, verify_proof, Proof, ProveAssignment, // prove_to_bytes, verify_from_bytes,
+        VerifyAssignment, VerifyKey,
+    };
+    use scheme::clinkv2::clinkv2_ipa::ipa::InnerProductArgPC;
+    use curve::bn_256::{G1Affine, G1Projective, G2Affine, G2Projective};
+    use blake2::Blake2s;
+
+    let mut rng = &mut test_rng();
+    // Generate the MiMC round constants
+    let constants = (0..MIMC_ROUNDS).map(|_| rng.gen()).collect::<Vec<_>>();
+
+    let n: usize = SAMPLES;
+
+    println!("Running mimc_clinkv2...");
+
+    // println!("Creating KZG10 parameters...");
+    let degree: usize = n.next_power_of_two();
+    let mut crs_time = Duration::new(0, 0);
+
+    // Create parameters for our circuit
+    let start = Instant::now();
+
+    let ipa_pp = InnerProductArgPC::<G1Affine, Blake2s>::setup(degree, & mut rng).unwrap();
+    let (ipa_ck, ipa_vk) = InnerProductArgPC::<G1Affine, Blake2s>::trim(&ipa_pp, degree).unwrap();
+
+    crs_time += start.elapsed();
+
+    println!("Start prove prepare...");
+    // Prover
+    let prove_start = Instant::now();
+
+    let mut prover_pa = ProveAssignment::<G1Affine, Blake2s>::default();
+
+    let mut io: Vec<Vec<Fr>> = vec![];
+    let mut output: Vec<Fr> = vec![];
+
+    for i in 0..n {
+        // Generate a random preimage and compute the image
+        let xl = rng.gen();
+        let xr = rng.gen();
+        let image = mimc(xl, xr, &constants);
+        output.push(image);
+
+        {
+            // Create an instance of our circuit (with the witness)
+            let c = MiMCDemo {
+                xl: Some(xl),
+                xr: Some(xr),
+                constants: &constants,
+            };
+            c.generate_constraints(&mut prover_pa, i).unwrap();
+        }
+    }
+    let one = vec![Fr::one(); n];
+    io.push(one);
+    io.push(output);
+
+    println!("Create prove...");
+    // Create a clinkv2 proof with our parameters.
+    let proof = create_random_proof(&prover_pa, &ipa_ck, rng).unwrap();
+    let prove_time = prove_start.elapsed();
+
+    // Verifier
+    println!("Start verify prepare...");
+    let verify_start = Instant::now();
+
+    let mut verifier_pa = VerifyAssignment::<G1Affine, Blake2s>::default();
+
+    // Create an instance of our circuit (with the witness)
+    let verify_c = MiMCDemo {
+        xl: None,
+        xr: None,
+        constants: &constants,
+    };
+    verify_c
+        .generate_constraints(&mut verifier_pa, 0usize)
+        .unwrap();
+
+    println!("Start verify...");
+
+    // Check the proof
+    // assert!(verify_proof(&verifier_pa, &ipa_vk, &proof, &io).unwrap());
+
+    // let mut vk_bytes = vec![];
+    // kzg10_vk.write(&mut vk_bytes).unwrap();
+    // let new_vk = VerifyKey::read(&vk_bytes[..]).unwrap();
+    // assert_eq!(kzg10_vk, new_vk);
+
+    // let mut tmp_proof_bytes = vec![];
+    // proof.write(&mut tmp_proof_bytes).unwrap();
+    // let new_proof = Proof::read(&tmp_proof_bytes[..]).unwrap();
+    // assert_eq!(proof, new_proof);
+
+    // println!("Tmp verify with bytes 1");
+    // assert!(verify_proof(&verifier_pa, &new_vk, &proof, &io).unwrap());
+
+    // println!("Tmp verify with bytes 2");
+    // assert!(verify_proof(&verifier_pa, &kzg10_vk, &new_proof, &io).unwrap());
+
+    // println!("Tmp verify with bytes 3");
+    // assert!(verify_proof(&verifier_pa, &new_vk, &new_proof, &io).unwrap());
+    let verify_time = verify_start.elapsed();
+
+    println!("Start prove & verify with bytes...");
+    assert!(verify_proof(&verifier_pa, &ipa_vk, &proof, &io).unwrap());
+
+    // let (proof_bytes, publics_bytes) = prove_to_bytes(&prover_pa, &kzg10_ck, rng, &io).unwrap();
+    // println!("proof bytes: {}", proof_bytes.len());
+    // assert!(verify_from_bytes(&verifier_pa, &vk_bytes, &proof_bytes, &publics_bytes,).unwrap());
 
     // Compute time
 
