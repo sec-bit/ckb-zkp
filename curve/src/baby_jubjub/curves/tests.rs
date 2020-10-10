@@ -12,7 +12,7 @@ use crate::tests::{curves::*, groups::*};
 
 #[test]
 fn test_projective_curve() {
-    curve_tests::<EdwardsProjective>();
+    curve_tests::<BabyJubJubProjective>();
 
     edwards_tests::<EdwardsParameters>();
 }
@@ -23,23 +23,23 @@ fn test_projective_group() {
     let a = rng.gen();
     let b = rng.gen();
     for _i in 0..100 {
-        group_test::<EdwardsProjective>(a, b);
+        group_test::<BabyJubJubProjective>(a, b);
     }
 }
 
 #[test]
 fn test_affine_group() {
     let mut rng = test_rng();
-    let a: EdwardsAffine = rng.gen();
-    let b: EdwardsAffine = rng.gen();
+    let a: BabyJubJubAffine = rng.gen();
+    let b: BabyJubJubAffine = rng.gen();
     for _i in 0..100 {
-        group_test::<EdwardsAffine>(a, b);
+        group_test::<BabyJubJubAffine>(a, b);
     }
 }
 
 #[test]
 fn test_generator() {
-    let generator = EdwardsAffine::prime_subgroup_generator();
+    let generator = BabyJubJubAffine::prime_subgroup_generator();
     assert!(generator.is_on_curve());
     assert!(generator.is_in_correct_subgroup_assuming_on_curve());
 }
@@ -47,8 +47,8 @@ fn test_generator() {
 #[test]
 fn test_conversion() {
     let mut rng = test_rng();
-    let a: EdwardsAffine = rng.gen();
-    let b: EdwardsAffine = rng.gen();
+    let a: BabyJubJubAffine = rng.gen();
+    let b: BabyJubJubAffine = rng.gen();
     let a_b = {
         use crate::groups::Group;
         (a + &b).double().double()
@@ -73,12 +73,12 @@ fn test_scalar_multiplication() {
     .unwrap();
 
     println!("Finished getting field elements");
-    let g = EdwardsAffine::from_str(
+    let g = BabyJubJubAffine::from_str(
         "(15863623088992515880085393097393553694825975317405843389771115419751650972659, \
          16950150798460657717958625567821834550301663161624707787222815936182638968203)",
     )
     .unwrap();
-    let f1f2g = EdwardsAffine::from_str(
+    let f1f2g = BabyJubJubAffine::from_str(
         "(20773645713088336957786354488799297695596635653208610804806657050882264237947, \
          19987327827845206670850937090314462639017692512983955920885166014935289314257)",
     )
@@ -96,14 +96,14 @@ fn test_scalar_multiplication() {
 
 #[test]
 fn test_bytes() {
-    let g_from_repr = EdwardsAffine::from_str(
+    let g_from_repr = BabyJubJubAffine::from_str(
         "(15863623088992515880085393097393553694825975317405843389771115419751650972659, \
          16950150798460657717958625567821834550301663161624707787222815936182638968203)",
     )
     .unwrap();
 
     let g_bytes = math::to_bytes![g_from_repr].unwrap();
-    let g = EdwardsAffine::read(g_bytes.as_slice()).unwrap();
+    let g = BabyJubJubAffine::read(g_bytes.as_slice()).unwrap();
     assert_eq!(g_from_repr, g);
 }
 

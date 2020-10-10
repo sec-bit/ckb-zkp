@@ -3,7 +3,7 @@ use math::{
     bytes::{FromBytes, ToBytes},
     io::Result as IoResult,
     serialize::*,
-    AffineCurve, Field, One, PairingEngine, ProjectiveCurve,
+    AffineCurve, Field, One, ProjectiveCurve, Curve
 };
 use merlin::Transcript;
 
@@ -11,14 +11,14 @@ use crate::Vec;
 
 use super::{inner_product, quick_multiexp, random_bytes_to_fr};
 
-pub struct Proof<E: PairingEngine> {
-    L_vec: Vec<E::G1Affine>,
-    R_vec: Vec<E::G1Affine>,
-    a: E::Fr,
-    b: E::Fr,
+pub struct Proof<G: Curve> {
+    L_vec: Vec<G::Affine>,
+    R_vec: Vec<G::Affine>,
+    a: G::Fr,
+    b: G::Fr,
 }
 
-impl<E: PairingEngine> ToBytes for Proof<E> {
+impl<G: Curve> ToBytes for Proof<G> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         (self.L_vec.len() as u64).write(&mut writer)?;
@@ -36,44 +36,44 @@ impl<E: PairingEngine> ToBytes for Proof<E> {
     }
 }
 
-impl<E: PairingEngine> FromBytes for Proof<E> {
+impl<G: Curve> FromBytes for Proof<G> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         let l_len = u64::read(&mut reader)?;
         let mut L_vec = vec![];
         for _ in 0..l_len {
-            let v = E::G1Affine::read(&mut reader)?;
+            let v = G::Affine::read(&mut reader)?;
             L_vec.push(v);
         }
         let r_len = u64::read(&mut reader)?;
         let mut R_vec = vec![];
         for _ in 0..r_len {
-            let v = E::G1Affine::read(&mut reader)?;
+            let v = G::Affine::read(&mut reader)?;
             R_vec.push(v);
         }
-        let a = E::Fr::read(&mut reader)?;
-        let b = E::Fr::read(&mut reader)?;
+        let a = G::Fr::read(&mut reader)?;
+        let b = G::Fr::read(&mut reader)?;
 
         Ok(Self { L_vec, R_vec, a, b })
     }
 }
 
 // protocol2 should not be used independently
-pub fn prove<E: PairingEngine>(
-    mut g_vec: Vec<E::G1Affine>,
-    mut h_vec: Vec<E::G1Affine>,
-    u: E::G1Affine,
-    mut a_vec: Vec<E::Fr>,
-    mut b_vec: Vec<E::Fr>,
-) -> Proof<E> {
+pub fn prove<G: Curve>(
+    mut g_vec: Vec<G::Affine>,
+    mut h_vec: Vec<G::Affine>,
+    u: G::Affine,
+    mut a_vec: Vec<G::Fr>,
+    mut b_vec: Vec<G::Fr>,
+) -> Proof<G> {
     let mut transcript = Transcript::new(b"protocol2");
     let mut n = a_vec.len();
     assert!(n.is_power_of_two());
     assert_eq!(n, b_vec.len());
 
     let lg_n = n.trailing_zeros() as usize;
-    let mut L_vec: Vec<E::G1Affine> = Vec::with_capacity(lg_n);
-    let mut R_vec: Vec<E::G1Affine> = Vec::with_capacity(lg_n);
+    let mut L_vec: Vec<G::Affine> = Vec::with_capacity(lg_n);
+    let mut R_vec: Vec<G::Affine> = Vec::with_capacity(lg_n);
     //let mut i = 1;
     while n > 1 {
         //println!("fold, i={}, full_n={}", i, n);
@@ -83,17 +83,17 @@ pub fn prove<E: PairingEngine>(
         let (aL, aR) = a_vec.split_at(n);
         let (bL, bR) = b_vec.split_at(n);
 
-        let cL: E::Fr = inner_product::<E>(aL, bR);
-        let cR: E::Fr = inner_product::<E>(aR, bL);
+        let cL = inner_product::<G::Fr>(aL, bR);
+        let cR = inner_product::<G::Fr>(aR, bL);
 
         let (gL, gR) = g_vec.split_at(n);
         let (hL, hR) = h_vec.split_at(n);
 
-        let L: E::G1Projective = quick_multiexp::<E>(&aL.to_vec(), &gR.to_vec())
-            + &(quick_multiexp::<E>(&bR.to_vec(), &hL.to_vec()))
+        let L: G::Projective = quick_multiexp::<G>(&aL.to_vec(), &gR.to_vec())
+            + &(quick_multiexp::<G>(&bR.to_vec(), &hL.to_vec()))
             + &(u.mul(cL));
-        let R: E::G1Projective = quick_multiexp::<E>(&aR.to_vec(), &gL.to_vec())
-            + &(quick_multiexp::<E>(&bL.to_vec(), &hR.to_vec()))
+        let R: G::Projective = quick_multiexp::<G>(&aR.to_vec(), &gL.to_vec())
+            + &(quick_multiexp::<G>(&bL.to_vec(), &hR.to_vec()))
             + &(u.mul(cR));
 
         // P -> V: L, R
@@ -109,22 +109,22 @@ pub fn prove<E: PairingEngine>(
         // V challenge x
         let mut buf_x = [0u8; 31];
         transcript.challenge_bytes(b"x", &mut buf_x);
-        // let x = <E::Fr as PrimeField>::from_random_bytes(&buf_x).unwrap();
-        let x = random_bytes_to_fr::<E>(&buf_x);
+        // let x = <F as PrimeField>::from_random_bytes(&buf_x).unwrap();
+        let x = random_bytes_to_fr::<G::Fr>(&buf_x);
         let x_inv = x.inverse().unwrap();
 
         // P & V compute:
-        let g_new: Vec<E::G1Affine> = (0..n)
+        let g_new: Vec<G::Affine> = (0..n)
             .map(|i| (gL[i].mul(x_inv) + &(gR[i].mul(x))).into_affine())
             .collect();
-        let h_new: Vec<E::G1Affine> = (0..n)
+        let h_new: Vec<G::Affine> = (0..n)
             .map(|i| (hL[i].mul(x) + &(hR[i].mul(x_inv))).into_affine())
             .collect();
         // let P_new = L * x*x + P + R * x_inv*x_inv;
 
         // P computes:
-        let a_new: Vec<E::Fr> = (0..n).map(|i| aL[i] * &x + &(aR[i] * &x_inv)).collect();
-        let b_new: Vec<E::Fr> = (0..n).map(|i| bL[i] * &x_inv + &(bR[i] * &x)).collect();
+        let a_new: Vec<G::Fr> = (0..n).map(|i| aL[i] * &x + &(aR[i] * &x_inv)).collect();
+        let b_new: Vec<G::Fr> = (0..n).map(|i| bL[i] * &x_inv + &(bR[i] * &x)).collect();
 
         a_vec = a_new;
         b_vec = b_new;
@@ -142,12 +142,12 @@ pub fn prove<E: PairingEngine>(
     Proof { L_vec, R_vec, a, b }
 }
 
-pub fn verify<E: PairingEngine>(
-    g_vec: Vec<E::G1Affine>,
-    h_vec: Vec<E::G1Affine>,
-    u: E::G1Affine,
-    P: &E::G1Projective,
-    proof: &Proof<E>,
+pub fn verify<G: Curve>(
+    g_vec: Vec<G::Affine>,
+    h_vec: Vec<G::Affine>,
+    u: G::Affine,
+    P: &G::Projective,
+    proof: &Proof<G>,
 ) -> bool {
     let mut transcript = Transcript::new(b"protocol2");
     let lg_n = proof.L_vec.len();
@@ -156,7 +156,7 @@ pub fn verify<E: PairingEngine>(
 
     let mut x_sq_vec = Vec::with_capacity(lg_n);
     let mut x_inv_sq_vec = Vec::with_capacity(lg_n);
-    let mut allinv = E::Fr::one();
+    let mut allinv = G::Fr::one();
     for i in 0..lg_n {
         transcript.append_message(b"L", &math::to_bytes![proof.L_vec[i]].unwrap());
         transcript.append_message(b"R", &math::to_bytes![proof.R_vec[i]].unwrap());
@@ -164,7 +164,7 @@ pub fn verify<E: PairingEngine>(
         // V challenge x
         let mut buf_x = [0u8; 31];
         transcript.challenge_bytes(b"x", &mut buf_x);
-        let x = random_bytes_to_fr::<E>(&buf_x);
+        let x = random_bytes_to_fr::<G::Fr>(&buf_x);
         let x_inv = x.inverse().unwrap();
         x_sq_vec.push(x * &x);
         x_inv_sq_vec.push(x_inv * &x_inv);
@@ -172,7 +172,7 @@ pub fn verify<E: PairingEngine>(
     }
 
     // Compute s values inductively. Here adpots optimization from Dalek.
-    let mut s: Vec<E::Fr> = Vec::with_capacity(n);
+    let mut s: Vec<G::Fr> = Vec::with_capacity(n);
     s.push(allinv);
     for i in 1..n {
         let lg_i = (32 - 1 - (i as u32).leading_zeros()) as usize;
@@ -185,15 +185,15 @@ pub fn verify<E: PairingEngine>(
 
     let mut inv_s = s.clone();
     inv_s.reverse();
-    let a_s: Vec<E::Fr> = (0..n).map(|i| proof.a * &s[i]).collect();
-    let b_s: Vec<E::Fr> = (0..n).map(|i| proof.b * &inv_s[i]).collect();
+    let a_s: Vec<G::Fr> = (0..n).map(|i| proof.a * &s[i]).collect();
+    let b_s: Vec<G::Fr> = (0..n).map(|i| proof.b * &inv_s[i]).collect();
 
     let c_final = proof.a * &proof.b;
-    let CheckP_lhs: E::G1Projective = quick_multiexp::<E>(&a_s, &g_vec.to_vec())
-        + &(quick_multiexp::<E>(&b_s, &h_vec.to_vec()))
+    let CheckP_lhs: G::Projective = quick_multiexp::<G>(&a_s, &g_vec.to_vec())
+        + &(quick_multiexp::<G>(&b_s, &h_vec.to_vec()))
         + &(u.mul(c_final));
-    let CheckP_rhs: E::G1Projective = quick_multiexp::<E>(&x_sq_vec, &proof.L_vec)
-        + &(quick_multiexp::<E>(&x_inv_sq_vec, &proof.R_vec))
+    let CheckP_rhs: G::Projective = quick_multiexp::<G>(&x_sq_vec, &proof.L_vec)
+        + &(quick_multiexp::<G>(&x_inv_sq_vec, &proof.R_vec))
         + P;
 
     CheckP_lhs == CheckP_rhs
@@ -208,23 +208,23 @@ mod tests {
     use super::*;
 
     #[cfg(test)]
-    fn run_protocol2_helper<E: PairingEngine>(n: usize) {
+    fn run_protocol2_helper<G: Curve>(n: usize) {
         let t1 = Instant::now();
         assert!(n.is_power_of_two());
 
         let mut rng = math::test_rng();
 
         // generators
-        let mut g_vec: Vec<E::G1Affine> = Vec::with_capacity(n);
+        let mut g_vec: Vec<G::Affine> = Vec::with_capacity(n);
         for _ in 0..n {
-            g_vec.push(E::G1Projective::rand(&mut rng).into_affine());
+            g_vec.push(G::Projective::rand(&mut rng).into_affine());
         }
 
-        let mut h_vec: Vec<E::G1Affine> = Vec::with_capacity(n);
+        let mut h_vec: Vec<G::Affine> = Vec::with_capacity(n);
         for _ in 0..n {
-            h_vec.push(E::G1Projective::rand(&mut rng).into_affine());
+            h_vec.push(G::Projective::rand(&mut rng).into_affine());
         }
-        let u: E::G1Affine = E::G1Projective::rand(&mut rng).into_affine();
+        let u: G::Affine = G::Projective::rand(&mut rng).into_affine();
 
         let duration = t1.elapsed();
         println!(
@@ -234,17 +234,17 @@ mod tests {
 
         let t2 = Instant::now();
         // generate a_vec/b_vec for test
-        let a_vec: Vec<E::Fr> = (0..n).map(|_| E::Fr::rand(&mut rng)).collect();
-        let b_vec: Vec<E::Fr> = (0..n).map(|_| E::Fr::rand(&mut rng)).collect();
-        let c: E::Fr = inner_product::<E>(&a_vec, &b_vec);
-        let P = quick_multiexp::<E>(&a_vec, &g_vec)
-            + &(quick_multiexp::<E>(&b_vec, &h_vec))
+        let a_vec: Vec<G::Fr> = (0..n).map(|_| G::Fr::rand(&mut rng)).collect();
+        let b_vec: Vec<G::Fr> = (0..n).map(|_| G::Fr::rand(&mut rng)).collect();
+        let c = inner_product::<G::Fr>(&a_vec, &b_vec);
+        let P = quick_multiexp::<G>(&a_vec, &g_vec)
+            + &(quick_multiexp::<G>(&b_vec, &h_vec))
             + &(u.mul(c));
         let duration = t2.elapsed();
         println!("Time elapsed in a_vec b_vec is: {:?}", duration);
 
         let t3 = Instant::now();
-        let proof = prove::<E>(
+        let proof = prove::<G>(
             g_vec.clone(),
             h_vec.clone(),
             u,
@@ -255,7 +255,7 @@ mod tests {
         println!("Time elapsed in prove is: {:?}", duration);
 
         let t4 = Instant::now();
-        assert!(verify::<E>(g_vec.clone(), h_vec.clone(), u, &P, &proof));
+        assert!(verify::<G>(g_vec.clone(), h_vec.clone(), u, &P, &proof));
         let duration = t4.elapsed();
         println!(
             "Time elapsed in verify is: {:?} \n >>>>>>>>>>>>>>>>>>>",
