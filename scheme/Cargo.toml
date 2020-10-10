@@ -36,4 +36,4 @@ rand_core = { version = "0.5", default-features = false }
 csv = { version = "1" }
 rand = { version = "0.7" }
 blake2 = { version = "0.8", default-features = false }
-curve = { path = "../curve", default-features = false, features = [ "bls12_381", "bn_256", "sw6" ] }
+curve = { path = "../curve", default-features = false, features = [ "bls12_381", "bn_256", "sw6", "baby_jubjub" ] }

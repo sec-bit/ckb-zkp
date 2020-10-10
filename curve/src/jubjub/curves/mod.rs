@@ -1,9 +1,8 @@
-// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
-
 use crate::jubjub::{Fq, Fr};
 use math::{
     biginteger::BigInteger256,
     curves::{
+        Curve,
         models::{ModelParameters, MontgomeryModelParameters, TEModelParameters},
         twisted_edwards_extended::{GroupAffine, GroupProjective},
     },
@@ -15,6 +14,15 @@ mod tests;
 
 pub type JubJubAffine = GroupAffine<JubJubParameters>;
 pub type JubJubProjective = GroupProjective<JubJubParameters>;
+
+pub struct JubJub;
+
+impl Curve for JubJub {
+    type Fq = Fq;
+    type Fr = Fr;
+    type Affine = JubJubAffine;
+    type Projective = JubJubProjective;
+}
 
 #[rustfmt::skip]
 const GENERATOR_X: Fq = field_new!(Fq, BigInteger256([

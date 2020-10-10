@@ -2,6 +2,7 @@ use crate::baby_jubjub::{Fq, Fr};
 use math::{
     biginteger::BigInteger256,
     curves::{
+        Curve,
         models::{ModelParameters, MontgomeryModelParameters, TEModelParameters},
         twisted_edwards_extended::{GroupAffine, GroupProjective},
     },
@@ -11,8 +12,17 @@ use math::{
 #[cfg(test)]
 mod tests;
 
-pub type EdwardsAffine = GroupAffine<EdwardsParameters>;
-pub type EdwardsProjective = GroupProjective<EdwardsParameters>;
+pub struct BabyJubJub;
+
+impl Curve for BabyJubJub {
+    type Fq = Fq;
+    type Fr = Fr;
+    type Affine = BabyJubJubAffine;
+    type Projective = BabyJubJubProjective;
+}
+
+pub type BabyJubJubAffine = GroupAffine<EdwardsParameters>;
+pub type BabyJubJubProjective = GroupProjective<EdwardsParameters>;
 
 #[rustfmt::skip]
 const GENERATOR_X: Fq = field_new!(Fq, BigInteger256([

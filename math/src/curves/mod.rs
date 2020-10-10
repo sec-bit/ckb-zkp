@@ -267,6 +267,32 @@ pub trait AffineCurve:
     fn mul_by_cofactor_inv(&self) -> Self;
 }
 
+pub trait Curve {
+    /// The base field that hosts.
+    type Fq: PrimeField + SquareRootField;
+
+    /// This is the scalar field of the groups.
+    type Fr: PrimeField + SquareRootField;
+
+    /// The projective representation of an element.
+    type Projective: ProjectiveCurve<BaseField = Self::Fq, ScalarField = Self::Fr, Affine = Self::Affine>
+        + From<Self::Affine>
+        + Into<Self::Affine>
+        + MulAssign<Self::Fr>; // needed due to https://github.com/rust-lang/rust/issues/69640
+
+    /// The affine representation of an element.
+    type Affine: AffineCurve<BaseField = Self::Fq, ScalarField = Self::Fr, Projective = Self::Projective>
+        + From<Self::Projective>
+        + Into<Self::Projective>;
+}
+
+impl<P: PairingEngine> Curve for P {
+    type Fq = P::Fq;
+    type Fr = P::Fr;
+    type Projective = P::G1Projective;
+    type Affine = P::G1Affine;
+}
+
 impl<C: ProjectiveCurve> Group for C {
     type ScalarField = C::ScalarField;
 
