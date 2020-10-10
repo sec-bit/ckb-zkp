@@ -4,7 +4,7 @@
 // @Author: JiadongLu (lujd1234@gmail.com)
 // @Author: YunLi (liyunscss@gmail.com)
 
-use math::{FromBytes, PrimeField, BitIterator};
+use math::{BitIterator, FromBytes, PrimeField};
 use scheme::r1cs::{ConstraintSystem, SynthesisError, Variable};
 
 use crate::Vec;
@@ -33,7 +33,7 @@ const INVALPH: [u64; 4] = [
 /// See https://eprint.iacr.org/2019/426 for more
 /// information about this construction.
 ///
-/// ```
+/// ```no_run
 /// $Input:\ Plaintext\ P,\ round\ keys\ K_s\ for \ 0 ≤ s ≤ 2N$
 /// $Output:\ Rescue\ (K, P)$
 /// ​	$S_0 = P + K_0 $
@@ -295,7 +295,6 @@ const _CONSTANTS_CONSTANT: [[&str; 3]; 45] = [
     ],
 ];
 
-
 pub struct RescueConstant<F: PrimeField> {
     pub constants: [[F; M]; 2 * RESCUE_ROUNDS + 1],
     pub mds: [[F; M]; M], // MDS matrix
@@ -334,7 +333,6 @@ impl<F: PrimeField> RescueConstant<F> {
 pub fn constants<F: PrimeField>() -> RescueConstant<F> {
     RescueConstant::<F>::new_fp255()
 }
-
 
 pub fn rescue_block<F: PrimeField>(xl: F, xr: F, rc: &RescueConstant<F>) -> F {
     let mut state = [xl, xr, F::zero()];
@@ -401,7 +399,6 @@ pub fn hash<F: PrimeField>(b: &[u8]) -> F {
     rescue_hash(b, &constants()).2
 }
 
-
 pub fn rescue<F: PrimeField, CS: ConstraintSystem<F>>(
     mut cs: CS,
     b: &[u8],
@@ -413,15 +410,14 @@ pub fn rescue<F: PrimeField, CS: ConstraintSystem<F>>(
     let var_xr = cs.alloc(|| "preimage xr", || Ok(xr))?;
 
     let three = F::zero();
-    let var_three = cs.alloc(|| "preimage tmp",|| Ok(three))?;
+    let var_three = cs.alloc(|| "preimage tmp", || Ok(three))?;
     let mut state_value = [xl, xr, three];
     let mut state = [var_xl, var_xr, var_three];
     let cs = &mut cs.ns(|| "Preassign");
-    for i in 0..M 
-    {
+    for i in 0..M {
         state_value[i] += constants.constants[0][i];
         let tmp_value = state_value[i];
-        let tmp = cs.alloc(|| format!("tmp_{}", i),|| Ok(tmp_value))?;
+        let tmp = cs.alloc(|| format!("tmp_{}", i), || Ok(tmp_value))?;
         cs.enforce(
             || format!("tmp_{} = (state[{}] + Ci) * 1", i, i),
             |lc| lc + state[i] + (constants.constants[0][i], CS::one()),
@@ -432,36 +428,32 @@ pub fn rescue<F: PrimeField, CS: ConstraintSystem<F>>(
         state[i] = tmp;
     }
     let mut af: &[u64];
-    for i in 0..2 * RESCUE_ROUNDS 
-    {
+    for i in 0..2 * RESCUE_ROUNDS {
         let cs = &mut cs.ns(|| format!("round_{}", i));
         af = &ALPH;
         if i % 2 == 1 {
             af = &INVALPH;
         }
-        for j in 0..M 
-        {
+        for j in 0..M {
             let tuple = pow_with_constraint(&state_value[j], &state[j], af, cs, j)?;
             state_value[j] = tuple.0;
             state[j] = tuple.1;
         }
         let mut tmp2_value = [F::zero(); M];
         let mut tmp2 = Vec::with_capacity(3);
-        for j in 0..M 
-        {
+        for j in 0..M {
             tmp2.push(cs.alloc(|| format!("tmp2_{}", j), || Ok(tmp2_value[j]))?);
         }
-        for j in 0..M
-        {
+        for j in 0..M {
             for k in 0..M {
                 let mut tmp3_value = constants.mds[j][k];
-                let tmp3 = cs.alloc(|| format!("tmp3_{}{}", j, k),|| Ok(tmp3_value))?;
+                let tmp3 = cs.alloc(|| format!("tmp3_{}{}", j, k), || Ok(tmp3_value))?;
                 tmp3_value.mul_assign(&state_value[k]);
                 tmp3_value.add_assign(&tmp2_value[j]);
                 let tmp4_value = tmp3_value;
-                let tmp4 = cs.alloc(|| format!("tmp4_{}{}",j,k),|| Ok(tmp4_value))?;
+                let tmp4 = cs.alloc(|| format!("tmp4_{}{}", j, k), || Ok(tmp4_value))?;
                 cs.enforce(
-                    || format!("tmp4 - tmp2[{}] = tmp3_{}{} * state_value[{}]", j,j,k,k),
+                    || format!("tmp4 - tmp2[{}] = tmp3_{}{} * state_value[{}]", j, j, k, k),
                     |lc| lc + tmp3,
                     |lc| lc + state[k],
                     |lc| lc + tmp4 - tmp2[j],
@@ -470,14 +462,12 @@ pub fn rescue<F: PrimeField, CS: ConstraintSystem<F>>(
                 tmp2[j] = tmp4;
             }
         }
-        for j in 0..M 
-        {
-            
+        for j in 0..M {
             tmp2_value[j].add_assign(constants.constants[i + 1][j]);
             let tmp5_value = tmp2_value[j];
-            let tmp5 = cs.alloc(|| format!("tmp5_{}",j),|| Ok(tmp5_value))?;
+            let tmp5 = cs.alloc(|| format!("tmp5_{}", j), || Ok(tmp5_value))?;
             cs.enforce(
-                || format!("tmp5_{} = tmp2[{}] + constants[{}][{}]", j, j, i+1, j),
+                || format!("tmp5_{} = tmp2[{}] + constants[{}][{}]", j, j, i + 1, j),
                 |lc| lc + tmp2[j] + (constants.constants[i + 1][j], CS::one()),
                 |lc| lc + (F::one(), CS::one()),
                 |lc| lc + tmp5,
@@ -486,7 +476,7 @@ pub fn rescue<F: PrimeField, CS: ConstraintSystem<F>>(
             state_value[j] = tmp5_value;
         }
     }
-    let output = cs.alloc_input(|| "output",|| Ok(state_value[0]))?;
+    let output = cs.alloc_input(|| "output", || Ok(state_value[0]))?;
     cs.enforce(
         || "output = tmp2[j] + constants[i+1][j]",
         |lc| lc + (F::one(), CS::one()),
@@ -508,8 +498,7 @@ fn pow_with_constraint<F: PrimeField, CS: ConstraintSystem<F>, S: AsRef<[u64]>>(
 
     let mut found_one = false;
     let mut cnt = 0;
-    for i in BitIterator::new(exp) 
-    {
+    for i in BitIterator::new(exp) {
         if !found_one {
             if i {
                 found_one = true;
@@ -579,7 +568,6 @@ impl<F: PrimeField> AbstractHashRescueOutput<F> {
         self.value
     }
 }
-
 
 impl<F: PrimeField> AbstractHashOutput for AbstractHashRescueOutput<F> {
     fn get_variables(&self) -> Vec<Variable> {
