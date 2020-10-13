@@ -15,8 +15,8 @@ use crate::spartan::data_structure::{
 };
 use crate::spartan::inner_product::bullet_inner_product_proof;
 use crate::spartan::polynomial::{
-    bound_poly_var_bot, combine_with_r, eval_eq, evaluate_matrix_vec, evaluate_matrix_vec_col,
-    evaluate_mle,
+    bound_poly_var_bot, combine_with_n, combine_with_r, eval_eq, evaluate_matrix_vec,
+    evaluate_matrix_vec_col, evaluate_mle,
 };
 use crate::spartan::r1cs::R1CSInstance;
 use crate::spartan::spark::{
@@ -243,19 +243,19 @@ where
         .collect::<Vec<_>>();
     // calculate multilinear A(x), B(x), C(x), eq(x, τ)
     // g(x) = (A(x) * B(x) - C(x)) * eq(x, τ)
-    let eq_tau_arr = eval_eq::<E>(&tau);
-    let ma = evaluate_matrix_vec::<E>(r1cs.a_matrix.clone(), z.clone());
-    let mb = evaluate_matrix_vec::<E>(r1cs.b_matrix.clone(), z.clone());
-    let mc = evaluate_matrix_vec::<E>(r1cs.c_matrix.clone(), z.clone());
+    let mut eq_tau_arr = eval_eq::<E>(&tau);
+    let mut ma = evaluate_matrix_vec::<E>(&r1cs.a_matrix, &z);
+    let mut mb = evaluate_matrix_vec::<E>(&r1cs.b_matrix, &z);
+    let mut mc = evaluate_matrix_vec::<E>(&r1cs.c_matrix, &z);
     //5. sumcheck #1: ex = G_τ(rx)
     let (proof_sc1, rx, polys_value_at_rx, blinds_eval1) = sum_check_proof_phase_one::<E, R>(
         num_rounds_x,
         &params.sc_params,
         E::Fr::zero(),
-        &ma,
-        &mb,
-        &mc,
-        &eq_tau_arr,
+        &mut ma,
+        &mut mb,
+        &mut mc,
+        &mut eq_tau_arr,
         rng,
         transcript,
     )
@@ -333,12 +333,12 @@ where
     let claim_phase2_blind = (blind_a * &r_a) + &(blind_b * &r_b) + &(blind_c * &r_c);
 
     let evals_rx = eval_eq::<E>(&rx);
-    let evals_a = evaluate_matrix_vec_col::<E>(r1cs.a_matrix.clone(), evals_rx.clone(), z.len());
-    let evals_b = evaluate_matrix_vec_col::<E>(r1cs.b_matrix.clone(), evals_rx.clone(), z.len());
-    let evals_c = evaluate_matrix_vec_col::<E>(r1cs.c_matrix.clone(), evals_rx.clone(), z.len());
+    let evals_a = evaluate_matrix_vec_col::<E>(&r1cs.a_matrix, &evals_rx, z.len());
+    let evals_b = evaluate_matrix_vec_col::<E>(&r1cs.b_matrix, &evals_rx, z.len());
+    let evals_c = evaluate_matrix_vec_col::<E>(&r1cs.c_matrix, &evals_rx, z.len());
     assert_eq!(evals_a.len(), evals_b.len());
     assert_eq!(evals_a.len(), evals_c.len());
-    let evals = (0..evals_a.len())
+    let mut evals = (0..evals_a.len())
         .map(|i| r_a * &evals_a[i] + &(r_b * &evals_b[i]) + &(r_c * &evals_c[i]))
         .collect::<Vec<E::Fr>>();
     //11. sumcheck #2
@@ -347,8 +347,8 @@ where
         &params.sc_params,
         claim_phase2,
         claim_phase2_blind,
-        &evals,
-        &z,
+        &mut evals,
+        &mut z,
         rng,
         transcript,
     )
@@ -407,10 +407,10 @@ fn sum_check_proof_phase_one<E: PairingEngine, R: Rng>(
     num_rounds: usize,
     params: &SumCheckCommitmentParameters<E>,
     claim: E::Fr,
-    poly_a: &Vec<E::Fr>,
-    poly_b: &Vec<E::Fr>,
-    poly_c: &Vec<E::Fr>,
-    poly_eq: &Vec<E::Fr>,
+    poly_a: &mut Vec<E::Fr>,
+    poly_b: &mut Vec<E::Fr>,
+    poly_c: &mut Vec<E::Fr>,
+    poly_eq: &mut Vec<E::Fr>,
     rng: &mut R,
     transcript: &mut Transcript,
 ) -> Result<
@@ -422,10 +422,6 @@ fn sum_check_proof_phase_one<E: PairingEngine, R: Rng>(
     ),
     SynthesisError,
 > {
-    let mut poly_a = poly_a.clone();
-    let mut poly_b = poly_b.clone();
-    let mut poly_c = poly_c.clone();
-    let mut poly_eq = poly_eq.clone();
     assert_eq!(poly_a.len(), poly_b.len());
     assert_eq!(poly_b.len(), poly_c.len());
     assert_eq!(poly_c.len(), poly_eq.len());
@@ -440,7 +436,7 @@ fn sum_check_proof_phase_one<E: PairingEngine, R: Rng>(
     let mut blind_poly_eval = E::Fr::zero();
 
     let mut claim = claim;
-    let mut commit_claim = poly_commit_vec::<E>(
+    let mut commit_eval = poly_commit_vec::<E>(
         &params.gen_1.generators,
         &vec![claim],
         &params.gen_1.h,
@@ -464,18 +460,18 @@ fn sum_check_proof_phase_one<E: PairingEngine, R: Rng>(
         let eval_1 = claim - &eval_0;
 
         // g_i(2) = eval_2 = 2eval_1 + (1-2)eval_0;
-        let poly_a_tmp = combine_with_r::<E>(&poly_a.to_vec(), E::Fr::from(2));
-        let poly_b_tmp = combine_with_r::<E>(&poly_b.to_vec(), E::Fr::from(2));
-        let poly_c_tmp = combine_with_r::<E>(&poly_c.to_vec(), E::Fr::from(2));
-        let poly_eq_tmp = combine_with_r::<E>(&poly_eq.to_vec(), E::Fr::from(2));
+        let poly_a_tmp = combine_with_n::<E>(&poly_a.to_vec(), E::Fr::from(2));
+        let poly_b_tmp = combine_with_n::<E>(&poly_b.to_vec(), E::Fr::from(2));
+        let poly_c_tmp = combine_with_n::<E>(&poly_c.to_vec(), E::Fr::from(2));
+        let poly_eq_tmp = combine_with_n::<E>(&poly_eq.to_vec(), E::Fr::from(2));
         let eval_2: E::Fr = (0..size)
             .map(|j| poly_eq_tmp[j] * &(poly_a_tmp[j] * &poly_b_tmp[j] - &poly_c_tmp[j]))
             .sum();
         // g_i(3) = eval_3 = 3eval_1 + (1-3)eval_0;
-        let poly_a_tmp = combine_with_r::<E>(&poly_a.to_vec(), E::Fr::from(3));
-        let poly_b_tmp = combine_with_r::<E>(&poly_b.to_vec(), E::Fr::from(3));
-        let poly_c_tmp = combine_with_r::<E>(&poly_c.to_vec(), E::Fr::from(3));
-        let poly_eq_tmp = combine_with_r::<E>(&poly_eq.to_vec(), E::Fr::from(3));
+        let poly_a_tmp = combine_with_n::<E>(&poly_a.to_vec(), E::Fr::from(3));
+        let poly_b_tmp = combine_with_n::<E>(&poly_b.to_vec(), E::Fr::from(3));
+        let poly_c_tmp = combine_with_n::<E>(&poly_c.to_vec(), E::Fr::from(3));
+        let poly_eq_tmp = combine_with_n::<E>(&poly_eq.to_vec(), E::Fr::from(3));
         let eval_3: E::Fr = (0..size)
             .map(|j| poly_eq_tmp[j] * &(poly_a_tmp[j] * &poly_b_tmp[j] - &poly_c_tmp[j]))
             .sum();
@@ -512,13 +508,18 @@ fn sum_check_proof_phase_one<E: PairingEngine, R: Rng>(
         let mut buf = [0u8; 31];
         transcript.challenge_bytes(b"challenge_nextround", &mut buf);
         let r_i = random_bytes_to_fr::<E>(&buf);
-        poly_a = combine_with_r::<E>(&poly_a.to_vec(), r_i);
-        poly_b = combine_with_r::<E>(&poly_b.to_vec(), r_i);
-        poly_c = combine_with_r::<E>(&poly_c.to_vec(), r_i);
-        poly_eq = combine_with_r::<E>(&poly_eq.to_vec(), r_i);
+        combine_with_r::<E>(poly_a, r_i);
+        combine_with_r::<E>(poly_b, r_i);
+        combine_with_r::<E>(poly_c, r_i);
+        combine_with_r::<E>(poly_eq, r_i);
+
+        transcript.append_message(
+            b"comm_claim_per_round",
+            &math::to_bytes!(commit_eval).unwrap(),
+        );
 
         let eval_ri = poly.evaluate(r_i);
-        let commit_eval = poly_commit_vec::<E>(
+        commit_eval = poly_commit_vec::<E>(
             &params.gen_1.generators,
             &vec![eval_ri],
             &params.gen_1.h,
@@ -527,10 +528,6 @@ fn sum_check_proof_phase_one<E: PairingEngine, R: Rng>(
         .unwrap()
         .commit;
 
-        transcript.append_message(
-            b"comm_claim_per_round",
-            &math::to_bytes!(commit_claim).unwrap(),
-        );
         transcript.append_message(b"comm_eval", &math::to_bytes!(commit_eval).unwrap());
 
         let mut blind_claim = E::Fr::zero();
@@ -559,7 +556,6 @@ fn sum_check_proof_phase_one<E: PairingEngine, R: Rng>(
         comm_evals.push(commit_eval);
         proofs.push(proof);
 
-        commit_claim = commit_eval.clone();
         blind_poly_eval = blinds_evals[i];
         claim = eval_ri;
     }
@@ -583,13 +579,13 @@ fn sum_check_proof_phase_two<E: PairingEngine, R: Rng>(
     params: &SumCheckCommitmentParameters<E>,
     claim: E::Fr,
     blind_claim: E::Fr,
-    poly_abc: &Vec<E::Fr>,
-    poly_z: &Vec<E::Fr>,
+    poly_abc: &mut Vec<E::Fr>,
+    poly_z: &mut Vec<E::Fr>,
     rng: &mut R,
     transcript: &mut Transcript,
 ) -> Result<(SumCheckProof<E>, Vec<E::Fr>, (E::Fr, E::Fr), E::Fr), SynthesisError> {
-    let mut poly_abc = poly_abc.clone();
-    let mut poly_z = poly_z.clone();
+    // let mut poly_abc = poly_abc.clone();
+    // let mut poly_z = poly_z.clone();
     assert_eq!(poly_abc.len(), poly_z.len());
 
     let mut blinds_poly = Vec::new();
@@ -624,8 +620,8 @@ fn sum_check_proof_phase_two<E: PairingEngine, R: Rng>(
         let eval_1 = claim - &eval_0;
 
         // g_i(2) = eval_2 = 2eval_1 + (1-2)eval_0;
-        let poly_abc_tmp = combine_with_r::<E>(&poly_abc, E::Fr::from(2));
-        let poly_z_tmp = combine_with_r::<E>(&poly_z, E::Fr::from(2));
+        let poly_abc_tmp = combine_with_n::<E>(&poly_abc, E::Fr::from(2));
+        let poly_z_tmp = combine_with_n::<E>(&poly_z, E::Fr::from(2));
         let eval_2 = (0..size).map(|j| poly_abc_tmp[j] * &poly_z_tmp[j]).sum();
 
         // degree = 2
@@ -667,8 +663,8 @@ fn sum_check_proof_phase_two<E: PairingEngine, R: Rng>(
         );
         transcript.append_message(b"comm_eval", &math::to_bytes!(commit_eval).unwrap());
 
-        poly_abc = combine_with_r::<E>(&poly_abc, r_j);
-        poly_z = combine_with_r::<E>(&poly_z, r_j);
+        combine_with_r::<E>(poly_abc, r_j);
+        combine_with_r::<E>(poly_z, r_j);
 
         let mut blind_claim = blind_claim;
         if i > 0 {
@@ -1002,14 +998,9 @@ fn inner_product_proof<E: PairingEngine, R: Rng>(
         })
         .collect::<Vec<(E::Fr, E::Fr)>>();
 
-    let commit_lz = poly_commit_vec::<E>(
-        &params.gen_n.generators,
-        &lz.clone(),
-        &params.gen_n.h,
-        lz_blind,
-    )
-    .unwrap()
-    .commit;
+    let commit_lz = poly_commit_vec::<E>(&params.gen_n.generators, &lz, &params.gen_n.h, lz_blind)
+        .unwrap()
+        .commit;
     transcript.append_message(b"Cx", &math::to_bytes!(commit_lz).unwrap());
 
     let commit_ry = poly_commit_vec::<E>(
@@ -1024,7 +1015,7 @@ fn inner_product_proof<E: PairingEngine, R: Rng>(
 
     let blind_gamma = lz_blind + &ry_blind;
     let (proof, a, b, g, blind_fin) = bullet_inner_product_proof::<E>(
-        &params.gen_n.generators.clone(),
+        &params.gen_n.generators,
         params.gen_1.generators[0],
         params.gen_n.h,
         &lz,
@@ -1139,7 +1130,7 @@ where
     let (prod_layer_proof, ops_rands, mem_rands) = product_layer_prover::<E>(
         encode,
         (&e_row, &e_col),
-        (row_layer.prod, col_layer.prod),
+        (&row_layer.prod, &col_layer.prod),
         &vec![eval_a_r, eval_b_r, eval_c_r],
         transcript,
     )
@@ -1165,7 +1156,7 @@ where
 pub fn product_layer_prover<E: PairingEngine>(
     encode: &EncodeMemory<E>,
     e_list: (&Vec<Vec<E::Fr>>, &Vec<Vec<E::Fr>>),
-    prod_list: (ProdForMemoryChecking<E>, ProdForMemoryChecking<E>),
+    prod_list: (&ProdForMemoryChecking<E>, &ProdForMemoryChecking<E>),
     evals: &Vec<E::Fr>,
     transcript: &mut Transcript,
 ) -> Result<(ProductLayerProof<E>, Vec<E::Fr>, Vec<E::Fr>), SynthesisError> {
@@ -1238,6 +1229,8 @@ pub fn product_layer_prover<E: PairingEngine>(
     let mut dotp_circuit_right_list = Vec::new();
     let mut eval_dotp_left_list = Vec::new();
     let mut eval_dotp_right_list = Vec::new();
+    let mut ops_prod_circuit_list = Vec::new();
+    // let mut dotp_circuit_list = Vec::new();
     for i in 0..e_row.len() {
         let row = &e_row[i];
         let col = &e_col[i];
@@ -1275,37 +1268,49 @@ pub fn product_layer_prover<E: PairingEngine>(
         eval_dotp_right_list.push(eval_dotp_right);
     }
 
-    let mut ops_prod_circuit_list = Vec::new();
-    for ops in row_prod
-        .read_ts_prod_list
-        .iter()
-        .chain(row_prod.write_ts_prod_list.iter())
-        .chain(col_prod.read_ts_prod_list.iter())
-        .chain(col_prod.write_ts_prod_list.iter())
+    let mut row_prod_read_ts_prod_list = row_prod.read_ts_prod_list.clone();
+    let mut row_prod_write_ts_prod_list = row_prod.write_ts_prod_list.clone();
+    let mut col_prod_read_ts_prod_list = col_prod.read_ts_prod_list.clone();
+    let mut col_prod_write_ts_prod_list = col_prod.write_ts_prod_list.clone();
+    let mut row_prod_init_prod = row_prod.init_prod.clone();
+    let mut row_prod_audit_ts_prod = row_prod.audit_ts_prod.clone();
+    let mut col_prod_init_prod = col_prod.init_prod.clone();
+    let mut col_prod_audit_ts_prod = col_prod.audit_ts_prod.clone();
+
+    for ops in row_prod_read_ts_prod_list
+        .iter_mut()
+        .chain(row_prod_write_ts_prod_list.iter_mut())
+        .chain(col_prod_read_ts_prod_list.iter_mut())
+        .chain(col_prod_write_ts_prod_list.iter_mut())
         .into_iter()
     {
-        ops_prod_circuit_list.push(ops.clone());
+        ops_prod_circuit_list.push(ops);
     }
 
     let mut dotp_circuit_list = Vec::new();
-    dotp_circuit_list.push(dotp_circuit_left_list[0].clone());
-    dotp_circuit_list.push(dotp_circuit_right_list[0].clone());
-    dotp_circuit_list.push(dotp_circuit_left_list[1].clone());
-    dotp_circuit_list.push(dotp_circuit_right_list[1].clone());
-    dotp_circuit_list.push(dotp_circuit_left_list[2].clone());
-    dotp_circuit_list.push(dotp_circuit_right_list[2].clone());
+    for (dotp_circuit_left, dotp_circuit_right) in dotp_circuit_left_list
+        .iter_mut()
+        .zip(dotp_circuit_right_list.iter_mut())
+    {
+        dotp_circuit_list.push(dotp_circuit_left);
+        dotp_circuit_list.push(dotp_circuit_right);
+    }
 
-    let (proof_ops, ops_rands) =
-        product_circuit_eval_prover::<E>(ops_prod_circuit_list, dotp_circuit_list, transcript)
-            .unwrap();
+    let (proof_ops, ops_rands) = product_circuit_eval_prover::<E>(
+        &mut ops_prod_circuit_list,
+        &mut dotp_circuit_list,
+        transcript,
+    )
+    .unwrap();
     let mut mem_prod_circuit_list = Vec::new();
-    mem_prod_circuit_list.push(row_prod.init_prod);
-    mem_prod_circuit_list.push(row_prod.audit_ts_prod);
-    mem_prod_circuit_list.push(col_prod.init_prod);
-    mem_prod_circuit_list.push(col_prod.audit_ts_prod);
+    mem_prod_circuit_list.push(&mut row_prod_init_prod);
+    mem_prod_circuit_list.push(&mut row_prod_audit_ts_prod);
+    mem_prod_circuit_list.push(&mut col_prod_init_prod);
+    mem_prod_circuit_list.push(&mut col_prod_audit_ts_prod);
 
     let (proof_memory, mem_rands) =
-        product_circuit_eval_prover::<E>(mem_prod_circuit_list, vec![], transcript).unwrap();
+        product_circuit_eval_prover::<E>(&mut mem_prod_circuit_list, &mut vec![], transcript)
+            .unwrap();
 
     let proof = ProductLayerProof::<E> {
         proof_memory,
@@ -1319,8 +1324,8 @@ pub fn product_layer_prover<E: PairingEngine>(
 }
 
 pub fn product_circuit_eval_prover<E: PairingEngine>(
-    prod_circuit_vec: Vec<ProductCircuit<E>>,
-    dotp_circuit_vec: Vec<(Vec<E::Fr>, Vec<E::Fr>, Vec<E::Fr>)>,
+    prod_circuit_vec: &mut Vec<&mut ProductCircuit<E>>,
+    dotp_circuit_vec: &mut Vec<&mut (Vec<E::Fr>, Vec<E::Fr>, Vec<E::Fr>)>,
     transcript: &mut Transcript,
 ) -> Result<(ProductCircuitEvalProof<E>, Vec<E::Fr>), SynthesisError> {
     // hyrax
@@ -1337,34 +1342,29 @@ pub fn product_circuit_eval_prover<E: PairingEngine>(
         (Vec::new(), Vec::new(), Vec::new());
 
     for i in (0..layer_num).rev() {
-        let mut poly_left_batched_par = Vec::new();
-        let mut poly_right_batched_par = Vec::new();
-        for prod_circuit in prod_circuit_vec.iter() {
-            assert_eq!(
-                prod_circuit.left_vec[i].len(),
-                prod_circuit.right_vec[i].len()
-            );
-            poly_left_batched_par.push(prod_circuit.left_vec[i].clone());
-            poly_right_batched_par.push(prod_circuit.right_vec[i].clone());
-        }
-
-        let poly_rand_par = eval_eq::<E>(&rands).to_vec();
-        assert_eq!(poly_rand_par.len(), prod_circuit_vec[0].left_vec[i].len());
         assert_eq!(
             prod_circuit_vec[0].left_vec[i].len(),
             prod_circuit_vec[0].right_vec[i].len()
         );
-        let poly_vec_par = (
-            poly_left_batched_par,
-            poly_right_batched_par,
-            poly_rand_par.clone(),
-        );
+        let left_len = prod_circuit_vec[0].left_vec[i].len();
+        let mut poly_left_batched_par = Vec::new();
+        let mut poly_right_batched_par = Vec::new();
+        for prod_circuit in prod_circuit_vec.iter_mut() {
+            assert_eq!(
+                prod_circuit.left_vec[i].len(),
+                prod_circuit.right_vec[i].len()
+            );
+            poly_left_batched_par.push(&mut prod_circuit.left_vec[i]);
+            poly_right_batched_par.push(&mut prod_circuit.right_vec[i]);
+        }
+
+        let mut poly_rand_par = eval_eq::<E>(&rands).to_vec();
+        assert_eq!(poly_rand_par.len(), left_len);
         let mut poly_row_batched_seq = Vec::new();
         let mut poly_col_batched_seq = Vec::new();
         let mut poly_val_batched_seq = Vec::new();
         if i == 0 && dotp_circuit_vec.len() > 0 {
-            for dotp_circuit in dotp_circuit_vec.iter() {
-                let (row, col, val) = dotp_circuit.clone();
+            for (row, col, val) in dotp_circuit_vec.iter_mut() {
                 let sum = evaluate_dot_product_circuit::<E>(&row, &col, &val).unwrap();
                 assert_eq!(poly_rand_par.len(), row.len());
                 assert_eq!(poly_rand_par.len(), col.len());
@@ -1376,11 +1376,6 @@ pub fn product_circuit_eval_prover<E: PairingEngine>(
                 claims_to_verify.push(sum);
             }
         }
-        let poly_vec_seq = (
-            poly_row_batched_seq,
-            poly_col_batched_seq,
-            poly_val_batched_seq,
-        );
 
         let coeffs = (0..claims_to_verify.len())
             .map(|_i| {
@@ -1398,8 +1393,12 @@ pub fn product_circuit_eval_prover<E: PairingEngine>(
         let (polys, rand_prod, claim_prod, claim_dotp) = sum_check_cubic_prover::<E>(
             num_rounds,
             claim,
-            &poly_vec_par,
-            &poly_vec_seq,
+            &mut poly_left_batched_par,
+            &mut poly_right_batched_par,
+            &mut poly_rand_par,
+            &mut poly_row_batched_seq,
+            &mut poly_col_batched_seq,
+            &mut poly_val_batched_seq,
             &coeffs,
             transcript,
         )
@@ -1465,8 +1464,12 @@ pub fn product_circuit_eval_prover<E: PairingEngine>(
 pub fn sum_check_cubic_prover<E: PairingEngine>(
     num_rounds: usize,
     claim: E::Fr,
-    poly_vec_par: &(Vec<Vec<E::Fr>>, Vec<Vec<E::Fr>>, Vec<E::Fr>),
-    poly_vec_seq: &(Vec<Vec<E::Fr>>, Vec<Vec<E::Fr>>, Vec<Vec<E::Fr>>),
+    poly_a_batched_par: &mut Vec<&mut Vec<E::Fr>>,
+    poly_b_batched_par: &mut Vec<&mut Vec<E::Fr>>,
+    poly_c_par: &mut Vec<E::Fr>,
+    poly_a_batched_seq: &mut Vec<&mut Vec<E::Fr>>,
+    poly_b_batched_seq: &mut Vec<&mut Vec<E::Fr>>,
+    poly_c_batched_seq: &mut Vec<&mut Vec<E::Fr>>,
     coeffs: &Vec<E::Fr>,
     transcript: &mut Transcript,
 ) -> Result<
@@ -1478,10 +1481,6 @@ pub fn sum_check_cubic_prover<E: PairingEngine>(
     ),
     SynthesisError,
 > {
-    let (mut poly_a_batched_par, mut poly_b_batched_par, mut poly_c_par) = poly_vec_par.clone();
-    let (mut poly_a_batched_seq, mut poly_b_batched_seq, mut poly_c_batched_seq) =
-        poly_vec_seq.clone();
-
     let mut claim_per_round = claim;
     let mut r = Vec::new();
     let mut cubic_polys = Vec::new();
@@ -1578,42 +1577,27 @@ pub fn sum_check_cubic_prover<E: PairingEngine>(
         let mut buf = [0u8; 31];
         transcript.challenge_bytes(b"challenge_nextround", &mut buf);
         let r_j = random_bytes_to_fr::<E>(&buf);
-        poly_c_par = combine_with_r::<E>(&poly_c_par.to_vec(), r_j);
-        let mut poly_a_batched_par_tmp = Vec::new();
-        for poly_a in poly_a_batched_par.iter() {
-            let poly_a_tmp = combine_with_r::<E>(&poly_a.to_vec(), r_j);
-            poly_a_batched_par_tmp.push(poly_a_tmp);
-        }
-        poly_a_batched_par = poly_a_batched_par_tmp.clone();
+        combine_with_r::<E>(poly_c_par, r_j);
 
-        let mut poly_b_batched_par_tmp = Vec::new();
-        for poly_b in poly_b_batched_par.iter() {
-            let poly_b_tmp = combine_with_r::<E>(&poly_b.to_vec(), r_j);
-            poly_b_batched_par_tmp.push(poly_b_tmp);
+        for poly_a in poly_a_batched_par.iter_mut() {
+            combine_with_r::<E>(poly_a, r_j);
         }
-        poly_b_batched_par = poly_b_batched_par_tmp.clone();
 
-        let mut poly_a_batched_seq_tmp = Vec::new();
-        for poly_a in poly_a_batched_seq.iter() {
-            let poly_a_tmp = combine_with_r::<E>(&poly_a.to_vec(), r_j);
-            poly_a_batched_seq_tmp.push(poly_a_tmp);
+        for poly_b in poly_b_batched_par.iter_mut() {
+            combine_with_r::<E>(poly_b, r_j);
         }
-        poly_a_batched_seq = poly_a_batched_seq_tmp.clone();
 
-        let mut poly_b_batched_seq_tmp = Vec::new();
-        for poly_b in poly_b_batched_seq.iter() {
-            let poly_b_tmp = combine_with_r::<E>(&poly_b.to_vec(), r_j);
-            poly_b_batched_seq_tmp.push(poly_b_tmp);
+        for poly_a in poly_a_batched_seq.iter_mut() {
+            combine_with_r::<E>(poly_a, r_j);
         }
-        poly_b_batched_seq = poly_b_batched_seq_tmp.clone();
 
-        let mut poly_c_batched_seq_tmp = Vec::new();
-        for poly_c in poly_c_batched_seq.iter() {
-            let poly_c_tmp = combine_with_r::<E>(&poly_c.to_vec(), r_j);
-            poly_c_batched_seq_tmp.push(poly_c_tmp);
+        for poly_b in poly_b_batched_seq.iter_mut() {
+            combine_with_r::<E>(poly_b, r_j);
         }
-        poly_c_batched_seq = poly_c_batched_seq_tmp.clone();
 
+        for poly_c in poly_c_batched_seq.iter_mut() {
+            combine_with_r::<E>(poly_c, r_j);
+        }
         claim_per_round = poly.evaluate(r_j);
 
         r.push(r_j);
@@ -1690,13 +1674,12 @@ pub fn hash_layer_prover<E: PairingEngine, R: Rng>(
             random_bytes_to_fr::<E>(&buf)
         })
         .collect::<Vec<_>>();
-    let mut poly_evals = evals.clone();
     for i in (0..cs.len()).rev() {
-        poly_evals = bound_poly_var_bot::<E>(&poly_evals, cs[i]);
+        bound_poly_var_bot::<E>(&mut evals, cs[i]);
     }
-    assert_eq!(poly_evals.len(), 1);
-    let claim_eval = poly_evals[0];
-    let mut rs = cs.clone();
+    assert_eq!(evals.len(), 1);
+    let claim_eval = evals[0];
+    let mut rs = cs;
     rs.extend(ops_rands);
 
     transcript.append_message(b"joint_claim_eval", &math::to_bytes!(claim_eval).unwrap());
@@ -1726,11 +1709,11 @@ pub fn hash_layer_prover<E: PairingEngine, R: Rng>(
         .collect::<Vec<E::Fr>>();
 
     let mut evals_ops: Vec<E::Fr> = Vec::new();
-    evals_ops.extend(row_eval_addr_ops_list.clone());
-    evals_ops.extend(row_eval_read_ts_list.clone());
-    evals_ops.extend(col_eval_addr_ops_list.clone());
-    evals_ops.extend(col_eval_read_ts_list.clone());
-    evals_ops.extend(eval_val_list.clone());
+    evals_ops.extend(&row_eval_addr_ops_list);
+    evals_ops.extend(&row_eval_read_ts_list);
+    evals_ops.extend(&col_eval_addr_ops_list);
+    evals_ops.extend(&col_eval_read_ts_list);
+    evals_ops.extend(&eval_val_list);
     evals_ops.resize(evals_ops.len().next_power_of_two(), E::Fr::zero());
     transcript.append_message(b"claim_evals_ops", &math::to_bytes!(evals_ops).unwrap());
 
@@ -1741,13 +1724,12 @@ pub fn hash_layer_prover<E: PairingEngine, R: Rng>(
             random_bytes_to_fr::<E>(&buf)
         })
         .collect::<Vec<_>>();
-    let mut poly_evals_ops = evals_ops.clone();
     for i in (0..cs_ops.len()).rev() {
-        poly_evals_ops = bound_poly_var_bot::<E>(&poly_evals_ops, cs_ops[i]);
+        bound_poly_var_bot::<E>(&mut evals_ops, cs_ops[i]);
     }
-    assert_eq!(poly_evals_ops.len(), 1);
-    let claim_eval_ops = poly_evals_ops[0];
-    let mut rs_ops = cs_ops.clone();
+    assert_eq!(evals_ops.len(), 1);
+    let claim_eval_ops = evals_ops[0];
+    let mut rs_ops = cs_ops;
     rs_ops.extend(ops_rands);
 
     transcript.append_message(
@@ -1766,7 +1748,7 @@ pub fn hash_layer_prover<E: PairingEngine, R: Rng>(
     )
     .unwrap();
 
-    let evals_mem = vec![row_eval_audit_ts_val, col_eval_audit_ts_val];
+    let mut evals_mem = vec![row_eval_audit_ts_val, col_eval_audit_ts_val];
     transcript.append_message(b"claim_evals_mem", &math::to_bytes!(evals_mem).unwrap());
     let cs_mem = (0..log2(evals_mem.len()))
         .map(|_i| {
@@ -1776,13 +1758,12 @@ pub fn hash_layer_prover<E: PairingEngine, R: Rng>(
         })
         .collect::<Vec<_>>();
 
-    let mut poly_evals_mem = evals_mem.clone();
     for i in (0..cs_mem.len()).rev() {
-        poly_evals_mem = bound_poly_var_bot::<E>(&poly_evals_mem, cs_mem[i]);
+        bound_poly_var_bot::<E>(&mut evals_mem, cs_mem[i]);
     }
-    assert_eq!(poly_evals_mem.len(), 1);
-    let claim_eval_mem = poly_evals_mem[0];
-    let mut rs_mem = cs_mem.clone();
+    assert_eq!(evals_mem.len(), 1);
+    let claim_eval_mem = evals_mem[0];
+    let mut rs_mem = cs_mem;
     rs_mem.extend(mem_rands);
 
     transcript.append_message(

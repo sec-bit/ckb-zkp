@@ -42,6 +42,7 @@ where
     let n = cmp::max(t * 2, num_constraints).next_power_of_two();
     let r1cs_eval_params =
         R1CSEvalsParameters::new::<R>(rng, num_constraints * (t * 2), n).unwrap();
+
     Ok(SnarkParameters {
         r1cs_satisfied_params,
         r1cs_eval_params,

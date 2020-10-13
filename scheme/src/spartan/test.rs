@@ -149,8 +149,8 @@ mod bls12_381 {
         let result = verify_nizk_proof::<Bls12_381>(
             &params,
             &r1cs,
-            vec![<Bls12_381 as PairingEngine>::Fr::one()],
-            proof,
+            &vec![<Bls12_381 as PairingEngine>::Fr::one()],
+            &proof,
         )
         .unwrap();
 
@@ -203,8 +203,8 @@ mod bls12_381 {
         let result = verify_snark_proof::<Bls12_381>(
             &params,
             &r1cs,
-            vec![<Bls12_381 as PairingEngine>::Fr::one()],
-            proof,
+            &vec![<Bls12_381 as PairingEngine>::Fr::one()],
+            &proof,
             &encode_commit,
         )
         .is_ok();
@@ -255,8 +255,8 @@ mod bn_256 {
         let result = verify_nizk_proof::<Bn_256>(
             &params,
             &r1cs,
-            vec![<Bn_256 as PairingEngine>::Fr::one()],
-            proof,
+            &vec![<Bn_256 as PairingEngine>::Fr::one()],
+            &proof,
         )
         .unwrap();
 
@@ -305,8 +305,8 @@ mod bn_256 {
         let result = verify_snark_proof::<Bn_256>(
             &params,
             &r1cs,
-            vec![<Bn_256 as PairingEngine>::Fr::one()],
-            proof,
+            &vec![<Bn_256 as PairingEngine>::Fr::one()],
+            &proof,
             &encode_commit,
         )
         .is_ok();

@@ -134,7 +134,7 @@ pub fn bullet_inner_product_verify<E: PairingEngine>(
     g_vec: &Vec<E::G1Affine>,
     proof: &InnerProductProof<E>,
     gamma: E::G1Affine,
-    b_vec: Vec<E::Fr>,
+    b_vec: &Vec<E::Fr>,
     transcript: &mut Transcript,
 ) -> Result<(E::Fr, E::G1Affine, E::G1Affine), SynthesisError> {
     let lg_n = proof.l_vec.len();

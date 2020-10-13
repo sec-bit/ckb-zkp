@@ -557,7 +557,6 @@ fn pow_with_constraint<F: PrimeField, CS: ConstraintSystem<F>, S: AsRef<[u64]>>(
 
         res_value = tmp_value;
         res = tmp;
-        
         if i {
             let tmp_value = res_value.map(|mut e| {
                 e.mul_assign(&(*state_value).unwrap());
@@ -722,8 +721,8 @@ fn test_rescue_spartan() {
             let result = verify_snark_proof::<Bn_256>(
                 &params,
                 &r1cs,
-                vec![image].to_vec(),
-                proof,
+                &vec![image].to_vec(),
+                &proof,
                 &encode_commit,
             )
             .is_ok();
@@ -802,7 +801,7 @@ fn test_rescue_nizk_spartan() {
             let start = Instant::now();
             println!("[nizk_spartan]Verify proof...");
             let result =
-                verify_nizk_proof::<Bn_256>(&params, &r1cs, vec![image].to_vec(), proof).is_ok();
+                verify_nizk_proof::<Bn_256>(&params, &r1cs, &vec![image].to_vec(), &proof).is_ok();
             assert!(result);
             total_verifying += start.elapsed();
         }

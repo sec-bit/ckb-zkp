@@ -26,20 +26,20 @@ use merlin::Transcript;
 pub fn verify_nizk_proof<E: PairingEngine>(
     params: &NizkParameters<E>,
     r1cs: &R1CSInstance<E>,
-    inputs: Vec<E::Fr>,
-    proof: NIZKProof<E>,
+    inputs: &Vec<E::Fr>,
+    proof: &NIZKProof<E>,
 ) -> Result<bool, SynthesisError> {
     let mut transcript = Transcript::new(b"Spartan NIZK proof");
 
-    let (rx, ry) = proof.r;
-    let eval_a_r = evaluate_mle::<E>(&r1cs.a_matrix, &rx, &ry);
-    let eval_b_r = evaluate_mle::<E>(&r1cs.b_matrix, &rx, &ry);
-    let eval_c_r = evaluate_mle::<E>(&r1cs.c_matrix, &rx, &ry);
+    let (rx, ry) = &proof.r;
+    let eval_a_r = evaluate_mle::<E>(&r1cs.a_matrix, rx, ry);
+    let eval_b_r = evaluate_mle::<E>(&r1cs.b_matrix, rx, ry);
+    let eval_c_r = evaluate_mle::<E>(&r1cs.c_matrix, rx, ry);
     let (result, _, _) = r1cs_satisfied_verify::<E>(
         &params.r1cs_satisfied_params,
         r1cs,
         inputs,
-        proof.r1cs_satisfied_proof,
+        &proof.r1cs_satisfied_proof,
         (eval_a_r, eval_b_r, eval_c_r),
         &mut transcript,
     )
@@ -51,8 +51,8 @@ pub fn verify_nizk_proof<E: PairingEngine>(
 pub fn verify_snark_proof<E: PairingEngine>(
     params: &SnarkParameters<E>,
     r1cs: &R1CSInstance<E>,
-    inputs: Vec<E::Fr>,
-    proof: SNARKProof<E>,
+    inputs: &Vec<E::Fr>,
+    proof: &SNARKProof<E>,
     encode_commit: &EncodeCommit<E>,
 ) -> Result<(), SynthesisError> {
     let mut transcript = Transcript::new(b"Spartan SNARK proof");
@@ -61,7 +61,7 @@ pub fn verify_snark_proof<E: PairingEngine>(
         &params.r1cs_satisfied_params,
         r1cs,
         inputs,
-        proof.r1cs_satisfied_proof,
+        &proof.r1cs_satisfied_proof,
         proof.matrix_evals,
         &mut transcript,
     )
@@ -75,9 +75,9 @@ pub fn verify_snark_proof<E: PairingEngine>(
 
     let result = sparse_poly_eval_verify::<E>(
         &params.r1cs_eval_params,
-        proof.r1cs_evals_proof,
+        &proof.r1cs_evals_proof,
         encode_commit,
-        (rx, ry),
+        (&rx, &ry),
         proof.matrix_evals,
         &mut transcript,
     )
@@ -89,8 +89,8 @@ pub fn verify_snark_proof<E: PairingEngine>(
 pub fn r1cs_satisfied_verify<E: PairingEngine>(
     params: &R1CSSatisfiedParameters<E>,
     r1cs: &R1CSInstance<E>,
-    inputs: Vec<E::Fr>,
-    proof: R1CSSatProof<E>,
+    inputs: &Vec<E::Fr>,
+    proof: &R1CSSatProof<E>,
     matrix_evals: (E::Fr, E::Fr, E::Fr),
     transcript: &mut Transcript,
 ) -> Result<(bool, Vec<E::Fr>, Vec<E::Fr>), SynthesisError> {
@@ -135,7 +135,7 @@ pub fn r1cs_satisfied_verify<E: PairingEngine>(
 
     let result = knowledge_verify::<E>(
         &params.sc_params.gen_1,
-        proof.knowledge_product_proof.knowledge_proof,
+        &proof.knowledge_product_proof.knowledge_proof,
         proof.knowledge_product_commit.vc_commit,
         transcript,
     )
@@ -144,7 +144,7 @@ pub fn r1cs_satisfied_verify<E: PairingEngine>(
 
     let result = product_verify::<E>(
         &params.sc_params.gen_1,
-        proof.knowledge_product_proof.product_proof,
+        &proof.knowledge_product_proof.product_proof,
         proof.knowledge_product_commit.va_commit,
         proof.knowledge_product_commit.vb_commit,
         proof.knowledge_product_commit.prod_commit,
@@ -180,7 +180,7 @@ pub fn r1cs_satisfied_verify<E: PairingEngine>(
         &params.sc_params.gen_1,
         claim_commit_phase_one,
         commit_eval_x,
-        proof.sc1_eq_proof,
+        &proof.sc1_eq_proof,
         transcript,
     )
     .unwrap();
@@ -262,7 +262,7 @@ pub fn r1cs_satisfied_verify<E: PairingEngine>(
         &params.pc_params.gen_1,
         claim_commit_phase_two,
         commit_eval_y,
-        proof.sc2_eq_proof,
+        &proof.sc2_eq_proof,
         transcript,
     )
     .unwrap();
@@ -393,7 +393,7 @@ fn sum_check_eval_verify<E: PairingEngine>(
 
 fn knowledge_verify<E: PairingEngine>(
     params: &MultiCommitmentParameters<E>,
-    proof: KnowledgeProof<E>,
+    proof: &KnowledgeProof<E>,
     commit: E::G1Affine,
     transcript: &mut Transcript,
 ) -> Result<bool, SynthesisError> {
@@ -414,7 +414,7 @@ fn knowledge_verify<E: PairingEngine>(
 
 fn product_verify<E: PairingEngine>(
     params: &MultiCommitmentParameters<E>,
-    proof: ProductProof<E>,
+    proof: &ProductProof<E>,
     va_commit: E::G1Affine,
     vb_commit: E::G1Affine,
     prod_commit: E::G1Affine,
@@ -462,7 +462,7 @@ fn eq_verify<E: PairingEngine>(
     params: &MultiCommitmentParameters<E>,
     commit1: E::G1Affine,
     commit2: E::G1Affine,
-    proof: EqProof<E>,
+    proof: &EqProof<E>,
     transcript: &mut Transcript,
 ) -> Result<bool, SynthesisError> {
     transcript.append_message(b"C1", &math::to_bytes!(commit1).unwrap());
@@ -498,14 +498,9 @@ fn inner_product_verify<E: PairingEngine>(
     let l_eq_ry = eval_eq::<E>(&(ry[0..size / 2].to_vec()));
     let r_eq_ry = eval_eq::<E>(&ry[size / 2..size].to_vec());
 
-    let commit_lz = poly_commit_vec::<E>(
-        commits_witness,
-        &l_eq_ry.clone(),
-        &params.gen_1.h,
-        E::Fr::zero(),
-    )
-    .unwrap()
-    .commit;
+    let commit_lz = poly_commit_vec::<E>(commits_witness, &l_eq_ry, &params.gen_1.h, E::Fr::zero())
+        .unwrap()
+        .commit;
 
     transcript.append_message(b"Cx", &math::to_bytes!(commit_lz).unwrap());
     transcript.append_message(b"Cy", &math::to_bytes!(commit_ry).unwrap());
@@ -516,7 +511,7 @@ fn inner_product_verify<E: PairingEngine>(
         &params.gen_n.generators,
         &proof.inner_product_proof,
         gamma,
-        r_eq_ry,
+        &r_eq_ry,
         transcript,
     )
     .unwrap();
@@ -537,9 +532,9 @@ fn inner_product_verify<E: PairingEngine>(
 
 fn sparse_poly_eval_verify<E: PairingEngine>(
     params: &R1CSEvalsParameters<E>,
-    proof: R1CSEvalsProof<E>,
+    proof: &R1CSEvalsProof<E>,
     encode_commit: &EncodeCommit<E>,
-    r: (Vec<E::Fr>, Vec<E::Fr>),
+    r: (&Vec<E::Fr>, &Vec<E::Fr>),
     evals: (E::Fr, E::Fr, E::Fr),
     transcript: &mut Transcript,
 ) -> Result<bool, SynthesisError> {
@@ -571,10 +566,10 @@ fn sparse_poly_eval_verify<E: PairingEngine>(
 
     let (claims_ops, claims_ops_dotp, ops_rands, claims_mem, _, mem_rands) =
         product_layer_verify::<E>(
-            proof.prod_layer_proof,
+            &proof.prod_layer_proof,
             n,
             m,
-            vec![eval_a_r, eval_b_r, eval_c_r],
+            &vec![eval_a_r, eval_b_r, eval_c_r],
             transcript,
         )
         .unwrap();
@@ -590,25 +585,25 @@ fn sparse_poly_eval_verify<E: PairingEngine>(
     // proof.hash_layer_proof
     let result = hash_layer_verify::<E>(
         params,
-        proof.hash_layer_proof,
+        &proof.hash_layer_proof,
         (&rx, &ry),
         (&ops_rands, &mem_rands),
         (gamma[0], gamma[1]),
         (
             claims_mem[0],
-            claims_ops_row_read,
-            claims_ops_row_write,
+            &claims_ops_row_read,
+            &claims_ops_row_write,
             claims_mem[1],
         ),
         (
             claims_mem[2],
-            claims_ops_col_read,
-            claims_ops_col_write,
+            &claims_ops_col_read,
+            &claims_ops_col_write,
             claims_mem[3],
         ),
         claims_ops_dotp,
         encode_commit,
-        proof.derefs_commit,
+        &proof.derefs_commit,
         transcript,
     )
     .is_ok();
@@ -618,10 +613,10 @@ fn sparse_poly_eval_verify<E: PairingEngine>(
 }
 
 fn product_layer_verify<E: PairingEngine>(
-    proof: ProductLayerProof<E>,
+    proof: &ProductLayerProof<E>,
     n: usize,
     m: usize,
-    evals: Vec<E::Fr>,
+    evals: &Vec<E::Fr>,
     transcript: &mut Transcript,
 ) -> Result<
     (
@@ -635,9 +630,9 @@ fn product_layer_verify<E: PairingEngine>(
     SynthesisError,
 > {
     transcript.append_message(b"protocol-name", b"Sparse polynomial product layer proof");
-    let (row_init, row_read_list, row_write_list, row_audit) = proof.eval_row;
-    let (col_init, col_read_list, col_write_list, col_audit) = proof.eval_col;
-    let (eval_dotp_left_list, eval_dotp_right_list) = proof.eval_dotp;
+    let (row_init, row_read_list, row_write_list, row_audit) = &proof.eval_row;
+    let (col_init, col_read_list, col_write_list, col_audit) = &proof.eval_col;
+    let (eval_dotp_left_list, eval_dotp_right_list) = &proof.eval_dotp;
 
     assert_eq!(row_read_list.len(), 3);
     assert_eq!(row_write_list.len(), 3);
@@ -651,7 +646,7 @@ fn product_layer_verify<E: PairingEngine>(
     let row_write: E::Fr = (0..row_write_list.len())
         .map(|i| row_write_list[i])
         .product();
-    assert_eq!(row_init * &row_write, row_read * &row_audit);
+    assert_eq!(*row_init * &row_write, row_read * &row_audit);
 
     transcript.append_message(b"claim_row_eval_init", &math::to_bytes!(row_init).unwrap());
     transcript.append_message(
@@ -671,7 +666,7 @@ fn product_layer_verify<E: PairingEngine>(
     let col_write: E::Fr = (0..col_write_list.len())
         .map(|i| col_write_list[i])
         .product();
-    assert_eq!(col_init * &col_write, col_read * &col_audit);
+    assert_eq!(*col_init * &col_write, col_read * &col_audit);
 
     transcript.append_message(b"claim_col_eval_init", &math::to_bytes!(col_init).unwrap());
     transcript.append_message(
@@ -709,17 +704,17 @@ fn product_layer_verify<E: PairingEngine>(
     claims_prod_circuit.extend(col_write_list);
 
     let (claims_ops, claims_ops_dotp, ops_rands) = product_circuit_eval_verify::<E>(
-        proof.proof_ops,
+        &proof.proof_ops,
         &claims_prod_circuit,
-        &claims_dotp_circuit,
+        &mut claims_dotp_circuit,
         n,
         transcript,
     )
     .unwrap();
     let (claims_mem, claims_mem_dotp, mem_rands) = product_circuit_eval_verify::<E>(
-        proof.proof_memory,
-        &vec![row_init, row_audit, col_init, col_audit],
-        &Vec::new(),
+        &proof.proof_memory,
+        &vec![*row_init, *row_audit, *col_init, *col_audit],
+        &mut vec![],
         m,
         transcript,
     )
@@ -736,7 +731,7 @@ fn product_layer_verify<E: PairingEngine>(
 }
 
 pub fn product_circuit_eval_verify<E: PairingEngine>(
-    proof: ProductCircuitEvalProof<E>,
+    proof: &ProductCircuitEvalProof<E>,
     claims_prod_circuit: &Vec<E::Fr>,
     claims_dotp_circuit: &Vec<E::Fr>,
     n: usize,
@@ -876,15 +871,15 @@ pub fn sum_check_cubic_verify<E: PairingEngine>(
 
 pub fn hash_layer_verify<E: PairingEngine>(
     params: &R1CSEvalsParameters<E>,
-    proof: HashLayerProof<E>,
+    proof: &HashLayerProof<E>,
     r: (&Vec<E::Fr>, &Vec<E::Fr>),
     rands: (&Vec<E::Fr>, &Vec<E::Fr>),
     gamma: (E::Fr, E::Fr),
-    claims_row: (E::Fr, Vec<E::Fr>, Vec<E::Fr>, E::Fr),
-    claims_col: (E::Fr, Vec<E::Fr>, Vec<E::Fr>, E::Fr),
+    claims_row: (E::Fr, &Vec<E::Fr>, &Vec<E::Fr>, E::Fr),
+    claims_col: (E::Fr, &Vec<E::Fr>, &Vec<E::Fr>, E::Fr),
     claims_dotp: Vec<E::Fr>,
     encode_commit: &EncodeCommit<E>,
-    derefs_commit: Vec<E::G1Affine>,
+    derefs_commit: &Vec<E::G1Affine>,
     transcript: &mut Transcript,
 ) -> Result<(), SynthesisError> {
     transcript.append_message(b"protocol-name", b"Sparse polynomial hash layer proof");
@@ -896,7 +891,7 @@ pub fn hash_layer_verify<E: PairingEngine>(
     // let  (claims_row_init, claims_row_read_list, claims_row_write_list, claims_row_audit) = claims_row;
     // let  (claims_col_init, claims_col_read_list, claims_col_write_list, claims_col_audit) = claims_col;
 
-    let (eval_row_ops_val, eval_col_ops_val) = proof.evals_derefs;
+    let (eval_row_ops_val, eval_col_ops_val) = &proof.evals_derefs;
     assert_eq!(eval_row_ops_val.len(), eval_col_ops_val.len());
     assert_eq!(eval_row_ops_val.len(), 3);
     let mut evals = eval_row_ops_val.clone();
@@ -906,7 +901,7 @@ pub fn hash_layer_verify<E: PairingEngine>(
 
     transcript.append_message(b"evals_ops_val", &math::to_bytes!(evals).unwrap());
 
-    let cs = (0..log2(evals.len()))
+    let mut cs = (0..log2(evals.len()))
         .map(|_i| {
             let mut buf = [0u8; 31];
             transcript.challenge_bytes(b"challenge_combine_n_to_one", &mut buf);
@@ -914,14 +909,13 @@ pub fn hash_layer_verify<E: PairingEngine>(
         })
         .collect::<Vec<_>>();
 
-    let mut poly_evals = evals.clone();
     for i in (0..cs.len()).rev() {
-        poly_evals = bound_poly_var_bot::<E>(&poly_evals, cs[i]);
+        bound_poly_var_bot::<E>(&mut evals, cs[i]);
     }
-    assert_eq!(poly_evals.len(), 1);
-    let claim_eval = poly_evals[0];
-    let mut rs = cs.clone();
-    rs.extend(ops_rands);
+    assert_eq!(evals.len(), 1);
+    let claim_eval = evals[0];
+    // let mut rs = cs;
+    cs.extend(ops_rands);
     transcript.append_message(b"joint_claim_eval", &math::to_bytes!(claim_eval).unwrap());
 
     // derefs prove
@@ -935,7 +929,7 @@ pub fn hash_layer_verify<E: PairingEngine>(
     .commit;
     let result = inner_product_verify::<E>(
         &params.derefs_params,
-        &rs,
+        &cs,
         &derefs_commit,
         claim_eval_commit,
         &proof.proof_derefs,
@@ -943,7 +937,7 @@ pub fn hash_layer_verify<E: PairingEngine>(
     )
     .unwrap();
     assert!(result);
-    let eval_val_list = proof.evals_val;
+    let eval_val_list = &proof.evals_val;
     assert_eq!(eval_val_list.len(), 3);
     for i in 0..3 {
         assert_eq!(claims_dotp[i * 3], eval_row_ops_val[i]);
@@ -965,21 +959,21 @@ pub fn hash_layer_verify<E: PairingEngine>(
     evals_ops.resize(evals_ops.len().next_power_of_two(), E::Fr::zero());
     transcript.append_message(b"claim_evals_ops", &math::to_bytes!(evals_ops).unwrap());
 
-    let cs_ops = (0..log2(evals_ops.len()))
+    let mut cs_ops = (0..log2(evals_ops.len()))
         .map(|_i| {
             let mut buf = [0u8; 31];
             transcript.challenge_bytes(b"challenge_combine_n_to_one", &mut buf);
             random_bytes_to_fr::<E>(&buf)
         })
         .collect::<Vec<_>>();
-    let mut poly_evals_ops = evals_ops.clone();
+
     for i in (0..cs_ops.len()).rev() {
-        poly_evals_ops = bound_poly_var_bot::<E>(&poly_evals_ops, cs_ops[i]);
+        bound_poly_var_bot::<E>(&mut evals_ops, cs_ops[i]);
     }
-    assert_eq!(poly_evals_ops.len(), 1);
-    let claim_eval_ops = poly_evals_ops[0];
-    let mut rs_ops = cs_ops.clone();
-    rs_ops.extend(ops_rands);
+    assert_eq!(evals_ops.len(), 1);
+    let claim_eval_ops = evals_ops[0];
+    // let mut rs_ops = cs_ops;
+    cs_ops.extend(ops_rands);
     transcript.append_message(
         b"joint_claim_eval_ops",
         &math::to_bytes!(claim_eval_ops).unwrap(),
@@ -995,7 +989,7 @@ pub fn hash_layer_verify<E: PairingEngine>(
     .commit;
     let result = inner_product_verify::<E>(
         &params.ops_params,
-        &rs_ops,
+        &cs_ops,
         &encode_commit.ops_commit,
         claim_eval_commit,
         &proof.proof_ops,
@@ -1003,9 +997,9 @@ pub fn hash_layer_verify<E: PairingEngine>(
     )
     .unwrap();
     assert!(result);
-    let evals_mem = vec![row_eval_audit_ts_val, col_eval_audit_ts_val];
+    let mut evals_mem = vec![row_eval_audit_ts_val, col_eval_audit_ts_val];
     transcript.append_message(b"claim_evals_mem", &math::to_bytes!(evals_mem).unwrap());
-    let cs_mem = (0..log2(evals_mem.len()))
+    let mut cs_mem = (0..log2(evals_mem.len()))
         .map(|_i| {
             let mut buf = [0u8; 31];
             transcript.challenge_bytes(b"challenge_combine_two_to_one", &mut buf);
@@ -1013,14 +1007,13 @@ pub fn hash_layer_verify<E: PairingEngine>(
         })
         .collect::<Vec<_>>();
 
-    let mut poly_evals_mem = evals_mem.clone();
     for i in (0..cs_mem.len()).rev() {
-        poly_evals_mem = bound_poly_var_bot::<E>(&poly_evals_mem, cs_mem[i]);
+        bound_poly_var_bot::<E>(&mut evals_mem, cs_mem[i]);
     }
-    assert_eq!(poly_evals_mem.len(), 1);
-    let claim_eval_mem = poly_evals_mem[0];
-    let mut rs_mem = cs_mem.clone();
-    rs_mem.extend(mem_rands);
+    assert_eq!(evals_mem.len(), 1);
+    let claim_eval_mem = evals_mem[0];
+    // let mut rs_mem = cs_mem;
+    cs_mem.extend(mem_rands);
 
     transcript.append_message(
         b"joint_claim_eval_mem",
@@ -1038,7 +1031,7 @@ pub fn hash_layer_verify<E: PairingEngine>(
     .commit;
     let result = inner_product_verify::<E>(
         &params.mem_params,
-        &rs_mem,
+        &cs_mem,
         &encode_commit.mem_commit,
         claim_eval_commit,
         &proof.proof_mem,
@@ -1046,28 +1039,27 @@ pub fn hash_layer_verify<E: PairingEngine>(
     )
     .unwrap();
     assert!(result);
-    let (row_eval_addr_ops_list, row_eval_read_ts_list, row_eval_audit_ts_val) = proof.evals_row;
+    let (row_eval_addr_ops_list, row_eval_read_ts_list, row_eval_audit_ts_val) = &proof.evals_row;
     let result = behind_verify_for_timestamp::<E>(
         rands,
         claims_row,
         rx,
         &eval_row_ops_val,
-        &row_eval_addr_ops_list,
-        &row_eval_read_ts_list,
+        row_eval_addr_ops_list,
+        row_eval_read_ts_list,
         row_eval_audit_ts_val,
         gamma,
     )
     .is_ok();
     assert!(result);
-    let (col_eval_addr_ops_list, col_eval_read_ts_list, col_eval_audit_ts_val) =
-        proof.evals_col.clone();
+    let (col_eval_addr_ops_list, col_eval_read_ts_list, col_eval_audit_ts_val) = &proof.evals_col;
     let result = behind_verify_for_timestamp::<E>(
         rands,
         claims_col,
         ry,
         &eval_col_ops_val,
-        &col_eval_addr_ops_list,
-        &col_eval_read_ts_list,
+        col_eval_addr_ops_list,
+        col_eval_read_ts_list,
         col_eval_audit_ts_val,
         gamma,
     )
@@ -1078,12 +1070,12 @@ pub fn hash_layer_verify<E: PairingEngine>(
 
 pub fn behind_verify_for_timestamp<E: PairingEngine>(
     rands: (&Vec<E::Fr>, &Vec<E::Fr>),
-    claims: (E::Fr, Vec<E::Fr>, Vec<E::Fr>, E::Fr),
+    claims: (E::Fr, &Vec<E::Fr>, &Vec<E::Fr>, E::Fr),
     r: &Vec<E::Fr>,
     eval_ops_val: &Vec<E::Fr>,
     eval_addr_ops_list: &Vec<E::Fr>,
     eval_read_ts_list: &Vec<E::Fr>,
-    eval_audit_ts_val: E::Fr,
+    eval_audit_ts_val: &E::Fr,
     gamma: (E::Fr, E::Fr),
 ) -> Result<bool, SynthesisError> {
     let (_rands_ops, rands_mem) = rands;

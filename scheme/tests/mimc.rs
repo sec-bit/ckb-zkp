@@ -147,7 +147,6 @@ fn test_mimc_groth16() {
         create_random_proof, generate_random_parameters, verifier::prepare_verifying_key,
         verify_proof,
     };
-    use std::mem;
     use std::time::{Duration, Instant};
 
     // This may not be cryptographically safe, use
@@ -197,8 +196,6 @@ fn test_mimc_groth16() {
             let proof = create_random_proof(&params, c, rng).unwrap();
             total_proving += start.elapsed();
 
-            let proof_size = mem::size_of_val(&proof);
-            println!("[nizk_spartan]Verify proof...proof_size = {}", proof_size);
             let start = Instant::now();
             assert!(verify_proof(&pvk, &proof, &[image]).unwrap());
             total_verifying += start.elapsed();
@@ -223,7 +220,6 @@ fn test_mimc_spartan() {
     use scheme::spartan::setup::*;
     use scheme::spartan::spark::encode;
     use scheme::spartan::verify::verify_snark_proof;
-    use std::mem;
     use std::time::{Duration, Instant};
 
     println!("\n spartan snark...");
@@ -279,14 +275,12 @@ fn test_mimc_spartan() {
             println!("[snark_spartan]Creating proof...ok");
             total_proving += start.elapsed();
 
-            let proof_size = mem::size_of_val(&proof);
-            println!("[nizk_spartan]Verify proof...proof_size = {}", proof_size);
             let start = Instant::now();
             let result = verify_snark_proof::<Bn_256>(
                 &params,
                 &r1cs,
-                vec![image].to_vec(),
-                proof,
+                &vec![image].to_vec(),
+                &proof,
                 &encode_commit,
             )
             .is_ok();
@@ -314,7 +308,6 @@ fn test_mimc_nizk_spartan() {
     use scheme::spartan::r1cs::generate_r1cs;
     use scheme::spartan::setup::*;
     use scheme::spartan::verify::verify_nizk_proof;
-    use std::mem;
     use std::time::{Duration, Instant};
 
     println!("\n spartan nizk...");
@@ -361,11 +354,9 @@ fn test_mimc_nizk_spartan() {
             println!("[nizk_spartan]Creating proof...ok");
             total_proving += start.elapsed();
 
-            let proof_size = mem::size_of_val(&proof);
-            println!("[nizk_spartan]Verify proof...proof_size = {}", proof_size);
             let start = Instant::now();
             let result =
-                verify_nizk_proof::<Bn_256>(&params, &r1cs, vec![image].to_vec(), proof).is_ok();
+                verify_nizk_proof::<Bn_256>(&params, &r1cs, &vec![image].to_vec(), &proof).is_ok();
             println!("[nizk_spartan]Verify proof...ok");
 
             assert!(result);

@@ -60,8 +60,8 @@ pub fn evaluate_mle<E: PairingEngine>(
 }
 
 pub fn evaluate_matrix_vec<E: PairingEngine>(
-    polys: Vec<Vec<(E::Fr, Index)>>,
-    z: Vec<E::Fr>,
+    polys: &Vec<Vec<(E::Fr, Index)>>,
+    z: &Vec<E::Fr>,
 ) -> Vec<E::Fr> {
     let mut ms = vec![E::Fr::zero(); polys.len()];
     for (row, poly) in polys.iter().enumerate() {
@@ -78,8 +78,8 @@ pub fn evaluate_matrix_vec<E: PairingEngine>(
 }
 
 pub fn evaluate_matrix_vec_col<E: PairingEngine>(
-    m_matrix: Vec<Vec<(E::Fr, Index)>>,
-    coeffs: Vec<E::Fr>,
+    m_matrix: &Vec<Vec<(E::Fr, Index)>>,
+    coeffs: &Vec<E::Fr>,
     num_rows: usize,
 ) -> Vec<E::Fr> {
     let mut ms = vec![E::Fr::zero(); num_rows];
@@ -96,7 +96,7 @@ pub fn evaluate_matrix_vec_col<E: PairingEngine>(
     ms
 }
 
-pub fn combine_with_r<E: PairingEngine>(values: &Vec<E::Fr>, r: E::Fr) -> Vec<E::Fr> {
+pub fn combine_with_n<E: PairingEngine>(values: &Vec<E::Fr>, r: E::Fr) -> Vec<E::Fr> {
     let len = values.len() / 2;
     assert!(len.is_power_of_two());
     let mut new_values: Vec<E::Fr> = vec![E::Fr::zero(); len];
@@ -106,12 +106,20 @@ pub fn combine_with_r<E: PairingEngine>(values: &Vec<E::Fr>, r: E::Fr) -> Vec<E:
     new_values
 }
 
-pub fn bound_poly_var_bot<E: PairingEngine>(values: &Vec<E::Fr>, r: E::Fr) -> Vec<E::Fr> {
+pub fn combine_with_r<E: PairingEngine>(values: &mut Vec<E::Fr>, r: E::Fr) {
     let len = values.len() / 2;
     assert!(len.is_power_of_two());
-    let mut new_values: Vec<E::Fr> = vec![E::Fr::zero(); len];
     for i in 0..len {
-        new_values[i] = r * &values[2 * i + 1] + &((E::Fr::one() - &r) * &values[2 * i]);
+        values[i] = r * &values[i + len] + &((E::Fr::one() - &r) * &values[i]);
     }
-    new_values
+    values.truncate(len);
+}
+
+pub fn bound_poly_var_bot<E: PairingEngine>(values: &mut Vec<E::Fr>, r: E::Fr) {
+    let len = values.len() / 2;
+    assert!(len.is_power_of_two());
+    for i in 0..len {
+        values[i] = r * &values[2 * i + 1] + &((E::Fr::one() - &r) * &values[2 * i]);
+    }
+    values.truncate(len);
 }
