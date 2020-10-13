@@ -199,10 +199,11 @@ impl<F: PrimeField> clinkv2_r1cs::ConstraintSynthesizer<F> for Clinkv2Mini<F> {
 
 #[test]
 fn mini_clinkv2() {
-    use scheme::clinkv2::{
-        create_random_proof, kzg10::KZG10, r1cs::ConstraintSynthesizer, verify_proof,
+    use scheme::clinkv2::kzg10::{
+        create_random_proof, KZG10, verify_proof,
         ProveAssignment, VerifyAssignment,
     };
+    use scheme::clinkv2::r1cs::ConstraintSynthesizer;
 
     let n: usize = 100;
 

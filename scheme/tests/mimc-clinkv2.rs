@@ -143,10 +143,9 @@ impl<'a, F: Field> ConstraintSynthesizer<F> for MiMCDemo<'a, F> {
 
 #[test]
 fn mimc_clinkv2_kzg10() {
-    use scheme::clinkv2::kzg10::KZG10;
-    use scheme::clinkv2::{
+    use scheme::clinkv2::kzg10::{
         create_random_proof, prove_to_bytes, verify_from_bytes, verify_proof, Proof,
-        ProveAssignment, VerifyAssignment, VerifyKey,
+        ProveAssignment, VerifyAssignment, VerifyKey, KZG10
     };
 
     let mut rng = &mut test_rng();
@@ -267,10 +266,9 @@ fn mimc_clinkv2_kzg10() {
 #[test]
 fn mimc_clinkv2_ipa() {
     use blake2::Blake2s;
-    use scheme::clinkv2::clinkv2_ipa::ipa::InnerProductArgPC;
-    use scheme::clinkv2::clinkv2_ipa::{
+    use scheme::clinkv2::ipa::{
         create_random_proof, prove_to_bytes, verify_from_bytes, verify_proof, Proof,
-        ProveAssignment, VerifyAssignment, VerifyKey,
+        ProveAssignment, VerifyAssignment, VerifyKey, InnerProductArgPC,
     };
 
     let mut rng = &mut test_rng();

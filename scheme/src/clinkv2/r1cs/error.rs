@@ -1,10 +1,8 @@
-// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
-
 use core::fmt;
 use math::io;
 
-use super::super::kzg10::Error as KZG10Error;
-use super::super::clinkv2_ipa::ipa::Error as IPAError;
+use super::super::kzg10::kzg10::Error as KZG10Error;
+use super::super::ipa::ipa::Error as IPAError;
 
 /// This is an error that could occur during circuit synthesis contexts,
 /// such as CRS generation, proving or verification.

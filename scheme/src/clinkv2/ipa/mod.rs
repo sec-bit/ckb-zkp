@@ -1,3 +1,5 @@
+use core::marker::PhantomData;
+use digest::Digest;
 use math::{
     io::{self, Result as IoResult},
     serialize::*,
@@ -9,21 +11,19 @@ pub mod ipa;
 pub mod prover;
 pub mod verifier;
 
+pub use ipa::InnerProductArgPC;
 pub use prover::create_random_proof;
 pub use verifier::verify_proof;
+pub type ProveKey<G> = ipa::CommitterKey<G>;
+pub type VerifyKey<G> = ipa::VerifierKey<G>;
 
 use crate::{String, Vec};
-use core::marker::PhantomData;
-use digest::Digest;
 
 use super::r1cs::{ConstraintSystem, Index, LinearCombination, SynthesisError, Variable};
 
-pub type IPAPC<G, D> = ipa::InnerProductArgPC<G, D>;
-pub type IPAProof<G> = ipa::Proof<G>;
-pub type IPAComm<G> = ipa::Commitment<G>;
-
-pub type ProveKey<G> = ipa::CommitterKey<G>;
-pub type VerifyKey<G> = ipa::VerifierKey<G>;
+type IPAPC<G, D> = InnerProductArgPC<G, D>;
+type IPAProof<G> = ipa::Proof<G>;
+type IPAComm<G> = ipa::Commitment<G>;
 
 /// standard interface for create proof and to bytes.
 pub fn prove_to_bytes<G: Curve, D: Digest, R: Rng>(

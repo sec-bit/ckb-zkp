@@ -6,8 +6,8 @@ use math::{Field, One, PairingEngine, ToBytes, Zero};
 use crate::Vec;
 
 use super::{
+    super::r1cs::{Index, SynthesisError},
     kzg10::KZG10,
-    r1cs::{Index, SynthesisError},
     Proof, VerifyAssignment, VerifyKey,
 };
 

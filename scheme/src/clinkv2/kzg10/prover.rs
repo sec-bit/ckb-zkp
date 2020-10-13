@@ -11,8 +11,8 @@ use math::fft::{DensePolynomial, EvaluationDomain};
 use math::{Field, One, PairingEngine, ToBytes, UniformRand, Zero};
 
 use super::{
+    super::r1cs::{Index, SynthesisError},
     kzg10::KZG10,
-    r1cs::{Index, SynthesisError},
     Proof, ProveAssignment, ProveKey,
 };
 
