@@ -48,10 +48,10 @@ pub fn poly_commit_vec<E: PairingEngine>(
     h: &E::G1Affine,
     blind_value: E::Fr,
 ) -> Result<PolyCommitments<E>, SynthesisError> {
-    let scalars = values.clone();
+    // let scalars = values.clone();
     let mut commit = VariableBaseMSM::multi_scalar_mul(
         &generators.clone(),
-        &scalars
+        &values
             .into_iter()
             .map(|e| e.into_repr())
             .collect::<Vec<_>>(),

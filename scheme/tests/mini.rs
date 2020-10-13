@@ -113,8 +113,8 @@ fn mini_marlin() {
 
 #[test]
 fn mini_bulletproofs() {
+    use curve::baby_jubjub::{BabyJubJub, Fr};
     use scheme::bulletproofs::{create_random_proof, verify_proof};
-    use curve::baby_jubjub::{Fr, BabyJubJub};
 
     let rng = &mut test_rng();
     let num = 10;
@@ -200,8 +200,7 @@ impl<F: PrimeField> clinkv2_r1cs::ConstraintSynthesizer<F> for Clinkv2Mini<F> {
 #[test]
 fn mini_clinkv2() {
     use scheme::clinkv2::kzg10::{
-        create_random_proof, KZG10, verify_proof,
-        ProveAssignment, VerifyAssignment,
+        create_random_proof, verify_proof, ProveAssignment, VerifyAssignment, KZG10,
     };
     use scheme::clinkv2::r1cs::ConstraintSynthesizer;
 
@@ -310,8 +309,8 @@ fn test_mini_spartan() {
     let result = verify_snark_proof::<Bn_256>(
         &params,
         &r1cs,
-        vec![Fr::from(10u32)].to_vec(),
-        proof,
+        &vec![Fr::from(10u32)].to_vec(),
+        &proof,
         &encode_commit,
     )
     .is_ok();

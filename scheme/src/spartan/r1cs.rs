@@ -3,6 +3,8 @@ use crate::r1cs::{
 };
 use crate::{String, Vec};
 use math::{log2, Field, One, PairingEngine, Zero};
+use std::collections::HashMap;
+// use std::time::{Duration, Instant};
 
 pub struct R1CSInstance<E: PairingEngine> {
     pub num_inputs: usize,
@@ -130,6 +132,7 @@ pub fn generate_r1cs<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>>(
     // Synthesize the circuit.
     circuit.generate_constraints(&mut r1cs)?;
     let num_constraints_t = (2usize).pow(log2(r1cs.num_constraints));
+
     for i in 0..num_constraints_t - r1cs.num_constraints {
         r1cs.enforce(
             || format!("append constraint {}", i),
@@ -155,22 +158,29 @@ pub fn switch_matrix_to_list<E: PairingEngine>(
     let mut cols = Vec::new();
 
     for (row, m_vec) in m_matrix.iter().enumerate() {
-        let mut ms = vec![E::Fr::zero(); witness_len * 2];
+        let mut ms = HashMap::new();
         for (val, col) in m_vec.iter() {
             match col {
                 Index::Aux(i) => {
-                    ms[*i] += val;
+                    if let Some(x) = ms.get_mut(i) {
+                        *x = *val + x;
+                    } else {
+                        ms.insert(*i, *val);
+                    }
                 }
                 Index::Input(i) => {
-                    ms[*i + witness_len] += val;
+                    if let Some(x) = ms.get_mut(&(*i + witness_len)) {
+                        *x = *val + x;
+                    } else {
+                        ms.insert(*i + witness_len, *val);
+                    }
                 }
             }
         }
-
-        for (col, val) in ms.iter().enumerate() {
-            if *val != E::Fr::zero() {
+        for (col, val) in ms.iter() {
+            if !val.is_zero() {
                 rows.push(row);
-                cols.push(col);
+                cols.push(*col);
                 vals.push(*val);
             }
         }

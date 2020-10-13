@@ -22,11 +22,9 @@ pub fn encode<E: PairingEngine, R: Rng>(
     // convert matix to array
     let t = cmp::max(r1cs.num_aux, r1cs.num_inputs).next_power_of_two();
     let m = cmp::max(t * 2, r1cs.num_constraints).next_power_of_two();
-
     let (mut a_val, mut a_row, mut a_col) = switch_matrix_to_list::<E>(&r1cs.a_matrix, t).unwrap();
     let (mut b_val, mut b_row, mut b_col) = switch_matrix_to_list::<E>(&r1cs.b_matrix, t).unwrap();
     let (mut c_val, mut c_row, mut c_col) = switch_matrix_to_list::<E>(&r1cs.c_matrix, t).unwrap();
-
     assert_eq!(a_val.len(), a_row.len());
     assert_eq!(a_row.len(), a_col.len());
     assert_eq!(b_val.len(), b_row.len());
@@ -170,19 +168,6 @@ pub fn memory_in_the_head<E: PairingEngine>(
     Ok(ts)
 }
 
-pub fn combine_poly_from_usize_list<E: PairingEngine>(
-    val_list: Vec<Vec<usize>>,
-) -> Result<Vec<E::Fr>, SynthesisError> {
-    let mut list = Vec::new();
-    for vals in val_list.iter() {
-        let vals_fr = (0..vals.len())
-            .map(|i| E::Fr::from_repr(<E::Fr as PrimeField>::BigInt::from(vals[i] as u64)))
-            .collect::<Vec<E::Fr>>();
-        list.extend(vals_fr);
-    }
-    Ok(list)
-}
-
 pub fn circuit_eval_opt<E: PairingEngine>(
     encode: &EncodeMemory<E>,
     gamma: (E::Fr, E::Fr),
@@ -319,6 +304,7 @@ pub fn circuit_hash<E: PairingEngine>(
     Ok(list)
 }
 
+// TODO?
 pub fn construct_product_circuit<E: PairingEngine>(
     list: Vec<E::Fr>,
 ) -> Result<ProductCircuit<E>, SynthesisError> {
