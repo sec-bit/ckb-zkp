@@ -1,5 +1,5 @@
 [package]
-name = "mini_clinkv2_verifier"
+name = "mini_clinkv2_kzg10_verifier"
 version = "0.1.0"
 edition = "2018"
 
