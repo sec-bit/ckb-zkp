@@ -1,25 +1,25 @@
 use merlin::Transcript;
 
 use math::fft::EvaluationDomain;
-use math::{Field, One, PairingEngine, ToBytes, Zero};
+use math::{Curve, Field, One, ToBytes, Zero};
 
 use crate::Vec;
 
-use super::{
-    kzg10::KZG10,
-    r1cs::{Index, SynthesisError},
-    Proof, VerifyAssignment, VerifyKey,
-};
+use super::{Proof, VerifyAssignment, VerifyKey, IPAPC};
 
-pub fn verify_proof<E: PairingEngine>(
-    circuit: &VerifyAssignment<E>,
-    kzg10_vk: &VerifyKey<E>,
-    proof: &Proof<E>,
-    io: &Vec<Vec<E::Fr>>,
+use super::super::r1cs::{Index, SynthesisError};
+
+use digest::Digest;
+
+pub fn verify_proof<G: Curve, D: Digest>(
+    circuit: &VerifyAssignment<G, D>,
+    ipa_vk: &VerifyKey<G>,
+    proof: &Proof<G>,
+    io: &Vec<Vec<G::Fr>>,
 ) -> Result<bool, SynthesisError> {
     let mut transcript = Transcript::new(b"CLINKv2");
-    let zero = E::Fr::zero();
-    let one = E::Fr::one();
+    let zero = G::Fr::zero();
+    let one = G::Fr::one();
     let m_abc = circuit.at.len();
     let m_io = io.len();
     let m_mid = proof.r_mid_comms.len();
@@ -31,7 +31,7 @@ pub fn verify_proof<E: PairingEngine>(
 
     let mut c = [0u8; 31];
     transcript.challenge_bytes(b"batching challenge", &mut c);
-    let eta = E::Fr::from_random_bytes(&c).unwrap();
+    let eta = G::Fr::from_random_bytes(&c).unwrap();
 
     let mut q_comm_bytes = vec![];
     proof.q_comm.write(&mut q_comm_bytes)?;
@@ -39,23 +39,24 @@ pub fn verify_proof<E: PairingEngine>(
 
     c = [0u8; 31];
     transcript.challenge_bytes(b"random point", &mut c);
-    let zeta = E::Fr::from_random_bytes(&c).unwrap();
+    let zeta = G::Fr::from_random_bytes(&c).unwrap();
 
     let r_mid_q_comms = [&proof.r_mid_comms, &[proof.q_comm][..]].concat();
 
-    assert!(KZG10::<E>::batch_check(
-        &kzg10_vk,
+    let domain = EvaluationDomain::<G::Fr>::new(n)
+        .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+    let domain_size = domain.size();
+    let degree_bound: usize = domain_size - 1;
+
+    assert!(IPAPC::<G, D>::check(
+        &ipa_vk,
         &r_mid_q_comms,
         zeta,
         &proof.r_mid_q_values,
         &proof.r_mid_q_proof,
-        proof.opening_challenge
+        proof.opening_challenge,
+        degree_bound
     )?);
-
-    let domain =
-        EvaluationDomain::<E::Fr>::new(n).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-
-    //let domain_size = domain.size();
 
     let mut r_io_values = vec![];
     let lag_values = domain.evaluate_all_lagrange_coefficients(zeta);
