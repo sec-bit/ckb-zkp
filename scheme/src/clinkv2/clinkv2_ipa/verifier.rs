@@ -1,31 +1,25 @@
 use merlin::Transcript;
 
 use math::fft::EvaluationDomain;
-use math::{
-    AffineCurve, One, Field, Zero,ToBytes,
-};
+use math::{Curve, Field, One, ToBytes, Zero};
 
 use crate::Vec;
 
-use super::{
-    IPAPC,
-    Proof, VerifyAssignment, VerifyKey,
-};
+use super::{Proof, VerifyAssignment, VerifyKey, IPAPC};
 
 use super::super::r1cs::{Index, SynthesisError};
 
 use digest::Digest;
 
-
-pub fn verify_proof<G:AffineCurve, D: Digest>(
+pub fn verify_proof<G: Curve, D: Digest>(
     circuit: &VerifyAssignment<G, D>,
     ipa_vk: &VerifyKey<G>,
     proof: &Proof<G>,
-    io: &Vec<Vec<G::ScalarField>>,
+    io: &Vec<Vec<G::Fr>>,
 ) -> Result<bool, SynthesisError> {
     let mut transcript = Transcript::new(b"CLINKv2");
-    let zero = G::ScalarField::zero();
-    let one = G::ScalarField::one();
+    let zero = G::Fr::zero();
+    let one = G::Fr::one();
     let m_abc = circuit.at.len();
     let m_io = io.len();
     let m_mid = proof.r_mid_comms.len();
@@ -37,7 +31,7 @@ pub fn verify_proof<G:AffineCurve, D: Digest>(
 
     let mut c = [0u8; 31];
     transcript.challenge_bytes(b"batching challenge", &mut c);
-    let eta = G::ScalarField::from_random_bytes(&c).unwrap();
+    let eta = G::Fr::from_random_bytes(&c).unwrap();
 
     let mut q_comm_bytes = vec![];
     proof.q_comm.write(&mut q_comm_bytes)?;
@@ -45,17 +39,16 @@ pub fn verify_proof<G:AffineCurve, D: Digest>(
 
     c = [0u8; 31];
     transcript.challenge_bytes(b"random point", &mut c);
-    let zeta = G::ScalarField::from_random_bytes(&c).unwrap();
+    let zeta = G::Fr::from_random_bytes(&c).unwrap();
 
     let r_mid_q_comms = [&proof.r_mid_comms, &[proof.q_comm][..]].concat();
 
-    let domain =
-    EvaluationDomain::<G::ScalarField>::new(n).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+    let domain = EvaluationDomain::<G::Fr>::new(n)
+        .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
     let domain_size = domain.size();
-    let degree_bound:usize = domain_size - 1;
+    let degree_bound: usize = domain_size - 1;
 
-
-    assert!(IPAPC::<G,D>::check(
+    assert!(IPAPC::<G, D>::check(
         &ipa_vk,
         &r_mid_q_comms,
         zeta,

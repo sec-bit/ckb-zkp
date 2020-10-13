@@ -8,22 +8,17 @@ use rand::Rng;
 use rayon::prelude::*;
 
 use math::fft::{DensePolynomial, EvaluationDomain};
-use math::{
-    AffineCurve, Field, UniformRand, Zero, One, ToBytes,
-};
+use math::{Curve, Field, One, ToBytes, UniformRand, Zero};
 
-use super::{
-    IPAPC,
-    Proof, ProveAssignment, CommitKey,
-};
+use super::{ProveKey, Proof, ProveAssignment, IPAPC};
 
 use super::super::r1cs::{Index, SynthesisError};
 
 use digest::Digest;
 
-pub fn create_random_proof<G:AffineCurve, D:Digest, R: Rng>(
+pub fn create_random_proof<G: Curve, D: Digest, R: Rng>(
     circuit: &ProveAssignment<G, D>,
-    ipa_ck: &CommitKey<G>,
+    ipa_ck: &ProveKey<G>,
     rng: &mut R,
 ) -> Result<Proof<G>, SynthesisError> {
     // Number of io variables (statements)
@@ -40,8 +35,8 @@ pub fn create_random_proof<G:AffineCurve, D:Digest, R: Rng>(
     let mut transcript = Transcript::new(b"CLINKv2");
 
     // Compute and commit witness polynomials
-    let domain =
-        EvaluationDomain::<G::ScalarField>::new(n).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+    let domain = EvaluationDomain::<G::Fr>::new(n)
+        .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
     let domain_size = domain.size();
     // println!("domain_size: {:?}", domain_size);
@@ -51,10 +46,10 @@ pub fn create_random_proof<G:AffineCurve, D:Digest, R: Rng>(
     let mut r_mid_q_values = vec![];
     // let mut r_mid_rands = vec![];
 
-    let zero = G::ScalarField::zero();
-    let one = G::ScalarField::one();
+    let zero = G::Fr::zero();
+    let one = G::Fr::one();
 
-    let degree_bound:usize = domain_size - 1;
+    let degree_bound: usize = domain_size - 1;
     let hiding_bound = 2;
 
     //let mut rj_commit_time = Duration::new(0, 0);
@@ -98,7 +93,14 @@ pub fn create_random_proof<G:AffineCurve, D:Digest, R: Rng>(
     }
     //println!("rj_ifft_time: {:?}", rj_ifft_time);
     //println!("rj_commit_time: {:?}", rj_commit_time);
-    let (r_mid_comms, r_mid_rands) = IPAPC::<G, D>::commit(&ipa_ck, &r_polys[m_io..], hiding_bound, degree_bound, Some(rng)).unwrap();
+    let (r_mid_comms, r_mid_rands) = IPAPC::<G, D>::commit(
+        &ipa_ck,
+        &r_polys[m_io..],
+        hiding_bound,
+        degree_bound,
+        Some(rng),
+    )
+    .unwrap();
 
     let mut r_mid_comms_bytes = vec![];
     r_mid_comms.write(&mut r_mid_comms_bytes)?;
@@ -106,7 +108,7 @@ pub fn create_random_proof<G:AffineCurve, D:Digest, R: Rng>(
 
     let mut c = [0u8; 31];
     transcript.challenge_bytes(b"batching challenge", &mut c);
-    let eta = G::ScalarField::from_random_bytes(&c).unwrap();
+    let eta = G::Fr::from_random_bytes(&c).unwrap();
 
     // Compute and commit quotient polynomials
     let m_abc = circuit.at.len();
@@ -204,7 +206,13 @@ pub fn create_random_proof<G:AffineCurve, D:Digest, R: Rng>(
     // Commit to quotient polynomial
     //let start2 = Instant::now();
 
-    let (q_comm_v, q_rand_v) = IPAPC::<G,D>::commit(&ipa_ck, &q_poly_v[..], hiding_bound,degree_bound, Some(rng))?;
+    let (q_comm_v, q_rand_v) = IPAPC::<G, D>::commit(
+        &ipa_ck,
+        &q_poly_v[..],
+        hiding_bound,
+        degree_bound,
+        Some(rng),
+    )?;
 
     //q_commit_time += start2.elapsed();
     //println!("q_commit_time: {:?}", q_commit_time);
@@ -217,7 +225,7 @@ pub fn create_random_proof<G:AffineCurve, D:Digest, R: Rng>(
     // Generate a challenge
     let mut c = [0u8; 31];
     transcript.challenge_bytes(b"random point", &mut c);
-    let zeta = G::ScalarField::from_random_bytes(&c).unwrap();
+    let zeta = G::Fr::from_random_bytes(&c).unwrap();
 
     // r_polys.push(q_poly);
     // r_mid_rands.push(q_rand);
@@ -236,8 +244,8 @@ pub fn create_random_proof<G:AffineCurve, D:Digest, R: Rng>(
     let r_mid_q_polys = [&r_polys[m_io..], &q_poly_v[..]].concat();
     let r_mid_q_rands = [&r_mid_rands[..], &q_rand_v[..]].concat();
 
-    let opening_challenge = G::ScalarField::rand(rng);
-    let r_mid_q_proof = IPAPC::<G,D>::open(
+    let opening_challenge = G::Fr::rand(rng);
+    let r_mid_q_proof = IPAPC::<G, D>::open(
         &ipa_ck,
         &r_mid_q_polys[..],
         &r_mid_q_comms[..],
@@ -245,7 +253,7 @@ pub fn create_random_proof<G:AffineCurve, D:Digest, R: Rng>(
         opening_challenge,
         &r_mid_q_rands,
         degree_bound,
-        Some(rng)
+        Some(rng),
     )?;
 
     //open_r_mid_q_time += start.elapsed();

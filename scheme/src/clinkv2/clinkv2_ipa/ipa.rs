@@ -1,17 +1,12 @@
-///The following code refers to https://github.com/scipr-lab/poly-commit and thanks for their work.
-
 use math::{
-    fft::DensePolynomial as Polynomial,
-    io::Result as IoResult,
-    msm::{VariableBaseMSM},
-    serialize::*,
-    AffineCurve, Field, FromBytes, One, PrimeField, ProjectiveCurve, ToBytes,
-    UniformRand, Zero,
+    fft::DensePolynomial as Polynomial, io::Result as IoResult, msm::VariableBaseMSM, serialize::*,
+    AffineCurve, Curve, Field, FromBytes, One, PrimeField, ProjectiveCurve, ToBytes, UniformRand,
+    Zero,
 };
 
 // use rand::Rng;
-use rand_core::RngCore;
 use digest::Digest;
+use rand_core::RngCore;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -20,20 +15,20 @@ use core::marker::PhantomData;
 
 use crate::*;
 
-
 /// `UniversalParams` are the universal parameters for the inner product arg scheme.
 #[derive(Derivative)]
 #[derivative(Default(bound = ""), Clone(bound = ""), Debug(bound = ""))]
-pub struct UniversalParams<G: AffineCurve> {
+pub struct UniversalParams<G: Curve> {
     /// The key used to commit to polynomials.
-    pub comm_key: Vec<G>,
+    pub comm_key: Vec<G::Affine>,
     /// Some group generator.
-    pub h: G,
+    pub h: G::Affine,
     /// Some group generator specifically used for hiding.
-    pub s: G,
+    pub s: G::Affine,
 }
 
-impl<G: AffineCurve> UniversalParams<G> { //PCUniversalParams for
+impl<G: Curve> UniversalParams<G> {
+    //PCUniversalParams for
     pub fn max_degree(&self) -> usize {
         self.comm_key.len() - 1
     }
@@ -48,20 +43,21 @@ impl<G: AffineCurve> UniversalParams<G> { //PCUniversalParams for
     Clone(bound = ""),
     Debug(bound = "")
 )]
-pub struct CommitterKey<G: AffineCurve> {
+pub struct CommitterKey<G: Curve> {
     /// The key used to commit to polynomials.
-    pub comm_key: Vec<G>,
+    pub comm_key: Vec<G::Affine>,
     /// A random group generator.
-    pub h: G,
+    pub h: G::Affine,
     /// A random group generator that is to be used to make
     /// a commitment hiding.
-    pub s: G,
+    pub s: G::Affine,
     /// The maximum degree supported by the parameters
     /// this key was derived from.
     pub max_degree: usize,
 }
 
-impl<G: AffineCurve> CommitterKey<G> { //PCCommitterKey for
+impl<G: Curve> CommitterKey<G> {
+    //PCCommitterKey for
     pub fn max_degree(&self) -> usize {
         self.max_degree
     }
@@ -70,7 +66,7 @@ impl<G: AffineCurve> CommitterKey<G> { //PCCommitterKey for
     }
 }
 
-impl<G: AffineCurve> PartialEq for CommitterKey<G> {
+impl<G: Curve> PartialEq for CommitterKey<G> {
     fn eq(&self, other: &Self) -> bool {
         self.comm_key == other.comm_key
             && self.h == other.h
@@ -79,35 +75,39 @@ impl<G: AffineCurve> PartialEq for CommitterKey<G> {
     }
 }
 
-impl<G: AffineCurve> Eq for CommitterKey<G> {}
+impl<G: Curve> Eq for CommitterKey<G> {}
 
-// impl<G: AffineCurve> ToBytes for CommitterKey<G> {
-//     #[inline]
-//     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-//         self.comm_key.write(&mut writer)?;
-//         self.h.write(&mut writer)?;
-//         self.s.write(&mut writer)?;
-//         self.max_degree.write(&mut writer)
-//     }
-// }
+impl<G: Curve> ToBytes for CommitterKey<G> {
+    #[inline]
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.comm_key.len() as u64).write(&mut writer)?;
+        self.comm_key.write(&mut writer)?;
+        self.h.write(&mut writer)?;
+        self.s.write(&mut writer)?;
+        (self.max_degree as u64).write(&mut writer)
+    }
+}
 
-// impl<E: PairingEngine> FromBytes for VerifierKey<E> {
-//     #[inline]
-//     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-//         let comm_key = Vec<G>::read(&mut reader)?;
-//         let h = G::read(&mut reader)?;
-//         let s = s::read(&mut reader)?;
-//         let max_degree = usize::read(&mut reader)?;
+impl<G: Curve> FromBytes for CommitterKey<G> {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let mut comm_key = Vec::new();
+        let comm_key_len = u64::read(&mut reader)?;
+        for _ in 0..comm_key_len {
+            comm_key.push(G::Affine::read(&mut reader)?);
+        }
+        let h = G::Affine::read(&mut reader)?;
+        let s = G::Affine::read(&mut reader)?;
+        let max_degree = u64::read(&mut reader)? as usize;
 
-//         Ok(Self {
-//             comm_key,
-//             h,
-//             s,
-//             max_degree,
-//         })
-//     }
-// }
-
+        Ok(Self {
+            comm_key,
+            h,
+            s,
+            max_degree,
+        })
+    }
+}
 
 /// `VerifierKey` is used to check evaluation proofs for a given commitment.
 pub type VerifierKey<G> = CommitterKey<G>;
@@ -123,16 +123,16 @@ pub type VerifierKey<G> = CommitterKey<G>;
     PartialEq(bound = ""),
     Eq(bound = "")
 )]
-pub struct Commitment<G: AffineCurve> {
+pub struct Commitment<G: Curve> {
     /// A Pedersen commitment to the polynomial.
-    pub comm: G,
+    pub comm: G::Affine,
     /// A Pedersen commitment to the shifted polynomial.
     /// This is `none` if the committed polynomial does not
     /// enforce a strict degree bound.
-    pub shifted_comm: G,//Option<G>,
+    pub shifted_comm: G::Affine, //Option<G::Affine>,
 }
 
-impl<G: AffineCurve> ToBytes for Commitment<G> {
+impl<G: Curve> ToBytes for Commitment<G> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.comm.write(&mut writer)?;
@@ -140,15 +140,14 @@ impl<G: AffineCurve> ToBytes for Commitment<G> {
     }
 }
 
-impl<G: AffineCurve> FromBytes for Commitment<G> {
+impl<G: Curve> FromBytes for Commitment<G> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let comm = G::read(&mut reader)?;
-        let shifted_comm = G::read(&mut reader)?;
-        Ok(Self{comm, shifted_comm})
+        let comm = G::Affine::read(&mut reader)?;
+        let shifted_comm = G::Affine::read(&mut reader)?;
+        Ok(Self { comm, shifted_comm })
     }
 }
-
 
 /// `Randomness` hides the polynomial inside a commitment and is outputted by `InnerProductArg::commit`.
 #[derive(Derivative)]
@@ -160,25 +159,26 @@ impl<G: AffineCurve> FromBytes for Commitment<G> {
     PartialEq(bound = ""),
     Eq(bound = "")
 )]
-pub struct Randomness<G: AffineCurve> {
+pub struct Randomness<G: Curve> {
     /// Randomness is some scalar field element.
-    pub rand: G::ScalarField,
+    pub rand: G::Fr,
     /// Randomness applied to the shifted commitment is some scalar field element.
-    pub shifted_rand: Option<G::ScalarField>,
+    pub shifted_rand: Option<G::Fr>,
 }
 
-impl<G: AffineCurve> Randomness<G> { //PCRandomness for 
+impl<G: Curve> Randomness<G> {
+    //PCRandomness for
     pub fn empty() -> Self {
         Self {
-            rand: G::ScalarField::zero(),
+            rand: G::Fr::zero(),
             shifted_rand: None,
         }
     }
 
     pub fn rand<R: RngCore>(_num_queries: usize, has_degree_bound: bool, rng: &mut R) -> Self {
-        let rand = G::ScalarField::rand(rng);
+        let rand = G::Fr::rand(rng);
         let shifted_rand = if has_degree_bound {
-            Some(G::ScalarField::rand(rng))
+            Some(G::Fr::rand(rng))
         } else {
             None
         };
@@ -198,41 +198,84 @@ impl<G: AffineCurve> Randomness<G> { //PCRandomness for
     PartialEq(bound = ""),
     Eq(bound = "")
 )]
-pub struct Proof<G: AffineCurve> {
+pub struct Proof<G: Curve> {
     /// Vector of left elements for each of the log_d iterations in `open`
-    pub l_vec: Vec<G>,
+    pub l_vec: Vec<G::Affine>,
     /// Vector of right elements for each of the log_d iterations within `open`
-    pub r_vec: Vec<G>,
+    pub r_vec: Vec<G::Affine>,
     /// Committer key from the last iteration within `open`
-    pub final_comm_key: G,
+    pub final_comm_key: G::Affine,
     /// Coefficient from the last iteration within withinopen`
-    pub c: G::ScalarField,
+    pub c: G::Fr,
     /// Commitment to the blinding polynomial.
-    pub hiding_comm: Option<G>,
+    pub hiding_comm: Option<G::Affine>,
     /// Linear combination of all the randomness used for commitments
     /// to the opened polynomials, along with the randomness used for the
     /// commitment to the hiding polynomial.
-    pub rand: Option<G::ScalarField>,
+    pub rand: Option<G::Fr>,
 }
 
-impl<G: AffineCurve> ToBytes for Proof<G> {
+impl<G: Curve> ToBytes for Proof<G> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.l_vec.len() as u64).write(&mut writer)?;
         self.l_vec.write(&mut writer)?;
+        (self.r_vec.len() as u64).write(&mut writer)?;
         self.r_vec.write(&mut writer)?;
         self.final_comm_key.write(&mut writer)?;
         self.c.write(&mut writer)?;
+        self.hiding_comm.is_some().write(&mut writer)?;
         self.hiding_comm
             .as_ref()
-            .unwrap_or(&G::zero())
+            .unwrap_or(&G::Affine::zero())
             .write(&mut writer)?;
+        self.rand.is_some().write(&mut writer)?;
         self.rand
             .as_ref()
-            .unwrap_or(&G::ScalarField::zero())
+            .unwrap_or(&G::Fr::zero())
             .write(&mut writer)
     }
 }
 
+impl<G: Curve> FromBytes for Proof<G> {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let mut l_vec = Vec::new();
+        let l_vec_len = u64::read(&mut reader)?;
+        for _ in 0..l_vec_len {
+            l_vec.push(G::Affine::read(&mut reader)?);
+        }
+        let mut r_vec = Vec::new();
+        let r_vec_len = u64::read(&mut reader)?;
+        for _ in 0..r_vec_len {
+            r_vec.push(G::Affine::read(&mut reader)?);
+        }
+
+        let final_comm_key = G::Affine::read(&mut reader)?;
+        let c = G::Fr::read(&mut reader)?;
+
+        let hiding_comm_exists = bool::read(&mut reader)?;
+        let hiding_comm_value = G::Affine::read(&mut reader)?;
+        let hiding_comm = if hiding_comm_exists {
+            Some(hiding_comm_value)
+        } else {
+            None
+        };
+
+        let rand_exists = bool::read(&mut reader)?;
+        let rand_value = G::Fr::read(&mut reader)?;
+        let rand = if rand_exists { Some(rand_value) } else { None };
+
+        Ok(Self {
+            l_vec,
+            r_vec,
+            final_comm_key,
+            c,
+            hiding_comm,
+            rand,
+        })
+    }
+}
 
 /// `SuccinctCheckPolynomial` is a succinctly-representated polynomial
 /// generated from the `log_d` random oracle challenges generated in `open`.
@@ -277,22 +320,22 @@ impl<F: Field> SuccinctCheckPolynomial<F> {
 }
 
 // Inner product argument-based polynomial commitment
-pub struct InnerProductArgPC<G: AffineCurve, D: Digest> {
+pub struct InnerProductArgPC<G: Curve, D: Digest> {
     _projective: PhantomData<G>,
     _digest: PhantomData<D>,
 }
 
-impl<G: AffineCurve, D: Digest> InnerProductArgPC<G, D> {
+impl<G: Curve, D: Digest> InnerProductArgPC<G, D> {
     /// `PROTOCOL_NAME` is used as a seed for the setup function.
     pub const PROTOCOL_NAME: &'static [u8] = b"PC-DL-2020";
 
     /// Create a Pedersen commitment to `scalars` using the commitment key `comm_key`.
     /// Optionally, randomize the commitment using `hiding_generator` and `randomizer`.
     fn cm_commit(
-        comm_key: &[G],
-        scalars: &[G::ScalarField],
-        hiding_generator: Option<G>,
-        randomizer: Option<G::ScalarField>,
+        comm_key: &[G::Affine],
+        scalars: &[G::Fr],
+        hiding_generator: Option<G::Affine>,
+        randomizer: Option<G::Fr>,
     ) -> G::Projective {
         let scalars_bigint = math::cfg_iter!(scalars)
             .map(|s| s.into_repr())
@@ -308,13 +351,13 @@ impl<G: AffineCurve, D: Digest> InnerProductArgPC<G, D> {
         comm
     }
 
-    fn compute_random_oracle_challenge(bytes: &[u8]) -> G::ScalarField {
+    fn compute_random_oracle_challenge(bytes: &[u8]) -> G::Fr {
         let mut i = 0u64;
         let mut challenge = None;
         while challenge.is_none() {
             let hash_input = math::to_bytes![bytes, i].unwrap();
             let hash = D::digest(&hash_input);
-            challenge = <G::ScalarField as Field>::from_random_bytes(&hash);
+            challenge = <G::Fr as Field>::from_random_bytes(&hash);
 
             i += 1;
         }
@@ -323,7 +366,7 @@ impl<G: AffineCurve, D: Digest> InnerProductArgPC<G, D> {
     }
 
     #[inline]
-    fn inner_product(l: &[G::ScalarField], r: &[G::ScalarField]) -> G::ScalarField {
+    fn inner_product(l: &[G::Fr], r: &[G::Fr]) -> G::Fr {
         math::cfg_iter!(l).zip(r).map(|(li, ri)| *li * ri).sum()
     }
 
@@ -332,20 +375,19 @@ impl<G: AffineCurve, D: Digest> InnerProductArgPC<G, D> {
     fn succinct_check<'a>(
         vk: &VerifierKey<G>,
         commitments: impl IntoIterator<Item = &'a Commitment<G>>,
-        point: G::ScalarField,
-        values: impl IntoIterator<Item = &'a G::ScalarField>,
+        point: G::Fr,
+        values: impl IntoIterator<Item = &'a G::Fr>,
         proof: &Proof<G>,
         degree_bound: usize,
-        opening_challenge: G::ScalarField,
-    ) -> Option<SuccinctCheckPolynomial<G::ScalarField>> {
-
+        opening_challenge: G::Fr,
+    ) -> Option<SuccinctCheckPolynomial<G::Fr>> {
         let d = vk.supported_degree();
 
         // `log_d` is ceil(log2 (d + 1)), which is the number of steps to compute all of the challenges
         let log_d = math::log2(d + 1) as usize;
 
         let mut combined_commitment_proj = G::Projective::zero();
-        let mut combined_v = G::ScalarField::zero();
+        let mut combined_v = G::Fr::zero();
 
         let mut cur_challenge = opening_challenge;
         let commitments_iter = commitments.into_iter();
@@ -399,7 +441,7 @@ impl<G: AffineCurve, D: Digest> InnerProductArgPC<G, D> {
                 &(l.mul(round_challenge.inverse().unwrap()) + &r.mul(round_challenge));
         }
 
-        let check_poly = SuccinctCheckPolynomial::<G::ScalarField>(round_challenges);
+        let check_poly = SuccinctCheckPolynomial::<G::Fr>(round_challenges);
         let v_prime = check_poly.evaluate(point) * &proof.c;
         let h_prime = h_prime.into_affine();
 
@@ -419,29 +461,29 @@ impl<G: AffineCurve, D: Digest> InnerProductArgPC<G, D> {
 
     fn shift_polynomial(
         ck: &CommitterKey<G>,
-        p: &Polynomial<G::ScalarField>,
+        p: &Polynomial<G::Fr>,
         degree_bound: usize,
-    ) -> Polynomial<G::ScalarField> {
+    ) -> Polynomial<G::Fr> {
         if p.is_zero() {
             Polynomial::zero()
         } else {
             let mut shifted_polynomial_coeffs =
-                vec![G::ScalarField::zero(); ck.supported_degree() - degree_bound];
+                vec![G::Fr::zero(); ck.supported_degree() - degree_bound];
             shifted_polynomial_coeffs.extend_from_slice(&p.coeffs);
             Polynomial::from_coefficients_vec(shifted_polynomial_coeffs)
         }
     }
 
-    fn sample_generators(num_generators: usize) -> Vec<G> {
+    fn sample_generators(num_generators: usize) -> Vec<G::Affine> {
         let generators: Vec<_> = math::cfg_into_iter!(0..num_generators)
             .map(|i| {
                 let i = i as u64;
                 let mut hash = D::digest(&to_bytes![&Self::PROTOCOL_NAME, i].unwrap());
-                let mut g = G::from_random_bytes(&hash);
+                let mut g = G::Affine::from_random_bytes(&hash);
                 let mut j = 0u64;
                 while g.is_none() {
                     hash = D::digest(&to_bytes![&Self::PROTOCOL_NAME, i, j].unwrap());
-                    g = G::from_random_bytes(&hash);
+                    g = G::Affine::from_random_bytes(&hash);
                     j += 1;
                 }
                 let generator = g.unwrap();
@@ -452,10 +494,7 @@ impl<G: AffineCurve, D: Digest> InnerProductArgPC<G, D> {
         G::Projective::batch_normalization_into_affine(&generators)
     }
 
-    pub fn setup<R: RngCore>(
-        max_degree: usize,
-        _rng: &mut R,
-    ) -> Result<UniversalParams<G>, Error> {
+    pub fn setup<R: RngCore>(max_degree: usize, _rng: &mut R) -> Result<UniversalParams<G>, Error> {
         // Ensure that max_degree + 1 is a power of 2
         let max_degree = (max_degree + 1).next_power_of_two() - 1;
 
@@ -503,17 +542,11 @@ impl<G: AffineCurve, D: Digest> InnerProductArgPC<G, D> {
     /// Outputs a commitment to `polynomial`.
     pub fn commit<'a>(
         ck: &CommitterKey<G>,
-        polynomials: impl IntoIterator<Item = &'a Polynomial<G::ScalarField>>,
+        polynomials: impl IntoIterator<Item = &'a Polynomial<G::Fr>>,
         hiding_bound: usize,
         degree_bound: usize,
         rng: Option<&mut dyn RngCore>,
-    ) -> Result<
-        (
-            Vec<Commitment<G>>,
-            Vec<Randomness<G>>,
-        ),
-        Error,
-    > {
+    ) -> Result<(Vec<Commitment<G>>, Vec<Randomness<G>>), Error> {
         // let rng = &mut crate::optional_rng::OptionalRng(rng);
         let mut rng = rng.expect("hiding commitments require randomness");
         let mut comms = Vec::new();
@@ -521,7 +554,7 @@ impl<G: AffineCurve, D: Digest> InnerProductArgPC<G, D> {
 
         for polynomial in polynomials {
             let randomness = Randomness::rand(hiding_bound, true, &mut rng);
-           
+
             let comm = Self::cm_commit(
                 &ck.comm_key[..(polynomial.degree() + 1)],
                 &polynomial.coeffs,
@@ -532,14 +565,13 @@ impl<G: AffineCurve, D: Digest> InnerProductArgPC<G, D> {
 
             assert!(ck.supported_degree() >= degree_bound);
 
-            let shifted_comm = 
-                Self::cm_commit(
-                    &ck.comm_key[(ck.supported_degree() - degree_bound)..],
-                    &polynomial.coeffs,
-                    Some(ck.s),
-                    randomness.shifted_rand,
-                )
-                .into();
+            let shifted_comm = Self::cm_commit(
+                &ck.comm_key[(ck.supported_degree() - degree_bound)..],
+                &polynomial.coeffs,
+                Some(ck.s),
+                randomness.shifted_rand,
+            )
+            .into();
 
             let commitment = Commitment { comm, shifted_comm };
 
@@ -552,10 +584,10 @@ impl<G: AffineCurve, D: Digest> InnerProductArgPC<G, D> {
 
     pub fn open<'a>(
         ck: &CommitterKey<G>,
-        polynomials: impl IntoIterator<Item = &'a Polynomial<G::ScalarField>>,
+        polynomials: impl IntoIterator<Item = &'a Polynomial<G::Fr>>,
         commitments: impl IntoIterator<Item = &'a Commitment<G>>,
-        point: G::ScalarField,
-        opening_challenge: G::ScalarField,
+        point: G::Fr,
+        opening_challenge: G::Fr,
         rands: impl IntoIterator<Item = &'a Randomness<G>>,
         degree_bound: usize,
         rng: Option<&mut dyn RngCore>,
@@ -565,35 +597,28 @@ impl<G: AffineCurve, D: Digest> InnerProductArgPC<G, D> {
         Randomness<G>: 'a,
     {
         let mut combined_polynomial = Polynomial::zero();
-        let mut combined_rand = G::ScalarField::zero();
+        let mut combined_rand = G::Fr::zero();
         let mut combined_commitment_proj = G::Projective::zero();
-
 
         let polys_iter = polynomials.into_iter();
         let rands_iter = rands.into_iter();
         let comms_iter = commitments.into_iter();
 
         let mut cur_challenge = opening_challenge;
-        for (polynomial, (commitment, randomness)) in
-            polys_iter.zip(comms_iter.zip(rands_iter))
-        {
+        for (polynomial, (commitment, randomness)) in polys_iter.zip(comms_iter.zip(rands_iter)) {
             combined_polynomial += (cur_challenge, polynomial);
             combined_commitment_proj += &commitment.comm.mul(cur_challenge);
-            
+
             combined_rand += &(cur_challenge * &randomness.rand);
 
             cur_challenge *= &opening_challenge;
 
-           
             let shifted_polynomial = Self::shift_polynomial(ck, polynomial, degree_bound);
             combined_polynomial += (cur_challenge, &shifted_polynomial);
             combined_commitment_proj += &commitment.shifted_comm.mul(cur_challenge);
 
             let shifted_rand = randomness.shifted_rand;
-            assert!(
-                shifted_rand.is_some(),
-                "shifted_rand.is_none()",
-            );
+            assert!(shifted_rand.is_some(), "shifted_rand.is_none()",);
             combined_rand += &(cur_challenge * &shifted_rand.unwrap());
 
             cur_challenge *= &opening_challenge;
@@ -614,7 +639,7 @@ impl<G: AffineCurve, D: Digest> InnerProductArgPC<G, D> {
         hiding_polynomial -=
             &Polynomial::from_coefficients_slice(&[hiding_polynomial.evaluate(point)]);
 
-        let hiding_rand = G::ScalarField::rand(rng);
+        let hiding_rand = G::Fr::rand(rng);
         let hiding_commitment_proj = Self::cm_commit(
             ck.comm_key.as_slice(),
             hiding_polynomial.coeffs.as_slice(),
@@ -644,7 +669,7 @@ impl<G: AffineCurve, D: Digest> InnerProductArgPC<G, D> {
             &(hiding_commitment_proj.mul(hiding_challenge) - &ck.s.mul(combined_rand));
 
         let combined_rand = Some(combined_rand);
-        
+
         combined_commitment = combined_commitment_proj.into_affine();
 
         // ith challenge
@@ -658,14 +683,14 @@ impl<G: AffineCurve, D: Digest> InnerProductArgPC<G, D> {
         let mut coeffs = combined_polynomial.coeffs;
         if coeffs.len() < d + 1 {
             for _ in coeffs.len()..(d + 1) {
-                coeffs.push(G::ScalarField::zero());
+                coeffs.push(G::Fr::zero());
             }
         }
         let mut coeffs = coeffs.as_mut_slice();
 
         // Powers of z
-        let mut z: Vec<G::ScalarField> = Vec::with_capacity(d + 1);
-        let mut cur_z: G::ScalarField = G::ScalarField::one();
+        let mut z: Vec<G::Fr> = Vec::with_capacity(d + 1);
+        let mut cur_z: G::Fr = G::Fr::one();
         for _ in 0..(d + 1) {
             z.push(cur_z);
             cur_z *= &point;
@@ -742,10 +767,10 @@ impl<G: AffineCurve, D: Digest> InnerProductArgPC<G, D> {
     pub fn check<'a>(
         vk: &VerifierKey<G>,
         commitments: impl IntoIterator<Item = &'a Commitment<G>>,
-        point: G::ScalarField,
-        values: impl IntoIterator<Item = &'a G::ScalarField>,
+        point: G::Fr,
+        values: impl IntoIterator<Item = &'a G::Fr>,
         proof: &Proof<G>,
-        opening_challenge: G::ScalarField,
+        opening_challenge: G::Fr,
         degree_bound: usize,
     ) -> Result<bool, Error>
     where
@@ -769,8 +794,15 @@ impl<G: AffineCurve, D: Digest> InnerProductArgPC<G, D> {
             ));
         }
 
-        let check_poly =
-            Self::succinct_check(vk, commitments, point, values, proof, degree_bound, opening_challenge);
+        let check_poly = Self::succinct_check(
+            vk,
+            commitments,
+            point,
+            values,
+            proof,
+            degree_bound,
+            opening_challenge,
+        );
 
         if check_poly.is_none() {
             return Ok(false);
@@ -790,7 +822,6 @@ impl<G: AffineCurve, D: Digest> InnerProductArgPC<G, D> {
         Ok(true)
     }
 }
-
 
 /// The error type for `PolynomialCommitment`.
 #[derive(Debug)]

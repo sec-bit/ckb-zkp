@@ -143,11 +143,10 @@ impl<'a, F: Field> ConstraintSynthesizer<F> for MiMCDemo<'a, F> {
 
 #[test]
 fn mimc_clinkv2_kzg10() {
-    
     use scheme::clinkv2::kzg10::KZG10;
     use scheme::clinkv2::{
-        create_random_proof, prove_to_bytes, verify_from_bytes, verify_proof, Proof, ProveAssignment,
-        VerifyAssignment, VerifyKey,
+        create_random_proof, prove_to_bytes, verify_from_bytes, verify_proof, Proof,
+        ProveAssignment, VerifyAssignment, VerifyKey,
     };
 
     let mut rng = &mut test_rng();
@@ -265,17 +264,14 @@ fn mimc_clinkv2_kzg10() {
     println!("Verifying time: {:?}", verifying_avg);
 }
 
-
 #[test]
 fn mimc_clinkv2_ipa() {
-    
-    use scheme::clinkv2::clinkv2_ipa::{
-        create_random_proof, verify_proof, Proof, ProveAssignment, // prove_to_bytes, verify_from_bytes,
-        VerifyAssignment, VerifyKey,
-    };
-    use scheme::clinkv2::clinkv2_ipa::ipa::InnerProductArgPC;
-    use curve::bn_256::{G1Affine, G1Projective, G2Affine, G2Projective};
     use blake2::Blake2s;
+    use scheme::clinkv2::clinkv2_ipa::ipa::InnerProductArgPC;
+    use scheme::clinkv2::clinkv2_ipa::{
+        create_random_proof, prove_to_bytes, verify_from_bytes, verify_proof, Proof,
+        ProveAssignment, VerifyAssignment, VerifyKey,
+    };
 
     let mut rng = &mut test_rng();
     // Generate the MiMC round constants
@@ -292,8 +288,13 @@ fn mimc_clinkv2_ipa() {
     // Create parameters for our circuit
     let start = Instant::now();
 
-    let ipa_pp = InnerProductArgPC::<G1Affine, Blake2s>::setup(degree, & mut rng).unwrap();
-    let (ipa_ck, ipa_vk) = InnerProductArgPC::<G1Affine, Blake2s>::trim(&ipa_pp, degree).unwrap();
+    let ipa_pp = InnerProductArgPC::<Bn_256, Blake2s>::setup(degree, &mut rng).unwrap();
+    let (ipa_ck, ipa_vk) = InnerProductArgPC::<Bn_256, Blake2s>::trim(&ipa_pp, degree).unwrap();
+
+    let mut vk_bytes = vec![];
+    ipa_vk.write(&mut vk_bytes).unwrap();
+    let new_vk = VerifyKey::read(&vk_bytes[..]).unwrap();
+    assert_eq!(ipa_vk, new_vk);
 
     crs_time += start.elapsed();
 
@@ -301,7 +302,7 @@ fn mimc_clinkv2_ipa() {
     // Prover
     let prove_start = Instant::now();
 
-    let mut prover_pa = ProveAssignment::<G1Affine, Blake2s>::default();
+    let mut prover_pa = ProveAssignment::<Bn_256, Blake2s>::default();
 
     let mut io: Vec<Vec<Fr>> = vec![];
     let mut output: Vec<Fr> = vec![];
@@ -336,7 +337,7 @@ fn mimc_clinkv2_ipa() {
     println!("Start verify prepare...");
     let verify_start = Instant::now();
 
-    let mut verifier_pa = VerifyAssignment::<G1Affine, Blake2s>::default();
+    let mut verifier_pa = VerifyAssignment::<Bn_256, Blake2s>::default();
 
     // Create an instance of our circuit (with the witness)
     let verify_c = MiMCDemo {
@@ -351,34 +352,34 @@ fn mimc_clinkv2_ipa() {
     println!("Start verify...");
 
     // Check the proof
-    // assert!(verify_proof(&verifier_pa, &ipa_vk, &proof, &io).unwrap());
+    assert!(verify_proof(&verifier_pa, &ipa_vk, &proof, &io).unwrap());
 
-    // let mut vk_bytes = vec![];
-    // kzg10_vk.write(&mut vk_bytes).unwrap();
-    // let new_vk = VerifyKey::read(&vk_bytes[..]).unwrap();
-    // assert_eq!(kzg10_vk, new_vk);
+    let mut vk_bytes = vec![];
+    ipa_vk.write(&mut vk_bytes).unwrap();
+    let new_vk = VerifyKey::read(&vk_bytes[..]).unwrap();
+    assert_eq!(ipa_vk, new_vk);
 
-    // let mut tmp_proof_bytes = vec![];
-    // proof.write(&mut tmp_proof_bytes).unwrap();
-    // let new_proof = Proof::read(&tmp_proof_bytes[..]).unwrap();
-    // assert_eq!(proof, new_proof);
+    let mut tmp_proof_bytes = vec![];
+    proof.write(&mut tmp_proof_bytes).unwrap();
+    let new_proof = Proof::read(&tmp_proof_bytes[..]).unwrap();
+    assert_eq!(proof, new_proof);
 
-    // println!("Tmp verify with bytes 1");
-    // assert!(verify_proof(&verifier_pa, &new_vk, &proof, &io).unwrap());
+    println!("Tmp verify with bytes 1");
+    assert!(verify_proof(&verifier_pa, &new_vk, &proof, &io).unwrap());
 
-    // println!("Tmp verify with bytes 2");
-    // assert!(verify_proof(&verifier_pa, &kzg10_vk, &new_proof, &io).unwrap());
+    println!("Tmp verify with bytes 2");
+    assert!(verify_proof(&verifier_pa, &ipa_vk, &new_proof, &io).unwrap());
 
-    // println!("Tmp verify with bytes 3");
-    // assert!(verify_proof(&verifier_pa, &new_vk, &new_proof, &io).unwrap());
+    println!("Tmp verify with bytes 3");
+    assert!(verify_proof(&verifier_pa, &new_vk, &new_proof, &io).unwrap());
     let verify_time = verify_start.elapsed();
 
     println!("Start prove & verify with bytes...");
     assert!(verify_proof(&verifier_pa, &ipa_vk, &proof, &io).unwrap());
 
-    // let (proof_bytes, publics_bytes) = prove_to_bytes(&prover_pa, &kzg10_ck, rng, &io).unwrap();
-    // println!("proof bytes: {}", proof_bytes.len());
-    // assert!(verify_from_bytes(&verifier_pa, &vk_bytes, &proof_bytes, &publics_bytes,).unwrap());
+    let (proof_bytes, publics_bytes) = prove_to_bytes(&prover_pa, &ipa_ck, rng, &io).unwrap();
+    println!("proof bytes: {}", proof_bytes.len());
+    assert!(verify_from_bytes(&verifier_pa, &vk_bytes, &proof_bytes, &publics_bytes,).unwrap());
 
     // Compute time
 
