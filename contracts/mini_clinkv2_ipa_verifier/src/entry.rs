@@ -1,5 +1,5 @@
 use core::result::Result;
-
+use blake2::Blake2s;
 use ckb_std::{ckb_constants::Source, high_level::load_cell_data};
 
 use crate::error::Error;
@@ -7,7 +7,7 @@ use crate::error::Error;
 use ckb_zkp::{
     bn_256,
     clinkv2::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError},
-    clinkv2::{verify_from_bytes, VerifyAssignment},
+    clinkv2::ipa::{verify_from_bytes, VerifyAssignment},
     math::PrimeField,
 };
 
@@ -86,11 +86,11 @@ pub fn main() -> Result<(), Error> {
         num: 10,
     };
 
-    let mut verifier_pa = VerifyAssignment::<bn_256::Bn_256>::default();
+    let mut verifier_pa = VerifyAssignment::<bn_256::Bn_256, Blake2s>::default();
     c.generate_constraints(&mut verifier_pa, 0usize)
         .map_err(|_| Error::Verify)?;
 
-    match verify_from_bytes::<bn_256::Bn_256>(&verifier_pa, &vk_data, &proof_data, &public_data) {
+    match verify_from_bytes::<bn_256::Bn_256, Blake2s>(&verifier_pa, &vk_data, &proof_data, &public_data) {
         Ok(true) => Ok(()),
         _ => Err(Error::Verify),
     }

@@ -230,18 +230,19 @@ impl<F: PrimeField> clinkv2_r1cs::ConstraintSynthesizer<F> for Clinkv2Mini<F> {
 }
 
 #[test]
-fn test_clinkv2_mini() {
-    use ckb_zkp::clinkv2::{
-        kzg10::KZG10, prove_to_bytes, r1cs::ConstraintSynthesizer, verify_from_bytes,
+fn test_clinkv2_kzg10_mini() {
+    use ckb_zkp::clinkv2::kzg10::{
+        KZG10, prove_to_bytes, verify_from_bytes,
         ProveAssignment, VerifyAssignment,
     };
+    use ckb_zkp::clinkv2::r1cs::ConstraintSynthesizer;
 
     let n: usize = 100;
 
     let num = 10;
     let rng = &mut test_rng(); // Only in test code.
 
-    println!("Clinkv2 setup...");
+    println!("Clinkv2 kzg10 setup...");
     let degree: usize = n.next_power_of_two();
     let kzg10_pp = KZG10::<E>::setup(degree, false, rng).unwrap();
     let (kzg10_ck, kzg10_vk) = KZG10::<E>::trim(&kzg10_pp, degree).unwrap();
@@ -249,7 +250,7 @@ fn test_clinkv2_mini() {
     let mut vk_bytes = vec![];
     kzg10_vk.write(&mut vk_bytes).unwrap();
 
-    println!("Clinkv2 proving...");
+    println!("Clinkv2 kzg10 proving...");
 
     let mut prover_pa = ProveAssignment::<E>::default();
 
@@ -277,7 +278,7 @@ fn test_clinkv2_mini() {
 
     let (proof, publics) = prove_to_bytes(&prover_pa, &kzg10_ck, rng, &io).unwrap();
 
-    println!("Clinkv2 verifying...");
+    println!("Clinkv2 kzg10 verifying...");
 
     let c = Clinkv2Mini::<Fr> {
         x: None,
@@ -291,14 +292,90 @@ fn test_clinkv2_mini() {
 
     assert!(verify_from_bytes::<E>(&verifier_pa, &vk_bytes, &proof, &publics).unwrap());
 
-    println!("Clinkv2 verifying on CKB...");
+    println!("Clinkv2 kzg10 verifying on CKB...");
 
     proving_test(
         vk_bytes.into(),
         proof.into(),
         publics.into(),
-        "mini_clinkv2_verifier",
-        "clinkv2 verify",
+        "mini_clinkv2_kzg10_verifier",
+        "clinkv2 kzg10 verify",
+    );
+}
+
+#[test]
+fn test_clinkv2_ipa_mini() {
+    use blake2::Blake2s;
+    use ckb_zkp::clinkv2::ipa::{
+        InnerProductArgPC, prove_to_bytes, verify_from_bytes,
+        ProveAssignment, VerifyAssignment,
+    };
+    use ckb_zkp::clinkv2::r1cs::ConstraintSynthesizer;
+
+    let n: usize = 100;
+
+    let num = 10;
+    let rng = &mut test_rng(); // Only in test code.
+
+    println!("Clinkv2 ipa setup...");
+    let degree: usize = n.next_power_of_two();
+
+    let ipa_pp = InnerProductArgPC::<E, Blake2s>::setup(degree, rng).unwrap();
+    let (ipa_ck, ipa_vk) = InnerProductArgPC::<E, Blake2s>::trim(&ipa_pp, degree).unwrap();
+
+    let mut vk_bytes = vec![];
+    ipa_vk.write(&mut vk_bytes).unwrap();
+
+    println!("Clinkv2 ipa proving...");
+
+    let mut prover_pa = ProveAssignment::<E, Blake2s>::default();
+
+    let mut io: Vec<Vec<Fr>> = vec![];
+    let mut output: Vec<Fr> = vec![];
+
+    for i in 0..n {
+        // Generate a random preimage and compute the image
+        {
+            // Create an instance of our circuit (with the witness)
+            let c = Clinkv2Mini::<Fr> {
+                x: Some(Fr::from(2u32)),
+                y: Some(Fr::from(3u32)),
+                z: Some(Fr::from(10u32)),
+                num: num,
+            };
+
+            output.push(Fr::from(10u32));
+            c.generate_constraints(&mut prover_pa, i).unwrap();
+        }
+    }
+    let one = vec![Fr::one(); n];
+    io.push(one);
+    io.push(output);
+
+    let (proof, publics) = prove_to_bytes(&prover_pa, &ipa_ck, rng, &io).unwrap();
+
+    println!("Clinkv2 ipa verifying...");
+
+    let c = Clinkv2Mini::<Fr> {
+        x: None,
+        y: None,
+        z: None,
+        num: num,
+    };
+
+    let mut verifier_pa = VerifyAssignment::<E, Blake2s>::default();
+    c.generate_constraints(&mut verifier_pa, 0usize).unwrap();
+
+    assert!(verify_from_bytes::<E, Blake2s>(&verifier_pa, &vk_bytes, &proof, &publics).unwrap());
+
+    println!("Clinkv2 ipa verifying on CKB...");
+
+    proving_test(
+        vk_bytes.into(),
+        proof.into(),
+        publics.into(),
+        "mini_clinkv2_ipa_verifier",
+        "clinkv2 ipa verify",
     );
 }
 

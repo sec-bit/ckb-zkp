@@ -11,6 +11,7 @@
 #![forbid(unsafe_code)]
 #![deny(trivial_casts)]
 
+#[allow(unused_imports)]
 #[macro_use]
 extern crate derivative;
 
@@ -35,12 +36,7 @@ use std::{
     vec::Vec,
 };
 
-#[cfg(any(
-    feature = "groth16",
-    feature = "bulletproofs",
-    feature = "spartan",
-    feature = "asvc"
-))]
+#[allow(unused_imports)]
 #[macro_use]
 extern crate math;
 
@@ -56,6 +52,7 @@ pub mod bulletproofs;
 
 #[cfg(feature = "asvc")]
 pub mod asvc;
+
 #[cfg(feature = "marlin")]
 pub mod marlin;
 
