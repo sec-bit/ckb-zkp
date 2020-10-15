@@ -7,7 +7,8 @@ use crate::{PrimeField, Vec};
 use core::ops::{Add, AddAssign, Div, DivAssign, Index, Mul, MulAssign, Sub, SubAssign};
 
 /// Stores a polynomial in evaluation form.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+#[serde(bound(serialize = "F: serde::Serialize", deserialize = "F: for<'a> serde::Deserialize<'a>"))]
 pub struct Evaluations<F: PrimeField> {
     /// The evaluations of a polynomial over the domain `D`
     pub evals: Vec<F>,
@@ -18,25 +19,8 @@ pub struct Evaluations<F: PrimeField> {
 impl<F: PrimeField> crate::ToBytes for Evaluations<F> {
     #[inline]
     fn write<W: crate::io::Write>(&self, mut w: W) -> crate::io::Result<()> {
-        (self.evals.len() as u32).write(&mut w)?;
-        for i in &self.evals {
-            i.write(&mut w)?;
-        }
+        self.evals.write(&mut w)?;
         self.domain.write(&mut w)
-    }
-}
-
-impl<F: PrimeField> crate::FromBytes for Evaluations<F> {
-    #[inline]
-    fn read<R: crate::io::Read>(mut r: R) -> crate::io::Result<Self> {
-        let len = u32::read(&mut r)?;
-        let mut evals = Vec::new();
-        for _ in 0..len {
-            evals.push(F::read(&mut r)?);
-        }
-
-        let domain = EvaluationDomain::read(&mut r)?;
-        Ok(Self { evals, domain })
     }
 }
 

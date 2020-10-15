@@ -53,7 +53,7 @@ impl<'a, E: PairingEngine> Powers<'a, E> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CommitterKey<E: PairingEngine> {
     pub powers_of_g: Vec<E::G1Affine>,
     pub powers_of_gamma_g: Vec<E::G1Affine>,
@@ -64,38 +64,9 @@ pub struct CommitterKey<E: PairingEngine> {
 impl<E: PairingEngine> math::ToBytes for CommitterKey<E> {
     #[inline]
     fn write<W: math::io::Write>(&self, mut w: W) -> math::io::Result<()> {
-        (self.powers_of_g.len() as u32).write(&mut w)?;
-        for i in &self.powers_of_g {
-            i.write(&mut w)?;
-        }
-        (self.powers_of_gamma_g.len() as u32).write(&mut w)?;
-        for i in &self.powers_of_gamma_g {
-            i.write(&mut w)?;
-        }
+        self.powers_of_g.write(&mut w)?;
+        self.powers_of_gamma_g.write(&mut w)?;
         (self.supported_degree as u64).write(&mut w)
-    }
-}
-
-impl<E: PairingEngine> math::FromBytes for CommitterKey<E> {
-    #[inline]
-    fn read<R: math::io::Read>(mut r: R) -> math::io::Result<Self> {
-        let mut powers_of_g = Vec::new();
-        let len = u32::read(&mut r)?;
-        for _ in 0..len {
-            powers_of_g.push(E::G1Affine::read(&mut r)?);
-        }
-        let mut powers_of_gamma_g = Vec::new();
-        let p_len = u32::read(&mut r)?;
-        for _ in 0..p_len {
-            powers_of_gamma_g.push(E::G1Affine::read(&mut r)?);
-        }
-        let supported_degree = u64::read(&mut r)? as usize;
-
-        Ok(Self {
-            powers_of_g,
-            powers_of_gamma_g,
-            supported_degree,
-        })
     }
 }
 
@@ -125,7 +96,7 @@ impl<E: PairingEngine> CommitterKey<E> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct VerifierKey<E: PairingEngine> {
     pub g: E::G1Affine,
     pub gamma_g: E::G1Affine,
@@ -144,25 +115,7 @@ impl<E: PairingEngine> math::ToBytes for VerifierKey<E> {
     }
 }
 
-impl<E: PairingEngine> math::FromBytes for VerifierKey<E> {
-    fn read<R: math::io::Read>(mut r: R) -> math::io::Result<Self> {
-        let g = E::G1Affine::read(&mut r)?;
-        let gamma_g = E::G1Affine::read(&mut r)?;
-        let h = E::G2Affine::read(&mut r)?;
-        let beta_h = E::G2Affine::read(&mut r)?;
-        let supported_degree = u64::read(&mut r)? as usize;
-
-        Ok(Self {
-            g,
-            gamma_g,
-            h,
-            beta_h,
-            supported_degree,
-        })
-    }
-}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Comm<E: PairingEngine>(pub E::G1Affine);
 
 impl<E: PairingEngine> Comm<E> {
@@ -178,14 +131,7 @@ impl<E: PairingEngine> math::ToBytes for Comm<E> {
     }
 }
 
-impl<E: PairingEngine> math::FromBytes for Comm<E> {
-    #[inline]
-    fn read<R: math::io::Read>(mut r: R) -> math::io::Result<Self> {
-        Ok(Self(E::G1Affine::read(&mut r)?))
-    }
-}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Commitment<E: PairingEngine> {
     pub comm: Comm<E>,
     pub shifted_comm: Option<Comm<E>>,
@@ -204,23 +150,8 @@ impl<E: PairingEngine> math::ToBytes for Commitment<E> {
     }
 }
 
-impl<E: PairingEngine> math::FromBytes for Commitment<E> {
-    #[inline]
-    fn read<R: math::io::Read>(mut r: R) -> math::io::Result<Self> {
-        let comm = Comm::read(&mut r)?;
-        let shifted_exists = bool::read(&mut r)?;
-        let shifted_value = Comm::read(&mut r)?;
-        let shifted_comm = if shifted_exists {
-            Some(shifted_value)
-        } else {
-            None
-        };
-
-        Ok(Self { comm, shifted_comm })
-    }
-}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(bound(serialize = "F: serde::Serialize", deserialize = "F: for<'a> serde::Deserialize<'a>"))]
 pub struct Rand<F: Field> {
     pub blinding_polynomial: Polynomial<F>,
 }
@@ -272,7 +203,8 @@ impl<'a, F: Field> AddAssign<(F, &'a Rand<F>)> for Rand<F> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(bound(serialize = "F: serde::Serialize", deserialize = "F: for<'e> serde::Deserialize<'e>"))]
 pub struct Randomness<F: Field> {
     pub rand: Rand<F>,
     pub shifted_rand: Option<Rand<F>>,
@@ -291,77 +223,13 @@ impl<F: Field> math::ToBytes for Randomness<F> {
     }
 }
 
-impl<F: Field> math::FromBytes for Randomness<F> {
-    #[inline]
-    fn read<R: math::io::Read>(mut r: R) -> math::io::Result<Self> {
-        let rand = Rand::read(&mut r)?;
-        let shifted_exists = bool::read(&mut r)?;
-        let shifted_value = Rand::read(&mut r)?;
-        let shifted_rand = if shifted_exists {
-            Some(shifted_value)
-        } else {
-            None
-        };
-
-        Ok(Self { rand, shifted_rand })
-    }
-}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(bound(serialize = "F: serde::Serialize", deserialize = "F: for<'e> serde::Deserialize<'e>"))]
 pub struct LabeledPolynomial<'a, F: Field> {
     label: String,
     polynomial: Cow<'a, Polynomial<F>>,
     degree_bound: Option<usize>,
     hiding_bound: Option<usize>,
-}
-
-impl<'a, F: Field> math::ToBytes for LabeledPolynomial<'a, F> {
-    #[inline]
-    fn write<W: math::io::Write>(&self, mut w: W) -> math::io::Result<()> {
-        (self.label.len() as u32).write(&mut w)?;
-        self.label.as_bytes().write(&mut w)?;
-
-        self.polynomial.write(&mut w)?;
-        let degree_exsits = self.degree_bound.is_some();
-        degree_exsits.write(&mut w)?;
-        (self.degree_bound.unwrap_or(0) as u64).write(&mut w)?;
-
-        let hiding_exsits = self.hiding_bound.is_some();
-        hiding_exsits.write(&mut w)?;
-        (self.hiding_bound.unwrap_or(0) as u64).write(&mut w)
-    }
-}
-
-impl<'a, F: Field> math::FromBytes for LabeledPolynomial<'a, F> {
-    #[inline]
-    fn read<R: math::io::Read>(mut r: R) -> math::io::Result<Self> {
-        let s_len = u32::read(&mut r)? as usize;
-        let mut s_bytes = vec![0u8; s_len];
-        r.read_exact(&mut s_bytes)?;
-        let label = String::from_utf8(s_bytes).map_err(|_| math::error(""))?;
-
-        let polynomial = Cow::Owned(Polynomial::read(&mut r)?);
-        let degree_exists = bool::read(&mut r)?;
-        let degree_value = u64::read(&mut r)? as usize;
-        let degree_bound = if degree_exists {
-            Some(degree_value)
-        } else {
-            None
-        };
-        let hiding_exists = bool::read(&mut r)?;
-        let hiding_value = u64::read(&mut r)? as usize;
-        let hiding_bound = if hiding_exists {
-            Some(hiding_value)
-        } else {
-            None
-        };
-        Ok(Self {
-            label,
-            polynomial,
-            degree_bound,
-            hiding_bound,
-        })
-    }
 }
 
 impl<'a, F: Field> LabeledPolynomial<'a, F> {
@@ -438,36 +306,10 @@ impl<E: PairingEngine> math::ToBytes for LabeledCommitment<E> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Proof<E: PairingEngine> {
     pub w: E::G1Affine,
     pub rand_v: Option<E::Fr>,
-}
-
-impl<E: PairingEngine> math::ToBytes for Proof<E> {
-    #[inline]
-    fn write<W: math::io::Write>(&self, mut w: W) -> math::io::Result<()> {
-        self.w.write(&mut w)?;
-        let rand_exists = self.rand_v.is_some();
-        rand_exists.write(&mut w)?;
-        self.rand_v
-            .as_ref()
-            .unwrap_or(&E::Fr::default())
-            .write(&mut w)
-    }
-}
-
-impl<E: PairingEngine> math::FromBytes for Proof<E> {
-    #[inline]
-    fn read<R: math::io::Read>(mut r: R) -> math::io::Result<Self> {
-        let w = E::G1Affine::read(&mut r)?;
-        let rand_exists = bool::read(&mut r)?;
-        let rand_value = E::Fr::read(&mut r)?;
-
-        let rand_v = if rand_exists { Some(rand_value) } else { None };
-
-        Ok(Self { w, rand_v })
-    }
 }
 
 pub type QuerySet<F> = BTreeSet<(String, F)>;

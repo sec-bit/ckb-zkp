@@ -43,43 +43,8 @@ impl<F: PrimeField> BivariatePoly<F> for EvaluationDomain<F> {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct Matrix<F: math::ToBytes + math::FromBytes>(pub Vec<Vec<(F, usize)>>);
-
-impl<F: math::ToBytes + math::FromBytes> math::ToBytes for Matrix<F> {
-    #[inline]
-    fn write<W: math::io::Write>(&self, mut w: W) -> math::io::Result<()> {
-        (self.0.len() as u32).write(&mut w)?;
-        for i in &self.0 {
-            (i.len() as u32).write(&mut w)?;
-            for ii in i {
-                ii.0.write(&mut w)?;
-                (ii.1 as u64).write(&mut w)?;
-            }
-        }
-
-        Ok(())
-    }
-}
-
-impl<F: math::ToBytes + math::FromBytes> math::FromBytes for Matrix<F> {
-    #[inline]
-    fn read<R: math::io::Read>(mut r: R) -> math::io::Result<Self> {
-        let len = u32::read(&mut r)?;
-        let mut all = Vec::new();
-        for _ in 0..len {
-            let l = u32::read(&mut r)?;
-            let mut ll = Vec::new();
-            for _ in 0..l {
-                let f = F::read(&mut r)?;
-                let i = u64::read(&mut r)? as usize;
-                ll.push((f, i));
-            }
-            all.push(ll);
-        }
-        Ok(Self(all))
-    }
-}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Matrix<F>(pub Vec<Vec<(F, usize)>>);
 
 pub fn matrix_density<F: math::ToBytes + math::FromBytes>(m: &Matrix<F>) -> usize {
     if m.0.is_empty() {
@@ -112,7 +77,8 @@ fn is_in_ascending_order<T>(v: &[T], is_less_than: impl Fn(&T, &T) -> bool) -> b
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(bound(serialize = "F: serde::Serialize", deserialize = "F: for<'e> serde::Deserialize<'e>"))]
 pub struct MatrixPolynomials<'a, F: PrimeField> {
     pub row: LabeledPolynomial<'a, F>,
     pub col: LabeledPolynomial<'a, F>,
@@ -127,58 +93,6 @@ pub struct MatrixPolynomials<'a, F: PrimeField> {
     pub col_evals_on_b: Cow<'a, EvaluationsOnDomain<F>>,
     pub val_evals_on_b: Cow<'a, EvaluationsOnDomain<F>>,
     pub row_col_evals_on_b: Cow<'a, EvaluationsOnDomain<F>>, // reduce h_2 from 6k-6 to 3k-3
-}
-
-impl<'a, F: PrimeField> math::ToBytes for MatrixPolynomials<'a, F> {
-    #[inline]
-    fn write<W: math::io::Write>(&self, mut w: W) -> math::io::Result<()> {
-        self.row.write(&mut w)?;
-        self.col.write(&mut w)?;
-        self.val.write(&mut w)?;
-        self.row_col.write(&mut w)?;
-        self.row_evals_on_k.write(&mut w)?;
-        self.col_evals_on_k.write(&mut w)?;
-        self.val_evals_on_k.write(&mut w)?;
-
-        self.row_evals_on_b.write(&mut w)?;
-        self.col_evals_on_b.write(&mut w)?;
-        self.val_evals_on_b.write(&mut w)?;
-        self.row_col_evals_on_b.write(&mut w)
-    }
-}
-
-impl<'a, F: PrimeField> math::FromBytes for MatrixPolynomials<'a, F> {
-    #[inline]
-    fn read<R: math::io::Read>(mut r: R) -> math::io::Result<Self> {
-        let row = LabeledPolynomial::read(&mut r)?;
-        let col = LabeledPolynomial::read(&mut r)?;
-        let val = LabeledPolynomial::read(&mut r)?;
-        let row_col = LabeledPolynomial::read(&mut r)?;
-
-        let row_evals_on_k = Cow::Owned(EvaluationsOnDomain::read(&mut r)?);
-        let col_evals_on_k = Cow::Owned(EvaluationsOnDomain::read(&mut r)?);
-        let val_evals_on_k = Cow::Owned(EvaluationsOnDomain::read(&mut r)?);
-
-        let row_evals_on_b = Cow::Owned(EvaluationsOnDomain::read(&mut r)?);
-        let col_evals_on_b = Cow::Owned(EvaluationsOnDomain::read(&mut r)?);
-        let val_evals_on_b = Cow::Owned(EvaluationsOnDomain::read(&mut r)?);
-        let row_col_evals_on_b = Cow::Owned(EvaluationsOnDomain::read(&mut r)?);
-
-        Ok(Self {
-            row,
-            col,
-            val,
-            row_col,
-            row_evals_on_k,
-            col_evals_on_k,
-            val_evals_on_k,
-
-            row_evals_on_b,
-            col_evals_on_b,
-            val_evals_on_b,
-            row_col_evals_on_b,
-        })
-    }
 }
 
 pub fn compose_matrix_polynomials<'a, F: PrimeField>(
