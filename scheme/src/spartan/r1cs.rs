@@ -163,14 +163,14 @@ pub fn switch_matrix_to_list<E: PairingEngine>(
             match col {
                 Index::Aux(i) => {
                     if let Some(x) = ms.get_mut(i) {
-                        *x = *val + *x;
+                        *x = *val + x;
                     } else {
                         ms.insert(*i, *val);
                     }
                 }
                 Index::Input(i) => {
                     if let Some(x) = ms.get_mut(&(*i + witness_len)) {
-                        *x = *val + *x;
+                        *x = *val + x;
                     } else {
                         ms.insert(*i + witness_len, *val);
                     }

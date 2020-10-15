@@ -297,7 +297,7 @@ impl<G: Curve, D: Digest> InnerProductArgPC<G, D> {
             cur_challenge *= &opening_challenge;
 
             let shift = point.pow([(vk.supported_degree() - degree_bound) as u64]);
-            combined_v += &(cur_challenge * value * shift);
+            combined_v += &(cur_challenge * value * &shift);
             combined_commitment_proj += &commitment.shifted_comm.mul(cur_challenge);
 
             cur_challenge *= &opening_challenge;
@@ -632,11 +632,11 @@ impl<G: Curve, D: Digest> InnerProductArgPC<G, D> {
 
             math::cfg_iter_mut!(coeffs_l)
                 .zip(coeffs_r)
-                .for_each(|(c_l, c_r)| *c_l += &(round_challenge_inv * *c_r));
+                .for_each(|(c_l, c_r)| *c_l += &(round_challenge_inv * c_r));
 
             math::cfg_iter_mut!(z_l)
                 .zip(z_r)
-                .for_each(|(z_l, z_r)| *z_l += &(round_challenge * *z_r));
+                .for_each(|(z_l, z_r)| *z_l += &(round_challenge * z_r));
 
             math::cfg_iter_mut!(key_proj_l)
                 .zip(key_r)
