@@ -1,5 +1,3 @@
-// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
-
 use crate::{
     bytes::{FromBytes, ToBytes},
     curves::{
@@ -24,6 +22,7 @@ pub type G2Projective<P> = GroupProjective<<P as Bls12Parameters>::G2Parameters>
     PartialEq(bound = "P: Bls12Parameters"),
     Eq(bound = "P: Bls12Parameters")
 )]
+#[derive(Serialize, Deserialize)]
 pub struct G2Prepared<P: Bls12Parameters> {
     // Stores the coefficients of the line evaluations as calculated in
     // https://eprint.iacr.org/2013/722.pdf
@@ -37,6 +36,7 @@ pub struct G2Prepared<P: Bls12Parameters> {
     Copy(bound = "P: Bls12Parameters"),
     Debug(bound = "P: Bls12Parameters")
 )]
+#[derive(Serialize, Deserialize)]
 struct G2HomProjective<P: Bls12Parameters> {
     x: Fp2<P::Fp2Params>,
     y: Fp2<P::Fp2Params>,

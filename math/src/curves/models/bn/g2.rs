@@ -23,6 +23,7 @@ pub type G2Projective<P> = GroupProjective<<P as BnParameters>::G2Parameters>;
     PartialEq(bound = "P: BnParameters"),
     Eq(bound = "P: BnParameters")
 )]
+#[derive(Serialize, Deserialize)]
 pub struct G2Prepared<P: BnParameters> {
     // Stores the coefficients of the line evaluations as calculated in
     // https://eprint.iacr.org/2013/722.pdf
@@ -36,6 +37,7 @@ pub struct G2Prepared<P: BnParameters> {
     Copy(bound = "P: BnParameters"),
     Debug(bound = "P: BnParameters")
 )]
+#[derive(Serialize, Deserialize)]
 struct G2HomProjective<P: BnParameters> {
     x: Fp2<P::Fp2Params>,
     y: Fp2<P::Fp2Params>,

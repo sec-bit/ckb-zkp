@@ -1,10 +1,7 @@
-// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
-
 use crate::{
     bytes::{FromBytes, ToBytes},
     fields::BitIterator,
     io::{Read, Result as IoResult, Write},
-    CanonicalDeserialize, CanonicalSerialize, ConstantSerializedSize, SerializationError,
     UniformRand, Vec,
 };
 use core::fmt::{Debug, Display};
@@ -24,32 +21,6 @@ bigint_impl!(BigInteger384, 6);
 bigint_impl!(BigInteger768, 12);
 bigint_impl!(BigInteger832, 13);
 
-impl<T: BigInteger> CanonicalSerialize for T {
-    #[inline]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
-        self.write(writer)?;
-        Ok(())
-    }
-
-    #[inline]
-    fn serialized_size(&self) -> usize {
-        Self::SERIALIZED_SIZE
-    }
-}
-
-impl<T: BigInteger> ConstantSerializedSize for T {
-    const SERIALIZED_SIZE: usize = Self::NUM_LIMBS * 8;
-    const UNCOMPRESSED_SIZE: usize = Self::SERIALIZED_SIZE;
-}
-
-impl<T: BigInteger> CanonicalDeserialize for T {
-    #[inline]
-    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
-        let value = Self::read(reader)?;
-        Ok(value)
-    }
-}
-
 #[cfg(test)]
 mod tests;
 
@@ -58,9 +29,6 @@ mod tests;
 pub trait BigInteger:
     ToBytes
     + FromBytes
-    + CanonicalSerialize
-    + ConstantSerializedSize
-    + CanonicalDeserialize
     + Copy
     + Clone
     + Debug
@@ -76,6 +44,8 @@ pub trait BigInteger:
     + AsMut<[u64]>
     + AsRef<[u64]>
     + From<u64>
+    + serde::Serialize
+    + for<'a> serde::Deserialize<'a>
 {
     /// Number of limbs.
     const NUM_LIMBS: usize;

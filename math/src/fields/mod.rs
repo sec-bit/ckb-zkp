@@ -1,10 +1,7 @@
-// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
-
 use crate::{
     biginteger::BigInteger,
     bytes::{FromBytes, ToBytes},
-    CanonicalDeserialize, CanonicalDeserializeWithFlags, CanonicalSerialize,
-    CanonicalSerializeWithFlags, ConstantSerializedSize, UniformRand, Vec,
+    UniformRand, Vec,
 };
 use core::{
     fmt::{Debug, Display},
@@ -66,11 +63,6 @@ pub trait Field:
     + Zero
     + Sized
     + Hash
-    + CanonicalSerialize
-    + ConstantSerializedSize
-    + CanonicalSerializeWithFlags
-    + CanonicalDeserialize
-    + CanonicalDeserializeWithFlags
     + Add<Self, Output = Self>
     + Sub<Self, Output = Self>
     + Mul<Self, Output = Self>
@@ -91,6 +83,8 @@ pub trait Field:
     + for<'a> core::iter::Sum<&'a Self>
     + core::iter::Product<Self>
     + for<'a> core::iter::Product<&'a Self>
+    + serde::Serialize
+    + for<'a> serde::Deserialize<'a>
 {
     /// Returns the characteristic of the field.
     fn characteristic<'a>() -> &'a [u64];
@@ -336,12 +330,6 @@ impl_field_bigint_conv!(Fp320, BigInteger320, Fp320Parameters);
 impl_field_bigint_conv!(Fp384, BigInteger384, Fp384Parameters);
 impl_field_bigint_conv!(Fp768, BigInteger768, Fp768Parameters);
 impl_field_bigint_conv!(Fp832, BigInteger832, Fp832Parameters);
-
-impl_prime_field_serializer!(Fp256, Fp256Parameters, 32);
-impl_prime_field_serializer!(Fp320, Fp320Parameters, 40);
-impl_prime_field_serializer!(Fp384, Fp384Parameters, 48);
-impl_prime_field_serializer!(Fp768, Fp768Parameters, 96);
-impl_prime_field_serializer!(Fp832, Fp832Parameters, 104);
 
 pub fn batch_inversion<F: Field>(v: &mut [F]) {
     // Montgomery’s Trick and Fast Implementation of Masked AES

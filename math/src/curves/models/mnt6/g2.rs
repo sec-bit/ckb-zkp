@@ -1,5 +1,3 @@
-// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
-
 use crate::{
     bytes::{FromBytes, ToBytes},
     curves::{
@@ -23,6 +21,7 @@ pub type G2Projective<P> = GroupProjective<<P as MNT6Parameters>::G2Parameters>;
     PartialEq(bound = "P: MNT6Parameters"),
     Eq(bound = "P: MNT6Parameters")
 )]
+#[derive(Serialize, Deserialize)]
 pub struct G2Prepared<P: MNT6Parameters> {
     pub x: Fp3<P::Fp3Params>,
     pub y: Fp3<P::Fp3Params>,
@@ -132,6 +131,7 @@ pub(super) struct G2ProjectiveExtended<P: MNT6Parameters> {
     PartialEq(bound = "P: MNT6Parameters"),
     Eq(bound = "P: MNT6Parameters")
 )]
+#[derive(Serialize, Deserialize)]
 pub struct AteDoubleCoefficients<P: MNT6Parameters> {
     pub c_h: Fp3<P::Fp3Params>,
     pub c_4c: Fp3<P::Fp3Params>,
@@ -146,6 +146,7 @@ pub struct AteDoubleCoefficients<P: MNT6Parameters> {
     PartialEq(bound = "P: MNT6Parameters"),
     Eq(bound = "P: MNT6Parameters")
 )]
+#[derive(Serialize, Deserialize)]
 pub struct AteAdditionCoefficients<P: MNT6Parameters> {
     pub c_l1: Fp3<P::Fp3Params>,
     pub c_rz: Fp3<P::Fp3Params>,

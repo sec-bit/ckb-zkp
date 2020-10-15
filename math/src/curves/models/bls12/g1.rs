@@ -1,5 +1,3 @@
-// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
-
 use crate::{
     bytes::ToBytes,
     curves::{
@@ -21,6 +19,7 @@ pub type G1Projective<P> = GroupProjective<<P as Bls12Parameters>::G1Parameters>
     PartialEq(bound = "P: Bls12Parameters"),
     Eq(bound = "P: Bls12Parameters")
 )]
+#[derive(Serialize, Deserialize)]
 pub struct G1Prepared<P: Bls12Parameters>(pub G1Affine<P>);
 
 impl<P: Bls12Parameters> From<G1Affine<P>> for G1Prepared<P> {

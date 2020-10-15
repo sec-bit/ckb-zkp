@@ -1,9 +1,5 @@
-// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
-
 use crate::{
     io::{Read, Result as IoResult, Write},
-    CanonicalDeserialize, CanonicalDeserializeWithFlags, CanonicalSerialize,
-    CanonicalSerializeWithFlags, ConstantSerializedSize, EmptyFlags, Flags, SerializationError,
     UniformRand,
 };
 use core::{
@@ -49,6 +45,7 @@ pub trait Fp2Parameters: 'static + Send + Sync {
     PartialEq(bound = "P: Fp2Parameters"),
     Eq(bound = "P: Fp2Parameters")
 )]
+#[derive(Serialize, Deserialize)]
 pub struct Fp2<P: Fp2Parameters> {
     pub c0: P::Fp,
     pub c1: P::Fp,
@@ -76,8 +73,8 @@ impl<P: Fp2Parameters> Fp2<P> {
     }
 
     pub fn mul_assign_by_fp(&mut self, element: &P::Fp) {
-        self.c0.mul_assign(&element);
-        self.c1.mul_assign(&element);
+        self.c0.mul_assign(element);
+        self.c1.mul_assign(element);
     }
 }
 
@@ -412,56 +409,5 @@ impl<'a, P: Fp2Parameters> DivAssign<&'a Self> for Fp2<P> {
 impl<P: Fp2Parameters> fmt::Display for Fp2<P> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Fp2({} + {} * u)", self.c0, self.c1)
-    }
-}
-
-impl<P: Fp2Parameters> CanonicalSerializeWithFlags for Fp2<P> {
-    #[inline]
-    fn serialize_with_flags<W: Write, F: Flags>(
-        &self,
-        writer: &mut W,
-        flags: F,
-    ) -> Result<(), SerializationError> {
-        self.c0.serialize(writer)?;
-        self.c1.serialize_with_flags(writer, flags)?;
-        Ok(())
-    }
-}
-
-impl<P: Fp2Parameters> CanonicalSerialize for Fp2<P> {
-    #[inline]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
-        self.serialize_with_flags(writer, EmptyFlags)
-    }
-
-    #[inline]
-    fn serialized_size(&self) -> usize {
-        Self::SERIALIZED_SIZE
-    }
-}
-
-impl<P: Fp2Parameters> ConstantSerializedSize for Fp2<P> {
-    const SERIALIZED_SIZE: usize = 2 * <P::Fp as ConstantSerializedSize>::SERIALIZED_SIZE;
-    const UNCOMPRESSED_SIZE: usize = Self::SERIALIZED_SIZE;
-}
-
-impl<P: Fp2Parameters> CanonicalDeserializeWithFlags for Fp2<P> {
-    #[inline]
-    fn deserialize_with_flags<R: Read, F: Flags>(
-        reader: &mut R,
-    ) -> Result<(Self, F), SerializationError> {
-        let c0: P::Fp = CanonicalDeserialize::deserialize(reader)?;
-        let (c1, flags): (P::Fp, _) =
-            CanonicalDeserializeWithFlags::deserialize_with_flags(reader)?;
-        Ok((Fp2::new(c0, c1), flags))
-    }
-}
-
-impl<P: Fp2Parameters> CanonicalDeserialize for Fp2<P> {
-    #[inline]
-    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
-        let c0: P::Fp = CanonicalDeserialize::deserialize(reader)?;
-        let c1: P::Fp = CanonicalDeserialize::deserialize(reader)?;
-        Ok(Fp2::new(c0, c1))
     }
 }

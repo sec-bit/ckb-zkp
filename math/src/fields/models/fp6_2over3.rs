@@ -1,10 +1,4 @@
-// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
-
-use crate::{
-    CanonicalDeserialize, CanonicalDeserializeWithFlags, CanonicalSerialize,
-    CanonicalSerializeWithFlags, ConstantSerializedSize, EmptyFlags, Flags, SerializationError,
-    UniformRand,
-};
+use crate::UniformRand;
 use core::{
     cmp::Ordering,
     fmt,
@@ -48,6 +42,7 @@ pub trait Fp6Parameters: 'static + Send + Sync {
     PartialEq(bound = "P: Fp6Parameters"),
     Eq(bound = "P: Fp6Parameters")
 )]
+#[derive(Serialize, Deserialize)]
 pub struct Fp6<P: Fp6Parameters> {
     pub c0: Fp3<P::Fp3Params>,
     pub c1: Fp3<P::Fp3Params>,
@@ -420,56 +415,5 @@ impl<'a, P: Fp6Parameters> From<&'a [bool]> for Fp6<P> {
 impl<P: Fp6Parameters> fmt::Display for Fp6<P> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Fp6_2over3({}, {})", self.c0, self.c1)
-    }
-}
-
-impl<P: Fp6Parameters> CanonicalSerializeWithFlags for Fp6<P> {
-    #[inline]
-    fn serialize_with_flags<W: Write, F: Flags>(
-        &self,
-        writer: &mut W,
-        flags: F,
-    ) -> Result<(), SerializationError> {
-        self.c0.serialize(writer)?;
-        self.c1.serialize_with_flags(writer, flags)?;
-        Ok(())
-    }
-}
-
-impl<P: Fp6Parameters> CanonicalSerialize for Fp6<P> {
-    #[inline]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
-        self.serialize_with_flags(writer, EmptyFlags)
-    }
-
-    #[inline]
-    fn serialized_size(&self) -> usize {
-        Self::SERIALIZED_SIZE
-    }
-}
-
-impl<P: Fp6Parameters> ConstantSerializedSize for Fp6<P> {
-    const SERIALIZED_SIZE: usize =
-        2 * <Fp3<P::Fp3Params> as ConstantSerializedSize>::SERIALIZED_SIZE;
-    const UNCOMPRESSED_SIZE: usize = Self::SERIALIZED_SIZE;
-}
-
-impl<P: Fp6Parameters> CanonicalDeserializeWithFlags for Fp6<P> {
-    #[inline]
-    fn deserialize_with_flags<R: Read, F: Flags>(
-        reader: &mut R,
-    ) -> Result<(Self, F), SerializationError> {
-        let c0 = Fp3::deserialize(reader)?;
-        let (c1, flags) = Fp3::deserialize_with_flags(reader)?;
-        Ok((Fp6::new(c0, c1), flags))
-    }
-}
-
-impl<P: Fp6Parameters> CanonicalDeserialize for Fp6<P> {
-    #[inline]
-    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
-        let c0 = Fp3::deserialize(reader)?;
-        let c1 = Fp3::deserialize(reader)?;
-        Ok(Fp6::new(c0, c1))
     }
 }

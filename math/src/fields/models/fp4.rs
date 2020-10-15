@@ -1,10 +1,6 @@
-// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
-
 use crate::{
     io::{Read, Result as IoResult, Write},
-    BigInteger, CanonicalDeserialize, CanonicalDeserializeWithFlags, CanonicalSerialize,
-    CanonicalSerializeWithFlags, ConstantSerializedSize, EmptyFlags, Flags, SerializationError,
-    UniformRand,
+    BigInteger, UniformRand,
 };
 use core::{
     cmp::{Ord, Ordering, PartialOrd},
@@ -48,6 +44,7 @@ pub trait Fp4Parameters: 'static + Send + Sync {
     PartialEq(bound = "P: Fp4Parameters"),
     Eq(bound = "P: Fp4Parameters")
 )]
+#[derive(Serialize, Deserialize)]
 pub struct Fp4<P: Fp4Parameters> {
     pub c0: Fp2<P::Fp2Params>,
     pub c1: Fp2<P::Fp2Params>,
@@ -403,52 +400,5 @@ impl<'a, P: Fp4Parameters> DivAssign<&'a Self> for Fp4<P> {
 impl<P: Fp4Parameters> fmt::Display for Fp4<P> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Fp4({} + {} * u)", self.c0, self.c1)
-    }
-}
-
-impl<P: Fp4Parameters> CanonicalSerializeWithFlags for Fp4<P> {
-    fn serialize_with_flags<W: Write, F: Flags>(
-        &self,
-        writer: &mut W,
-        flags: F,
-    ) -> Result<(), SerializationError> {
-        self.c0.serialize(writer)?;
-        self.c1.serialize_with_flags(writer, flags)?;
-        Ok(())
-    }
-}
-
-impl<P: Fp4Parameters> CanonicalSerialize for Fp4<P> {
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
-        self.serialize_with_flags(writer, EmptyFlags)
-    }
-
-    fn serialized_size(&self) -> usize {
-        self.c0.serialized_size() + self.c1.serialized_size()
-    }
-}
-
-impl<P: Fp4Parameters> ConstantSerializedSize for Fp4<P> {
-    const SERIALIZED_SIZE: usize =
-        2 * <Fp2<P::Fp2Params> as ConstantSerializedSize>::SERIALIZED_SIZE;
-    const UNCOMPRESSED_SIZE: usize = Self::SERIALIZED_SIZE;
-}
-
-impl<P: Fp4Parameters> CanonicalDeserializeWithFlags for Fp4<P> {
-    fn deserialize_with_flags<R: Read, F: Flags>(
-        reader: &mut R,
-    ) -> Result<(Self, F), SerializationError> {
-        let c0: Fp2<P::Fp2Params> = CanonicalDeserialize::deserialize(reader)?;
-        let (c1, flags): (Fp2<P::Fp2Params>, _) =
-            CanonicalDeserializeWithFlags::deserialize_with_flags(reader)?;
-        Ok((Fp4::new(c0, c1), flags))
-    }
-}
-
-impl<P: Fp4Parameters> CanonicalDeserialize for Fp4<P> {
-    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
-        let c0: Fp2<P::Fp2Params> = CanonicalDeserialize::deserialize(reader)?;
-        let c1: Fp2<P::Fp2Params> = CanonicalDeserialize::deserialize(reader)?;
-        Ok(Fp4::new(c0, c1))
     }
 }
