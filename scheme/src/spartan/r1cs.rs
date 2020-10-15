@@ -6,6 +6,7 @@ use math::{log2, Field, One, PairingEngine, Zero};
 use std::collections::HashMap;
 // use std::time::{Duration, Instant};
 
+#[derive(Clone)]
 pub struct R1CSInstance<E: PairingEngine> {
     pub num_inputs: usize,
     pub num_aux: usize,

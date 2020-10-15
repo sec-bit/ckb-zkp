@@ -26,7 +26,7 @@ use merlin::Transcript;
 pub fn verify_nizk_proof<E: PairingEngine>(
     params: &NizkParameters<E>,
     r1cs: &R1CSInstance<E>,
-    inputs: &Vec<E::Fr>,
+    inputs: &[E::Fr],
     proof: &NIZKProof<E>,
 ) -> Result<bool, SynthesisError> {
     let mut transcript = Transcript::new(b"Spartan NIZK proof");
@@ -42,8 +42,7 @@ pub fn verify_nizk_proof<E: PairingEngine>(
         &proof.r1cs_satisfied_proof,
         (eval_a_r, eval_b_r, eval_c_r),
         &mut transcript,
-    )
-    .unwrap();
+    )?;
 
     Ok(result)
 }
@@ -51,10 +50,10 @@ pub fn verify_nizk_proof<E: PairingEngine>(
 pub fn verify_snark_proof<E: PairingEngine>(
     params: &SnarkParameters<E>,
     r1cs: &R1CSInstance<E>,
-    inputs: &Vec<E::Fr>,
+    inputs: &[E::Fr],
     proof: &SNARKProof<E>,
     encode_commit: &EncodeCommit<E>,
-) -> Result<(), SynthesisError> {
+) -> Result<bool, SynthesisError> {
     let mut transcript = Transcript::new(b"Spartan SNARK proof");
 
     let (result, rx, ry) = r1cs_satisfied_verify::<E>(
@@ -64,16 +63,18 @@ pub fn verify_snark_proof<E: PairingEngine>(
         &proof.r1cs_satisfied_proof,
         proof.matrix_evals,
         &mut transcript,
-    )
-    .unwrap();
-    assert!(result);
+    )?;
+
+    if !result {
+        return Ok(false);
+    }
 
     let (eval_a_r, eval_b_r, eval_c_r) = proof.matrix_evals;
-    transcript.append_message(b"Ar_claim", &math::to_bytes!(eval_a_r).unwrap());
-    transcript.append_message(b"Br_claim", &math::to_bytes!(eval_b_r).unwrap());
-    transcript.append_message(b"Cr_claim", &math::to_bytes!(eval_c_r).unwrap());
+    transcript.append_message(b"Ar_claim", &math::to_bytes!(eval_a_r)?);
+    transcript.append_message(b"Br_claim", &math::to_bytes!(eval_b_r)?);
+    transcript.append_message(b"Cr_claim", &math::to_bytes!(eval_c_r)?);
 
-    let result = sparse_poly_eval_verify::<E>(
+    Ok(sparse_poly_eval_verify::<E>(
         &params.r1cs_eval_params,
         &proof.r1cs_evals_proof,
         encode_commit,
@@ -81,25 +82,20 @@ pub fn verify_snark_proof<E: PairingEngine>(
         proof.matrix_evals,
         &mut transcript,
     )
-    .is_ok();
-    assert!(result);
-    Ok(())
+    .is_ok())
 }
 
 pub fn r1cs_satisfied_verify<E: PairingEngine>(
     params: &R1CSSatisfiedParameters<E>,
     r1cs: &R1CSInstance<E>,
-    inputs: &Vec<E::Fr>,
+    inputs: &[E::Fr],
     proof: &R1CSSatProof<E>,
     matrix_evals: (E::Fr, E::Fr, E::Fr),
     transcript: &mut Transcript,
 ) -> Result<(bool, Vec<E::Fr>, Vec<E::Fr>), SynthesisError> {
     let (eval_a_r, eval_b_r, eval_c_r) = matrix_evals;
 
-    transcript.append_message(
-        b"poly_commitment",
-        &math::to_bytes!(proof.commit_witness).unwrap(),
-    );
+    transcript.append_message(b"poly_commitment", &math::to_bytes!(proof.commit_witness)?);
 
     let t = cmp::max(r1cs.num_aux, r1cs.num_inputs).next_power_of_two();
     let (num_rounds_x, num_rounds_y) = (log2(r1cs.num_constraints) as usize, log2(t) as usize + 1);
@@ -119,8 +115,7 @@ pub fn r1cs_satisfied_verify<E: PairingEngine>(
         &vec![claim],
         &params.sc_params.gen_1.h,
         E::Fr::zero(),
-    )
-    .unwrap()
+    )?
     .commit;
     let (rx, commit_eval_x) = sum_check_verify::<E>(
         &params.sc_params.gen_1,
@@ -130,17 +125,17 @@ pub fn r1cs_satisfied_verify<E: PairingEngine>(
         4,
         num_rounds_x,
         transcript,
-    )
-    .unwrap();
+    )?;
 
     let result = knowledge_verify::<E>(
         &params.sc_params.gen_1,
         &proof.knowledge_product_proof.knowledge_proof,
         proof.knowledge_product_commit.vc_commit,
         transcript,
-    )
-    .unwrap();
-    assert!(result);
+    )?;
+    if !result {
+        return Ok((false, Vec::new(), Vec::new()));
+    }
 
     let result = product_verify::<E>(
         &params.sc_params.gen_1,
@@ -149,25 +144,26 @@ pub fn r1cs_satisfied_verify<E: PairingEngine>(
         proof.knowledge_product_commit.vb_commit,
         proof.knowledge_product_commit.prod_commit,
         transcript,
-    )
-    .unwrap();
-    assert!(result);
+    )?;
+    if !result {
+        return Ok((false, Vec::new(), Vec::new()));
+    }
 
     transcript.append_message(
         b"comm_Az_claim",
-        &math::to_bytes!(proof.knowledge_product_commit.va_commit).unwrap(),
+        &math::to_bytes!(proof.knowledge_product_commit.va_commit)?,
     );
     transcript.append_message(
         b"comm_Bz_claim",
-        &math::to_bytes!(proof.knowledge_product_commit.vb_commit).unwrap(),
+        &math::to_bytes!(proof.knowledge_product_commit.vb_commit)?,
     );
     transcript.append_message(
         b"comm_Cz_claim",
-        &math::to_bytes!(proof.knowledge_product_commit.vc_commit).unwrap(),
+        &math::to_bytes!(proof.knowledge_product_commit.vc_commit)?,
     );
     transcript.append_message(
         b"comm_prod_Az_Bz_claims",
-        &math::to_bytes!(proof.knowledge_product_commit.prod_commit).unwrap(),
+        &math::to_bytes!(proof.knowledge_product_commit.prod_commit)?,
     );
 
     let eval_rx_tau = eval_eq_x_y::<E>(&rx, &tau);
@@ -182,9 +178,10 @@ pub fn r1cs_satisfied_verify<E: PairingEngine>(
         commit_eval_x,
         &proof.sc1_eq_proof,
         transcript,
-    )
-    .unwrap();
-    assert!(result);
+    )?;
+    if !result {
+        return Ok((false, Vec::new(), Vec::new()));
+    }
     // sumcheck #2 verify
     let mut buf = [0u8; 31];
     transcript.challenge_bytes(b"challenege_Az", &mut buf);
@@ -221,8 +218,7 @@ pub fn r1cs_satisfied_verify<E: PairingEngine>(
         3,
         num_rounds_y,
         transcript,
-    )
-    .unwrap();
+    )?;
 
     let result = inner_product_verify::<E>(
         &params.pc_params,
@@ -231,9 +227,10 @@ pub fn r1cs_satisfied_verify<E: PairingEngine>(
         proof.commit_ry,
         &proof.product_proof,
         transcript,
-    )
-    .unwrap();
-    assert!(result);
+    )?;
+    if !result {
+        return Ok((false, Vec::new(), Vec::new()));
+    }
 
     let mut public_inputs = vec![E::Fr::one()];
     public_inputs.extend(inputs.clone());
@@ -247,8 +244,7 @@ pub fn r1cs_satisfied_verify<E: PairingEngine>(
         &vec![eval_input_tau],
         &params.pc_params.gen_1.h,
         E::Fr::zero(),
-    )
-    .unwrap()
+    )?
     .commit;
     let commit_eval_z =
         (proof.commit_ry.mul(E::Fr::one() - &ry[0]) + &(commit_input.mul(ry[0]))).into_affine();
@@ -264,9 +260,11 @@ pub fn r1cs_satisfied_verify<E: PairingEngine>(
         commit_eval_y,
         &proof.sc2_eq_proof,
         transcript,
-    )
-    .unwrap();
-    assert!(result);
+    )?;
+    if !result {
+        return Ok((false, Vec::new(), Vec::new()));
+    }
+
     Ok((result, rx, ry))
 }
 
@@ -287,17 +285,14 @@ fn sum_check_verify<E: PairingEngine>(
         let commit_eval = proof.comm_evals[i];
         let proof = &proof.proofs[i];
 
-        transcript.append_message(b"comm_poly", &math::to_bytes!(commit_poly).unwrap());
+        transcript.append_message(b"comm_poly", &math::to_bytes!(commit_poly)?);
 
         let mut buf = [0u8; 31];
         transcript.challenge_bytes(b"challenge_nextround", &mut buf);
         let r_i = random_bytes_to_fr::<E>(&buf);
 
-        transcript.append_message(
-            b"comm_claim_per_round",
-            &math::to_bytes!(commit_claim).unwrap(),
-        );
-        transcript.append_message(b"comm_eval", &math::to_bytes!(commit_eval).unwrap());
+        transcript.append_message(b"comm_claim_per_round", &math::to_bytes!(commit_claim)?);
+        transcript.append_message(b"comm_eval", &math::to_bytes!(commit_eval)?);
 
         let result = sum_check_eval_verify::<E>(
             &params_gen_1,
@@ -309,9 +304,10 @@ fn sum_check_verify<E: PairingEngine>(
             r_i,
             size,
             transcript,
-        )
-        .unwrap();
-        assert!(result);
+        )?;
+        if !result {
+            return Err(SynthesisError::MalformedVerifyingKey);
+        }
 
         rx.push(r_i);
         commit_claim = commit_eval;
@@ -339,11 +335,11 @@ fn sum_check_eval_verify<E: PairingEngine>(
         })
         .collect::<Vec<_>>();
 
-    transcript.append_message(b"Cx", &math::to_bytes!(commit_poly).unwrap());
+    transcript.append_message(b"Cx", &math::to_bytes!(commit_poly)?);
     let commit_claim_value = (commit_claim.mul(w[0]) + &(commit_eval.mul(w[1]))).into_affine();
-    transcript.append_message(b"Cy", &math::to_bytes!(commit_claim_value).unwrap());
-    transcript.append_message(b"delta", &math::to_bytes!(proof.d_commit).unwrap());
-    transcript.append_message(b"beta", &math::to_bytes!(proof.dot_cd_commit).unwrap());
+    transcript.append_message(b"Cy", &math::to_bytes!(commit_claim_value)?);
+    transcript.append_message(b"delta", &math::to_bytes!(proof.d_commit)?);
+    transcript.append_message(b"beta", &math::to_bytes!(proof.dot_cd_commit)?);
 
     let mut buf = [0u8; 31];
     transcript.challenge_bytes(b"c", &mut buf);
@@ -370,8 +366,7 @@ fn sum_check_eval_verify<E: PairingEngine>(
         &proof.z,
         &params_gen_n.h,
         proof.z_delta,
-    )
-    .unwrap()
+    )?
     .commit;
     let rs1 = lhs == rhs;
 
@@ -383,8 +378,7 @@ fn sum_check_eval_verify<E: PairingEngine>(
         &vec![sum],
         &params_gen_1.h,
         proof.z_beta,
-    )
-    .unwrap()
+    )?
     .commit;
     let rs2 = lhs == rhs;
 
@@ -397,15 +391,14 @@ fn knowledge_verify<E: PairingEngine>(
     commit: E::G1Affine,
     transcript: &mut Transcript,
 ) -> Result<bool, SynthesisError> {
-    transcript.append_message(b"C", &math::to_bytes!(commit).unwrap());
-    transcript.append_message(b"alpha", &math::to_bytes!(proof.t_commit).unwrap());
+    transcript.append_message(b"C", &math::to_bytes!(commit)?);
+    transcript.append_message(b"alpha", &math::to_bytes!(proof.t_commit)?);
     let mut buf = [0u8; 31];
     transcript.challenge_bytes(b"c", &mut buf);
     let c = random_bytes_to_fr::<E>(&buf);
 
-    let lhs = poly_commit_vec::<E>(&params.generators, &vec![proof.z1], &params.h, proof.z2)
-        .unwrap()
-        .commit;
+    let lhs =
+        poly_commit_vec::<E>(&params.generators, &vec![proof.z1], &params.h, proof.z2)?.commit;
 
     let rhs = commit.mul(c) + &proof.t_commit.into_projective();
 
@@ -426,33 +419,27 @@ fn product_verify<E: PairingEngine>(
     let z4 = proof.z[3];
     let z5 = proof.z[4];
 
-    transcript.append_message(b"X", &math::to_bytes!(va_commit).unwrap());
-    transcript.append_message(b"Y", &math::to_bytes!(vb_commit).unwrap());
-    transcript.append_message(b"Z", &math::to_bytes!(prod_commit).unwrap());
-    transcript.append_message(b"alpha", &math::to_bytes!(proof.commit_alpha).unwrap());
-    transcript.append_message(b"beta", &math::to_bytes!(proof.commit_beta).unwrap());
-    transcript.append_message(b"delta", &math::to_bytes!(proof.commit_delta).unwrap());
+    transcript.append_message(b"X", &math::to_bytes!(va_commit)?);
+    transcript.append_message(b"Y", &math::to_bytes!(vb_commit)?);
+    transcript.append_message(b"Z", &math::to_bytes!(prod_commit)?);
+    transcript.append_message(b"alpha", &math::to_bytes!(proof.commit_alpha)?);
+    transcript.append_message(b"beta", &math::to_bytes!(proof.commit_beta)?);
+    transcript.append_message(b"delta", &math::to_bytes!(proof.commit_delta)?);
 
     let mut buf = [0u8; 31];
     transcript.challenge_bytes(b"c", &mut buf);
     let c = random_bytes_to_fr::<E>(&buf);
 
     let rs1_lhs = proof.commit_alpha + va_commit.mul(c).into_affine();
-    let rs1_rhs = poly_commit_vec::<E>(&params.generators, &vec![z1], &params.h, z2)
-        .unwrap()
-        .commit;
+    let rs1_rhs = poly_commit_vec::<E>(&params.generators, &vec![z1], &params.h, z2)?.commit;
     let rs1 = rs1_lhs == rs1_rhs;
 
     let rs2_lhs = proof.commit_beta + vb_commit.mul(c).into_affine();
-    let rs2_rhs = poly_commit_vec::<E>(&params.generators, &vec![z3], &params.h, z4)
-        .unwrap()
-        .commit;
+    let rs2_rhs = poly_commit_vec::<E>(&params.generators, &vec![z3], &params.h, z4)?.commit;
     let rs2 = rs2_lhs == rs2_rhs;
 
     let rs3_lhs = proof.commit_delta + prod_commit.mul(c).into_affine();
-    let rs3_rhs = poly_commit_vec::<E>(&vec![va_commit], &vec![z3], &params.h, z5)
-        .unwrap()
-        .commit;
+    let rs3_rhs = poly_commit_vec::<E>(&vec![va_commit], &vec![z3], &params.h, z5)?.commit;
     let rs3 = rs3_lhs == rs3_rhs;
 
     Ok(rs1 && rs2 && rs3)
@@ -465,9 +452,9 @@ fn eq_verify<E: PairingEngine>(
     proof: &EqProof<E>,
     transcript: &mut Transcript,
 ) -> Result<bool, SynthesisError> {
-    transcript.append_message(b"C1", &math::to_bytes!(commit1).unwrap());
-    transcript.append_message(b"C2", &math::to_bytes!(commit2).unwrap());
-    transcript.append_message(b"alpha", &math::to_bytes!(proof.alpha).unwrap());
+    transcript.append_message(b"C1", &math::to_bytes!(commit1)?);
+    transcript.append_message(b"C2", &math::to_bytes!(commit2)?);
+    transcript.append_message(b"alpha", &math::to_bytes!(proof.alpha)?);
 
     let mut buf = [0u8; 31];
     transcript.challenge_bytes(b"c", &mut buf);
@@ -498,12 +485,11 @@ fn inner_product_verify<E: PairingEngine>(
     let l_eq_ry = eval_eq::<E>(&(ry[0..size / 2].to_vec()));
     let r_eq_ry = eval_eq::<E>(&ry[size / 2..size].to_vec());
 
-    let commit_lz = poly_commit_vec::<E>(commits_witness, &l_eq_ry, &params.gen_1.h, E::Fr::zero())
-        .unwrap()
-        .commit;
+    let commit_lz =
+        poly_commit_vec::<E>(commits_witness, &l_eq_ry, &params.gen_1.h, E::Fr::zero())?.commit;
 
-    transcript.append_message(b"Cx", &math::to_bytes!(commit_lz).unwrap());
-    transcript.append_message(b"Cy", &math::to_bytes!(commit_ry).unwrap());
+    transcript.append_message(b"Cx", &math::to_bytes!(commit_lz)?);
+    transcript.append_message(b"Cy", &math::to_bytes!(commit_ry)?);
 
     let gamma = commit_lz + commit_ry;
 
@@ -513,10 +499,9 @@ fn inner_product_verify<E: PairingEngine>(
         gamma,
         &r_eq_ry,
         transcript,
-    )
-    .unwrap();
-    transcript.append_message(b"delta", &math::to_bytes!(proof.delta).unwrap());
-    transcript.append_message(b"beta", &math::to_bytes!(proof.beta).unwrap());
+    )?;
+    transcript.append_message(b"delta", &math::to_bytes!(proof.delta)?);
+    transcript.append_message(b"beta", &math::to_bytes!(proof.beta)?);
     let mut buf = [0u8; 31];
     transcript.challenge_bytes(b"challenge_tau", &mut buf);
     let c = random_bytes_to_fr::<E>(&buf);
@@ -545,14 +530,14 @@ fn sparse_poly_eval_verify<E: PairingEngine>(
 
     // memory_row = [eq(0, rx), rq(1, rx)...]
     // memory_col= [eq(0, ry), rq(1, ry)...]
-    let (rx, ry) = equalize_length::<E>(&rx, &ry).unwrap();
+    let (rx, ry) = equalize_length::<E>(&rx, &ry)?;
 
     let (n, m) = (encode_commit.n, encode_commit.m);
     assert_eq!((2usize).pow(rx.len() as u32), m);
 
     transcript.append_message(
         b"comm_poly_row_col_ops_val",
-        &math::to_bytes!(proof.derefs_commit).unwrap(),
+        &math::to_bytes!(proof.derefs_commit)?,
     );
 
     // gamma1, gamma2
@@ -571,8 +556,7 @@ fn sparse_poly_eval_verify<E: PairingEngine>(
             m,
             &vec![eval_a_r, eval_b_r, eval_c_r],
             transcript,
-        )
-        .unwrap();
+        )?;
     assert_eq!(claims_mem.len(), 4);
     assert_eq!(claims_ops.len(), 12);
     assert_eq!(claims_ops_dotp.len(), 9);
@@ -648,19 +632,10 @@ fn product_layer_verify<E: PairingEngine>(
         .product();
     assert_eq!(*row_init * &row_write, row_read * &row_audit);
 
-    transcript.append_message(b"claim_row_eval_init", &math::to_bytes!(row_init).unwrap());
-    transcript.append_message(
-        b"claim_row_eval_read",
-        &math::to_bytes!(row_read_list).unwrap(),
-    );
-    transcript.append_message(
-        b"claim_row_eval_write",
-        &math::to_bytes!(row_write_list).unwrap(),
-    );
-    transcript.append_message(
-        b"claim_row_eval_audit",
-        &math::to_bytes!(row_audit).unwrap(),
-    );
+    transcript.append_message(b"claim_row_eval_init", &math::to_bytes!(row_init)?);
+    transcript.append_message(b"claim_row_eval_read", &math::to_bytes!(row_read_list)?);
+    transcript.append_message(b"claim_row_eval_write", &math::to_bytes!(row_write_list)?);
+    transcript.append_message(b"claim_row_eval_audit", &math::to_bytes!(row_audit)?);
 
     let col_read: E::Fr = (0..col_read_list.len()).map(|i| col_read_list[i]).product();
     let col_write: E::Fr = (0..col_write_list.len())
@@ -668,30 +643,21 @@ fn product_layer_verify<E: PairingEngine>(
         .product();
     assert_eq!(*col_init * &col_write, col_read * &col_audit);
 
-    transcript.append_message(b"claim_col_eval_init", &math::to_bytes!(col_init).unwrap());
-    transcript.append_message(
-        b"claim_col_eval_read",
-        &math::to_bytes!(col_read_list).unwrap(),
-    );
-    transcript.append_message(
-        b"claim_col_eval_write",
-        &math::to_bytes!(col_write_list).unwrap(),
-    );
-    transcript.append_message(
-        b"claim_col_eval_audit",
-        &math::to_bytes!(col_audit).unwrap(),
-    );
+    transcript.append_message(b"claim_col_eval_init", &math::to_bytes!(col_init)?);
+    transcript.append_message(b"claim_col_eval_read", &math::to_bytes!(col_read_list)?);
+    transcript.append_message(b"claim_col_eval_write", &math::to_bytes!(col_write_list)?);
+    transcript.append_message(b"claim_col_eval_audit", &math::to_bytes!(col_audit)?);
 
     let mut claims_dotp_circuit = Vec::new();
     for i in 0..eval_dotp_left_list.len() {
         assert_eq!(eval_dotp_left_list[i] + &eval_dotp_right_list[i], evals[i]);
         transcript.append_message(
             b"claim_eval_dotp_left",
-            &math::to_bytes!(eval_dotp_left_list[i]).unwrap(),
+            &math::to_bytes!(eval_dotp_left_list[i])?,
         );
         transcript.append_message(
             b"claim_eval_dotp_right",
-            &math::to_bytes!(eval_dotp_right_list[i]).unwrap(),
+            &math::to_bytes!(eval_dotp_right_list[i])?,
         );
         claims_dotp_circuit.push(eval_dotp_left_list[i]);
         claims_dotp_circuit.push(eval_dotp_right_list[i]);
@@ -709,16 +675,14 @@ fn product_layer_verify<E: PairingEngine>(
         &mut claims_dotp_circuit,
         n,
         transcript,
-    )
-    .unwrap();
+    )?;
     let (claims_mem, claims_mem_dotp, mem_rands) = product_circuit_eval_verify::<E>(
         &proof.proof_memory,
         &vec![*row_init, *row_audit, *col_init, *col_audit],
         &mut vec![],
         m,
         transcript,
-    )
-    .unwrap();
+    )?;
 
     Ok((
         claims_ops,
@@ -767,21 +731,14 @@ pub fn product_circuit_eval_verify<E: PairingEngine>(
             num_rounds,
             claim,
             transcript,
-        )
-        .unwrap();
+        )?;
         let claim_prod_left = &proof.layers_proof[i].claim_prod_left;
         let claim_prod_right = &proof.layers_proof[i].claim_prod_right;
         assert_eq!(claim_prod_left.len(), claim_prod_right.len());
         assert_eq!(claim_prod_left.len(), claims_prod_circuit.len());
         for i in 0..claim_prod_left.len() {
-            transcript.append_message(
-                b"claim_prod_left",
-                &math::to_bytes!(claim_prod_left[i]).unwrap(),
-            );
-            transcript.append_message(
-                b"claim_prod_right",
-                &math::to_bytes!(claim_prod_right[i]).unwrap(),
-            );
+            transcript.append_message(b"claim_prod_left", &math::to_bytes!(claim_prod_left[i])?);
+            transcript.append_message(b"claim_prod_right", &math::to_bytes!(claim_prod_right[i])?);
         }
 
         assert_eq!(rands.len(), r.len());
@@ -796,18 +753,9 @@ pub fn product_circuit_eval_verify<E: PairingEngine>(
         if i == layer_num - 1 {
             let (claim_dotp_row, claim_dotp_col, claim_dotp_val) = &proof.claim_dotp;
             for i in 0..claim_dotp_row.len() {
-                transcript.append_message(
-                    b"claim_dotp_row",
-                    &math::to_bytes!(claim_dotp_row[i]).unwrap(),
-                );
-                transcript.append_message(
-                    b"claim_dotp_col",
-                    &math::to_bytes!(claim_dotp_col[i]).unwrap(),
-                );
-                transcript.append_message(
-                    b"claim_dotp_val",
-                    &math::to_bytes!(claim_dotp_val[i]).unwrap(),
-                );
+                transcript.append_message(b"claim_dotp_row", &math::to_bytes!(claim_dotp_row[i])?);
+                transcript.append_message(b"claim_dotp_col", &math::to_bytes!(claim_dotp_col[i])?);
+                transcript.append_message(b"claim_dotp_val", &math::to_bytes!(claim_dotp_val[i])?);
 
                 claim_expected += &(coeffs[claim_prod_left.len() + i]
                     * &claim_dotp_row[i]
@@ -857,7 +805,7 @@ pub fn sum_check_cubic_verify<E: PairingEngine>(
 
     assert_eq!(proof_poly.len(), num_rounds);
     for poly in proof_poly.iter() {
-        transcript.append_message(b"comm_poly", &math::to_bytes!(poly.coeffs).unwrap());
+        transcript.append_message(b"comm_poly", &math::to_bytes!(poly.coeffs)?);
 
         let mut buf = [0u8; 31];
         transcript.challenge_bytes(b"challenge_nextround", &mut buf);
@@ -899,7 +847,7 @@ pub fn hash_layer_verify<E: PairingEngine>(
     evals.resize(evals.len().next_power_of_two(), E::Fr::zero());
     transcript.append_message(b"protocol-name", b"Derefs evaluation proof");
 
-    transcript.append_message(b"evals_ops_val", &math::to_bytes!(evals).unwrap());
+    transcript.append_message(b"evals_ops_val", &math::to_bytes!(evals)?);
 
     let mut cs = (0..log2(evals.len()))
         .map(|_i| {
@@ -916,7 +864,7 @@ pub fn hash_layer_verify<E: PairingEngine>(
     let claim_eval = evals[0];
     // let mut rs = cs;
     cs.extend(ops_rands);
-    transcript.append_message(b"joint_claim_eval", &math::to_bytes!(claim_eval).unwrap());
+    transcript.append_message(b"joint_claim_eval", &math::to_bytes!(claim_eval)?);
 
     // derefs prove
     let claim_eval_commit = poly_commit_vec::<E>(
@@ -924,8 +872,7 @@ pub fn hash_layer_verify<E: PairingEngine>(
         &vec![claim_eval],
         &params.derefs_params.gen_1.h,
         E::Fr::zero(),
-    )
-    .unwrap()
+    )?
     .commit;
     let result = inner_product_verify::<E>(
         &params.derefs_params,
@@ -934,8 +881,7 @@ pub fn hash_layer_verify<E: PairingEngine>(
         claim_eval_commit,
         &proof.proof_derefs,
         transcript,
-    )
-    .unwrap();
+    )?;
     assert!(result);
     let eval_val_list = &proof.evals_val;
     assert_eq!(eval_val_list.len(), 3);
@@ -957,7 +903,7 @@ pub fn hash_layer_verify<E: PairingEngine>(
     evals_ops.extend(col_eval_read_ts_list);
     evals_ops.extend(eval_val_list);
     evals_ops.resize(evals_ops.len().next_power_of_two(), E::Fr::zero());
-    transcript.append_message(b"claim_evals_ops", &math::to_bytes!(evals_ops).unwrap());
+    transcript.append_message(b"claim_evals_ops", &math::to_bytes!(evals_ops)?);
 
     let mut cs_ops = (0..log2(evals_ops.len()))
         .map(|_i| {
@@ -974,18 +920,14 @@ pub fn hash_layer_verify<E: PairingEngine>(
     let claim_eval_ops = evals_ops[0];
     // let mut rs_ops = cs_ops;
     cs_ops.extend(ops_rands);
-    transcript.append_message(
-        b"joint_claim_eval_ops",
-        &math::to_bytes!(claim_eval_ops).unwrap(),
-    );
+    transcript.append_message(b"joint_claim_eval_ops", &math::to_bytes!(claim_eval_ops)?);
     // ops prove
     let claim_eval_commit = poly_commit_vec::<E>(
         &params.ops_params.gen_1.generators,
         &vec![claim_eval_ops],
         &params.ops_params.gen_1.h,
         E::Fr::zero(),
-    )
-    .unwrap()
+    )?
     .commit;
     let result = inner_product_verify::<E>(
         &params.ops_params,
@@ -994,11 +936,10 @@ pub fn hash_layer_verify<E: PairingEngine>(
         claim_eval_commit,
         &proof.proof_ops,
         transcript,
-    )
-    .unwrap();
+    )?;
     assert!(result);
     let mut evals_mem = vec![row_eval_audit_ts_val, col_eval_audit_ts_val];
-    transcript.append_message(b"claim_evals_mem", &math::to_bytes!(evals_mem).unwrap());
+    transcript.append_message(b"claim_evals_mem", &math::to_bytes!(evals_mem)?);
     let mut cs_mem = (0..log2(evals_mem.len()))
         .map(|_i| {
             let mut buf = [0u8; 31];
@@ -1015,10 +956,7 @@ pub fn hash_layer_verify<E: PairingEngine>(
     // let mut rs_mem = cs_mem;
     cs_mem.extend(mem_rands);
 
-    transcript.append_message(
-        b"joint_claim_eval_mem",
-        &math::to_bytes!(claim_eval_mem).unwrap(),
-    );
+    transcript.append_message(b"joint_claim_eval_mem", &math::to_bytes!(claim_eval_mem)?);
 
     // mem prove
     let claim_eval_commit = poly_commit_vec::<E>(
@@ -1026,8 +964,7 @@ pub fn hash_layer_verify<E: PairingEngine>(
         &vec![claim_eval_mem],
         &params.mem_params.gen_1.h,
         E::Fr::zero(),
-    )
-    .unwrap()
+    )?
     .commit;
     let result = inner_product_verify::<E>(
         &params.mem_params,
@@ -1036,8 +973,7 @@ pub fn hash_layer_verify<E: PairingEngine>(
         claim_eval_commit,
         &proof.proof_mem,
         transcript,
-    )
-    .unwrap();
+    )?;
     assert!(result);
     let (row_eval_addr_ops_list, row_eval_read_ts_list, row_eval_audit_ts_val) = &proof.evals_row;
     let result = behind_verify_for_timestamp::<E>(
