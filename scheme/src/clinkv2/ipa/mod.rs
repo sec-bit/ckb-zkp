@@ -1,8 +1,7 @@
 use core::marker::PhantomData;
 use digest::Digest;
 use math::{
-    io::{self, Result as IoResult},
-    serialize::*,
+    io::{self, Read, Result as IoResult, Write},
     Curve, Field, FromBytes, ToBytes,
 };
 use rand::Rng;

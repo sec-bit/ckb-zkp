@@ -130,6 +130,8 @@ pub trait ProjectiveCurve:
     + core::iter::Sum<Self>
     + for<'a> core::iter::Sum<&'a Self>
     + From<<Self as ProjectiveCurve>::Affine>
+    + serde::Serialize
+    + for<'a> serde::Deserialize<'a>
 {
     type ScalarField: PrimeField + SquareRootField;
     type BaseField: Field;
@@ -227,6 +229,8 @@ pub trait AffineCurve:
     + Zero
     + Neg<Output = Self>
     + From<<Self as AffineCurve>::Projective>
+    + serde::Serialize
+    + for<'a> serde::Deserialize<'a>
 {
     type ScalarField: PrimeField + SquareRootField + Into<<Self::ScalarField as PrimeField>::BigInt>;
     type BaseField: Field;

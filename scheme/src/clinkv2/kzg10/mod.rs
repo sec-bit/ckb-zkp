@@ -1,6 +1,5 @@
 use math::{
-    io::{self, Result as IoResult},
-    serialize::*,
+    io::{self, Read, Result as IoResult, Write},
     Field, FromBytes, PairingEngine, ToBytes,
 };
 use rand::Rng;

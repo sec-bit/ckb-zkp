@@ -7,9 +7,8 @@
 
 use math::{
     fft::DensePolynomial as Polynomial,
-    io::Result as IoResult,
+    io::{Read, Result as IoResult, Write},
     msm::{FixedBaseMSM, VariableBaseMSM},
-    serialize::*,
     AffineCurve, Field, FromBytes, Group, One, PairingEngine, PrimeField, ProjectiveCurve, ToBytes,
     UniformRand, Zero,
 };
@@ -736,7 +735,7 @@ impl<E: PairingEngine> KZG10<E> {
             let mut temp = w.mul(*z);
             temp.add_assign_mixed(&c.0);
             let c = temp;
-            g_multiplier += &(randomizer * &v);
+            g_multiplier += &(randomizer * v);
             if let Some(random_v) = proof.random_v {
                 gamma_g_multiplier += &(randomizer * &random_v);
             }

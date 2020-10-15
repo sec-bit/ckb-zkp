@@ -1,7 +1,6 @@
-use math::{msm::VariableBaseMSM, Field, FromBytes, PrimeField, ToBytes, Curve};
-use rand::Rng;
+use math::{msm::VariableBaseMSM, Curve, Field, PrimeField};
 
-use crate::r1cs::{ConstraintSynthesizer, Index, LinearCombination, SynthesisError};
+use crate::r1cs::{Index, LinearCombination};
 use crate::Vec;
 
 pub mod arithmetic_circuit;
@@ -20,45 +19,6 @@ pub use arithmetic_circuit::create_random_proof;
 pub use arithmetic_circuit::verify_proof;
 
 pub use arithmetic_circuit::{Generators, Proof, R1csCircuit};
-
-/// standard interface for create proof and to bytes.
-pub fn prove_to_bytes<G: Curve, C: ConstraintSynthesizer<G::Fr>, R: Rng>(
-    circuit: C,
-    rng: &mut R,
-) -> Result<(Vec<u8>, Vec<u8>), SynthesisError> {
-    let (gens, r1cs, proof, publics) = create_random_proof::<G, _, _>(circuit, rng)?;
-    let mut proof_bytes = vec![];
-    gens.write(&mut proof_bytes)?;
-    r1cs.write(&mut proof_bytes)?;
-    proof.write(&mut proof_bytes)?;
-    let mut publics_bytes = vec![];
-    (publics.s.len() as u32).write(&mut publics_bytes)?;
-    for i in publics.s {
-        i.write(&mut publics_bytes)?;
-    }
-
-    Ok((proof_bytes, publics_bytes))
-}
-
-/// standard interface for verify proof from bytes.
-pub fn verify_from_bytes<G: Curve, C: ConstraintSynthesizer<G::Fr>>(
-    _circuit: C,
-    mut proof_bytes: &[u8],
-    mut publics_bytes: &[u8],
-) -> Result<bool, SynthesisError> {
-    let gens = Generators::<G>::read(&mut proof_bytes)?;
-    let r1cs = R1csCircuit::<G::Fr>::read(&mut proof_bytes)?;
-    let proof = Proof::read(&mut proof_bytes)?;
-
-    let mut publics = vec![];
-    let publics_len = u32::read(&mut publics_bytes)?;
-    for _ in 0..publics_len {
-        publics.push(G::Fr::read(&mut publics_bytes)?);
-    }
-
-    //verify_proof(circuit, &gens, &proof, &publics)
-    Ok(verify_proof(&gens, &proof, &r1cs, &publics))
-}
 
 // Q (vector, zQ) * Qxn (matrix, WL, WR, WO) = n (vector, zQW)
 pub fn vector_matrix_product<F: Field>(v: &Vec<F>, m: &Vec<Vec<F>>) -> Vec<F> {
@@ -80,11 +40,7 @@ pub fn vector_matrix_product<F: Field>(v: &Vec<F>, m: &Vec<Vec<F>>) -> Vec<F> {
 }
 
 // Q (vector, zQ) * Qxn (matrix, WL, WR, WO) = n (vector, zQW)
-pub fn vector_map_product<F: Field>(
-    v: &Vec<F>,
-    ms: &BTreeMap<(u32, u32), F>,
-    n: usize,
-) -> Vec<F> {
+pub fn vector_map_product<F: Field>(v: &Vec<F>, ms: &BTreeMap<(u32, u32), F>, n: usize) -> Vec<F> {
     let zero = F::zero();
     let mut out = vec![zero; n];
 
@@ -98,12 +54,7 @@ pub fn vector_map_product<F: Field>(
 }
 
 // Q (vector, zQ) * Qxn (matrix, WL, WR, WO) = n (vector, zQW)
-pub fn vector_product<F: Field>(
-    v: &Vec<F>,
-    ms: &Vec<F>,
-    m: usize,
-    n: usize,
-) -> Vec<F> {
+pub fn vector_product<F: Field>(v: &Vec<F>, ms: &Vec<F>, m: usize, n: usize) -> Vec<F> {
     let zero = F::zero();
     let mut out = vec![zero; m];
     assert_eq!(v.len(), n, "len of v and m must be equal");
@@ -118,10 +69,7 @@ pub fn vector_product<F: Field>(
 }
 
 // n (vector, aL/aR/aO) * Qxn (matrix, WL, WR, WO) = Q (vector, wLaL)
-pub fn vector_matrix_product_t<F: Field>(
-    v: &Vec<F>,
-    m: &Vec<Vec<F>>,
-) -> Vec<F> {
+pub fn vector_matrix_product_t<F: Field>(v: &Vec<F>, m: &Vec<Vec<F>>) -> Vec<F> {
     let q = m.len();
     let mut out = vec![F::zero(); q];
 
@@ -165,12 +113,7 @@ pub fn inner_product<F: Field>(a: &[F], b: &[F]) -> F {
 
 /// Represents a degree-3 vector polynomial
 /// \\(\mathbf{a} + \mathbf{b} \cdot x + \mathbf{c} \cdot x^2 + \mathbf{d} \cdot x^3 \\).
-pub struct VecPoly3<F: Field>(
-    pub Vec<F>,
-    pub Vec<F>,
-    pub Vec<F>,
-    pub Vec<F>,
-);
+pub struct VecPoly3<F: Field>(pub Vec<F>, pub Vec<F>, pub Vec<F>, pub Vec<F>);
 
 impl<F: Field> VecPoly3<F> {
     pub fn zero(n: usize) -> Self {
