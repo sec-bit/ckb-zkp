@@ -1,10 +1,10 @@
 use ckb_zkp::{
     bn_256::{Bn_256, Fr},
     groth16::{
-        create_random_proof, generate_random_parameters, prove_to_bytes,
-        verifier::prepare_verifying_key, verify_from_bytes, verify_proof,
+        create_random_proof, generate_random_parameters, verifier::prepare_verifying_key,
+        verify_proof, Parameters, Proof, VerifyingKey,
     },
-    math::{PrimeField, ToBytes},
+    math::PrimeField,
     r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError},
 };
 use rand::prelude::*;
@@ -58,15 +58,13 @@ fn main() {
     };
     let params = generate_random_parameters::<Bn_256, _, _>(c, &mut rng).unwrap();
 
-    // you need save this prove key,
-    // when prove, use it as a params.
-    let mut pk_bytes = vec![];
-    params.write(&mut pk_bytes).unwrap();
-
     // you need save this verify key,
     // when verify, use it as a params.
-    let mut vk_bytes = vec![];
-    params.vk.write(&mut vk_bytes).unwrap();
+    let vk_bytes = postcard::to_allocvec(&params.vk).unwrap();
+
+    // you need save this prove key,
+    // when prove, use it as a params.
+    let params_bytes = postcard::to_allocvec(&params).unwrap();
 
     // Prepare the verification key (for proof verification)
     let pvk = prepare_verifying_key(&params.vk);
@@ -94,18 +92,20 @@ fn main() {
     let v_time = v_start.elapsed();
     println!("GROTH16 VERIFY TIME: {:?}", v_time);
 
-    println!("GROTH16 START PROVE & VERIFY WITH BYTES...");
+    println!("Test serialize & verify...");
     let circuit = Mini {
         x: Some(x),
         y: Some(y),
         z: Some(z),
         num: 10,
     };
-
-    let (proof_bytes, publics_bytes) =
-        prove_to_bytes(&params, circuit, &mut rng, &[Fr::from(10u32)]).unwrap();
-
-    assert!(verify_from_bytes::<Bn_256>(&vk_bytes, &proof_bytes, &publics_bytes).unwrap());
+    let params2: Parameters<Bn_256> = postcard::from_bytes(&params_bytes).unwrap();
+    let vk2: VerifyingKey<Bn_256> = postcard::from_bytes(&vk_bytes).unwrap();
+    let pvk2 = prepare_verifying_key(&vk2);
+    let proof = create_random_proof(&params2, circuit, &mut rng).unwrap();
+    let proof_bytes = postcard::to_allocvec(&proof).unwrap();
+    let proof2: Proof<Bn_256> = postcard::from_bytes(&proof_bytes).unwrap();
+    assert!(verify_proof(&pvk2, &proof2, &[Fr::from(10u32)]).unwrap());
 
     println!("all is ok");
 }

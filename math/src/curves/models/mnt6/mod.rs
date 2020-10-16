@@ -44,7 +44,7 @@ pub trait MNT6Parameters: 'static {
     >;
 }
 
-#[derive(Derivative)]
+#[derive(Derivative, Serialize, Deserialize)]
 #[derivative(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub struct MNT6<P: MNT6Parameters>(PhantomData<fn() -> P>);
 

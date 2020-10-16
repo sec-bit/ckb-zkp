@@ -44,7 +44,7 @@ pub trait MNT4Parameters: 'static {
     >;
 }
 
-#[derive(Derivative)]
+#[derive(Derivative, Serialize, Deserialize)]
 #[derivative(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub struct MNT4<P: MNT4Parameters>(PhantomData<fn() -> P>);
 
