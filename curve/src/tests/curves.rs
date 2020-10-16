@@ -1,11 +1,9 @@
-// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
-
 #![allow(unused)]
 use math::{
-    curves::{AffineCurve, ProjectiveCurve},
-    io::Cursor,
-    CanonicalDeserialize, CanonicalSerialize, Field, MontgomeryModelParameters, One, PrimeField,
-    SWFlags, SWModelParameters, SerializationError, TEModelParameters, UniformRand, Vec, Zero,
+    curves::{AffineCurve, ProjectiveCurve, flags::SWFlags},
+    ToBytes,
+    Field, MontgomeryModelParameters, One, PrimeField,
+    SWModelParameters, TEModelParameters, UniformRand, Vec, Zero,
 };
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
@@ -286,115 +284,7 @@ pub fn curve_tests<G: ProjectiveCurve>() {
 }
 
 pub fn sw_tests<P: SWModelParameters>() {
-    sw_curve_serialization_test::<P>();
-    sw_from_random_bytes::<P>();
-}
-
-pub fn sw_from_random_bytes<P: SWModelParameters>() {
-    use math::curves::models::short_weierstrass_jacobian::{GroupAffine, GroupProjective};
-
-    let buf_size = GroupAffine::<P>::zero().serialized_size();
-
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
-
-    for _ in 0..ITERATIONS {
-        let a = GroupProjective::<P>::rand(&mut rng);
-        let mut a = a.into_affine();
-        {
-            let mut serialized = vec![0; buf_size];
-            let mut cursor = Cursor::new(&mut serialized[..]);
-            a.serialize(&mut cursor).unwrap();
-
-            let mut cursor = Cursor::new(&serialized[..]);
-            let p1 = GroupAffine::<P>::deserialize(&mut cursor).unwrap();
-            let p2 = GroupAffine::<P>::from_random_bytes(&serialized).unwrap();
-            assert_eq!(p1, p2);
-        }
-    }
-}
-
-pub fn sw_curve_serialization_test<P: SWModelParameters>() {
-    use math::curves::models::short_weierstrass_jacobian::{GroupAffine, GroupProjective};
-
-    let buf_size = GroupAffine::<P>::zero().serialized_size();
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
-
-    for _ in 0..ITERATIONS {
-        let a = GroupProjective::<P>::rand(&mut rng);
-        let mut a = a.into_affine();
-        {
-            let mut serialized = vec![0; buf_size];
-            let mut cursor = Cursor::new(&mut serialized[..]);
-            a.serialize(&mut cursor).unwrap();
-
-            let mut cursor = Cursor::new(&serialized[..]);
-            let b = GroupAffine::<P>::deserialize(&mut cursor).unwrap();
-            assert_eq!(a, b);
-        }
-
-        {
-            a.y = -a.y;
-            let mut serialized = vec![0; buf_size];
-            let mut cursor = Cursor::new(&mut serialized[..]);
-            a.serialize(&mut cursor).unwrap();
-            let mut cursor = Cursor::new(&serialized[..]);
-            let b = GroupAffine::<P>::deserialize(&mut cursor).unwrap();
-            assert_eq!(a, b);
-        }
-
-        {
-            let a = GroupAffine::<P>::zero();
-            let mut serialized = vec![0; buf_size];
-            let mut cursor = Cursor::new(&mut serialized[..]);
-            a.serialize(&mut cursor).unwrap();
-            let mut cursor = Cursor::new(&serialized[..]);
-            let b = GroupAffine::<P>::deserialize(&mut cursor).unwrap();
-            assert_eq!(a, b);
-        }
-
-        {
-            let a = GroupAffine::<P>::zero();
-            let mut serialized = vec![0; buf_size - 1];
-            let mut cursor = Cursor::new(&mut serialized[..]);
-            a.serialize(&mut cursor).unwrap_err();
-        }
-
-        {
-            let serialized = vec![0; buf_size - 1];
-            let mut cursor = Cursor::new(&serialized[..]);
-            GroupAffine::<P>::deserialize(&mut cursor).unwrap_err();
-        }
-
-        {
-            let mut serialized = vec![0; a.uncompressed_size()];
-            let mut cursor = Cursor::new(&mut serialized[..]);
-            a.serialize_uncompressed(&mut cursor).unwrap();
-
-            let mut cursor = Cursor::new(&serialized[..]);
-            let b = GroupAffine::<P>::deserialize_uncompressed(&mut cursor).unwrap();
-            assert_eq!(a, b);
-        }
-
-        {
-            a.y = -a.y;
-            let mut serialized = vec![0; a.uncompressed_size()];
-            let mut cursor = Cursor::new(&mut serialized[..]);
-            a.serialize_uncompressed(&mut cursor).unwrap();
-            let mut cursor = Cursor::new(&serialized[..]);
-            let b = GroupAffine::<P>::deserialize_uncompressed(&mut cursor).unwrap();
-            assert_eq!(a, b);
-        }
-
-        {
-            let a = GroupAffine::<P>::zero();
-            let mut serialized = vec![0; a.uncompressed_size()];
-            let mut cursor = Cursor::new(&mut serialized[..]);
-            a.serialize_uncompressed(&mut cursor).unwrap();
-            let mut cursor = Cursor::new(&serialized[..]);
-            let b = GroupAffine::<P>::deserialize_uncompressed(&mut cursor).unwrap();
-            assert_eq!(a, b);
-        }
-    }
+    //sw_from_random_bytes::<P>();
 }
 
 pub(crate) fn montgomery_conversion_test<P>()
@@ -413,93 +303,5 @@ where
 }
 
 pub fn edwards_tests<P: TEModelParameters>() {
-    edwards_curve_serialization_test::<P>();
-    edwards_from_random_bytes::<P>();
-}
-
-pub fn edwards_from_random_bytes<P: TEModelParameters>() {
-    use math::curves::models::twisted_edwards_extended::{GroupAffine, GroupProjective};
-
-    let buf_size = GroupAffine::<P>::zero().serialized_size();
-
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
-
-    for _ in 0..ITERATIONS {
-        let a = GroupProjective::<P>::rand(&mut rng);
-        let mut a = a.into_affine();
-        {
-            let mut serialized = vec![0; buf_size];
-            let mut cursor = Cursor::new(&mut serialized[..]);
-            a.serialize(&mut cursor).unwrap();
-
-            let mut cursor = Cursor::new(&serialized[..]);
-            let p1 = GroupAffine::<P>::deserialize(&mut cursor).unwrap();
-            let p2 = GroupAffine::<P>::from_random_bytes(&serialized).unwrap();
-            assert_eq!(p1, p2);
-        }
-    }
-}
-
-pub fn edwards_curve_serialization_test<P: TEModelParameters>() {
-    use math::curves::models::twisted_edwards_extended::{GroupAffine, GroupProjective};
-    let buf_size = GroupAffine::<P>::zero().serialized_size();
-
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
-
-    for _ in 0..ITERATIONS {
-        let a = GroupProjective::<P>::rand(&mut rng);
-        let a = a.into_affine();
-        {
-            let mut serialized = vec![0; buf_size];
-            let mut cursor = Cursor::new(&mut serialized[..]);
-            a.serialize(&mut cursor).unwrap();
-
-            let mut cursor = Cursor::new(&serialized[..]);
-            let b = GroupAffine::<P>::deserialize(&mut cursor).unwrap();
-            assert_eq!(a, b);
-        }
-
-        {
-            let a = GroupAffine::<P>::zero();
-            let mut serialized = vec![0; buf_size];
-            let mut cursor = Cursor::new(&mut serialized[..]);
-            a.serialize(&mut cursor).unwrap();
-            let mut cursor = Cursor::new(&serialized[..]);
-            let b = GroupAffine::<P>::deserialize(&mut cursor).unwrap();
-            assert_eq!(a, b);
-        }
-
-        {
-            let a = GroupAffine::<P>::zero();
-            let mut serialized = vec![0; buf_size - 1];
-            let mut cursor = Cursor::new(&mut serialized[..]);
-            a.serialize(&mut cursor).unwrap_err();
-        }
-
-        {
-            let serialized = vec![0; buf_size - 1];
-            let mut cursor = Cursor::new(&serialized[..]);
-            GroupAffine::<P>::deserialize(&mut cursor).unwrap_err();
-        }
-
-        {
-            let mut serialized = vec![0; a.uncompressed_size()];
-            let mut cursor = Cursor::new(&mut serialized[..]);
-            a.serialize_uncompressed(&mut cursor).unwrap();
-
-            let mut cursor = Cursor::new(&serialized[..]);
-            let b = GroupAffine::<P>::deserialize_uncompressed(&mut cursor).unwrap();
-            assert_eq!(a, b);
-        }
-
-        {
-            let a = GroupAffine::<P>::zero();
-            let mut serialized = vec![0; a.uncompressed_size()];
-            let mut cursor = Cursor::new(&mut serialized[..]);
-            a.serialize_uncompressed(&mut cursor).unwrap();
-            let mut cursor = Cursor::new(&serialized[..]);
-            let b = GroupAffine::<P>::deserialize_uncompressed(&mut cursor).unwrap();
-            assert_eq!(a, b);
-        }
-    }
+    //edwards_from_random_bytes::<P>();
 }
