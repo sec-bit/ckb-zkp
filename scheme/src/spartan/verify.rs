@@ -612,7 +612,7 @@ fn sparse_poly_eval_verify<E: PairingEngine>(
     Ok(true)
 }
 
-fn product_layer_verify<E: PairingEngine>(
+fn product_layer_verify<E>(
     proof: &ProductLayerProof<E>,
     n: usize,
     m: usize,
@@ -628,7 +628,10 @@ fn product_layer_verify<E: PairingEngine>(
         Vec<E::Fr>,
     ),
     SynthesisError,
-> {
+>
+where
+    E: PairingEngine,
+{
     transcript.append_message(b"protocol-name", b"Sparse polynomial product layer proof");
     let (row_init, row_read_list, row_write_list, row_audit) = &proof.eval_row;
     let (col_init, col_read_list, col_write_list, col_audit) = &proof.eval_col;
@@ -646,7 +649,7 @@ fn product_layer_verify<E: PairingEngine>(
     let row_write: E::Fr = (0..row_write_list.len())
         .map(|i| row_write_list[i])
         .product();
-    assert_eq!(*row_init * &row_write, row_read * &row_audit);
+    assert_eq!(*row_init * &row_write, row_read * row_audit);
 
     transcript.append_message(b"claim_row_eval_init", &math::to_bytes!(row_init).unwrap());
     transcript.append_message(
@@ -666,7 +669,7 @@ fn product_layer_verify<E: PairingEngine>(
     let col_write: E::Fr = (0..col_write_list.len())
         .map(|i| col_write_list[i])
         .product();
-    assert_eq!(*col_init * &col_write, col_read * &col_audit);
+    assert_eq!(*col_init * &col_write, col_read * col_audit);
 
     transcript.append_message(b"claim_col_eval_init", &math::to_bytes!(col_init).unwrap());
     transcript.append_message(
@@ -1068,7 +1071,7 @@ pub fn hash_layer_verify<E: PairingEngine>(
     Ok(())
 }
 
-pub fn behind_verify_for_timestamp<E: PairingEngine>(
+pub fn behind_verify_for_timestamp<E>(
     rands: (&Vec<E::Fr>, &Vec<E::Fr>),
     claims: (E::Fr, &Vec<E::Fr>, &Vec<E::Fr>, E::Fr),
     r: &Vec<E::Fr>,
@@ -1077,7 +1080,10 @@ pub fn behind_verify_for_timestamp<E: PairingEngine>(
     eval_read_ts_list: &Vec<E::Fr>,
     eval_audit_ts_val: &E::Fr,
     gamma: (E::Fr, E::Fr),
-) -> Result<bool, SynthesisError> {
+) -> Result<bool, SynthesisError>
+where
+    E: PairingEngine,
+{
     let (_rands_ops, rands_mem) = rands;
     let (gamma1, gamma2) = gamma;
     let (claim_init, claim_read_list, claim_write_list, cliam_audit) = claims;
@@ -1112,7 +1118,7 @@ pub fn behind_verify_for_timestamp<E: PairingEngine>(
     let eval_audit_addr = eval_init_addr;
     let eval_audit_val = eval_init_val;
     let hash_audit_at_rand_mem =
-        eval_audit_addr * &gamma1 * &gamma1 + &(eval_audit_val * &gamma1) + &eval_audit_ts_val
+        eval_audit_addr * &gamma1 * &gamma1 + &(eval_audit_val * &gamma1) + eval_audit_ts_val
             - &gamma2;
     assert_eq!(cliam_audit, hash_audit_at_rand_mem);
 

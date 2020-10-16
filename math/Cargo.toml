@@ -9,12 +9,19 @@ license = "MIT/Apache-2.0"
 edition = "2018"
 
 [dependencies]
-math-derive = { path = "math-derive", optional = true }
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"]}
 derivative = { version = "2", features = ["use_core"] }
 num-traits = { version = "0.2", default-features = false }
 rand = { version = "0.7", default-features = false }
 rayon = { version = "1", optional = true }
 unroll = "0.1.4"
+
+# [dependencies.serde_crate]
+# package = "serde"
+# version = "1.0"
+# default-features = false
+# features = ["derive"]
+# optional = true
 
 [dev-dependencies]
 rand_xorshift = "0.2"
@@ -24,4 +31,3 @@ curve = { path = "../curve", default-features = false, features = [ "bls12_381",
 default = [ "std" ]
 std = []
 parallel = [ "std", "rayon" ]
-derive = [ "math-derive" ]

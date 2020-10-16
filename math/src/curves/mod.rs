@@ -4,7 +4,7 @@ use crate::{
     bytes::{FromBytes, ToBytes},
     fields::{Field, PrimeField, SquareRootField},
     groups::Group,
-    CanonicalDeserialize, CanonicalSerialize, ConstantSerializedSize, UniformRand, Vec,
+    UniformRand, Vec,
 };
 use core::{
     fmt::{Debug, Display},
@@ -130,6 +130,8 @@ pub trait ProjectiveCurve:
     + core::iter::Sum<Self>
     + for<'a> core::iter::Sum<&'a Self>
     + From<<Self as ProjectiveCurve>::Affine>
+    + serde::Serialize
+    + for<'a> serde::Deserialize<'a>
 {
     type ScalarField: PrimeField + SquareRootField;
     type BaseField: Field;
@@ -216,9 +218,6 @@ pub trait AffineCurve:
     + Sized
     + ToBytes
     + FromBytes
-    + CanonicalSerialize
-    + ConstantSerializedSize
-    + CanonicalDeserialize
     + Copy
     + Clone
     + Default
@@ -230,6 +229,8 @@ pub trait AffineCurve:
     + Zero
     + Neg<Output = Self>
     + From<<Self as AffineCurve>::Projective>
+    + serde::Serialize
+    + for<'a> serde::Deserialize<'a>
 {
     type ScalarField: PrimeField + SquareRootField + Into<<Self::ScalarField as PrimeField>::BigInt>;
     type BaseField: Field;

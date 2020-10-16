@@ -1,5 +1,5 @@
 use math::fft::EvaluationDomain;
-use math::{FromBytes, PairingEngine, ToBytes, UniformRand};
+use math::{PairingEngine, ToBytes, UniformRand};
 use rand::Rng;
 
 use crate::r1cs::{ConstraintSynthesizer, SynthesisError};
@@ -58,42 +58,6 @@ pub fn index<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>>(
         committer_key,
     };
     Ok((ipk, ivk))
-}
-
-/// standard interface for create proof and to bytes.
-pub fn prove_to_bytes<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, R: Rng>(
-    ipk: &IndexProverKey<E>,
-    circuit: C,
-    rng: &mut R,
-    publics: &[E::Fr],
-) -> Result<(Vec<u8>, Vec<u8>), SynthesisError> {
-    let proof = create_random_proof(ipk, circuit, rng)?;
-    let mut proof_bytes = vec![];
-    proof.write(&mut proof_bytes)?;
-    let mut publics_bytes = vec![];
-    (publics.len() as u32).write(&mut publics_bytes)?;
-    for i in publics {
-        i.write(&mut publics_bytes)?;
-    }
-
-    Ok((proof_bytes, publics_bytes))
-}
-
-/// standard interface for verify proof from bytes.
-pub fn verify_from_bytes<E: PairingEngine>(
-    vk_bytes: &[u8],
-    proof_bytes: &[u8],
-    mut publics_bytes: &[u8],
-) -> Result<bool, SynthesisError> {
-    let vk = IndexVerifierKey::read(vk_bytes)?;
-    let proof = Proof::read(proof_bytes)?;
-    let mut publics = vec![];
-    let publics_len = u32::read(&mut publics_bytes)?;
-    for _ in 0..publics_len {
-        publics.push(E::Fr::read(&mut publics_bytes)?);
-    }
-
-    verify_proof::<E>(&vk, &proof, &publics)
 }
 
 /// standard interface for create proof.

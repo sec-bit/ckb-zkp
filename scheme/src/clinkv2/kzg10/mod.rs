@@ -1,9 +1,4 @@
-use math::{
-    io::{self, Result as IoResult},
-    serialize::*,
-    Field, FromBytes, PairingEngine, ToBytes,
-};
-use rand::Rng;
+use math::{Field, PairingEngine};
 
 pub mod kzg10;
 pub mod prover;
@@ -22,105 +17,14 @@ use super::r1cs::{ConstraintSystem, Index, LinearCombination, SynthesisError, Va
 type Kzg10Proof<E> = kzg10::Proof<E>;
 type Kzg10Comm<E> = kzg10::Commitment<E>;
 
-/// standard interface for create proof and to bytes.
-pub fn prove_to_bytes<E: PairingEngine, R: Rng>(
-    assignment: &ProveAssignment<E>,
-    pk: &ProveKey<E>,
-    rng: &mut R,
-    publics: &Vec<Vec<E::Fr>>,
-) -> Result<(Vec<u8>, Vec<u8>), SynthesisError> {
-    let proof = create_random_proof(assignment, pk, rng)?;
-    let mut proof_bytes = vec![];
-    proof.write(&mut proof_bytes)?;
-    let mut publics_bytes = vec![];
-    (publics.len() as u32).write(&mut publics_bytes)?;
-    for i in publics {
-        (i.len() as u32).write(&mut publics_bytes)?;
-        for j in i {
-            j.write(&mut publics_bytes)?;
-        }
-    }
-
-    Ok((proof_bytes, publics_bytes))
-}
-
-/// standard interface for verify proof from bytes.
-pub fn verify_from_bytes<E: PairingEngine>(
-    assignment: &VerifyAssignment<E>,
-    vk_bytes: &[u8],
-    proof_bytes: &[u8],
-    mut publics_bytes: &[u8],
-) -> Result<bool, SynthesisError> {
-    let vk = VerifyKey::read(vk_bytes)?;
-    let proof = Proof::read(proof_bytes)?;
-    let mut publics = vec![];
-    let publics_len = u32::read(&mut publics_bytes)?;
-    for _ in 0..publics_len {
-        let i = u32::read(&mut publics_bytes)?;
-        let mut tmp_publics = vec![];
-        for _ in 0..i {
-            tmp_publics.push(E::Fr::read(&mut publics_bytes)?);
-        }
-        publics.push(tmp_publics);
-    }
-
-    verify_proof::<E>(assignment, &vk, &proof, &publics)
-}
-
 /// The proof in Clinkv2.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Proof<E: PairingEngine> {
     pub r_mid_comms: Vec<Kzg10Comm<E>>,
     pub q_comm: Kzg10Comm<E>,
     pub r_mid_q_values: Vec<E::Fr>,
     pub r_mid_q_proof: Kzg10Proof<E>,
     pub opening_challenge: E::Fr,
-}
-
-impl<E: PairingEngine> ToBytes for Proof<E> {
-    #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> io::Result<()> {
-        (self.r_mid_comms.len() as u32).write(&mut writer)?;
-        for i in &self.r_mid_comms {
-            i.write(&mut writer)?;
-        }
-        self.q_comm.write(&mut writer)?;
-        (self.r_mid_q_values.len() as u32).write(&mut writer)?;
-        for i in &self.r_mid_q_values {
-            i.write(&mut writer)?;
-        }
-        self.r_mid_q_proof.write(&mut writer)?;
-        self.opening_challenge.write(&mut writer)
-    }
-}
-
-impl<E: PairingEngine> FromBytes for Proof<E> {
-    #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let mut r_mid_comms = vec![];
-        let r_mid_comms_len = u32::read(&mut reader)?;
-        for _ in 0..r_mid_comms_len {
-            r_mid_comms.push(Kzg10Comm::read(&mut reader)?);
-        }
-        let q_comm = Kzg10Comm::read(&mut reader)?;
-        let mut r_mid_q_values = vec![];
-        let r_mid_q_values_len = u32::read(&mut reader)?;
-        for _ in 0..r_mid_q_values_len {
-            r_mid_q_values.push(E::Fr::read(&mut reader)?);
-        }
-        let r_mid_q_proof = Kzg10Proof::read(&mut reader)?;
-        let opening_challenge = E::Fr::read(&mut reader)?;
-
-        let proof = Self {
-            r_mid_comms,
-            q_comm,
-            r_mid_q_values,
-            r_mid_q_proof,
-            opening_challenge,
-        };
-
-        Ok(proof)
-    }
 }
 
 fn push_constraints<F: Field>(

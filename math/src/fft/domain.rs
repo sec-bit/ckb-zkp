@@ -22,8 +22,8 @@ use rayon::prelude::*;
 /// Defines a domain over which finite field (I)FFTs can be performed. Works
 /// only for fields that have a large multiplicative subgroup of size that is
 /// a power-of-2.
-#[derive(Copy, Clone, Hash, Eq, PartialEq)]
-pub struct EvaluationDomain<F: PrimeField> {
+#[derive(Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+pub struct EvaluationDomain<F> {
     /// The size of the domain.
     pub size: u64,
     /// `log_2(self.size)`.

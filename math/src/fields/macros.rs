@@ -1,8 +1,5 @@
-// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
-
 macro_rules! impl_Fp {
     ($Fp:ident, $FpParameters:ident, $limbs:expr) => {
-        use $crate::serialize::CanonicalDeserialize;
         pub trait $FpParameters: FpParameters<BigInt = BigInteger> {}
 
         #[derive(Derivative)]
@@ -13,8 +10,9 @@ macro_rules! impl_Fp {
             Copy(bound = ""),
             Debug(bound = ""),
             PartialEq(bound = ""),
-            Eq(bound = "")
+            Eq(bound = ""),
         )]
+        #[derive(Serialize, Deserialize)]
         pub struct $Fp<P>(
             pub BigInteger,
             #[derivative(Debug = "ignore")]
@@ -110,7 +108,7 @@ macro_rules! impl_Fp {
                     *b &= m;
                 }
 
-                Self::deserialize(&mut &result_bytes[..]).ok().map(|f| (f, flags))
+                Self::read(&mut &result_bytes[..]).ok().map(|f| (f, flags))
             }
 
             #[inline]

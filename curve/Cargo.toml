@@ -48,4 +48,3 @@ mnt6_753 = []
 
 std = [ "math/std" ]
 parallel = [ "std", "math/parallel" ]
-derive = [ "math/derive" ]

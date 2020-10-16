@@ -1,11 +1,6 @@
 #![allow(non_snake_case)]
 use core::cmp;
-use math::{
-    bytes::{FromBytes, ToBytes},
-    io::Result as IoResult,
-    serialize::*,
-    AffineCurve, Field, One, ProjectiveCurve, UniformRand, Zero, Curve
-};
+use math::{AffineCurve, Curve, Field, One, ProjectiveCurve, ToBytes, UniformRand, Zero};
 use merlin::Transcript;
 use rand::Rng;
 
@@ -110,6 +105,7 @@ impl<F: Field> ConstraintSystem<F> for ProvingAssignment<F> {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct Generators<G: Curve> {
     g_vec_N: Vec<G::Affine>,
     h_vec_N: Vec<G::Affine>,
@@ -122,87 +118,22 @@ pub struct Generators<G: Curve> {
     n_w: usize,
 }
 
-impl<G: Curve> ToBytes for Generators<G> {
-    #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.g_vec_N.len() as u64).write(&mut writer)?;
-        for q in &self.g_vec_N {
-            q.write(&mut writer)?;
-        }
-
-        (self.h_vec_N.len() as u64).write(&mut writer)?;
-        for q in &self.h_vec_N {
-            q.write(&mut writer)?;
-        }
-
-        self.g.write(&mut writer)?;
-        self.h.write(&mut writer)?;
-        self.u.write(&mut writer)?;
-
-        (self.n as u64).write(&mut writer)?;
-        (self.N as u64).write(&mut writer)?;
-        (self.k as u64).write(&mut writer)?;
-        (self.n_w as u64).write(&mut writer)?;
-
-        Ok(())
-    }
+#[derive(Serialize, Deserialize)]
+pub struct R1csCircuit<G: Curve> {
+    pub CL: Vec<Vec<G::Fr>>,
+    pub CR: Vec<Vec<G::Fr>>,
+    pub CO: Vec<Vec<G::Fr>>,
+    pub CL_T: BTreeMap<(u32, u32), G::Fr>,
+    pub CR_T: BTreeMap<(u32, u32), G::Fr>,
+    pub CO_T: BTreeMap<(u32, u32), G::Fr>,
 }
 
-impl<G: Curve> FromBytes for Generators<G> {
-    #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let g_len = u64::read(&mut reader)?;
-        let mut g_vec_N = vec![];
-        for _ in 0..g_len {
-            let v = G::Affine::read(&mut reader)?;
-            g_vec_N.push(v);
-        }
-
-        let h_len = u64::read(&mut reader)?;
-        let mut h_vec_N = vec![];
-        for _ in 0..h_len {
-            let v = G::Affine::read(&mut reader)?;
-            h_vec_N.push(v);
-        }
-
-        let g = G::Affine::read(&mut reader)?;
-        let h = G::Affine::read(&mut reader)?;
-        let u = G::Affine::read(&mut reader)?;
-
-        let n = u64::read(&mut reader)? as usize;
-        let N = u64::read(&mut reader)? as usize;
-        let k = u64::read(&mut reader)? as usize;
-        let n_w = u64::read(&mut reader)? as usize;
-
-        Ok(Self {
-            g_vec_N,
-            h_vec_N,
-            g,
-            h,
-            u,
-            n,
-            N,
-            k,
-            n_w,
-        })
-    }
-}
-
-pub struct R1csCircuit<F: Field> {
-    pub CL: Vec<Vec<F>>,
-    pub CR: Vec<Vec<F>>,
-    pub CO: Vec<Vec<F>>,
-    pub CL_T: BTreeMap<(u32, u32), F>,
-    pub CR_T: BTreeMap<(u32, u32), F>,
-    pub CO_T: BTreeMap<(u32, u32), F>,
-}
-
-impl<F: Field> R1csCircuit<F> {
+impl<G: Curve> R1csCircuit<G> {
     fn matrix_to_map(mut self) -> Self {
         let m = self.CL.len();
         if self.CL.len() != 0 {
             let n = self.CL[0].len();
-            let zero = F::zero();
+            let zero = G::Fr::zero();
 
             for i in 0..m {
                 for j in 0..n {
@@ -223,229 +154,16 @@ impl<F: Field> R1csCircuit<F> {
     }
 }
 
-impl<F: Field> ToBytes for R1csCircuit<F> {
-    #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        let zero = F::zero();
-
-        let x = self.CL.len();
-        let y = if x > 0 { self.CL[0].len() } else { 0 };
-
-        (x as u32).write(&mut writer)?;
-        (y as u32).write(&mut writer)?;
-
-        let mut cl_bytes = Vec::new();
-        let mut cr_bytes = Vec::new();
-        let mut co_bytes = Vec::new();
-
-        let mut l_i = 0u32;
-        let mut r_i = 0u32;
-        let mut o_i = 0u32;
-
-        for i in 0..x {
-            let mut l_n = 0u32;
-            let mut l_bytes = Vec::new();
-
-            let mut r_n = 0u32;
-            let mut r_bytes = Vec::new();
-
-            let mut o_n = 0u32;
-            let mut o_bytes = Vec::new();
-
-            for j in 0..y {
-                let l_t = self.CL[i][j];
-                let r_t = self.CR[i][j];
-                let o_t = self.CO[i][j];
-
-                if l_t != zero {
-                    (j as u32).write(&mut l_bytes)?;
-                    l_t.write(&mut l_bytes)?;
-                    l_n += 1
-                }
-
-                if r_t != zero {
-                    (j as u32).write(&mut r_bytes)?;
-                    r_t.write(&mut r_bytes)?;
-                    r_n += 1
-                }
-
-                if o_t != zero {
-                    (j as u32).write(&mut o_bytes)?;
-                    o_t.write(&mut o_bytes)?;
-                    o_n += 1
-                }
-            }
-
-            if l_n > 0 {
-                l_i += 1;
-                (i as u32).write(&mut cl_bytes)?;
-                l_n.write(&mut cl_bytes)?;
-                l_bytes.write(&mut cl_bytes)?;
-            }
-
-            if r_n > 0 {
-                r_i += 1;
-                (i as u32).write(&mut cr_bytes)?;
-                r_n.write(&mut cr_bytes)?;
-                r_bytes.write(&mut cr_bytes)?;
-            }
-
-            if o_n > 0 {
-                o_i += 1;
-                (i as u32).write(&mut co_bytes)?;
-                o_n.write(&mut co_bytes)?;
-                o_bytes.write(&mut co_bytes)?;
-            }
-        }
-
-        l_i.write(&mut writer)?;
-        cl_bytes.write(&mut writer)?;
-
-        r_i.write(&mut writer)?;
-        cr_bytes.write(&mut writer)?;
-
-        o_i.write(&mut writer)?;
-        co_bytes.write(&mut writer)?;
-
-        Ok(())
-    }
+#[derive(Serialize, Deserialize)]
+pub struct Assignment<G: Curve> {
+    pub aL: Vec<G::Fr>,
+    aR: Vec<G::Fr>,
+    aO: Vec<G::Fr>,
+    pub s: Vec<G::Fr>,
+    pub w: Vec<G::Fr>,
 }
 
-impl<F: Field> FromBytes for R1csCircuit<F> {
-    #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        //let zero = F::zero();
-        let _x = u32::read(&mut reader)? as usize;
-        let _y = u32::read(&mut reader)? as usize;
-        //println!("x: {}, y: {}", _x, _y);
-
-        let mut CL_T = BTreeMap::new();
-        let mut CR_T = BTreeMap::new();
-        let mut CO_T = BTreeMap::new();
-
-        let l_i = u32::read(&mut reader)?;
-        for _ in 0..l_i {
-            let i = u32::read(&mut reader)? as usize;
-            let i_n = u32::read(&mut reader)?;
-            for _ in 0..i_n {
-                let j = u32::read(&mut reader)? as usize;
-                CL_T.insert((i as u32, j as u32), F::read(&mut reader)?);
-            }
-        }
-
-        let r_i = u32::read(&mut reader)?;
-        for _ in 0..r_i {
-            let i = u32::read(&mut reader)? as usize;
-            let i_n = u32::read(&mut reader)?;
-            for _ in 0..i_n {
-                let j = u32::read(&mut reader)? as usize;
-                CR_T.insert((i as u32, j as u32), F::read(&mut reader)?);
-            }
-        }
-
-        let o_i = u32::read(&mut reader)?;
-        for _ in 0..o_i {
-            let i = u32::read(&mut reader)? as usize;
-            let i_n = u32::read(&mut reader)?;
-            for _ in 0..i_n {
-                let j = u32::read(&mut reader)? as usize;
-                CO_T.insert((i as u32, j as u32), F::read(&mut reader)?);
-            }
-        }
-
-        Ok(Self {
-            CL_T,
-            CR_T,
-            CO_T,
-            CL: Default::default(),
-            CR: Default::default(),
-            CO: Default::default(),
-        })
-    }
-}
-
-pub struct Assignment<F: Field> {
-    pub aL: Vec<F>,
-    aR: Vec<F>,
-    aO: Vec<F>,
-    pub s: Vec<F>,
-    pub w: Vec<F>,
-}
-
-impl<F: Field> ToBytes for Assignment<F> {
-    #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.aL.len() as u64).write(&mut writer)?;
-        for i in &self.aL {
-            i.write(&mut writer)?;
-        }
-
-        (self.aR.len() as u64).write(&mut writer)?;
-        for i in &self.aR {
-            i.write(&mut writer)?;
-        }
-
-        (self.aO.len() as u64).write(&mut writer)?;
-        for i in &self.aO {
-            i.write(&mut writer)?;
-        }
-
-        (self.s.len() as u64).write(&mut writer)?;
-        for i in &self.s {
-            i.write(&mut writer)?;
-        }
-
-        (self.w.len() as u64).write(&mut writer)?;
-        for i in &self.w {
-            i.write(&mut writer)?;
-        }
-
-        Ok(())
-    }
-}
-
-impl<F: Field> FromBytes for Assignment<F> {
-    #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let l_len = u64::read(&mut reader)?;
-        let mut aL = vec![];
-        for _ in 0..l_len {
-            let v = F::read(&mut reader)?;
-            aL.push(v);
-        }
-
-        let r_len = u64::read(&mut reader)?;
-        let mut aR = vec![];
-        for _ in 0..r_len {
-            let v = F::read(&mut reader)?;
-            aR.push(v);
-        }
-
-        let o_len = u64::read(&mut reader)?;
-        let mut aO = vec![];
-        for _ in 0..o_len {
-            let v = F::read(&mut reader)?;
-            aO.push(v);
-        }
-
-        let s_len = u64::read(&mut reader)?;
-        let mut s = vec![];
-        for _ in 0..s_len {
-            let v = F::read(&mut reader)?;
-            s.push(v);
-        }
-
-        let w_len = u64::read(&mut reader)?;
-        let mut w = vec![];
-        for _ in 0..w_len {
-            let v = F::read(&mut reader)?;
-            w.push(v);
-        }
-
-        Ok(Self { aL, aR, aO, s, w })
-    }
-}
-
+#[derive(Serialize, Deserialize)]
 pub struct Proof<G: Curve> {
     A_I: G::Affine,
     A_O: G::Affine,
@@ -468,107 +186,20 @@ pub struct Proof<G: Curve> {
     IPP_P: G::Projective,
 }
 
-impl<G: Curve> ToBytes for Proof<G> {
-    #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.A_I.write(&mut writer)?;
-        self.A_O.write(&mut writer)?;
-        self.A_W.write(&mut writer)?;
-        self.S.write(&mut writer)?;
-        self.T_2.write(&mut writer)?;
-        self.T_3.write(&mut writer)?;
-        self.T_5.write(&mut writer)?;
-        self.T_6.write(&mut writer)?;
-        self.T_7.write(&mut writer)?;
-        self.T_8.write(&mut writer)?;
-        self.T_9.write(&mut writer)?;
-        self.T_10.write(&mut writer)?;
-        self.mu.write(&mut writer)?;
-        self.tau_x.write(&mut writer)?;
-
-        (self.l_x.len() as u64).write(&mut writer)?;
-        for i in &self.l_x {
-            i.write(&mut writer)?;
-        }
-        (self.r_x.len() as u64).write(&mut writer)?;
-        for i in &self.r_x {
-            i.write(&mut writer)?;
-        }
-
-        self.t_x.write(&mut writer)?;
-        self.IPP.write(&mut writer)?;
-        self.IPP_P.write(&mut writer)?;
-
-        Ok(())
-    }
-}
-
-impl<G: Curve> FromBytes for Proof<G> {
-    #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let A_I = G::Affine::read(&mut reader)?;
-        let A_O = G::Affine::read(&mut reader)?;
-        let A_W = G::Affine::read(&mut reader)?;
-        let S = G::Affine::read(&mut reader)?;
-        let T_2 = G::Affine::read(&mut reader)?;
-        let T_3 = G::Affine::read(&mut reader)?;
-        let T_5 = G::Affine::read(&mut reader)?;
-        let T_6 = G::Affine::read(&mut reader)?;
-        let T_7 = G::Affine::read(&mut reader)?;
-        let T_8 = G::Affine::read(&mut reader)?;
-        let T_9 = G::Affine::read(&mut reader)?;
-        let T_10 = G::Affine::read(&mut reader)?;
-        let mu = G::Fr::read(&mut reader)?;
-        let tau_x = G::Fr::read(&mut reader)?;
-
-        let l_len = u64::read(&mut reader)?;
-        let mut l_x = vec![];
-        for _ in 0..l_len {
-            let v = G::Fr::read(&mut reader)?;
-            l_x.push(v);
-        }
-
-        let r_len = u64::read(&mut reader)?;
-        let mut r_x = vec![];
-        for _ in 0..r_len {
-            let v = G::Fr::read(&mut reader)?;
-            r_x.push(v);
-        }
-
-        let t_x = G::Fr::read(&mut reader)?;
-        let IPP = inner_product_proof::Proof::<G>::read(&mut reader)?;
-        let IPP_P = G::Projective::read(&mut reader)?;
-
-        Ok(Self {
-            A_I,
-            A_O,
-            A_W,
-            S,
-            T_2,
-            T_3,
-            T_5,
-            T_6,
-            T_7,
-            T_8,
-            T_9,
-            T_10,
-            mu,
-            tau_x,
-            l_x,
-            r_x,
-            t_x,
-            IPP,
-            IPP_P,
-        })
-    }
-}
-
 // very basic support for R1CS ConstraintSystem
 // TODO: refactor this then we do not need to return Generators, R1csCircuit, and Assignment.
 pub fn create_random_proof<G, C, R>(
     circuit: C,
     rng: &mut R,
-) -> Result<(Generators<G>, R1csCircuit<G::Fr>, Proof<G>, Assignment<G::Fr>), SynthesisError>
+) -> Result<
+    (
+        Generators<G>,
+        R1csCircuit<G>,
+        Proof<G>,
+        Assignment<G>,
+    ),
+    SynthesisError,
+>
 where
     G: Curve,
     C: ConstraintSynthesizer<G::Fr>,
@@ -630,7 +261,7 @@ where
         }
     }
 
-    let r1cs_circuit = R1csCircuit::<G::Fr> {
+    let r1cs_circuit = R1csCircuit {
         CL,
         CR,
         CO,
@@ -685,8 +316,8 @@ where
 // bulletproofs arithmetic circuit proof with R1CS format
 pub fn prove<G, R>(
     gens: &Generators<G>,
-    r1cs_circuit: &R1csCircuit<G::Fr>,
-    input: &Assignment<G::Fr>,
+    r1cs_circuit: &R1csCircuit<G>,
+    input: &Assignment<G>,
     rng: &mut R,
 ) -> Proof<G>
 where
@@ -721,7 +352,7 @@ where
     let mut sR: Vec<G::Fr> = (0..n_max).map(|_| G::Fr::rand(rng)).collect();
 
     // alpha, beta, rou, gamma
-    let aIBlinding  = G::Fr::rand(rng);
+    let aIBlinding = G::Fr::rand(rng);
     let aOBlinding = G::Fr::rand(rng);
     let sBlinding = G::Fr::rand(rng);
     let gamma = G::Fr::rand(rng); // w blinding
@@ -975,7 +606,7 @@ where
 pub fn verify_proof<G: Curve>(
     gens: &Generators<G>,
     proof: &Proof<G>,
-    r1cs_circuit: &R1csCircuit<G::Fr>,
+    r1cs_circuit: &R1csCircuit<G>,
     public_inputs: &[G::Fr],
 ) -> bool {
     let mut transcript = Transcript::new(b"protocol3");
@@ -1151,8 +782,7 @@ pub fn verify_proof<G: Curve>(
     }
 
     // check ti
-    let checkT_lhs: G::Projective =
-        quick_multiexp::<G>(&vec![proof.t_x, proof.tau_x], &vec![g, h]);
+    let checkT_lhs: G::Projective = quick_multiexp::<G>(&vec![proof.t_x, proof.tau_x], &vec![g, h]);
 
     let zQ_c = inner_product::<G::Fr>(&z_Q, &c);
 
@@ -1210,7 +840,7 @@ mod tests {
     ) {
         let rng = &mut math::test_rng();
 
-        let r1cs_circuit = R1csCircuit::<G::Fr> {
+        let r1cs_circuit = R1csCircuit {
             CL,
             CR,
             CO,

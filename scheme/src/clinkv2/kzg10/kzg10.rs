@@ -7,10 +7,8 @@
 
 use math::{
     fft::DensePolynomial as Polynomial,
-    io::Result as IoResult,
     msm::{FixedBaseMSM, VariableBaseMSM},
-    serialize::*,
-    AffineCurve, Field, FromBytes, Group, One, PairingEngine, PrimeField, ProjectiveCurve, ToBytes,
+    AffineCurve, Field, Group, One, PairingEngine, PrimeField, ProjectiveCurve, ToBytes,
     UniformRand, Zero,
 };
 
@@ -25,7 +23,7 @@ use core::ops::{Add, AddAssign};
 use crate::*;
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
-#[derive(Derivative)]
+#[derive(Derivative, Serialize, Deserialize)]
 #[derivative(Default(bound = ""), Clone(bound = ""), Debug(bound = ""))]
 pub struct UniversalParams<E: PairingEngine> {
     /// Group elements of the form `{ \beta^i G }`, where `i` ranges from 0 to `degree`.
@@ -54,7 +52,7 @@ impl<E: PairingEngine> UniversalParams<E> {
 
 /// `Powers` is used to commit to and create evaluation proofs for a given
 /// polynomial.
-#[derive(Derivative)]
+#[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
     Default(bound = ""),
     Hash(bound = ""),
@@ -76,7 +74,7 @@ impl<E: PairingEngine> Powers<'_, E> {
 }
 
 /// `VerifierKey` is used to check evaluation proofs for a given commitment.
-#[derive(Derivative)]
+#[derive(Derivative, Serialize, Deserialize)]
 #[derivative(Default(bound = ""), Clone(bound = ""), Debug(bound = ""))]
 pub struct VerifierKey<E: PairingEngine> {
     /// The generator of G1.
@@ -105,41 +103,8 @@ impl<E: PairingEngine> PartialEq for VerifierKey<E> {
 }
 impl<E: PairingEngine> Eq for VerifierKey<E> {}
 
-impl<E: PairingEngine> ToBytes for VerifierKey<E> {
-    #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.g.write(&mut writer)?;
-        self.gamma_g.write(&mut writer)?;
-        self.h.write(&mut writer)?;
-        self.beta_h.write(&mut writer)?;
-        self.prepared_h.write(&mut writer)?;
-        self.prepared_beta_h.write(&mut writer)
-    }
-}
-
-impl<E: PairingEngine> FromBytes for VerifierKey<E> {
-    #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let g = E::G1Affine::read(&mut reader)?;
-        let gamma_g = E::G1Affine::read(&mut reader)?;
-        let h = E::G2Affine::read(&mut reader)?;
-        let beta_h = E::G2Affine::read(&mut reader)?;
-        let prepared_h = E::G2Prepared::read(&mut reader)?;
-        let prepared_beta_h = E::G2Prepared::read(&mut reader)?;
-
-        Ok(Self {
-            g,
-            gamma_g,
-            h,
-            beta_h,
-            prepared_h,
-            prepared_beta_h,
-        })
-    }
-}
-
 /// `Commitment` commits to a polynomial. It is output by `KZG10::commit`.
-#[derive(Derivative)]
+#[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
     Default(bound = ""),
     Hash(bound = ""),
@@ -156,16 +121,8 @@ pub struct Commitment<E: PairingEngine>(
 
 impl<E: PairingEngine> ToBytes for Commitment<E> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write<W: math::io::Write>(&self, mut writer: W) -> math::io::Result<()> {
         self.0.write(&mut writer)
-    }
-}
-
-impl<E: PairingEngine> FromBytes for Commitment<E> {
-    #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let g = E::G1Affine::read(&mut reader)?;
-        Ok(Self(g))
     }
 }
 
@@ -271,7 +228,7 @@ impl<'a, E: PairingEngine> AddAssign<(E::Fr, &'a Randomness<E>)> for Randomness<
 }
 
 /// `Proof` is an evaluation proof that is output by `KZG10::open`.
-#[derive(Derivative)]
+#[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
     Default(bound = ""),
     Hash(bound = ""),
@@ -297,31 +254,6 @@ impl<E: PairingEngine> Proof<E> {
             0
         };
         math::to_bytes![E::G1Affine::zero()].unwrap().len() / 2 + hiding_size
-    }
-}
-
-impl<E: PairingEngine> ToBytes for Proof<E> {
-    #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.w.write(&mut writer)?;
-        let v_exists = self.random_v.is_some();
-        v_exists.write(&mut writer)?;
-        self.random_v
-            .as_ref()
-            .unwrap_or(&E::Fr::zero())
-            .write(&mut writer)
-    }
-}
-
-impl<E: PairingEngine> FromBytes for Proof<E> {
-    #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let w = E::G1Affine::read(&mut reader)?;
-        let v_exists = bool::read(&mut reader)?;
-        let random_value = E::Fr::read(&mut reader)?;
-        let random_v = if v_exists { Some(random_value) } else { None };
-
-        Ok(Self { w, random_v })
     }
 }
 
@@ -736,7 +668,7 @@ impl<E: PairingEngine> KZG10<E> {
             let mut temp = w.mul(*z);
             temp.add_assign_mixed(&c.0);
             let c = temp;
-            g_multiplier += &(randomizer * &v);
+            g_multiplier += &(randomizer * v);
             if let Some(random_v) = proof.random_v {
                 gamma_g_multiplier += &(randomizer * &random_v);
             }

@@ -15,6 +15,9 @@
 #[macro_use]
 extern crate derivative;
 
+#[macro_use]
+extern crate serde;
+
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 

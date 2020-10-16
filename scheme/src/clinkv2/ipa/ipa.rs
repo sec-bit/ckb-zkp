@@ -1,6 +1,7 @@
 use math::{
-    fft::DensePolynomial as Polynomial, io::Result as IoResult, msm::VariableBaseMSM, serialize::*,
-    AffineCurve, Curve, Field, FromBytes, One, PrimeField, ProjectiveCurve, ToBytes, UniformRand,
+    fft::DensePolynomial as Polynomial,
+    msm::VariableBaseMSM,
+    AffineCurve, Curve, Field, One, PrimeField, ProjectiveCurve, ToBytes, UniformRand,
     Zero,
 };
 
@@ -16,7 +17,7 @@ use core::marker::PhantomData;
 use crate::*;
 
 /// `UniversalParams` are the universal parameters for the inner product arg scheme.
-#[derive(Derivative)]
+#[derive(Derivative, Serialize, Deserialize)]
 #[derivative(Default(bound = ""), Clone(bound = ""), Debug(bound = ""))]
 pub struct UniversalParams<G: Curve> {
     /// The key used to commit to polynomials.
@@ -36,7 +37,7 @@ impl<G: Curve> UniversalParams<G> {
 
 /// `CommitterKey` is used to commit to, and create evaluation proofs for, a given
 /// polynomial.
-#[derive(Derivative)]
+#[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
     Default(bound = ""),
     Hash(bound = ""),
@@ -77,43 +78,11 @@ impl<G: Curve> PartialEq for CommitterKey<G> {
 
 impl<G: Curve> Eq for CommitterKey<G> {}
 
-impl<G: Curve> ToBytes for CommitterKey<G> {
-    #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.comm_key.len() as u64).write(&mut writer)?;
-        self.comm_key.write(&mut writer)?;
-        self.h.write(&mut writer)?;
-        self.s.write(&mut writer)?;
-        (self.max_degree as u64).write(&mut writer)
-    }
-}
-
-impl<G: Curve> FromBytes for CommitterKey<G> {
-    #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let mut comm_key = Vec::new();
-        let comm_key_len = u64::read(&mut reader)?;
-        for _ in 0..comm_key_len {
-            comm_key.push(G::Affine::read(&mut reader)?);
-        }
-        let h = G::Affine::read(&mut reader)?;
-        let s = G::Affine::read(&mut reader)?;
-        let max_degree = u64::read(&mut reader)? as usize;
-
-        Ok(Self {
-            comm_key,
-            h,
-            s,
-            max_degree,
-        })
-    }
-}
-
 /// `VerifierKey` is used to check evaluation proofs for a given commitment.
 pub type VerifierKey<G> = CommitterKey<G>;
 
 /// Commitment to a polynomial that optionally enforces a degree bound.
-#[derive(Derivative)]
+#[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
     Default(bound = ""),
     Hash(bound = ""),
@@ -134,18 +103,9 @@ pub struct Commitment<G: Curve> {
 
 impl<G: Curve> ToBytes for Commitment<G> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write<W: math::io::Write>(&self, mut writer: W) -> math::io::Result<()> {
         self.comm.write(&mut writer)?;
         self.shifted_comm.write(&mut writer)
-    }
-}
-
-impl<G: Curve> FromBytes for Commitment<G> {
-    #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let comm = G::Affine::read(&mut reader)?;
-        let shifted_comm = G::Affine::read(&mut reader)?;
-        Ok(Self { comm, shifted_comm })
     }
 }
 
@@ -188,7 +148,7 @@ impl<G: Curve> Randomness<G> {
 }
 
 /// `Proof` is an evaluation proof that is output by `InnerProductArg::open`.
-#[derive(Derivative)]
+#[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
     Default(bound = ""),
     Hash(bound = ""),
@@ -213,68 +173,6 @@ pub struct Proof<G: Curve> {
     /// to the opened polynomials, along with the randomness used for the
     /// commitment to the hiding polynomial.
     pub rand: Option<G::Fr>,
-}
-
-impl<G: Curve> ToBytes for Proof<G> {
-    #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.l_vec.len() as u64).write(&mut writer)?;
-        self.l_vec.write(&mut writer)?;
-        (self.r_vec.len() as u64).write(&mut writer)?;
-        self.r_vec.write(&mut writer)?;
-        self.final_comm_key.write(&mut writer)?;
-        self.c.write(&mut writer)?;
-        self.hiding_comm.is_some().write(&mut writer)?;
-        self.hiding_comm
-            .as_ref()
-            .unwrap_or(&G::Affine::zero())
-            .write(&mut writer)?;
-        self.rand.is_some().write(&mut writer)?;
-        self.rand
-            .as_ref()
-            .unwrap_or(&G::Fr::zero())
-            .write(&mut writer)
-    }
-}
-
-impl<G: Curve> FromBytes for Proof<G> {
-    #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let mut l_vec = Vec::new();
-        let l_vec_len = u64::read(&mut reader)?;
-        for _ in 0..l_vec_len {
-            l_vec.push(G::Affine::read(&mut reader)?);
-        }
-        let mut r_vec = Vec::new();
-        let r_vec_len = u64::read(&mut reader)?;
-        for _ in 0..r_vec_len {
-            r_vec.push(G::Affine::read(&mut reader)?);
-        }
-
-        let final_comm_key = G::Affine::read(&mut reader)?;
-        let c = G::Fr::read(&mut reader)?;
-
-        let hiding_comm_exists = bool::read(&mut reader)?;
-        let hiding_comm_value = G::Affine::read(&mut reader)?;
-        let hiding_comm = if hiding_comm_exists {
-            Some(hiding_comm_value)
-        } else {
-            None
-        };
-
-        let rand_exists = bool::read(&mut reader)?;
-        let rand_value = G::Fr::read(&mut reader)?;
-        let rand = if rand_exists { Some(rand_value) } else { None };
-
-        Ok(Self {
-            l_vec,
-            r_vec,
-            final_comm_key,
-            c,
-            hiding_comm,
-            rand,
-        })
-    }
 }
 
 /// `SuccinctCheckPolynomial` is a succinctly-representated polynomial
@@ -394,12 +292,12 @@ impl<G: Curve, D: Digest> InnerProductArgPC<G, D> {
         let values = values.into_iter();
 
         for (commitment, value) in commitments_iter.zip(values) {
-            combined_v += &(cur_challenge * &value);
+            combined_v += &(cur_challenge * value);
             combined_commitment_proj += &commitment.comm.mul(cur_challenge);
             cur_challenge *= &opening_challenge;
 
             let shift = point.pow([(vk.supported_degree() - degree_bound) as u64]);
-            combined_v += &(cur_challenge * &value * &shift);
+            combined_v += &(cur_challenge * value * &shift);
             combined_commitment_proj += &commitment.shifted_comm.mul(cur_challenge);
 
             cur_challenge *= &opening_challenge;
@@ -734,11 +632,11 @@ impl<G: Curve, D: Digest> InnerProductArgPC<G, D> {
 
             math::cfg_iter_mut!(coeffs_l)
                 .zip(coeffs_r)
-                .for_each(|(c_l, c_r)| *c_l += &(round_challenge_inv * &c_r));
+                .for_each(|(c_l, c_r)| *c_l += &(round_challenge_inv * c_r));
 
             math::cfg_iter_mut!(z_l)
                 .zip(z_r)
-                .for_each(|(z_l, z_r)| *z_l += &(round_challenge * &z_r));
+                .for_each(|(z_l, z_r)| *z_l += &(round_challenge * z_r));
 
             math::cfg_iter_mut!(key_proj_l)
                 .zip(key_r)

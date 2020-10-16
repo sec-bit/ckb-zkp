@@ -15,8 +15,8 @@ use crate::{Field, PrimeField, Vec};
 use rayon::prelude::*;
 
 /// Stores a polynomial in coefficient form.
-#[derive(Clone, PartialEq, Eq, Hash, Default)]
-pub struct DensePolynomial<F: Field> {
+#[derive(Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub struct DensePolynomial<F> {
     /// The coefficient of `x^i` is stored at location `i` in `self.coeffs`.
     pub coeffs: Vec<F>,
 }

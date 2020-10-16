@@ -1,5 +1,3 @@
-// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
-
 #![cfg_attr(not(feature = "std"), no_std)]
 #![deny(unused_import_braces, unused_qualifications, trivial_casts)]
 #![deny(trivial_numeric_casts, variant_size_differences)]
@@ -38,6 +36,9 @@ pub use std::{
 
 #[macro_use]
 extern crate derivative;
+
+#[macro_use]
+extern crate serde;
 
 /// Creates parallel iterator over mut refs if `parallel` feature is enabled.
 #[macro_export]
@@ -102,10 +103,6 @@ pub mod bytes;
 pub use self::bytes::*;
 
 #[macro_use]
-pub mod serialize;
-pub use self::serialize::*;
-
-#[macro_use]
 pub mod fields;
 pub use self::fields::*;
 
@@ -123,9 +120,6 @@ pub use self::rand::*;
 
 mod error;
 pub use self::error::*;
-
-mod to_field_vec;
-pub use to_field_vec::ToConstraintField;
 
 pub mod msm;
 pub use self::msm::*;
@@ -155,11 +149,6 @@ pub mod io;
 
 #[cfg(feature = "std")]
 pub use std::io;
-
-#[cfg(feature = "derive")]
-#[allow(unused_imports)]
-#[macro_use]
-extern crate math_derive;
 
 #[cfg(not(feature = "std"))]
 pub fn error(_msg: &'static str) -> io::Error {

@@ -10,17 +10,22 @@ use rayon::prelude::*;
 use math::fft::{DensePolynomial, EvaluationDomain};
 use math::{Curve, Field, One, ToBytes, UniformRand, Zero};
 
-use super::{ProveKey, Proof, ProveAssignment, IPAPC};
+use super::{Proof, ProveAssignment, ProveKey, IPAPC};
 
 use super::super::r1cs::{Index, SynthesisError};
 
 use digest::Digest;
 
-pub fn create_random_proof<G: Curve, D: Digest, R: Rng>(
+pub fn create_random_proof<G, D, R>(
     circuit: &ProveAssignment<G, D>,
     ipa_ck: &ProveKey<G>,
     rng: &mut R,
-) -> Result<Proof<G>, SynthesisError> {
+) -> Result<Proof<G>, SynthesisError>
+where
+    G: Curve,
+    D: Digest,
+    R: Rng,
+{
     // Number of io variables (statements)
     let m_io = circuit.input_assignment.len();
     // Number of aux variables (witnesses)
@@ -35,8 +40,8 @@ pub fn create_random_proof<G: Curve, D: Digest, R: Rng>(
     let mut transcript = Transcript::new(b"CLINKv2");
 
     // Compute and commit witness polynomials
-    let domain = EvaluationDomain::<G::Fr>::new(n)
-        .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+    let domain =
+        EvaluationDomain::<G::Fr>::new(n).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
     let domain_size = domain.size();
     // println!("domain_size: {:?}", domain_size);

@@ -1,11 +1,9 @@
-// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
-
 #![allow(unused_imports)]
 use core::ops::{AddAssign, MulAssign};
 use math::{
     curves::{models::SWModelParameters, AffineCurve, PairingEngine, ProjectiveCurve},
     fields::{Field, FpParameters, PrimeField, SquareRootField},
-    test_rng, CanonicalSerialize, One, Zero,
+    test_rng, One, Zero,
 };
 use rand::Rng;
 

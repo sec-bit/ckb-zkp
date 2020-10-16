@@ -1,61 +1,17 @@
 #![allow(non_snake_case)]
-use math::{
-    bytes::{FromBytes, ToBytes},
-    io::Result as IoResult,
-    serialize::*,
-    AffineCurve, Field, One, ProjectiveCurve, Curve
-};
+use math::{AffineCurve, Curve, Field, One, ProjectiveCurve, ToBytes};
 use merlin::Transcript;
 
 use crate::Vec;
 
 use super::{inner_product, quick_multiexp, random_bytes_to_fr};
 
+#[derive(Serialize, Deserialize)]
 pub struct Proof<G: Curve> {
     L_vec: Vec<G::Affine>,
     R_vec: Vec<G::Affine>,
     a: G::Fr,
     b: G::Fr,
-}
-
-impl<G: Curve> ToBytes for Proof<G> {
-    #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.L_vec.len() as u64).write(&mut writer)?;
-        for i in &self.L_vec {
-            i.write(&mut writer)?;
-        }
-        (self.R_vec.len() as u64).write(&mut writer)?;
-        for i in &self.R_vec {
-            i.write(&mut writer)?;
-        }
-        self.a.write(&mut writer)?;
-        self.b.write(&mut writer)?;
-
-        Ok(())
-    }
-}
-
-impl<G: Curve> FromBytes for Proof<G> {
-    #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let l_len = u64::read(&mut reader)?;
-        let mut L_vec = vec![];
-        for _ in 0..l_len {
-            let v = G::Affine::read(&mut reader)?;
-            L_vec.push(v);
-        }
-        let r_len = u64::read(&mut reader)?;
-        let mut R_vec = vec![];
-        for _ in 0..r_len {
-            let v = G::Affine::read(&mut reader)?;
-            R_vec.push(v);
-        }
-        let a = G::Fr::read(&mut reader)?;
-        let b = G::Fr::read(&mut reader)?;
-
-        Ok(Self { L_vec, R_vec, a, b })
-    }
 }
 
 // protocol2 should not be used independently

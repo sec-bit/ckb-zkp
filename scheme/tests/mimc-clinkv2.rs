@@ -8,7 +8,7 @@ use math::One;
 
 // Bring in some tools for using pairing-friendly curves
 use curve::bn_256::{Bn_256, Fr};
-use math::{test_rng, Field, FromBytes, ToBytes};
+use math::{test_rng, Field};
 
 use scheme::clinkv2::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
@@ -144,8 +144,8 @@ impl<'a, F: Field> ConstraintSynthesizer<F> for MiMCDemo<'a, F> {
 #[test]
 fn mimc_clinkv2_kzg10() {
     use scheme::clinkv2::kzg10::{
-        create_random_proof, prove_to_bytes, verify_from_bytes, verify_proof, Proof,
-        ProveAssignment, VerifyAssignment, VerifyKey, KZG10
+        create_random_proof, verify_proof, Proof, ProveAssignment, VerifyAssignment, VerifyKey,
+        KZG10,
     };
 
     let mut rng = &mut test_rng();
@@ -224,31 +224,7 @@ fn mimc_clinkv2_kzg10() {
     // Check the proof
     assert!(verify_proof(&verifier_pa, &kzg10_vk, &proof, &io).unwrap());
 
-    let mut vk_bytes = vec![];
-    kzg10_vk.write(&mut vk_bytes).unwrap();
-    let new_vk = VerifyKey::read(&vk_bytes[..]).unwrap();
-    assert_eq!(kzg10_vk, new_vk);
-
-    let mut tmp_proof_bytes = vec![];
-    proof.write(&mut tmp_proof_bytes).unwrap();
-    let new_proof = Proof::read(&tmp_proof_bytes[..]).unwrap();
-    assert_eq!(proof, new_proof);
-
-    println!("Tmp verify with bytes 1");
-    assert!(verify_proof(&verifier_pa, &new_vk, &proof, &io).unwrap());
-
-    println!("Tmp verify with bytes 2");
-    assert!(verify_proof(&verifier_pa, &kzg10_vk, &new_proof, &io).unwrap());
-
-    println!("Tmp verify with bytes 3");
-    assert!(verify_proof(&verifier_pa, &new_vk, &new_proof, &io).unwrap());
     let verify_time = verify_start.elapsed();
-
-    println!("Start prove & verify with bytes...");
-
-    let (proof_bytes, publics_bytes) = prove_to_bytes(&prover_pa, &kzg10_ck, rng, &io).unwrap();
-    println!("proof bytes: {}", proof_bytes.len());
-    assert!(verify_from_bytes(&verifier_pa, &vk_bytes, &proof_bytes, &publics_bytes,).unwrap());
 
     // Compute time
 
@@ -267,8 +243,8 @@ fn mimc_clinkv2_kzg10() {
 fn mimc_clinkv2_ipa() {
     use blake2::Blake2s;
     use scheme::clinkv2::ipa::{
-        create_random_proof, prove_to_bytes, verify_from_bytes, verify_proof, Proof,
-        ProveAssignment, VerifyAssignment, VerifyKey, InnerProductArgPC,
+        create_random_proof, verify_proof, InnerProductArgPC, Proof, ProveAssignment,
+        VerifyAssignment, VerifyKey,
     };
 
     let mut rng = &mut test_rng();
@@ -288,11 +264,6 @@ fn mimc_clinkv2_ipa() {
 
     let ipa_pp = InnerProductArgPC::<Bn_256, Blake2s>::setup(degree, &mut rng).unwrap();
     let (ipa_ck, ipa_vk) = InnerProductArgPC::<Bn_256, Blake2s>::trim(&ipa_pp, degree).unwrap();
-
-    let mut vk_bytes = vec![];
-    ipa_vk.write(&mut vk_bytes).unwrap();
-    let new_vk = VerifyKey::read(&vk_bytes[..]).unwrap();
-    assert_eq!(ipa_vk, new_vk);
 
     crs_time += start.elapsed();
 
@@ -352,32 +323,7 @@ fn mimc_clinkv2_ipa() {
     // Check the proof
     assert!(verify_proof(&verifier_pa, &ipa_vk, &proof, &io).unwrap());
 
-    let mut vk_bytes = vec![];
-    ipa_vk.write(&mut vk_bytes).unwrap();
-    let new_vk = VerifyKey::read(&vk_bytes[..]).unwrap();
-    assert_eq!(ipa_vk, new_vk);
-
-    let mut tmp_proof_bytes = vec![];
-    proof.write(&mut tmp_proof_bytes).unwrap();
-    let new_proof = Proof::read(&tmp_proof_bytes[..]).unwrap();
-    assert_eq!(proof, new_proof);
-
-    println!("Tmp verify with bytes 1");
-    assert!(verify_proof(&verifier_pa, &new_vk, &proof, &io).unwrap());
-
-    println!("Tmp verify with bytes 2");
-    assert!(verify_proof(&verifier_pa, &ipa_vk, &new_proof, &io).unwrap());
-
-    println!("Tmp verify with bytes 3");
-    assert!(verify_proof(&verifier_pa, &new_vk, &new_proof, &io).unwrap());
     let verify_time = verify_start.elapsed();
-
-    println!("Start prove & verify with bytes...");
-    assert!(verify_proof(&verifier_pa, &ipa_vk, &proof, &io).unwrap());
-
-    let (proof_bytes, publics_bytes) = prove_to_bytes(&prover_pa, &ipa_ck, rng, &io).unwrap();
-    println!("proof bytes: {}", proof_bytes.len());
-    assert!(verify_from_bytes(&verifier_pa, &vk_bytes, &proof_bytes, &publics_bytes,).unwrap());
 
     // Compute time
 

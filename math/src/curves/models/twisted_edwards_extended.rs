@@ -1,10 +1,6 @@
-// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
-
 use crate::{
     io::{Read, Result as IoResult, Write},
-    serialize::{EdwardsFlags, Flags},
-    CanonicalDeserialize, CanonicalDeserializeWithFlags, CanonicalSerialize,
-    CanonicalSerializeWithFlags, ConstantSerializedSize, UniformRand, Vec,
+    UniformRand, Vec,
 };
 use core::{
     fmt::{Display, Formatter, Result as FmtResult},
@@ -20,6 +16,7 @@ use rand::{
 use crate::{
     bytes::{FromBytes, ToBytes},
     curves::{
+        flags::{EdwardsFlags, Flags},
         models::{
             MontgomeryModelParameters as MontgomeryParameters, TEModelParameters as Parameters,
         },
@@ -39,6 +36,7 @@ use rayon::prelude::*;
     Debug(bound = "P: Parameters"),
     Hash(bound = "P: Parameters")
 )]
+#[derive(Serialize, Deserialize)]
 pub struct GroupAffine<P: Parameters> {
     pub x: P::BaseField,
     pub y: P::BaseField,
@@ -292,6 +290,7 @@ mod group_impl {
     Debug(bound = "P: Parameters"),
     Hash(bound = "P: Parameters")
 )]
+#[derive(Serialize, Deserialize)]
 pub struct GroupProjective<P: Parameters> {
     pub x: P::BaseField,
     pub y: P::BaseField,
@@ -650,6 +649,7 @@ where
     Debug(bound = "P: MontgomeryParameters"),
     Hash(bound = "P: MontgomeryParameters")
 )]
+#[derive(Serialize, Deserialize)]
 pub struct MontgomeryGroupAffine<P: MontgomeryParameters> {
     pub x: P::BaseField,
     pub y: P::BaseField,
@@ -672,5 +672,3 @@ impl<P: MontgomeryParameters> MontgomeryGroupAffine<P> {
         }
     }
 }
-
-impl_edwards_curve_serializer!(Parameters);
