@@ -15,7 +15,7 @@ pub use error::SynthesisError;
 type SmallVec<F> = StackVec<[(Variable, F); 16]>;
 
 /// Represents a variable in a constraint system.
-#[derive(PartialOrd, Ord, PartialEq, Eq, Copy, Clone, Debug)]
+#[derive(PartialOrd, Ord, PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct Variable(Index);
 
 impl Variable {
@@ -33,7 +33,7 @@ impl Variable {
 }
 
 /// Represents the index of either an input variable or auxiliary variable.
-#[derive(Copy, Clone, PartialEq, Debug, Eq)]
+#[derive(Copy, Clone, PartialEq, Debug, Eq, Serialize, Deserialize)]
 pub enum Index {
     /// Index of an input variable.
     Input(usize),

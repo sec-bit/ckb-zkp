@@ -144,8 +144,7 @@ impl<'a, F: Field> ConstraintSynthesizer<F> for MiMCDemo<'a, F> {
 #[test]
 fn mimc_clinkv2_kzg10() {
     use scheme::clinkv2::kzg10::{
-        create_random_proof, verify_proof, Proof, ProveAssignment, VerifyAssignment, VerifyKey,
-        KZG10,
+        create_random_proof, verify_proof, ProveAssignment, VerifyAssignment, KZG10,
     };
 
     let mut rng = &mut test_rng();
@@ -203,6 +202,9 @@ fn mimc_clinkv2_kzg10() {
     let proof = create_random_proof(&prover_pa, &kzg10_ck, rng).unwrap();
     let prove_time = prove_start.elapsed();
 
+    let proof_bytes = postcard::to_allocvec(&proof).unwrap();
+    println!("Clinkv2-kzg10 mimc proof...ok, size: {}", proof_bytes.len());
+
     // Verifier
     println!("Start verify prepare...");
     let verify_start = Instant::now();
@@ -243,8 +245,7 @@ fn mimc_clinkv2_kzg10() {
 fn mimc_clinkv2_ipa() {
     use blake2::Blake2s;
     use scheme::clinkv2::ipa::{
-        create_random_proof, verify_proof, InnerProductArgPC, Proof, ProveAssignment,
-        VerifyAssignment, VerifyKey,
+        create_random_proof, verify_proof, InnerProductArgPC, ProveAssignment, VerifyAssignment,
     };
 
     let mut rng = &mut test_rng();
@@ -301,6 +302,9 @@ fn mimc_clinkv2_ipa() {
     // Create a clinkv2 proof with our parameters.
     let proof = create_random_proof(&prover_pa, &ipa_ck, rng).unwrap();
     let prove_time = prove_start.elapsed();
+
+    let proof_bytes = postcard::to_allocvec(&proof).unwrap();
+    println!("Clinkv2-ipa mimc proof...ok, size: {}", proof_bytes.len());
 
     // Verifier
     println!("Start verify prepare...");

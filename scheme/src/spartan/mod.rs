@@ -27,12 +27,14 @@ pub mod snark {
         encode_comm: EncodeCommit<E>,
     }
 
+    #[derive(Serialize, Deserialize)]
     pub struct ProveKey<E: PairingEngine> {
         params: SnarkParameters<E>,
         r1cs: R1CSInstance<E>,
         encode: EncodeMemory<E>,
     }
 
+    #[derive(Serialize, Deserialize)]
     pub struct VerifyKey<E: PairingEngine> {
         params: SnarkParameters<E>,
         r1cs: R1CSInstance<E>,
@@ -118,11 +120,13 @@ pub mod nizk {
         r1cs: R1CSInstance<E>,
     }
 
+    #[derive(Serialize, Deserialize)]
     pub struct ProveKey<E: PairingEngine> {
         params: NizkParameters<E>,
         r1cs: R1CSInstance<E>,
     }
 
+    #[derive(Serialize, Deserialize)]
     pub struct VerifyKey<E: PairingEngine> {
         params: NizkParameters<E>,
         r1cs: R1CSInstance<E>,

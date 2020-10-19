@@ -75,6 +75,8 @@ fn mini_groth16() {
     };
 
     let proof = create_random_proof(&params, c, rng).unwrap();
+    let proof_bytes = postcard::to_allocvec(&proof).unwrap();
+    println!("Groth16 proof...ok, size: {}", proof_bytes.len());
 
     println!("verifing...");
     assert!(verify_proof(&pvk, &proof, &[Fr::from(10u32)]).unwrap());
@@ -108,6 +110,9 @@ fn mini_marlin() {
     };
 
     let proof = create_random_proof(&ipk, circuit, rng).unwrap();
+    let proof_bytes = postcard::to_allocvec(&proof).unwrap();
+    println!("Marlin proof...ok, size: {}", proof_bytes.len());
+
     assert!(verify_proof(&ivk, &proof, &[Fr::from(10u32)]).unwrap());
 }
 
@@ -129,6 +134,9 @@ fn mini_bulletproofs() {
     };
 
     let (gens, r1cs, proof, publics) = create_random_proof::<BabyJubJub, _, _>(c, rng).unwrap();
+
+    let proof_bytes = postcard::to_allocvec(&proof).unwrap();
+    println!("Bulletproof proof...ok, size: {}", proof_bytes.len());
 
     println!("Bulletproof verify...");
     let _c = Mini::<Fr> {
@@ -241,6 +249,8 @@ fn mini_clinkv2() {
     io.push(output);
 
     let proof = create_random_proof(&prover_pa, &kzg10_ck, rng).unwrap();
+    let proof_bytes = postcard::to_allocvec(&proof).unwrap();
+    println!("Clinkv2 kzg10 proof...ok, size: {}", proof_bytes.len());
 
     println!("Clinkv2 verifying...");
 
@@ -287,7 +297,11 @@ fn test_mini_spartan_snark() {
         num: 10,
     };
     let proof = create_random_proof(&pk, c1, rng).unwrap();
-    println!("[snark_spartan]Creating proof...ok");
+    let proof_bytes = postcard::to_allocvec(&proof).unwrap();
+    println!(
+        "[snark_spartan]Creating proof...ok, size: {}",
+        proof_bytes.len()
+    );
 
     println!("[snark_spartan]Verify proof...");
     assert!(verify_proof::<Bn_256>(&vk, &proof, &vec![Fr::from(10u32)].to_vec(),).unwrap());
@@ -324,7 +338,11 @@ fn test_mini_spartan_nizk() {
         num: 10,
     };
     let proof = create_random_proof(&pk, c1, rng).unwrap();
-    println!("[nizk_spartan]Creating proof...ok");
+    let proof_bytes = postcard::to_allocvec(&proof).unwrap();
+    println!(
+        "[nizk_spartan]Creating proof...ok, size: {}",
+        proof_bytes.len()
+    );
 
     println!("[nizk_spartan]Verify proof...");
     assert!(verify_proof::<Bn_256>(&vk, &proof, &vec![Fr::from(10u32)].to_vec(),).unwrap());
