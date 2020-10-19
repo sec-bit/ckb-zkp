@@ -10,7 +10,7 @@ use std::time::Instant;
 
 use ckb_zkp::{
     bn_256::{Bn_256 as E, Fr},
-    math::{test_rng, One, PrimeField, ToBytes},
+    math::{test_rng, One, PrimeField},
     r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError},
 };
 
@@ -52,7 +52,7 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for Mini<F> {
 
 #[test]
 fn test_groth16() {
-    use ckb_zkp::groth16::{generate_random_parameters, prove_to_bytes, verify_from_bytes};
+    use ckb_zkp::groth16::{create_random_proof, generate_random_parameters};
 
     let num = 10;
     let rng = &mut test_rng(); // Only in test code.
@@ -67,8 +67,7 @@ fn test_groth16() {
     };
     let params = generate_random_parameters::<E, _, _>(c, rng).unwrap();
 
-    let mut vk_bytes = vec![];
-    params.vk.write(&mut vk_bytes).unwrap();
+    let vk_bytes = postcard::to_allocvec(&params.vk).unwrap();
 
     let c = Mini::<Fr> {
         x: Some(Fr::from(2u32)),
@@ -77,13 +76,14 @@ fn test_groth16() {
         num: num,
     };
 
-    let (proof, publics) = prove_to_bytes(&params, c, rng, &[Fr::from(10u32)]).unwrap();
-    assert!(verify_from_bytes::<E>(&vk_bytes, &proof, &publics).unwrap());
+    let proof = create_random_proof(&params, c, rng).unwrap();
+    let proof_bytes = postcard::to_allocvec(&proof).unwrap();
+    let public_bytes = postcard::to_allocvec(&vec![Fr::from(10u32)]).unwrap();
 
     proving_test(
         vk_bytes.into(),
-        proof.into(),
-        publics.into(),
+        proof_bytes.into(),
+        public_bytes.into(),
         "universal_groth16_verifier",
         "groth16 verify",
     );
@@ -91,7 +91,7 @@ fn test_groth16() {
 
 #[test]
 fn test_marlin() {
-    use ckb_zkp::marlin::{index, prove_to_bytes, universal_setup, verify_from_bytes};
+    use ckb_zkp::marlin::{create_random_proof, index, universal_setup};
 
     let num = 10;
     let rng = &mut test_rng(); // Only in test code.
@@ -108,8 +108,7 @@ fn test_marlin() {
     let srs = universal_setup::<E, _>(2usize.pow(10), rng).unwrap();
     println!("Marlin indexer...");
     let (pk, vk) = index(&srs, c).unwrap();
-    let mut vk_bytes = vec![];
-    vk.write(&mut vk_bytes).unwrap();
+    let vk_bytes = postcard::to_allocvec(&vk).unwrap();
 
     let c = Mini::<Fr> {
         x: Some(Fr::from(2u32)),
@@ -118,21 +117,22 @@ fn test_marlin() {
         num: num,
     };
 
-    let (proof, publics) = prove_to_bytes(&pk, c, rng, &[Fr::from(10u32)]).unwrap();
-    assert!(verify_from_bytes::<E>(&vk_bytes, &proof, &publics).unwrap());
+    let proof = create_random_proof(&pk, c, rng).unwrap();
+    let proof_bytes = postcard::to_allocvec(&proof).unwrap();
+    let public_bytes = postcard::to_allocvec(&vec![Fr::from(10u32)]).unwrap();
 
     proving_test(
         vk_bytes.into(),
-        proof.into(),
-        publics.into(),
+        proof_bytes.into(),
+        public_bytes.into(),
         "universal_marlin_verifier",
         "marlin verify",
     );
 }
 
 #[test]
-fn test_bulletproofs_mini() {
-    use ckb_zkp::bulletproofs::{prove_to_bytes, verify_from_bytes};
+fn test_bulletproofs() {
+    use ckb_zkp::bulletproofs::create_random_proof;
 
     let num = 10;
     let rng = &mut test_rng(); // Only in test code.
@@ -146,25 +146,21 @@ fn test_bulletproofs_mini() {
         num: num,
     };
 
-    let (proof, publics) = prove_to_bytes::<E, _, _>(c, rng).unwrap();
+    let (gens, r1cs, proof, publics) = create_random_proof::<E, _, _>(c, rng).unwrap();
+    // let gens_bytes = postcard::to_allocvec(&gens).unwrap();
+    // let r1cs_bytes = postcard::to_allocvec(&r1cs).unwrap();
+    // let proof_bytes = postcard::to_allocvec(&proof).unwrap();
+    let proof_bytes = postcard::to_allocvec(&(gens, r1cs, proof)).unwrap();
+    let public_bytes = postcard::to_allocvec(&publics).unwrap();
 
     println!("Bulletproofs verifying...");
-
-    let c = Mini::<Fr> {
-        x: None,
-        y: None,
-        z: None,
-        num: num,
-    };
-
-    assert!(verify_from_bytes::<E, _>(c, &proof, &publics).unwrap());
 
     println!("Bulletproofs verifying on CKB...");
 
     proving_test(
         Default::default(),
-        proof.into(),
-        publics.into(),
+        proof_bytes.into(),
+        public_bytes.into(),
         "mini_bulletproofs_verifier",
         "bulletproofs verify",
     );
@@ -230,11 +226,8 @@ impl<F: PrimeField> clinkv2_r1cs::ConstraintSynthesizer<F> for Clinkv2Mini<F> {
 }
 
 #[test]
-fn test_clinkv2_kzg10_mini() {
-    use ckb_zkp::clinkv2::kzg10::{
-        KZG10, prove_to_bytes, verify_from_bytes,
-        ProveAssignment, VerifyAssignment,
-    };
+fn test_clinkv2_kzg10() {
+    use ckb_zkp::clinkv2::kzg10::{create_random_proof, ProveAssignment, KZG10};
     use ckb_zkp::clinkv2::r1cs::ConstraintSynthesizer;
 
     let n: usize = 100;
@@ -247,8 +240,7 @@ fn test_clinkv2_kzg10_mini() {
     let kzg10_pp = KZG10::<E>::setup(degree, false, rng).unwrap();
     let (kzg10_ck, kzg10_vk) = KZG10::<E>::trim(&kzg10_pp, degree).unwrap();
 
-    let mut vk_bytes = vec![];
-    kzg10_vk.write(&mut vk_bytes).unwrap();
+    let vk_bytes = postcard::to_allocvec(&kzg10_vk).unwrap();
 
     println!("Clinkv2 kzg10 proving...");
 
@@ -276,40 +268,25 @@ fn test_clinkv2_kzg10_mini() {
     io.push(one);
     io.push(output);
 
-    let (proof, publics) = prove_to_bytes(&prover_pa, &kzg10_ck, rng, &io).unwrap();
-
-    println!("Clinkv2 kzg10 verifying...");
-
-    let c = Clinkv2Mini::<Fr> {
-        x: None,
-        y: None,
-        z: None,
-        num: num,
-    };
-
-    let mut verifier_pa = VerifyAssignment::<E>::default();
-    c.generate_constraints(&mut verifier_pa, 0usize).unwrap();
-
-    assert!(verify_from_bytes::<E>(&verifier_pa, &vk_bytes, &proof, &publics).unwrap());
+    let proof = create_random_proof(&prover_pa, &kzg10_ck, rng).unwrap();
+    let proof_bytes = postcard::to_allocvec(&proof).unwrap();
+    let public_bytes = postcard::to_allocvec(&io).unwrap();
 
     println!("Clinkv2 kzg10 verifying on CKB...");
 
     proving_test(
         vk_bytes.into(),
-        proof.into(),
-        publics.into(),
+        proof_bytes.into(),
+        public_bytes.into(),
         "mini_clinkv2_kzg10_verifier",
         "clinkv2 kzg10 verify",
     );
 }
 
 #[test]
-fn test_clinkv2_ipa_mini() {
+fn test_clinkv2_ipa() {
     use blake2::Blake2s;
-    use ckb_zkp::clinkv2::ipa::{
-        InnerProductArgPC, prove_to_bytes, verify_from_bytes,
-        ProveAssignment, VerifyAssignment,
-    };
+    use ckb_zkp::clinkv2::ipa::{create_random_proof, InnerProductArgPC, ProveAssignment};
     use ckb_zkp::clinkv2::r1cs::ConstraintSynthesizer;
 
     let n: usize = 100;
@@ -323,8 +300,7 @@ fn test_clinkv2_ipa_mini() {
     let ipa_pp = InnerProductArgPC::<E, Blake2s>::setup(degree, rng).unwrap();
     let (ipa_ck, ipa_vk) = InnerProductArgPC::<E, Blake2s>::trim(&ipa_pp, degree).unwrap();
 
-    let mut vk_bytes = vec![];
-    ipa_vk.write(&mut vk_bytes).unwrap();
+    let vk_bytes = postcard::to_allocvec(&ipa_vk).unwrap();
 
     println!("Clinkv2 ipa proving...");
 
@@ -352,30 +328,106 @@ fn test_clinkv2_ipa_mini() {
     io.push(one);
     io.push(output);
 
-    let (proof, publics) = prove_to_bytes(&prover_pa, &ipa_ck, rng, &io).unwrap();
+    let proof = create_random_proof(&prover_pa, &ipa_ck, rng).unwrap();
+    let proof_bytes = postcard::to_allocvec(&proof).unwrap();
+    let public_bytes = postcard::to_allocvec(&io).unwrap();
 
-    println!("Clinkv2 ipa verifying...");
+    println!("Clinkv2 ipa verifying on CKB...");
 
-    let c = Clinkv2Mini::<Fr> {
+    proving_test(
+        vk_bytes.into(),
+        proof_bytes.into(),
+        public_bytes.into(),
+        "mini_clinkv2_ipa_verifier",
+        "clinkv2 ipa verify",
+    );
+}
+
+#[test]
+fn test_spartan_snark() {
+    use ckb_zkp::spartan::snark::{create_random_proof, generate_random_parameters};
+
+    let num = 10;
+    let rng = &mut test_rng(); // Only in test code.
+
+    println!("Spartan snark setup...");
+
+    let c = Mini::<Fr> {
         x: None,
         y: None,
         z: None,
         num: num,
     };
 
-    let mut verifier_pa = VerifyAssignment::<E, Blake2s>::default();
-    c.generate_constraints(&mut verifier_pa, 0usize).unwrap();
+    let params = generate_random_parameters::<E, _, _>(c, rng).unwrap();
+    let (pk, vk) = params.keypair();
 
-    assert!(verify_from_bytes::<E, Blake2s>(&verifier_pa, &vk_bytes, &proof, &publics).unwrap());
+    let vk_bytes = postcard::to_allocvec(&vk).unwrap();
 
-    println!("Clinkv2 ipa verifying on CKB...");
+    println!("Spartan snark Creating proof...");
+    let c1 = Mini::<Fr> {
+        x: Some(Fr::from(2u32)),
+        y: Some(Fr::from(3u32)),
+        z: Some(Fr::from(10u32)),
+        num: 10,
+    };
+
+    let proof = create_random_proof(&pk, c1, rng).unwrap();
+    let proof_bytes = postcard::to_allocvec(&proof).unwrap();
+    let public_bytes = postcard::to_allocvec(&vec![Fr::from(10u32)]).unwrap();
+
+    println!("Spartan snark verifying on CKB...");
 
     proving_test(
         vk_bytes.into(),
-        proof.into(),
-        publics.into(),
-        "mini_clinkv2_ipa_verifier",
-        "clinkv2 ipa verify",
+        proof_bytes.into(),
+        public_bytes.into(),
+        "universal_spartan_snark_verifier",
+        "spartan snark verify",
+    );
+}
+
+#[test]
+fn test_spartan_nizk() {
+    use ckb_zkp::spartan::nizk::{create_random_proof, generate_random_parameters};
+
+    let num = 10;
+    let rng = &mut test_rng(); // Only in test code.
+
+    println!("Spartan nizk setup...");
+
+    let c = Mini::<Fr> {
+        x: None,
+        y: None,
+        z: None,
+        num: num,
+    };
+
+    let params = generate_random_parameters::<E, _, _>(c, rng).unwrap();
+    let (pk, vk) = params.keypair();
+
+    let vk_bytes = postcard::to_allocvec(&vk).unwrap();
+
+    println!("Spartan nizk Creating proof...");
+    let c1 = Mini::<Fr> {
+        x: Some(Fr::from(2u32)),
+        y: Some(Fr::from(3u32)),
+        z: Some(Fr::from(10u32)),
+        num: 10,
+    };
+
+    let proof = create_random_proof(&pk, c1, rng).unwrap();
+    let proof_bytes = postcard::to_allocvec(&proof).unwrap();
+    let public_bytes = postcard::to_allocvec(&vec![Fr::from(10u32)]).unwrap();
+
+    println!("Spartan nizk verifying on CKB...");
+
+    proving_test(
+        vk_bytes.into(),
+        proof_bytes.into(),
+        public_bytes.into(),
+        "universal_spartan_nizk_verifier",
+        "spartan nizk verify",
     );
 }
 

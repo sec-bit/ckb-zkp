@@ -2,7 +2,7 @@ use ckb_zkp::{
     bn_256::{Bn_256, Fr},
     groth16::{
         create_random_proof, generate_random_parameters, verifier::prepare_verifying_key,
-        verify_proof, Parameters, Proof, VerifyingKey,
+        verify_proof, Parameters, Proof, VerifyKey,
     },
     math::PrimeField,
     r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError},
@@ -100,7 +100,7 @@ fn main() {
         num: 10,
     };
     let params2: Parameters<Bn_256> = postcard::from_bytes(&params_bytes).unwrap();
-    let vk2: VerifyingKey<Bn_256> = postcard::from_bytes(&vk_bytes).unwrap();
+    let vk2: VerifyKey<Bn_256> = postcard::from_bytes(&vk_bytes).unwrap();
     let pvk2 = prepare_verifying_key(&vk2);
     let proof = create_random_proof(&params2, circuit, &mut rng).unwrap();
     let proof_bytes = postcard::to_allocvec(&proof).unwrap();

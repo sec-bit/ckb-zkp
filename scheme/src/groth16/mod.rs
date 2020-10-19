@@ -24,6 +24,9 @@ pub use prover::create_random_proof;
 /// standard interface for verify proof.
 pub use verifier::verify_proof;
 
+/// standard interface for prepare compute verify key.
+pub use verifier::prepare_verifying_key;
+
 /// A proof in the Groth16 SNARK.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Proof<E: PairingEngine> {
@@ -34,7 +37,7 @@ pub struct Proof<E: PairingEngine> {
 
 /// A verification key in the Groth16 SNARK.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct VerifyingKey<E: PairingEngine> {
+pub struct VerifyKey<E: PairingEngine> {
     pub alpha_g1: E::G1Affine,
     pub beta_g2: E::G2Affine,
     pub gamma_g2: E::G2Affine,
@@ -42,7 +45,7 @@ pub struct VerifyingKey<E: PairingEngine> {
     pub gamma_abc_g1: Vec<E::G1Affine>,
 }
 
-impl<E: PairingEngine> Default for VerifyingKey<E> {
+impl<E: PairingEngine> Default for VerifyKey<E> {
     fn default() -> Self {
         Self {
             alpha_g1: E::G1Affine::default(),
@@ -57,7 +60,7 @@ impl<E: PairingEngine> Default for VerifyingKey<E> {
 /// Full public (prover and verifier) parameters for the Groth16 zkSNARK.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Parameters<E: PairingEngine> {
-    pub vk: VerifyingKey<E>,
+    pub vk: VerifyKey<E>,
     pub beta_g1: E::G1Affine,
     pub delta_g1: E::G1Affine,
     pub a_query: Vec<E::G1Affine>,
@@ -71,29 +74,29 @@ pub struct Parameters<E: PairingEngine> {
 /// at the expense of larger size in memory.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PreparedVerifyingKey<E: PairingEngine> {
-    pub vk: VerifyingKey<E>,
+    pub vk: VerifyKey<E>,
     pub alpha_g1_beta_g2: E::Fqk,
     pub gamma_g2_neg_pc: E::G2Prepared,
     pub delta_g2_neg_pc: E::G2Prepared,
     pub gamma_abc_g1: Vec<E::G1Affine>,
 }
 
-impl<E: PairingEngine> From<PreparedVerifyingKey<E>> for VerifyingKey<E> {
+impl<E: PairingEngine> From<PreparedVerifyingKey<E>> for VerifyKey<E> {
     fn from(other: PreparedVerifyingKey<E>) -> Self {
         other.vk
     }
 }
 
-impl<E: PairingEngine> From<VerifyingKey<E>> for PreparedVerifyingKey<E> {
-    fn from(other: VerifyingKey<E>) -> Self {
-        verifier::prepare_verifying_key(&other)
+impl<E: PairingEngine> From<VerifyKey<E>> for PreparedVerifyingKey<E> {
+    fn from(other: VerifyKey<E>) -> Self {
+        prepare_verifying_key(&other)
     }
 }
 
 impl<E: PairingEngine> Default for PreparedVerifyingKey<E> {
     fn default() -> Self {
         Self {
-            vk: VerifyingKey::default(),
+            vk: VerifyKey::default(),
             alpha_g1_beta_g2: E::Fqk::default(),
             gamma_g2_neg_pc: E::G2Prepared::default(),
             delta_g2_neg_pc: E::G2Prepared::default(),
@@ -116,7 +119,7 @@ fn push_constraints<F: Field>(
 }
 
 impl<E: PairingEngine> Parameters<E> {
-    pub fn get_vk(&self, _: usize) -> Result<VerifyingKey<E>, SynthesisError> {
+    pub fn get_vk(&self, _: usize) -> Result<VerifyKey<E>, SynthesisError> {
         Ok(self.vk.clone())
     }
 

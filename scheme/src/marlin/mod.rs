@@ -17,6 +17,9 @@ use errors::Error;
 mod data_structures;
 pub use data_structures::*;
 
+/// standard verify key name.
+pub type VerifyKey<E> = IndexVerifierKey<E>;
+
 mod fs_rng;
 use fs_rng::FiatShamirRng;
 

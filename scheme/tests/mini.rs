@@ -145,7 +145,7 @@ fn mini_bulletproofs() {
         z: None,
         num: num,
     };
-    assert!(verify_proof(&gens, &proof, &r1cs, &publics.s));
+    assert!(verify_proof(&gens, &proof, &r1cs, &publics).unwrap());
 }
 
 use scheme::clinkv2::r1cs as clinkv2_r1cs;
