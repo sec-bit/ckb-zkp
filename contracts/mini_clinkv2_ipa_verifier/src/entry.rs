@@ -1,13 +1,14 @@
-use core::result::Result;
+use alloc::vec::Vec;
 use blake2::Blake2s;
 use ckb_std::{ckb_constants::Source, high_level::load_cell_data};
+use core::result::Result;
 
 use crate::error::Error;
 
 use ckb_zkp::{
-    bn_256,
+    bn_256::{Bn_256 as E, Fr},
+    clinkv2::ipa::{verify_proof, Proof, VerifyAssignment, VerifyKey},
     clinkv2::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError},
-    clinkv2::ipa::{verify_from_bytes, VerifyAssignment},
     math::PrimeField,
 };
 
@@ -78,19 +79,23 @@ pub fn main() -> Result<(), Error> {
         Err(err) => return Err(err.into()),
     };
 
+    let proof: Proof<E> = postcard::from_bytes(&proof_data).map_err(|_e| Error::Encoding)?;
+    let vk: VerifyKey<E> = postcard::from_bytes(&vk_data).map_err(|_e| Error::Encoding)?;
+    let publics: Vec<Vec<Fr>> = postcard::from_bytes(&public_data).map_err(|_e| Error::Encoding)?;
+
     // Demo circuit
-    let c = Mini::<bn_256::Fr> {
+    let c = Mini::<Fr> {
         x: None,
         y: None,
         z: None,
         num: 10,
     };
 
-    let mut verifier_pa = VerifyAssignment::<bn_256::Bn_256, Blake2s>::default();
+    let mut verifier_pa = VerifyAssignment::<E, Blake2s>::default();
     c.generate_constraints(&mut verifier_pa, 0usize)
         .map_err(|_| Error::Verify)?;
 
-    match verify_from_bytes::<bn_256::Bn_256, Blake2s>(&verifier_pa, &vk_data, &proof_data, &public_data) {
+    match verify_proof::<E, Blake2s>(&verifier_pa, &vk, &proof, &publics) {
         Ok(true) => Ok(()),
         _ => Err(Error::Verify),
     }

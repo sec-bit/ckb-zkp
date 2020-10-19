@@ -36,6 +36,10 @@ pub use scheme::marlin;
 #[cfg(feature = "clinkv2")]
 pub use scheme::clinkv2;
 
+/// re-export spartan.
+#[cfg(feature = "spartan")]
+pub use scheme::spartan;
+
 /// re-export bn_256.
 #[cfg(feature = "bn_256")]
 pub use curve::bn_256;

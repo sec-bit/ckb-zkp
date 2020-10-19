@@ -31,6 +31,7 @@ pub use alloc::{boxed::Box, format, string::String, vec, vec::Vec};
 pub use std::{boxed::Box, format, vec, vec::Vec};
 
 #[macro_use]
+#[allow(unused_imports)]
 extern crate serde;
 
 pub use math::*;

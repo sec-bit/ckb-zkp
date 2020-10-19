@@ -1,13 +1,11 @@
-// The following code is from (scipr-lab's zexe)[https://github.com/scipr-lab/zexe] and thanks for their work
-
 use core::ops::{AddAssign, Neg};
 use math::{AffineCurve, PairingEngine, PrimeField, ProjectiveCurve};
 
 use crate::r1cs::SynthesisError;
 
-use super::{PreparedVerifyingKey, Proof, VerifyingKey};
+use super::{PreparedVerifyingKey, Proof, VerifyKey};
 
-pub fn prepare_verifying_key<E: PairingEngine>(vk: &VerifyingKey<E>) -> PreparedVerifyingKey<E> {
+pub fn prepare_verifying_key<E: PairingEngine>(vk: &VerifyKey<E>) -> PreparedVerifyingKey<E> {
     PreparedVerifyingKey {
         vk: vk.clone(),
         alpha_g1_beta_g2: E::pairing(vk.alpha_g1, vk.beta_g2),

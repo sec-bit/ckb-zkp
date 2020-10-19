@@ -191,15 +191,7 @@ pub struct Proof<G: Curve> {
 pub fn create_random_proof<G, C, R>(
     circuit: C,
     rng: &mut R,
-) -> Result<
-    (
-        Generators<G>,
-        R1csCircuit<G>,
-        Proof<G>,
-        Assignment<G>,
-    ),
-    SynthesisError,
->
+) -> Result<(Generators<G>, R1csCircuit<G>, Proof<G>, Vec<G::Fr>), SynthesisError>
 where
     G: Curve,
     C: ConstraintSynthesizer<G::Fr>,
@@ -310,7 +302,7 @@ where
 
     let proof = prove(&generators, &r1cs_circuit, &input, rng);
 
-    Ok((generators, r1cs_circuit.matrix_to_map(), proof, input))
+    Ok((generators, r1cs_circuit.matrix_to_map(), proof, input.s))
 }
 
 // bulletproofs arithmetic circuit proof with R1CS format
@@ -608,7 +600,7 @@ pub fn verify_proof<G: Curve>(
     proof: &Proof<G>,
     r1cs_circuit: &R1csCircuit<G>,
     public_inputs: &[G::Fr],
-) -> bool {
+) -> Result<bool, SynthesisError> {
     let mut transcript = Transcript::new(b"protocol3");
     let zero = G::Fr::zero();
     let one = G::Fr::one();
@@ -778,7 +770,7 @@ pub fn verify_proof<G: Curve>(
         &proof.IPP_P,
         &proof.IPP,
     ) {
-        return false;
+        return Ok(false);
     }
 
     // check ti
@@ -815,7 +807,7 @@ pub fn verify_proof<G: Curve>(
         + &quick_multiexp::<G>(&proof.l_x, &g_vec)
         + &quick_multiexp::<G>(&proof.r_x, &h_vec_inv);
 
-    P == checkP
+    Ok(P == checkP)
 }
 
 pub fn create_generators<G: Curve, R: Rng>(rng: &mut R, len: usize) -> Vec<G::Affine> {
@@ -891,7 +883,7 @@ mod tests {
 
         let proof = prove(&generators, &r1cs_circuit, &input, rng);
 
-        verify_proof(&generators, &proof, &r1cs_circuit, &input.s);
+        assert!(verify_proof(&generators, &proof, &r1cs_circuit, &input.s).unwrap());
     }
 
     #[test]

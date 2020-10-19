@@ -14,7 +14,7 @@ use crate::r1cs::{
 };
 use crate::{String, Vec};
 
-use super::{push_constraints, r1cs_to_qap::R1CStoQAP, Parameters, VerifyingKey};
+use super::{push_constraints, r1cs_to_qap::R1CStoQAP, Parameters, VerifyKey};
 
 /// Generates a random common reference string for
 /// a circuit.
@@ -259,7 +259,7 @@ where
 
     drop(g1_table);
 
-    let vk = VerifyingKey::<E> {
+    let vk = VerifyKey::<E> {
         alpha_g1: alpha_g1.into_affine(),
         beta_g2: beta_g2.into_affine(),
         gamma_g2: gamma_g2.into_affine(),

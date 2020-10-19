@@ -1,10 +1,10 @@
+use math::{log2, Field, One, PairingEngine, Zero};
+
+use crate::{BTreeMap, String, Vec};
+
 use crate::r1cs::{
     ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable,
 };
-use crate::{String, Vec};
-use math::{log2, Field, One, PairingEngine, Zero};
-use std::collections::HashMap;
-// use std::time::{Duration, Instant};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct R1CSInstance<E: PairingEngine> {
@@ -159,7 +159,7 @@ pub fn switch_matrix_to_list<E: PairingEngine>(
     let mut cols = Vec::new();
 
     for (row, m_vec) in m_matrix.iter().enumerate() {
-        let mut ms = HashMap::new();
+        let mut ms = BTreeMap::new();
         for (val, col) in m_vec.iter() {
             match col {
                 Index::Aux(i) => {
