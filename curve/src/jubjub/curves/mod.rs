@@ -2,9 +2,9 @@ use crate::jubjub::{Fq, Fr};
 use math::{
     biginteger::BigInteger256,
     curves::{
-        Curve,
         models::{ModelParameters, MontgomeryModelParameters, TEModelParameters},
         twisted_edwards_extended::{GroupAffine, GroupProjective},
+        Curve,
     },
     field_new,
 };
@@ -15,6 +15,7 @@ mod tests;
 pub type JubJubAffine = GroupAffine<JubJubParameters>;
 pub type JubJubProjective = GroupProjective<JubJubParameters>;
 
+#[derive(Serialize, Deserialize)]
 pub struct JubJub;
 
 impl Curve for JubJub {

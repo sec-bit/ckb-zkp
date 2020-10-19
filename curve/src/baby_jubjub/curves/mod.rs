@@ -2,9 +2,9 @@ use crate::baby_jubjub::{Fq, Fr};
 use math::{
     biginteger::BigInteger256,
     curves::{
-        Curve,
         models::{ModelParameters, MontgomeryModelParameters, TEModelParameters},
         twisted_edwards_extended::{GroupAffine, GroupProjective},
+        Curve,
     },
     field_new,
 };
@@ -12,6 +12,7 @@ use math::{
 #[cfg(test)]
 mod tests;
 
+#[derive(Serialize, Deserialize)]
 pub struct BabyJubJub;
 
 impl Curve for BabyJubJub {

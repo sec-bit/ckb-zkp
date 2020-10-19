@@ -30,6 +30,9 @@ pub use alloc::{boxed::Box, format, string::String, vec, vec::Vec};
 #[doc(hidden)]
 pub use std::{boxed::Box, format, vec, vec::Vec};
 
+#[macro_use]
+extern crate serde;
+
 pub use math::*;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -125,7 +128,6 @@ pub use bn_256::Bn_256;
 #[cfg(feature = "baby_jubjub")]
 pub mod baby_jubjub;
 ///////////////////////////////////////////////////////////////////////////////
-
 
 #[cfg(test)]
 pub(crate) mod tests;
