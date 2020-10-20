@@ -800,9 +800,13 @@ impl<F: PrimeField> AbstractHashPoseidonOutput<F> {
     }
 }
 
-impl<F: PrimeField> AbstractHashOutput for AbstractHashPoseidonOutput<F> {
+impl<F: PrimeField> AbstractHashOutput<F> for AbstractHashPoseidonOutput<F> {
     fn get_variables(&self) -> Vec<Variable> {
         vec![self.variable]
+    }
+
+    fn get_variable_values(&self) -> Vec<Option<F>> {
+        vec![self.value]
     }
 }
 

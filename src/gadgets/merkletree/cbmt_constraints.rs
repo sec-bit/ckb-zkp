@@ -1,6 +1,7 @@
 //! Complete Binary Merkle Tree Proof gadgets.
 
 use math::PrimeField;
+use scheme::r1cs::Variable;
 use scheme::r1cs::{ConstraintSystem, SynthesisError};
 
 use crate::Vec;
@@ -27,9 +28,56 @@ impl<I: TreeIndex, F: PrimeField, H: AbstractHash<F>> MerkleProofGadget<I, F, H>
         let mut parent = leaf.clone();
         let mut index = self.index.clone();
         let mut lemmas_iter = self.lemmas.iter().enumerate();
-
         loop {
             if let Some((i, sibling)) = lemmas_iter.next() {
+                let parent_variable_vec = parent.get_variables();
+                let parent_value_vec = parent.get_variable_values();
+                let sibling_variable_vec = sibling.get_variables();
+                let sibling_value_vec = sibling.get_variable_values();
+                let is_left_value = if index.is_left() {
+                    Some(F::one())
+                } else {
+                    Some(F::zero())
+                };
+
+                let is_left_variable = cs.alloc(
+                    || format!("is_left_variable[{}]", i),
+                    || is_left_value.ok_or(SynthesisError::AssignmentMissing),
+                )?;
+
+                let input_value = if index.is_left() {
+                    parent_value_vec.clone()
+                } else {
+                    sibling_value_vec.clone()
+                };
+
+                let mut input_variable_vec: Vec<Variable> =
+                    Vec::with_capacity(input_value.len() as usize);
+                for j in 0..input_value.len() as usize {
+                    let input_variable = cs.alloc(
+                        || format!("input_variable[{}][{}]", i, j),
+                        || input_value[j].ok_or(SynthesisError::AssignmentMissing),
+                    )?;
+                    input_variable_vec.push(input_variable);
+                }
+
+                for j in 0..parent_variable_vec.len() as usize {
+                    // parent_variable_vec.len = 256; sibling_variable_vec.len = 8
+                    if j >= sibling_variable_vec.len() {
+                        break;
+                    }
+                    cs.enforce(
+                        || {
+                            format!(
+                                "is_left*(left[{}][{}]-right[{}][{}])=(input[{}]-right[{}][{}])",
+                                i, j, i, j, j, i, j
+                            )
+                        },
+                        |lc| lc + is_left_variable,
+                        |lc| lc + parent_variable_vec[j] - sibling_variable_vec[j],
+                        |lc| lc + input_variable_vec[j] - sibling_variable_vec[j],
+                    );
+                }
                 parent = if index.is_left() {
                     H::hash_enforce(
                         cs.ns(|| format!("hash_enforce_left_{}", i)),

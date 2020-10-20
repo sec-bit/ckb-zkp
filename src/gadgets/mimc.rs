@@ -169,9 +169,13 @@ impl<F: PrimeField> AbstractHashMimcOutput<F> {
     }
 }
 
-impl<F: PrimeField> AbstractHashOutput for AbstractHashMimcOutput<F> {
+impl<F: PrimeField> AbstractHashOutput<F> for AbstractHashMimcOutput<F> {
     fn get_variables(&self) -> Vec<Variable> {
         vec![self.variable]
+    }
+
+    fn get_variable_values(&self) -> Vec<Option<F>> {
+        vec![self.value]
     }
 }
 

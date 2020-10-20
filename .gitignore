@@ -8,3 +8,5 @@ Cargo.lock
 /cli/trusted_setup
 .cargo/config
 .DS_Store
+.vscode/
+~/
