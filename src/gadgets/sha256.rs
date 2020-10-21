@@ -275,7 +275,6 @@ impl AbstractHashSha256Output {
             variables.push(alloc.get_variable());
             values.push(alloc.into());
         }
-
         Ok(Self {
             value: Some(values),
             variables: variables,
@@ -287,9 +286,22 @@ impl AbstractHashSha256Output {
     }
 }
 
-impl AbstractHashOutput for AbstractHashSha256Output {
+impl<F: PrimeField> AbstractHashOutput<F> for AbstractHashSha256Output {
     fn get_variables(&self) -> Vec<Variable> {
         self.variables.clone()
+    }
+
+    fn get_variable_values(&self) -> Vec<Option<F>> {
+        let value_vec = self.value.clone().unwrap();
+        let mut ret_vec = vec![Some(F::zero()); value_vec.len() as usize];
+        for i in 0..value_vec.len() as usize {
+            ret_vec[i] = if value_vec[i].get_value().unwrap() {
+                Some(F::one())
+            } else {
+                Some(F::zero())
+            }
+        }
+        ret_vec
     }
 }
 
