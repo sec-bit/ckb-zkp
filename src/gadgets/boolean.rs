@@ -95,6 +95,39 @@ impl AllocatedBit {
         })
     }
 
+    /// Allocate a variable in the constraint system which can only be a
+    /// boolean value.
+    pub fn alloc_input<F, CS>(mut cs: CS, value: Option<bool>) -> Result<Self, SynthesisError>
+    where
+        F: Field,
+        CS: ConstraintSystem<F>,
+    {
+        let var = cs.alloc_input(
+            || "boolean",
+            || {
+                if value.ok_or(SynthesisError::AssignmentMissing)? {
+                    Ok(F::one())
+                } else {
+                    Ok(F::zero())
+                }
+            },
+        )?;
+
+        // Constrain: (1 - a) * a = 0
+        // This constrains a to be either 0 or 1.
+        cs.enforce(
+            || "boolean constraint",
+            |lc| lc + CS::one() - var,
+            |lc| lc + var,
+            |lc| lc,
+        );
+
+        Ok(AllocatedBit {
+            variable: var,
+            value,
+        })
+    }
+
     /// Performs an XOR operation over the two operands, returning
     /// an `AllocatedBit`.
     pub fn xor<F, CS>(mut cs: CS, a: &Self, b: &Self) -> Result<Self, SynthesisError>

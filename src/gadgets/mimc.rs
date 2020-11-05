@@ -119,7 +119,7 @@ pub fn mimc<F: PrimeField, CS: ConstraintSystem<F>>(
 
         let new_xl = (xl + constants[i]) * tmp + xr;
         let var_new_xl = if i == (MIMC_ROUNDS - 1) {
-            n_cs.alloc_input(|| "image", || Ok(new_xl))
+            n_cs.alloc(|| "image", || Ok(new_xl))
         } else {
             n_cs.alloc(|| "new_xl", || Ok(new_xl))
         }?;
@@ -154,6 +154,21 @@ impl<F: PrimeField> AbstractHashMimcOutput<F> {
         f: Option<F>, // mimc params
     ) -> Result<Self, SynthesisError> {
         let var = cs.alloc(
+            || "mimc_hash",
+            || f.ok_or(SynthesisError::AssignmentMissing),
+        )?;
+
+        Ok(Self {
+            value: f,
+            variable: var,
+        })
+    }
+
+    pub fn alloc_input<CS: ConstraintSystem<F>>(
+        mut cs: CS,
+        f: Option<F>, // mimc params
+    ) -> Result<Self, SynthesisError> {
+        let var = cs.alloc_input(
             || "mimc_hash",
             || f.ok_or(SynthesisError::AssignmentMissing),
         )?;
