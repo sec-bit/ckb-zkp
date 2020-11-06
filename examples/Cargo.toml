@@ -31,47 +31,46 @@ postcard = { version = "0.5", default-features = false, features = ["alloc"] }
 name = "mini"
 path = "src/mini.rs"
 
-
 [[bin]]
-name = "example"
-path = "src/main.rs"
+name = "asvc"
+path = "src/scheme/asvc/asvc.rs"
 
 [[bin]]
 name = "spartan_nizk"
-path = "src/spartan/spartan_nizk.rs"
+path = "src/scheme/spartan/spartan_nizk.rs"
 
 [[bin]]
 name = "spartan_snark"
-path = "src/spartan/spartan_snark.rs"
+path = "src/scheme/spartan/spartan_snark.rs"
 
 [[bin]]
 name = "merkletree_mimc"
-path = "src/merkletree/merkle_tree_mimc.rs"
+path = "src/circuit/merkletree/merkle_tree_mimc.rs"
 
 [[bin]]
 name = "merkletree_sha256"
-path = "src/merkletree/merkle_tree_sha256.rs"
+path = "src/circuit/merkletree/merkle_tree_sha256.rs"
 
 [[bin]]
 name = "poseidon"
-path = "src/poseidon/poseidon.rs"
+path = "src/circuit/poseidon/poseidon.rs"
 
 [[bin]]
 name = "rescue_groth16"
-path = "src/rescue/rescue_groth16.rs"
+path = "src/circuit/rescue/rescue_groth16.rs"
 
 [[bin]]
 name = "rescue_spartan"
-path = "src/rescue/rescue_spartan.rs"
+path = "src/circuit/rescue/rescue_spartan.rs"
 
 [[bin]]
 name = "mimc_clinkv2_ipa"
-path = "src/clinkv2/mimc_clinkv2_ipa.rs"
+path = "src/scheme/clinkv2/mimc_clinkv2_ipa.rs"
 
 [[bin]]
 name = "mimc_clinkv2_kzg10"
-path = "src/clinkv2/mimc_clinkv2_kzg10.rs"
+path = "src/scheme/clinkv2/mimc_clinkv2_kzg10.rs"
 
 [[bin]]
 name = "marlin_mimc"
-path = "src/marlin/marlin_mimc.rs"
+path = "src/scheme/marlin/marlin_mimc.rs"

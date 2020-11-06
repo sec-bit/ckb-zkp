@@ -1,34 +1,36 @@
 use core::ops::Add;
 use curve::bls12_381::Bls12_381;
+use curve::bn_256::Bn_256;
 use math::fft::EvaluationDomain;
 use math::{test_rng, PairingEngine, UniformRand};
+use std::time::Instant;
 // use rand::thread_rng;
 
 use scheme::asvc::*;
 
-pub fn test_aggregatable_svc() {
+pub fn aggregatable_svc<T: PairingEngine>() {
     // let rng = &mut thread_rng();
     let rng = &mut test_rng();
     let size: usize = 8;
-    let params = key_gen::<Bls12_381, _>(size, rng).unwrap();
+    let params = key_gen::<T, _>(size, rng).unwrap();
 
-    let domain = EvaluationDomain::<<Bls12_381 as PairingEngine>::Fr>::new(size).unwrap();
+    let domain = EvaluationDomain::<<T as PairingEngine>::Fr>::new(size).unwrap();
 
-    let mut values = Vec::<<Bls12_381 as PairingEngine>::Fr>::new();
-    values.push(<Bls12_381 as PairingEngine>::Fr::rand(rng));
-    values.push(<Bls12_381 as PairingEngine>::Fr::rand(rng));
-    values.push(<Bls12_381 as PairingEngine>::Fr::rand(rng));
-    values.push(<Bls12_381 as PairingEngine>::Fr::rand(rng));
-    values.push(<Bls12_381 as PairingEngine>::Fr::rand(rng));
-    values.push(<Bls12_381 as PairingEngine>::Fr::rand(rng));
-    values.push(<Bls12_381 as PairingEngine>::Fr::rand(rng));
-    values.push(<Bls12_381 as PairingEngine>::Fr::rand(rng));
+    let mut values = Vec::<<T as PairingEngine>::Fr>::new();
+    values.push(<T as PairingEngine>::Fr::rand(rng));
+    values.push(<T as PairingEngine>::Fr::rand(rng));
+    values.push(<T as PairingEngine>::Fr::rand(rng));
+    values.push(<T as PairingEngine>::Fr::rand(rng));
+    values.push(<T as PairingEngine>::Fr::rand(rng));
+    values.push(<T as PairingEngine>::Fr::rand(rng));
+    values.push(<T as PairingEngine>::Fr::rand(rng));
+    values.push(<T as PairingEngine>::Fr::rand(rng));
 
     let c = commit(&params.proving_key, values.clone()).unwrap();
 
-    println!("--------verify position...");
+    let start = Instant::now();
     let mut points = Vec::<u32>::new();
-    let mut point_values = Vec::<<Bls12_381 as PairingEngine>::Fr>::new();
+    let mut point_values = Vec::<<T as PairingEngine>::Fr>::new();
     points.push(0);
     point_values.push(values[0]);
     points.push(1);
@@ -45,10 +47,11 @@ pub fn test_aggregatable_svc() {
         domain.group_gen,
     )
     .unwrap();
-    println!("--------verify position...{}\n", rs);
+    let total_setup = start.elapsed();
+    println!("ASVC VERIFY POSITION TIME: {:?}", total_setup);
     assert!(rs);
 
-    println!("--------verify updating key...");
+    let start = Instant::now();
     let index: u32 = 2;
     let rs = verify_upk(
         &params.verification_key,
@@ -57,12 +60,13 @@ pub fn test_aggregatable_svc() {
         domain.group_gen,
     )
     .unwrap();
-    println!("--------verify updating key...{}\n", rs);
+    let total_setup = start.elapsed();
+    println!("ASVC VERIFY UPK TIME: {:?}", total_setup);
     assert!(rs);
 
-    println!("--------verify update proof...");
+    let start = Instant::now();
     let index: u32 = 3;
-    let delta = <Bls12_381 as PairingEngine>::Fr::rand(rng);
+    let delta = <T as PairingEngine>::Fr::rand(rng);
     let points_i = vec![index];
     let point_values_i = vec![values[index as usize].add(&delta)];
     let uc = update_commit(
@@ -86,6 +90,8 @@ pub fn test_aggregatable_svc() {
         size,
     )
     .unwrap();
+    let total_setup = start.elapsed();
+    println!("ASVC UPDATE COMMIT AND PROOF TIME: {:?}", total_setup);
     let rs = verify_pos(
         &params.verification_key,
         &uc,
@@ -95,10 +101,9 @@ pub fn test_aggregatable_svc() {
         domain.group_gen,
     )
     .unwrap();
-    println!("--------verify update proof...{}\n", rs);
     assert!(rs);
 
-    println!("--------start verify update proof, different index...");
+    let start = Instant::now();
     let index_i: u32 = 4;
     let points_i = vec![index_i];
     let point_values_i = vec![values[index_i as usize]];
@@ -123,10 +128,14 @@ pub fn test_aggregatable_svc() {
         domain.group_gen,
     )
     .unwrap();
-    println!("--------verify update proof, different index...{}\n", rs);
+    let total_setup = start.elapsed();
+    println!(
+        "ASVC VERIFY UPDATE PROOF, DIFFERENT INDEX TIME: {:?}",
+        total_setup
+    );
     assert!(rs);
 
-    println!("--------start verify aggregate proofs...");
+    let start = Instant::now();
     let mut points = Vec::new();
     let mut point_values = Vec::new();
     let mut point_proofs = Vec::new();
@@ -151,6 +160,12 @@ pub fn test_aggregatable_svc() {
         domain.group_gen,
     )
     .unwrap();
-    println!("--------verify aggregate proofs...{}\n", rs);
+    let total_setup = start.elapsed();
+    println!("ASVC VERIFY AGGREGATE PROOFS TIME: {:?}", total_setup);
     assert!(rs);
+}
+
+fn main() {
+    aggregatable_svc::<Bls12_381>();
+    aggregatable_svc::<Bn_256>();
 }

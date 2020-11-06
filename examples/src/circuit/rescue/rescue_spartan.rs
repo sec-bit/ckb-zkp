@@ -277,7 +277,7 @@ fn pow_with_constraint<F: PrimeField, CS: ConstraintSystem<F>, S: AsRef<[u64]>>(
     Ok((res_value, res))
 }
 
-fn rescue_spartan() {
+fn rescue_snark_spartan() {
     use curve::bn_256::{Bn_256, Fr};
     use rand::Rng;
     use scheme::spartan::prover::create_snark_proof;
@@ -445,6 +445,6 @@ fn rescue_nizk_spartan() {
 }
 
 fn main() {
-    rescue_spartan();
+    rescue_snark_spartan();
     rescue_nizk_spartan();
 }

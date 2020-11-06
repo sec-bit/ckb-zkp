@@ -9,6 +9,7 @@ use scheme::spartan::r1cs::generate_r1cs;
 use scheme::spartan::setup::*;
 use scheme::spartan::spark::encode;
 use scheme::spartan::verify::verify_snark_proof;
+use std::time::Instant;
 
 struct TestDemo<F: PrimeField> {
     lhs: Option<F>,
@@ -113,7 +114,7 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for TestDemo<F> {
     }
 }
 
-pub fn snark_spartan_bls12_381() {
+pub fn spartan_snark_bls12_381() {
     use curve::bls12_381::{Bls12_381, Fr};
     println!("\n spartan snark...");
     let rng = &mut thread_rng();
@@ -124,9 +125,8 @@ pub fn snark_spartan_bls12_381() {
         phs: None,
     };
 
-    println!("[snark_spartan]Generate parameters...");
     let r1cs = generate_r1cs::<Bls12_381, _>(c).unwrap();
-
+    let start = Instant::now();
     let params = generate_setup_snark_parameters::<Bls12_381, _>(
         rng,
         r1cs.num_aux,
@@ -143,18 +143,17 @@ pub fn snark_spartan_bls12_381() {
         ohs: Some(<Bls12_381 as PairingEngine>::Fr::one()),
         phs: Some(<Bls12_381 as PairingEngine>::Fr::one()),
     };
-    println!("[snark_spartan]Generate parameters...ok");
-
-    println!("[snark_spartan]Encode...");
+    let total_setup = start.elapsed();
+    println!("SPARTAN SNARK SETUP TIME: {:?}", total_setup);
     let (encode, encode_commit) = encode::<Bls12_381, _>(&params, &r1cs, rng).unwrap();
-    println!("[snark_spartan]Encode...ok");
 
     // let mut transcript = Transcript::new(b"spartan snark");
-    println!("[snark_spartan]Creating proof...");
+    let start = Instant::now();
     let proof = create_snark_proof(&params, &r1cs, c1, &encode, rng).unwrap();
-    println!("[snark_spartan]Creating proof...ok");
+    let total_setup = start.elapsed();
+    println!("SPARTAN SNARK CREATE PROOF TIME: {:?}", total_setup);
 
-    println!("[snark_spartan]Verify proof...");
+    let start = Instant::now();
     // let mut transcript = Transcript::new(b"spartan snark");
     let result = verify_snark_proof::<Bls12_381>(
         &params,
@@ -164,12 +163,13 @@ pub fn snark_spartan_bls12_381() {
         &encode_commit,
     )
     .is_ok();
-    println!("[snark_spartan]Verify proof...ok");
+    let total_setup = start.elapsed();
+    println!("SPARTAN SNARK VERIFY PROOF TIME: {:?}", total_setup);
 
     assert!(result);
 }
 
-pub fn snark_spartan_bn_256() {
+pub fn spartan_snark_bn_256() {
     use curve::bn_256::{Bn_256, Fr};
     println!("\n spartan snark...");
     let rng = &mut thread_rng();
@@ -180,7 +180,7 @@ pub fn snark_spartan_bn_256() {
         phs: None,
     };
 
-    println!("[snark_spartan]Generate parameters...");
+    let start = Instant::now();
     let r1cs = generate_r1cs::<Bn_256, _>(c).unwrap();
 
     let params = generate_setup_snark_parameters::<Bn_256, _>(
@@ -197,17 +197,17 @@ pub fn snark_spartan_bn_256() {
         ohs: Some(<Bn_256 as PairingEngine>::Fr::one()),
         phs: Some(<Bn_256 as PairingEngine>::Fr::one()),
     };
-    println!("[snark_spartan]Generate parameters...ok");
+    let total_setup = start.elapsed();
+    println!("SPARTAN SNARK SETUP TIME: {:?}", total_setup);
 
-    println!("[snark_spartan]Encode...");
     let (encode, encode_commit) = encode::<Bn_256, _>(&params, &r1cs, rng).unwrap();
-    println!("[snark_spartan]Encode...ok");
 
-    println!("[snark_spartan]Creating proof...");
+    let start = Instant::now();
     let proof = create_snark_proof(&params, &r1cs, c1, &encode, rng).unwrap();
-    println!("[snark_spartan]Creating proof...ok");
+    let total_setup = start.elapsed();
+    println!("SPARTAN SNARK CREATE PROOF TIME: {:?}", total_setup);
 
-    println!("[snark_spartan]Verify proof...");
+    let start = Instant::now();
     let result = verify_snark_proof::<Bn_256>(
         &params,
         &r1cs,
@@ -216,12 +216,16 @@ pub fn snark_spartan_bn_256() {
         &encode_commit,
     )
     .is_ok();
-    println!("[snark_spartan]Verify proof...ok");
+    println!("SPARTAN SNARK VERIFY PROOF TIME: {:?}", total_setup);
 
     assert!(result);
 }
 
 fn main() {
-    snark_spartan_bls12_381();
-    snark_spartan_bn_256();
+    println!("begin spartan snark bls12_381...");
+    spartan_snark_bls12_381();
+    println!("end spartan snark bls12_381...");
+    println!("begin spartan snark bn_256...");
+    spartan_snark_bn_256();
+    println!("end spartan snark bn_256...");
 }

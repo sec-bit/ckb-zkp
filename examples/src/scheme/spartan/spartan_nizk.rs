@@ -8,6 +8,7 @@ use scheme::spartan::prover::create_nizk_proof;
 use scheme::spartan::r1cs::generate_r1cs;
 use scheme::spartan::setup::*;
 use scheme::spartan::verify::verify_nizk_proof;
+use std::time::Instant;
 
 struct TestDemo<F: PrimeField> {
     lhs: Option<F>,
@@ -112,7 +113,7 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for TestDemo<F> {
     }
 }
 
-pub fn nizk_spartan_bls12_381() {
+pub fn spartan_nizk_bls12_381() {
     use curve::bls12_381::{Bls12_381, Fr};
     let rng = &mut thread_rng();
     let c = TestDemo::<Fr> {
@@ -123,6 +124,7 @@ pub fn nizk_spartan_bls12_381() {
     };
 
     println!("Generate parameters...");
+    let start = Instant::now();
     let r1cs = generate_r1cs::<Bls12_381, _>(c).unwrap();
     let params =
         generate_setup_nizk_parameters::<Bls12_381, _>(rng, r1cs.num_aux, r1cs.num_inputs).unwrap();
@@ -134,12 +136,18 @@ pub fn nizk_spartan_bls12_381() {
         ohs: Some(<Bls12_381 as PairingEngine>::Fr::one()),
         phs: Some(<Bls12_381 as PairingEngine>::Fr::one()),
     };
+    let total_setup = start.elapsed();
+    println!("SPARTAN NIZK SETUP TIME: {:?}", total_setup);
 
     // let mut transcript = Transcript::new(b"spartan nizk");
     println!("Creating proof...");
+    let start = Instant::now();
     let proof = create_nizk_proof(&params, &r1cs, c1, rng).unwrap();
+    let total_setup = start.elapsed();
+    println!("SPARTAN NIZK CREATE PROOF TIME: {:?}", total_setup);
 
     println!("Verify proof...");
+    let start = Instant::now();
     // let mut transcript = Transcript::new(b"spartan nizk");
     let result = verify_nizk_proof::<Bls12_381>(
         &params,
@@ -150,9 +158,11 @@ pub fn nizk_spartan_bls12_381() {
     .unwrap();
 
     assert!(result);
+    let total_setup = start.elapsed();
+    println!("SPARTAN NIZK VERIFY PROOF TIME: {:?}", total_setup);
 }
 
-pub fn nizk_spartan_bn_256() {
+pub fn spartan_nizk_bn_256() {
     use curve::bn_256::{Bn_256, Fr};
     let rng = &mut thread_rng();
     let c = TestDemo::<Fr> {
@@ -163,6 +173,7 @@ pub fn nizk_spartan_bn_256() {
     };
 
     println!("Generate parameters...");
+    let start = Instant::now();
     let r1cs = generate_r1cs::<Bn_256, _>(c).unwrap();
     let params =
         generate_setup_nizk_parameters::<Bn_256, _>(rng, r1cs.num_aux, r1cs.num_inputs).unwrap();
@@ -172,11 +183,17 @@ pub fn nizk_spartan_bn_256() {
         ohs: Some(<Bn_256 as PairingEngine>::Fr::one()),
         phs: Some(<Bn_256 as PairingEngine>::Fr::one()),
     };
+    let total_setup = start.elapsed();
+    println!("SPARTAN NIZK SETUP TIME: {:?}", total_setup);
 
     println!("Creating proof...");
+    let start = Instant::now();
     let proof = create_nizk_proof(&params, &r1cs, c1, rng).unwrap();
+    let total_setup = start.elapsed();
+    println!("SPARTAN NIZK CREATE PROOF TIME: {:?}", total_setup);
 
     println!("Verify proof...");
+    let start = Instant::now();
     let result = verify_nizk_proof::<Bn_256>(
         &params,
         &r1cs,
@@ -186,9 +203,15 @@ pub fn nizk_spartan_bn_256() {
     .unwrap();
 
     assert!(result);
+    let total_setup = start.elapsed();
+    println!("SPARTAN NIZK VERIFY PROOF TIME: {:?}", total_setup);
 }
 
 fn main() {
-    nizk_spartan_bn_256();
-    nizk_spartan_bls12_381();
+    println!("begin spartan nizk bls12_381...");
+    spartan_nizk_bls12_381();
+    println!("end spartan nizk bls12_381...");
+    println!("begin spartan nizk bn_256...");
+    spartan_nizk_bn_256();
+    println!("end spartan nizk bn_256...");
 }

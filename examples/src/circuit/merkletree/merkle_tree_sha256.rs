@@ -4,6 +4,7 @@ use ckb_zkp::gadgets::merkletree::cbmt::CBMT;
 use ckb_zkp::gadgets::merkletree::cbmt_constraints::MerkleProofGadget;
 use ckb_zkp::gadgets::sha256::AbstractHashSha256;
 use ckb_zkp::gadgets::sha256::AbstractHashSha256Output;
+use ckb_zkp::groth16::verify_proof;
 use math::One;
 use math::Zero;
 use sha2::Digest;
@@ -50,8 +51,9 @@ impl ConstraintSynthesizer<Fr> for MerkleTreeCircuit {
             self.root.unwrap().clone(),
         )
         .unwrap();
+
         let var_leaf =
-            AbstractHashSha256Output::alloc(cs.ns(|| format!("leaf",)), self.leaf.unwrap().clone())
+            AbstractHashSha256Output::alloc(cs.ns(|| format!("leaf",)), self.leaf.unwrap())
                 .unwrap();
         let proof_val = self.proof.ok_or(SynthesisError::AssignmentMissing).unwrap();
         let lemmas = proof_val
@@ -82,29 +84,23 @@ fn main() {
     let mut rng = thread_rng();
     // TRUSTED SETUP
     println!("TRUSTED SETUP...");
-    let proof: MerkleProof<Vec<u8>, MergeSha256> = MerkleProof::new(0, vec![vec![0; 32]; 3]);
+    let proof: MerkleProof<Vec<u8>, MergeSha256> = MerkleProof::new(0, vec![vec![0; 32]; 2]);
     let c = MerkleTreeCircuit {
         proof: Some(proof),
         root: Some(vec![0; 32]),
         leaf: Some(vec![0; 32]),
     };
     println!("before generate_random_parameters");
+    let start = Instant::now();
     let params = generate_random_parameters::<Bn_256, _, _>(c, &mut rng).unwrap();
     // Prepare the verification key (for proof verification)
     let pvk = prepare_verifying_key(&params.vk);
-
+    let total_setup = start.elapsed();
+    println!("GROTH16 SETUP TIME: {:?}", total_setup);
     // begin loop
     // test 10 elements merkle tree.
-    let leaves = vec![
-        vec![1u8],
-        vec![2u8],
-        vec![3u8],
-        vec![4u8],
-        vec![5u8],
-        vec![6u8],
-        vec![7u8],
-        vec![8u8],
-    ];
+    // in order to fill circuit, the hash digest has to have 32 elements.
+    let leaves = vec![vec![1u8; 32], vec![2u8; 32], vec![3u8; 32], vec![4u8; 32]];
 
     let tree = CBMTMIMC::build_merkle_tree(leaves.clone());
     let root = tree.root();
@@ -125,30 +121,23 @@ fn main() {
         let p_time = p_start.elapsed();
         println!("GROTH16 PROVE TIME: {:?}", p_time);
 
-        // println!("GROTH16 START VERIFY...");
-        let v_start = Instant::now();
-
         // Vec<u8> to Vec<Fr>
-        let mut root_val = Vec::with_capacity(root.len());
+        let mut root_val = [Fr::zero(); 256];
         let s = root
             .iter()
             .flat_map(|&byte| (0..8).rev().map(move |i| (byte >> i) & 1u8 == 1u8));
 
-        let mut cnt = 0;
-        for (_, v) in s.enumerate() {
-            root_val.push(
-                if Some(v).ok_or(SynthesisError::AssignmentMissing).unwrap() {
-                    Some(Fr::one())
-                } else {
-                    Some(Fr::zero())
-                }
-                .unwrap(),
-            );
-
-            cnt = cnt + 1;
+        for (i, v) in s.enumerate() {
+            root_val[i] = if Some(v).ok_or(SynthesisError::AssignmentMissing).unwrap() {
+                Some(Fr::one())
+            } else {
+                Some(Fr::zero())
+            }
+            .unwrap();
         }
-
-        // assert!(verify_proof(&pvk, &proof, &root_val).unwrap());
+        println!("GROTH16 START VERIFY...");
+        let v_start = Instant::now();
+        assert!(verify_proof(&pvk, &proof, &root_val).unwrap());
         let v_time = v_start.elapsed();
         println!("GROTH16 VERIFY TIME: {:?}", v_time);
     }

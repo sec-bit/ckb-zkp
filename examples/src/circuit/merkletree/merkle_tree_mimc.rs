@@ -72,6 +72,7 @@ impl ConstraintSynthesizer<Fr> for MerkleTreeCircuit {
 /// test for use groth16 & bn_256 & mimc gadget.
 fn main() {
     let mut rng = thread_rng();
+    println!("Running merkletree mimc circuit...");
     // TRUSTED SETUP
     println!("TRUSTED SETUP...");
     let proof: MerkleProof<Fr, MergeMimc> = MerkleProof::new(0, vec![Fr::zero(); 3]);
@@ -80,11 +81,13 @@ fn main() {
         root: Some(Fr::zero()),
         leaf: Some(Fr::zero()),
     };
-    println!("before generate_random_parameters");
+    println!("Before generate_random_parameters");
+    let start = Instant::now();
     let params = generate_random_parameters::<Bn_256, _, _>(c, &mut rng).unwrap();
     // Prepare the verification key (for proof verification)
     let pvk = prepare_verifying_key(&params.vk);
-
+    let total_setup = start.elapsed();
+    println!("GROTH16 SETUP TIME: {:?}", total_setup);
     // begin loop
     // test 10 elements merkle tree.
     let leaves = vec![
