@@ -285,6 +285,15 @@ pub trait Curve: 'static {
     type Affine: AffineCurve<BaseField = Self::Fq, ScalarField = Self::Fr, Projective = Self::Projective>
         + From<Self::Projective>
         + Into<Self::Projective>;
+
+    fn vartime_multiscalar_mul(scalars: &[Self::Fr], points: &[Self::Affine]) -> Self::Projective {
+        let uints = scalars
+            .into_iter()
+            .map(|s| s.into_repr())
+            .collect::<Vec<_>>();
+
+        crate::msm::VariableBaseMSM::multi_scalar_mul(points, &uints[..])
+    }
 }
 
 impl<P: PairingEngine> Curve for P {

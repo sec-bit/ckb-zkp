@@ -118,8 +118,10 @@ fn mini_marlin() {
 
 #[test]
 fn mini_bulletproofs() {
-    use curve::baby_jubjub::{BabyJubJub, Fr};
+    //use curve::baby_jubjub::{BabyJubJub as G, Fr}; // size: 100%, time: 100%, 100%
+    use curve::curve25519::{Curve25519 as G, Fr}; // size: 71%, time: 13%, 14%
     use scheme::bulletproofs::{create_random_proof, verify_proof};
+    use std::time::Instant;
 
     let rng = &mut test_rng();
     let num = 10;
@@ -133,7 +135,9 @@ fn mini_bulletproofs() {
         num: num,
     };
 
-    let (gens, r1cs, proof, publics) = create_random_proof::<BabyJubJub, _, _>(c, rng).unwrap();
+    let start = Instant::now();
+    let (gens, r1cs, proof, publics) = create_random_proof::<G, _, _>(c, rng).unwrap();
+    println!("prove time: {:?}", start.elapsed());
 
     let proof_bytes = postcard::to_allocvec(&proof).unwrap();
     println!("Bulletproof proof...ok, size: {}", proof_bytes.len());
@@ -145,7 +149,10 @@ fn mini_bulletproofs() {
         z: None,
         num: num,
     };
+
+    let start = Instant::now();
     assert!(verify_proof(&gens, &proof, &r1cs, &publics).unwrap());
+    println!("verify time: {:?}", start.elapsed());
 }
 
 use scheme::clinkv2::r1cs as clinkv2_r1cs;
