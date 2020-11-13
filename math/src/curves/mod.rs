@@ -268,7 +268,7 @@ pub trait AffineCurve:
     fn mul_by_cofactor_inv(&self) -> Self;
 }
 
-pub trait Curve: 'static {
+pub trait Curve: 'static + Clone {
     /// The base field that hosts.
     type Fq: PrimeField + SquareRootField;
 

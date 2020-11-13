@@ -276,7 +276,9 @@ fn mini_clinkv2() {
 
 #[test]
 fn test_mini_spartan_snark() {
-    use curve::bn_256::{Bn_256, Fr};
+    //use curve::bn_256::{Bn_256 as G, Fr};
+    use curve::curve25519::{Curve25519 as G, Fr};
+    //use curve::baby_jubjub::{BabyJubJub as G, Fr};
     use math::test_rng;
     use scheme::spartan::snark::{create_random_proof, generate_random_parameters, verify_proof};
 
@@ -311,13 +313,14 @@ fn test_mini_spartan_snark() {
     );
 
     println!("[snark_spartan]Verify proof...");
-    assert!(verify_proof::<Bn_256>(&vk, &proof, &vec![Fr::from(10u32)].to_vec(),).unwrap());
+    assert!(verify_proof::<G>(&vk, &proof, &vec![Fr::from(10u32)].to_vec(),).unwrap());
     println!("[snark_spartan]Verify proof...ok");
 }
 
 #[test]
 fn test_mini_spartan_nizk() {
-    use curve::bn_256::{Bn_256, Fr};
+    //use curve::bn_256::{Bn_256 as G, Fr};
+    use curve::curve25519::{Curve25519 as G, Fr};
     use math::test_rng;
     use scheme::spartan::nizk::{create_random_proof, generate_random_parameters, verify_proof};
 
@@ -352,6 +355,6 @@ fn test_mini_spartan_nizk() {
     );
 
     println!("[nizk_spartan]Verify proof...");
-    assert!(verify_proof::<Bn_256>(&vk, &proof, &vec![Fr::from(10u32)].to_vec(),).unwrap());
+    assert!(verify_proof::<G>(&vk, &proof, &vec![Fr::from(10u32)].to_vec(),).unwrap());
     println!("[nizk_spartan]Verify proof...ok");
 }

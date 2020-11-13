@@ -12,7 +12,7 @@ use math::{
 #[cfg(test)]
 mod tests;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct BabyJubJub;
 
 impl Curve for BabyJubJub {

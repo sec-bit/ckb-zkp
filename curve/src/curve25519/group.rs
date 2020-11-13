@@ -16,7 +16,7 @@ use crate::Vec;
 
 use super::Fr;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Curve25519;
 
 impl Curve for Curve25519 {
@@ -26,7 +26,11 @@ impl Curve for Curve25519 {
     type Projective = Curve25519Projective;
 
     fn vartime_multiscalar_mul(s: &[Self::Fr], p: &[Self::Affine]) -> Self::Projective {
-        let scalars: Vec<Scalar> = s
+        let size = core::cmp::min(s.len(), p.len());
+        let ss = &s[0..size];
+        let pp = &p[0..size];
+
+        let scalars: Vec<Scalar> = ss
             .iter()
             .map(|s| {
                 let mut bytes = [0u8; 32];
@@ -36,7 +40,7 @@ impl Curve for Curve25519 {
                 Scalar::from_bytes_mod_order(bytes)
             })
             .collect();
-        let points: Vec<RistrettoPoint> = p.iter().map(|p| p.0.decompress().unwrap()).collect();
+        let points: Vec<RistrettoPoint> = pp.iter().map(|p| p.0.decompress().unwrap()).collect();
         let point = RistrettoPoint::vartime_multiscalar_mul(scalars, points);
         Curve25519Projective(point.into())
     }
@@ -77,10 +81,13 @@ impl AffineCurve for Curve25519Affine {
     }
 
     fn mul_by_cofactor(&self) -> Self {
-        panic!("Curve mul_by_cofactor");
+        let mut p = Curve25519Projective::from(*self);
+        p *= Fr::from(8u32);
+        p.into()
     }
 
     fn mul_by_cofactor_inv(&self) -> Self {
+        //self *= (Fr::from(8u32).inverse().unwrap())
         panic!("Curve mul_by_cofactor_inv");
     }
 }
