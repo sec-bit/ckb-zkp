@@ -48,7 +48,7 @@ where
         }
 
         // MixLayer
-        let mut tmp2 = [F::zero(); M];
+        let mut tmp2 = [F::one(); M];
         for j in 0..M {
             for k in 0..M {
                 let mut t2 = rc.mds[j][k];
@@ -63,7 +63,7 @@ where
 }
 
 pub fn poseidon_hash<F: PrimeField>(xl: F, xr: F, constants: &PoseidonConstant<F>) -> F {
-    let mut state = [xl, xr, F::zero()];
+    let mut state = [xl, xr, F::one()];
     hades_permutation(&mut state, &constants);
     // c == 1
     state[0]
@@ -78,6 +78,9 @@ impl<'a, F: PrimeField> ConstraintSynthesizer<F> for PoseidonDemo<'a, F> {
         cs: &mut CS,
         index: usize,
     ) -> Result<(), SynthesisError> {
+
+        cs.alloc_input(|| "", || Ok(F::one()), index)?;
+
         let xl_value = self.xl;
         let xl = cs.alloc(
             || "preimage xl",
@@ -92,7 +95,7 @@ impl<'a, F: PrimeField> ConstraintSynthesizer<F> for PoseidonDemo<'a, F> {
             index,
         )?;
 
-        let three_value: Option<F> = Some(F::zero());
+        let three_value: Option<F> = Some(F::one());
         let three = cs.alloc(
             || "preimage tmpf",
             || three_value.ok_or(SynthesisError::AssignmentMissing),
@@ -146,7 +149,7 @@ impl<'a, F: PrimeField> ConstraintSynthesizer<F> for PoseidonDemo<'a, F> {
             }
 
             // Mix Layer
-            let mut tmp2_value = [Some(F::zero()); M];
+            let mut tmp2_value = [Some(F::one()); M];
             let mut tmp2 = Vec::with_capacity(3);
             for j in 0..M {
                 tmp2.push(cs.alloc(
@@ -344,9 +347,11 @@ fn main() {
     let mut verifier_pa = VerifyAssignment::<Bn_256>::default();
 
     // Create an instance of our circuit (with the witness)
+    let xl: Fr = rng.gen();
+    let xr: Fr = rng.gen();
     let verify_c = PoseidonDemo {
-        xl: None,
-        xr: None,
+        xl: Some(xl),
+        xr: Some(xr),
         constants: &constants,
     };
     verify_c

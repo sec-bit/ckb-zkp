@@ -703,11 +703,11 @@ impl<E: PairingEngine> KZG10<E> {
         num_coefficients: usize,
         num_powers: usize,
     ) -> Result<(), Error> {
-        if num_coefficients < 1 {
-            Err(Error::DegreeIsZero)
-        } else {
+        // if num_coefficients < 1 {
+        //     Err(Error::DegreeIsZero)
+        // } else {
             Self::check_degree_is_too_large(num_coefficients, num_powers)
-        }
+        // }
     }
 
     pub(crate) fn check_degree_is_too_large(
