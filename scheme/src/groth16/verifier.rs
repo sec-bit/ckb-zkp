@@ -21,8 +21,6 @@ pub fn verify_proof<E: PairingEngine>(
     public_inputs: &[E::Fr],
 ) -> Result<bool, SynthesisError> {
     if (public_inputs.len() + 1) != pvk.gamma_abc_g1.len() {
-        println!("public_inputs.len() + 1: {}", public_inputs.len() + 1);
-        println!("pvk.gamma_abc_g1.len(): {}", pvk.gamma_abc_g1.len());
         return Err(SynthesisError::MalformedVerifyingKey);
     }
 
