@@ -48,6 +48,10 @@ name = "merkletree_mimc"
 path = "src/circuit/merkletree/merkle_tree_mimc.rs"
 
 [[bin]]
+name = "merkletree_mimc_clinkv2"
+path = "src/circuit/merkletree/merkle_tree_mimc_clinkv2.rs"
+
+[[bin]]
 name = "merkletree_sha256"
 path = "src/circuit/merkletree/merkle_tree_sha256.rs"
 
@@ -56,12 +60,20 @@ name = "poseidon"
 path = "src/circuit/poseidon/poseidon.rs"
 
 [[bin]]
+name = "poseidon_clinkv2"
+path = "src/circuit/poseidon/poseidon_clinkv2.rs"
+
+[[bin]]
 name = "rescue_groth16"
 path = "src/circuit/rescue/rescue_groth16.rs"
 
 [[bin]]
 name = "rescue_spartan"
 path = "src/circuit/rescue/rescue_spartan.rs"
+
+[[bin]]
+name = "rescue_clinkv2"
+path = "src/circuit/rescue/rescue_clinkv2.rs"
 
 [[bin]]
 name = "mimc_clinkv2_ipa"
