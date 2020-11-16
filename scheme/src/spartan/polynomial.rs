@@ -29,9 +29,29 @@ pub fn eval_eq_x_y<E: PairingEngine>(rx: &Vec<E::Fr>, ry: &Vec<E::Fr>) -> E::Fr 
     result
 }
 
-pub fn evaluate_value<E: PairingEngine>(value: &Vec<E::Fr>, r: &Vec<E::Fr>) -> E::Fr {
-    let eq_vec = eval_eq::<E>(&r);
-    let result = (0..value.len()).map(|i| value[i] * &eq_vec[i]).sum();
+// pub fn evaluate_value<E: PairingEngine>(value: &Vec<E::Fr>, r: &Vec<E::Fr>) -> E::Fr {
+//     let eq_vec = eval_eq::<E>(&r);
+//     let result = (0..value.len()).map(|i| value[i] * &eq_vec[i]).sum();
+//     result
+// }
+
+pub fn sparse_evaluate_value<E: PairingEngine>(value: &Vec<E::Fr>, r: &Vec<E::Fr>) -> E::Fr {
+    let num_bits = r.len();
+    let result = value
+        .iter()
+        .filter(|&v| !v.is_zero())
+        .enumerate()
+        .map(|(i, v)| {
+            let bits = (0..num_bits)
+                .map(|shift_amount| ((i & (1 << (num_bits - shift_amount - 1))) > 0))
+                .collect::<Vec<bool>>();
+            let eq: E::Fr = (0..num_bits)
+                .map(|j| if bits[j] { r[j] } else { E::Fr::one() - &r[j] })
+                .product();
+            eq * v
+        })
+        .sum();
+
     result
 }
 
