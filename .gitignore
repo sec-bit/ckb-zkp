@@ -4,8 +4,8 @@ build/*
 dependencies/*
 !.gitkeep
 Cargo.lock
-/cli/proofs_files
-/cli/trusted_setup
+/cli/proof_files
+/cli/setup_files
 .cargo/config
 .DS_Store
 .vscode/

@@ -96,19 +96,34 @@ pub fn hash<F: PrimeField>(b: &[u8]) -> F {
 
 pub fn mimc<F: PrimeField, CS: ConstraintSystem<F>>(
     mut cs: CS,
-    b: &[u8],
-) -> Result<F, SynthesisError> {
+    b: Option<&[u8]>,
+) -> Result<Option<F>, SynthesisError> {
     let constants = constants::<F>();
-    let (mut xl, mut xr, image) = mimc_hash(b, &constants);
+    let (mut xl_value, mut xr_value, image_value) = match b {
+        Some(bytes) => {
+            let (xl, xr, image) = mimc_hash(bytes, &constants);
+            (Some(xl), Some(xr), Some(image))
+        }
+        None => (None, None, None),
+    };
 
-    let mut var_xl = cs.alloc(|| "preimage xl", || Ok(xl))?;
-    let mut var_xr = cs.alloc(|| "preimage xr", || Ok(xr))?;
+    let mut var_xl = cs.alloc(
+        || "preimage xl",
+        || xl_value.ok_or(SynthesisError::AssignmentMissing),
+    )?;
+    let mut var_xr = cs.alloc(
+        || "preimage xr",
+        || xr_value.ok_or(SynthesisError::AssignmentMissing),
+    )?;
 
     for i in 0..MIMC_ROUNDS {
         let mut n_cs = cs.ns(|| format!("rounds_{}", i));
 
-        let tmp = *((xl + constants[i]).square_in_place());
-        let var_tmp = n_cs.alloc(|| "tmp", || Ok(tmp))?;
+        let tmp_value = xl_value.map(|xl| *((xl + constants[i]).square_in_place()));
+        let var_tmp = n_cs.alloc(
+            || "tmp",
+            || tmp_value.ok_or(SynthesisError::AssignmentMissing),
+        )?;
 
         n_cs.enforce(
             || "tmp = (xL + Ci)^2",
@@ -117,12 +132,15 @@ pub fn mimc<F: PrimeField, CS: ConstraintSystem<F>>(
             |lc| lc + var_tmp,
         );
 
-        let new_xl = (xl + constants[i]) * tmp + xr;
-        let var_new_xl = if i == (MIMC_ROUNDS - 1) {
-            n_cs.alloc(|| "image", || Ok(new_xl))
-        } else {
-            n_cs.alloc(|| "new_xl", || Ok(new_xl))
-        }?;
+        let new_xl = match (xl_value, tmp_value, xr_value) {
+            (Some(xl), Some(tmp), Some(xr)) => Some((xl + constants[i]) * tmp + xr),
+            _ => None,
+        };
+
+        let var_new_xl = n_cs.alloc(
+            || "new_xl",
+            || new_xl.ok_or(SynthesisError::AssignmentMissing),
+        )?;
 
         n_cs.enforce(
             || "new_xL = xR + (xL + Ci)^3",
@@ -131,14 +149,14 @@ pub fn mimc<F: PrimeField, CS: ConstraintSystem<F>>(
             |lc| lc + var_new_xl - var_xr,
         );
 
-        xr = xl;
+        xr_value = xl_value;
         var_xr = var_xl;
 
-        xl = new_xl;
+        xl_value = new_xl;
         var_xl = var_new_xl;
     }
 
-    Ok(image)
+    Ok(image_value)
 }
 
 /// implement AbstractHashOutput.
@@ -214,9 +232,9 @@ impl<F: PrimeField> AbstractHash<F> for AbstractHashMimc<F> {
             }
         }
 
-        let r = mimc(cs.ns(|| format!("mimc_hash")), &bytes)?;
+        let r = mimc(cs.ns(|| format!("mimc_hash")), Some(&bytes))?;
 
-        AbstractHashMimcOutput::alloc(cs.ns(|| "mimc_output"), Some(r))
+        AbstractHashMimcOutput::alloc(cs.ns(|| "mimc_output"), r)
     }
 }
 
@@ -238,8 +256,8 @@ mod test {
             let bytes: Vec<u8> = (0..100).map(|_| rng.next_u32() as u8).collect();
             let hash1 = hash::<Fr>(&bytes);
             let mut cs = TestConstraintSystem::<Fr>::new();
-            let hash2 = mimc(cs.ns(|| "mimc hash"), &bytes).unwrap();
-            assert_eq!(hash1, hash2);
+            let hash2 = mimc(cs.ns(|| "mimc hash"), Some(&bytes)).unwrap();
+            assert_eq!(hash1, hash2.unwrap());
             assert!(cs.is_satisfied());
             assert_eq!(644, cs.num_constraints());
         }
