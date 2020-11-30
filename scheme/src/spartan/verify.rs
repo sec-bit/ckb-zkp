@@ -11,7 +11,7 @@ use crate::spartan::data_structure::{
 };
 use crate::spartan::inner_product::bullet_inner_product_verify;
 use crate::spartan::polynomial::{
-    bound_poly_var_bot, eval_eq, eval_eq_x_y, evaluate_mle, evaluate_value,
+    bound_poly_var_bot, eval_eq, eval_eq_x_y, evaluate_mle, sparse_evaluate_value,
 };
 use crate::spartan::r1cs::R1CSInstance;
 use crate::spartan::spark::equalize_length;
@@ -236,7 +236,8 @@ pub fn r1cs_satisfied_verify<G: Curve>(
         G::Fr::zero();
         (2usize).pow(ry[1..].len() as u32) - inputs.len() - 1
     ]);
-    let eval_input_tau = evaluate_value::<G>(&public_inputs, &ry[1..].to_vec());
+
+    let eval_input_tau = sparse_evaluate_value::<G>(&public_inputs, &ry[1..].to_vec());
     let commit_input = poly_commit_vec::<G>(
         &params.pc_params.gen_1.generators,
         &vec![eval_input_tau],
@@ -807,7 +808,10 @@ pub fn sum_check_cubic_verify<G: Curve>(
     assert_eq!(proof_poly.len(), num_rounds);
     for poly in proof_poly.iter() {
         transcript.append_message(b"comm_poly", &math::to_bytes!(poly.coeffs)?);
-
+        assert_eq!(
+            poly.evaluate(G::Fr::zero()) + &poly.evaluate(G::Fr::one()),
+            claim_per_round
+        );
         let mut buf = [0u8; 31];
         transcript.challenge_bytes(b"challenge_nextround", &mut buf);
         let r_j = random_bytes_to_fr::<G>(&buf);
