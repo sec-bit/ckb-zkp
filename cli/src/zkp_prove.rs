@@ -139,7 +139,6 @@ fn main() -> Result<(), String> {
         println!("    groth16       -- Groth16 zero-knowledge proof system.");
         println!("    bulletproofs  -- Bulletproofs zero-knowledge proof system.");
         println!("    marlin        -- Marlin zero-knowledge proof system.");
-        println!("    clinkv2       -- CLINKv2 zero-knowledge proof system.");
         println!("    spartan_snark -- Spartan with snark zero-knowledge proof system.");
         println!("    spartan_nizk  -- Spartan with nizk zero-knowledge proof system.");
         println!("");
