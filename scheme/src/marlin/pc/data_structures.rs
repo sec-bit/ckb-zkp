@@ -18,7 +18,7 @@ pub enum Error {
     Unclassified,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct UniversalParams<E: PairingEngine> {
     // `{ \beta^i G }`, where `i` ranges from `0` to `degree`
     pub powers_of_g: Vec<E::G1Affine>,
@@ -151,7 +151,10 @@ impl<E: PairingEngine> math::ToBytes for Commitment<E> {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(bound(serialize = "F: serde::Serialize", deserialize = "F: for<'a> serde::Deserialize<'a>"))]
+#[serde(bound(
+    serialize = "F: serde::Serialize",
+    deserialize = "F: for<'a> serde::Deserialize<'a>"
+))]
 pub struct Rand<F: Field> {
     pub blinding_polynomial: Polynomial<F>,
 }
@@ -204,7 +207,10 @@ impl<'a, F: Field> AddAssign<(F, &'a Rand<F>)> for Rand<F> {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(bound(serialize = "F: serde::Serialize", deserialize = "F: for<'e> serde::Deserialize<'e>"))]
+#[serde(bound(
+    serialize = "F: serde::Serialize",
+    deserialize = "F: for<'e> serde::Deserialize<'e>"
+))]
 pub struct Randomness<F: Field> {
     pub rand: Rand<F>,
     pub shifted_rand: Option<Rand<F>>,
@@ -224,7 +230,10 @@ impl<F: Field> math::ToBytes for Randomness<F> {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(bound(serialize = "F: serde::Serialize", deserialize = "F: for<'e> serde::Deserialize<'e>"))]
+#[serde(bound(
+    serialize = "F: serde::Serialize",
+    deserialize = "F: for<'e> serde::Deserialize<'e>"
+))]
 pub struct LabeledPolynomial<'a, F: Field> {
     label: String,
     polynomial: Cow<'a, Polynomial<F>>,

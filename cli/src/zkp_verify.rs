@@ -51,12 +51,11 @@ macro_rules! handle_scheme {
     ($curve:ident, $c:expr, $publics:expr, $curve_name:expr, $scheme:expr, $circuit:expr, $proof_bytes:expr) => {
         let mut vk_path = PathBuf::from(SETUP_DIR);
         vk_path.push(format!("{}-{}-{}.vk", $scheme, $curve_name, $circuit));
-        println!("If need setup, will use vk file: {:?}", vk_path);
-        let vk_bytes = std::fs::read(vk_path).unwrap_or(vec![]);
-        let _ = $c;
+        let vk_bytes = std::fs::read(&vk_path).unwrap_or(vec![]);
 
         let proof_result = match $scheme {
             "groth16" => {
+                println!("Will use vk file: {:?}", vk_path);
                 use ckb_zkp::groth16::{prepare_verifying_key, verify_proof, Proof, VerifyKey};
                 let vk: VerifyKey<$curve> = postcard::from_bytes(&vk_bytes).unwrap();
                 let proof: Proof<$curve> = postcard::from_bytes(&$proof_bytes).unwrap();
@@ -77,6 +76,17 @@ macro_rules! handle_scheme {
                     postcard::from_bytes($proof_bytes.drain(0..r1cs_len).as_slice()).unwrap();
                 let proof: Proof<$curve> = postcard::from_bytes(&$proof_bytes).unwrap();
                 verify_proof(&gens, &proof, &r1cs, $publics).unwrap()
+            }
+            "marlin" => {
+                use ckb_zkp::marlin::{index, verify_proof, Proof, UniversalParams};
+                let mut srs_path = PathBuf::from(SETUP_DIR);
+                srs_path.push(format!("{}-{}.universal_setup", $scheme, $curve_name));
+                println!("Will use universal setup file: {:?}", srs_path);
+                let srs_bytes = std::fs::read(&srs_path).unwrap_or(vec![]);
+                let srs: UniversalParams<$curve> = postcard::from_bytes(&srs_bytes).unwrap();
+                let (_ipk, ivk) = index(&srs, $c).unwrap();
+                let proof: Proof<$curve> = postcard::from_bytes(&$proof_bytes).unwrap();
+                verify_proof(&ivk, &proof, $publics).unwrap()
             }
             _ => return Err(format!("SCHEME: {} not implement.", $scheme)),
         };

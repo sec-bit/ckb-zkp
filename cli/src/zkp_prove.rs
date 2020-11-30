@@ -17,11 +17,13 @@ macro_rules! handle_circuit {
         match $circuit {
             "mini" => {
                 let (c, publics) = Mini::<<$curve as Curve>::Fr>::power_on($args);
-                handle_scheme!($curve, c, publics, $curve_name, $scheme, $circuit);
+                let off_c = Mini::<<$curve as Curve>::Fr>::power_off();
+                handle_scheme!($curve, c, off_c, publics, $curve_name, $scheme, $circuit);
             }
             "hash" => {
                 let (c, publics) = Hash::<<$curve as Curve>::Fr>::power_on($args);
-                handle_scheme!($curve, c, publics, $curve_name, $scheme, $circuit);
+                let off_c = Hash::<<$curve as Curve>::Fr>::power_off();
+                handle_scheme!($curve, c, off_c, publics, $curve_name, $scheme, $circuit);
             }
             _ => return Err(format!("CIRCUIT: {} not implement.", $circuit)),
         };
@@ -29,22 +31,23 @@ macro_rules! handle_circuit {
 }
 
 macro_rules! handle_scheme {
-    ($curve:ident, $c:expr, $publics:expr, $curve_name:expr, $scheme:expr, $circuit:expr) => {
+    ($curve:ident, $c:expr, $off_c:expr, $publics:expr, $curve_name:expr, $scheme:expr, $circuit:expr) => {
         let mut pk_path = PathBuf::from(SETUP_DIR);
         pk_path.push(format!("{}-{}-{}.pk", $scheme, $curve_name, $circuit));
-        println!("If need setup, will use pk file: {:?}", pk_path);
-        let pk = std::fs::read(pk_path).unwrap_or(vec![]);
+        let pk = std::fs::read(&pk_path).unwrap_or(vec![]);
+        let rng = &mut rand::thread_rng();
 
         let proof_bytes = match $scheme {
             "groth16" => {
+                println!("Will use pk file: {:?}", pk_path);
                 use ckb_zkp::groth16::{create_random_proof, Parameters};
                 let params: Parameters<$curve> = postcard::from_bytes(&pk).unwrap();
-                let proof = create_random_proof(&params, $c, &mut rand::thread_rng()).unwrap();
+                let proof = create_random_proof(&params, $c, rng).unwrap();
                 postcard::to_allocvec(&proof).unwrap()
             }
             "bulletproofs" => {
                 use ckb_zkp::bulletproofs::create_random_proof;
-                let (gens, r1cs, proof) = create_random_proof::<$curve, _, _>($c, &mut rand::thread_rng()).unwrap();
+                let (gens, r1cs, proof) = create_random_proof::<$curve, _, _>($c, rng).unwrap();
                 let mut gens_bytes = postcard::to_allocvec(&gens).unwrap();
                 let mut r1cs_bytes = postcard::to_allocvec(&r1cs).unwrap();
                 let mut proof_bytes = postcard::to_allocvec(&proof).unwrap();
@@ -56,6 +59,18 @@ macro_rules! handle_scheme {
                 bytes.append(&mut proof_bytes);
 
                 bytes
+            }
+            "marlin" => {
+                use ckb_zkp::marlin::{index, create_random_proof, UniversalParams};
+                let mut srs_path = PathBuf::from(SETUP_DIR);
+                srs_path.push(format!("{}-{}.universal_setup", $scheme, $curve_name));
+                println!("Will use universal setup file: {:?}", srs_path);
+                let srs_bytes = std::fs::read(&srs_path).unwrap_or(vec![]);
+                let srs: UniversalParams<$curve> = postcard::from_bytes(&srs_bytes).unwrap();
+                let (ipk, _ivk) = index(&srs, $off_c).unwrap();
+                let proof = create_random_proof(&ipk, $c, rng).unwrap();
+                postcard::to_allocvec(&proof).unwrap()
+
             }
             _ => return Err(format!("SCHEME: {} not implement.", $scheme)),
         };

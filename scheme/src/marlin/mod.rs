@@ -6,7 +6,7 @@ use crate::r1cs::{ConstraintSynthesizer, SynthesisError};
 use crate::{ToString, Vec};
 
 mod pc;
-use pc::{Evaluations, LabeledCommitment, UniversalParams, PC};
+use pc::{Evaluations, LabeledCommitment, PC};
 
 mod ahp;
 use ahp::AHP;
@@ -16,6 +16,7 @@ use errors::Error;
 
 mod data_structures;
 pub use data_structures::*;
+pub use pc::UniversalParams;
 
 /// standard verify key name.
 pub type VerifyKey<E> = IndexVerifierKey<E>;

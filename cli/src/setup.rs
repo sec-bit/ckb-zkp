@@ -28,6 +28,10 @@ macro_rules! handle_circuit {
 
 macro_rules! handle_scheme {
     ($curve:ident, $c:expr, $curve_name:expr, $scheme:expr, $circuit:expr) => {
+        let mut vk_path = PathBuf::from(SETUP_DIR);
+        if !vk_path.exists() {
+            std::fs::create_dir_all(&vk_path).unwrap();
+        }
         let rng = &mut rand::thread_rng();
         let (vk_bytes, pk_bytes) = match $scheme {
             "groth16" => {
@@ -37,13 +41,20 @@ macro_rules! handle_scheme {
                 let pk = postcard::to_allocvec(&params).unwrap();
                 (vk, pk)
             }
+            "marlin" => {
+                use ckb_zkp::marlin::universal_setup;
+                // set max circuit num: 2^16
+                let srs = universal_setup::<$curve, _>(2usize.pow(16), rng).unwrap();
+                let srs_bytes = postcard::to_allocvec(&srs).unwrap();
+                let vk_name = format!("{}-{}.universal_setup", $scheme, $curve_name);
+                println!("Marlin universal setup: {}", vk_name);
+                vk_path.push(vk_name);
+                std::fs::write(vk_path, srs_bytes).unwrap();
+                return Ok(());
+            }
             _ => return Err(format!("SCHEME: {} not implement.", $scheme)),
         };
 
-        let mut vk_path = PathBuf::from(SETUP_DIR);
-        if !vk_path.exists() {
-            std::fs::create_dir_all(&vk_path).unwrap();
-        }
         let pk_name = format!("{}-{}-{}.pk", $scheme, $curve_name, $circuit);
         let vk_name = format!("{}-{}-{}.vk", $scheme, $curve_name, $circuit);
         let mut pk_path = vk_path.clone();
@@ -66,6 +77,9 @@ fn main() -> Result<(), String> {
         println!("");
         println!("SCHEME:");
         println!("    groth16      -- Groth16 zero-knowledge proof system.");
+        println!("    marlin       -- Marlin zero-knowledge proof system.");
+        println!("    clinkv2      -- CLINKv2 zero-knowledge proof system.");
+        println!("    spartan      -- Spartan zero-knowledge proof system.");
         println!("");
         println!("CURVE:");
         println!("    bn_256    -- BN_256 pairing curve.");
@@ -80,7 +94,13 @@ fn main() -> Result<(), String> {
         return Err("Params invalid!".to_owned());
     }
 
-    let (curve, scheme, circuit) = (args[2].as_str(), args[1].as_str(), args[3].as_str());
+    let circuit = if args.len() > 3 {
+        args[3].as_str()
+    } else {
+        "mini" // it will use in marlin.
+    };
+    let (curve, scheme, circuit) = (args[2].as_str(), args[1].as_str(), circuit);
+    println!("Start setup...");
 
     match curve {
         "bn_256" => {
