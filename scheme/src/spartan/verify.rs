@@ -809,7 +809,7 @@ pub fn sum_check_cubic_verify<G: Curve>(
     for poly in proof_poly.iter() {
         transcript.append_message(b"comm_poly", &math::to_bytes!(poly.coeffs)?);
         assert_eq!(
-            poly.evaluate(E::Fr::zero()) + &poly.evaluate(E::Fr::one()),
+            poly.evaluate(G::Fr::zero()) + &poly.evaluate(G::Fr::one()),
             claim_per_round
         );
         let mut buf = [0u8; 31];
