@@ -6,35 +6,35 @@ use crate::hyrax::evaluate::{
 use crate::hyrax::params::PolyCommitmentSetupParameters;
 use crate::hyrax::zk_sumcheck_proof::ZkSumcheckProof;
 // use core::ops::{Deref, Neg};
-use math::{bytes::ToBytes, AffineCurve, One, PairingEngine, ProjectiveCurve, UniformRand, Zero};
+use math::{bytes::ToBytes, AffineCurve, Curve, One, ProjectiveCurve, UniformRand, Zero};
 use merlin::Transcript;
 use rand::Rng;
 
-pub struct HyraxProof<E: PairingEngine> {
-    pub comm_witness: Vec<E::G1Affine>,
-    pub proofs: Vec<ZkSumcheckProof<E>>,
-    pub prod_proof0: LogDotProductProof<E>,
-    pub comm_y0: E::G1Affine,
-    pub eq_proof0: EqProof<E>,
-    pub prod_proof1: LogDotProductProof<E>,
-    pub comm_y1: E::G1Affine,
-    pub eq_proof1: EqProof<E>,
+pub struct HyraxProof<G: Curve> {
+    pub comm_witness: Vec<G::Affine>,
+    pub proofs: Vec<ZkSumcheckProof<G>>,
+    pub prod_proof0: LogDotProductProof<G>,
+    pub comm_y0: G::Affine,
+    pub eq_proof0: EqProof<G>,
+    pub prod_proof1: LogDotProductProof<G>,
+    pub comm_y1: G::Affine,
+    pub eq_proof1: EqProof<G>,
 }
 
-impl<E: PairingEngine> HyraxProof<E> {
+impl<G: Curve> HyraxProof<G> {
     pub fn prover<R: Rng>(
-        params: &PolyCommitmentSetupParameters<E>,
-        witnesses: &Vec<Vec<E::Fr>>,
-        inputs: &Vec<Vec<E::Fr>>,
+        params: &PolyCommitmentSetupParameters<G>,
+        witnesses: &Vec<Vec<G::Fr>>,
+        inputs: &Vec<Vec<G::Fr>>,
         circuit: &Circuit,
         n: usize,
         rng: &mut R,
-    ) -> (Self, Vec<Vec<E::Fr>>) {
+    ) -> (Self, Vec<Vec<G::Fr>>) {
         let mut transcript = Transcript::new(b"hyrax - linear gkr");
         let mut circuit_evals = Vec::new();
         let mut outputs = Vec::new();
         for i in 0..n {
-            let circuit_eval = circuit.evaluate::<E>(&inputs[i], &witnesses[i]);
+            let circuit_eval = circuit.evaluate::<G>(&inputs[i], &witnesses[i]);
             outputs.push(circuit_eval[0].clone());
             circuit_evals.push(circuit_eval);
         }
@@ -47,9 +47,9 @@ impl<E: PairingEngine> HyraxProof<E> {
             let witness = witnesses[i].clone();
             witness_vec.extend(witness);
             let wl = witnesses[i].len();
-            witness_vec.extend(vec![E::Fr::zero(); wl.next_power_of_two() - wl]);
+            witness_vec.extend(vec![G::Fr::zero(); wl.next_power_of_two() - wl]);
         }
-        let (comm_witness, witness_blind) = packing_poly_commit::<E, R>(
+        let (comm_witness, witness_blind) = packing_poly_commit::<G, R>(
             &params.gen_n.generators,
             &witness_vec,
             &params.gen_n.h,
@@ -60,25 +60,25 @@ impl<E: PairingEngine> HyraxProof<E> {
         println!("generate packing commit for witness...ok");
 
         //
-        let (result_u, mut q_aside_vec, mut ql_vec) = eval_outputs::<E>(&outputs, &mut transcript);
+        let (result_u, mut q_aside_vec, mut ql_vec) = eval_outputs::<G>(&outputs, &mut transcript);
         let mut qr_vec = ql_vec.clone();
-        let mut u0 = E::Fr::one();
-        let mut u1 = E::Fr::zero();
-        let mut rc0 = E::Fr::zero();
-        let comm_a = poly_commit_vec::<E>(
+        let mut u0 = G::Fr::one();
+        let mut u1 = G::Fr::zero();
+        let mut rc0 = G::Fr::zero();
+        let comm_a = poly_commit_vec::<G>(
             &params.gen_1.generators,
             &vec![result_u],
             &params.gen_1.h,
-            E::Fr::zero(),
+            G::Fr::zero(),
         );
         transcript.append_message(b"comm_claim_a0", &math::to_bytes!(comm_a).unwrap());
 
         let mut comm_claim = comm_a;
         let mut proofs = Vec::new();
-        let mut x = E::Fr::zero();
-        let mut y = E::Fr::zero();
-        let mut rx = E::Fr::zero();
-        let mut ry = E::Fr::zero();
+        let mut x = G::Fr::zero();
+        let mut y = G::Fr::zero();
+        let mut rx = G::Fr::zero();
+        let mut ry = G::Fr::zero();
         for d in 0..circuit.depth - 1 {
             let next_gate_num = circuit.layers[circuit.depth - d - 2].gates_count;
             let ng = next_gate_num.next_power_of_two();
@@ -87,12 +87,12 @@ impl<E: PairingEngine> HyraxProof<E> {
                     let mut evals = (0..circuit_evals.len())
                         .map(|t| circuit_evals[t][d + 1][i])
                         .collect::<Vec<_>>();
-                    evals.extend(vec![E::Fr::zero(); n - circuit_evals.len()]);
+                    evals.extend(vec![G::Fr::zero(); n - circuit_evals.len()]);
                     evals
                 })
                 .collect::<Vec<_>>();
             let tmp_evals = (next_gate_num..ng)
-                .map(|_| vec![E::Fr::zero(); n])
+                .map(|_| vec![G::Fr::zero(); n])
                 .collect::<Vec<_>>();
             layer_circuit_evals.extend(tmp_evals);
 
@@ -123,10 +123,10 @@ impl<E: PairingEngine> HyraxProof<E> {
             if d < circuit.depth - 2 {
                 let mut buf = [0u8; 32];
                 transcript.challenge_bytes(b"u0", &mut buf);
-                u0 = random_bytes_to_fr::<E>(&buf);
+                u0 = random_bytes_to_fr::<G>(&buf);
                 let mut buf = [0u8; 32];
                 transcript.challenge_bytes(b"u1", &mut buf);
-                u1 = random_bytes_to_fr::<E>(&buf);
+                u1 = random_bytes_to_fr::<G>(&buf);
                 comm_claim = (proof.comm_x.mul(u0) + &proof.comm_y.mul(u1)).into_affine();
                 rc0 = rx * &u0 + &(ry * &u1);
                 transcript.append_message(b"comm_a_i", &math::to_bytes!(comm_claim).unwrap());
@@ -137,8 +137,8 @@ impl<E: PairingEngine> HyraxProof<E> {
 
         let mut rl_q_vec = q_aside_vec.clone();
         rl_q_vec.extend(ql_vec[1..ql_vec.len()].to_vec());
-        let blind_eval0 = E::Fr::rand(rng);
-        let eval_w_rl = eval_value::<E>(&witness_vec, &rl_q_vec);
+        let blind_eval0 = G::Fr::rand(rng);
+        let eval_w_rl = eval_value::<G>(&witness_vec, &rl_q_vec);
         let (prod_proof0, comm_y0) = LogDotProductProof::reduce_prover::<R>(
             params,
             &witness_vec,
@@ -149,7 +149,7 @@ impl<E: PairingEngine> HyraxProof<E> {
             rng,
             &mut transcript,
         );
-        let eval_at_zy_blind0 = (E::Fr::one() - &ql_vec[0]) * &blind_eval0;
+        let eval_at_zy_blind0 = (G::Fr::one() - &ql_vec[0]) * &blind_eval0;
 
         let eq_proof0 = EqProof::prover(
             &params.gen_1,
@@ -163,8 +163,8 @@ impl<E: PairingEngine> HyraxProof<E> {
 
         let mut rr_q_vec = q_aside_vec.clone();
         rr_q_vec.extend(qr_vec[1..qr_vec.len()].to_vec());
-        let blind_eval1 = E::Fr::rand(rng);
-        let eval_w_rr = eval_value::<E>(&witness_vec, &rr_q_vec);
+        let blind_eval1 = G::Fr::rand(rng);
+        let eval_w_rr = eval_value::<G>(&witness_vec, &rr_q_vec);
         let (prod_proof1, comm_y1) = LogDotProductProof::reduce_prover::<R>(
             params,
             &witness_vec,
@@ -175,7 +175,7 @@ impl<E: PairingEngine> HyraxProof<E> {
             rng,
             &mut transcript,
         );
-        let eval_at_zy_blind1 = (E::Fr::one() - &qr_vec[0]) * &blind_eval1;
+        let eval_at_zy_blind1 = (G::Fr::one() - &qr_vec[0]) * &blind_eval1;
 
         let eq_proof1 = EqProof::prover(
             &params.gen_1,
@@ -202,9 +202,9 @@ impl<E: PairingEngine> HyraxProof<E> {
 
     pub fn verify(
         &self,
-        params: &PolyCommitmentSetupParameters<E>,
-        outputs: &Vec<Vec<E::Fr>>,
-        inputs: &Vec<Vec<E::Fr>>,
+        params: &PolyCommitmentSetupParameters<G>,
+        outputs: &Vec<Vec<G::Fr>>,
+        inputs: &Vec<Vec<G::Fr>>,
         circuit: &Circuit,
     ) -> bool {
         let mut transcript = Transcript::new(b"hyrax - linear gkr");
@@ -219,20 +219,20 @@ impl<E: PairingEngine> HyraxProof<E> {
             &math::to_bytes!(self.comm_witness).unwrap(),
         );
 
-        let (result_u, mut q_aside_vec, mut ql_vec) = eval_outputs::<E>(&outputs, &mut transcript);
+        let (result_u, mut q_aside_vec, mut ql_vec) = eval_outputs::<G>(&outputs, &mut transcript);
         let mut qr_vec = ql_vec.clone();
-        let mut comm_a = poly_commit_vec::<E>(
+        let mut comm_a = poly_commit_vec::<G>(
             &params.gen_1.generators,
             &vec![result_u],
             &params.gen_1.h,
-            E::Fr::zero(),
+            G::Fr::zero(),
         );
         transcript.append_message(b"comm_claim_a0", &math::to_bytes!(comm_a).unwrap());
 
         let mut comm_x = comm_a;
         let mut comm_y = comm_a;
-        let mut u0 = E::Fr::one();
-        let mut u1 = E::Fr::zero();
+        let mut u0 = G::Fr::one();
+        let mut u1 = G::Fr::zero();
         for d in 0..circuit.depth - 1 {
             let next_gate_num = circuit.layers[circuit.depth - d - 2].gates_count;
             let ng = next_gate_num.next_power_of_two();
@@ -257,10 +257,10 @@ impl<E: PairingEngine> HyraxProof<E> {
             if d < circuit.depth - 2 {
                 let mut buf = [0u8; 32];
                 transcript.challenge_bytes(b"u0", &mut buf);
-                u0 = random_bytes_to_fr::<E>(&buf);
+                u0 = random_bytes_to_fr::<G>(&buf);
                 let mut buf = [0u8; 32];
                 transcript.challenge_bytes(b"u1", &mut buf);
-                u1 = random_bytes_to_fr::<E>(&buf);
+                u1 = random_bytes_to_fr::<G>(&buf);
                 comm_a = (comm_x.mul(u0) + &comm_y.mul(u1)).into_affine();
                 transcript.append_message(b"comm_a_i", &math::to_bytes!(comm_a).unwrap());
             }
@@ -272,7 +272,7 @@ impl<E: PairingEngine> HyraxProof<E> {
             let input = inputs[i].clone();
             input_vec.extend(input);
             let al = inputs[i].len();
-            input_vec.extend(vec![E::Fr::zero(); al.next_power_of_two() - al]);
+            input_vec.extend(vec![G::Fr::zero(); al.next_power_of_two() - al]);
         }
 
         let mut rl_q_vec = q_aside_vec.clone();
@@ -286,14 +286,14 @@ impl<E: PairingEngine> HyraxProof<E> {
         );
         assert!(rs);
 
-        let eval_input_tau = eval_value::<E>(&input_vec, &rl_q_vec);
-        let comm_input = poly_commit_vec::<E>(
+        let eval_input_tau = eval_value::<G>(&input_vec, &rl_q_vec);
+        let comm_input = poly_commit_vec::<G>(
             &params.gen_1.generators,
             &vec![eval_input_tau],
             &params.gen_1.h,
-            E::Fr::zero(),
+            G::Fr::zero(),
         );
-        let comm_eval_z = (self.comm_y0.mul(E::Fr::one() - &ql_vec[0])
+        let comm_eval_z = (self.comm_y0.mul(G::Fr::one() - &ql_vec[0])
             + &(comm_input.mul(ql_vec[0])))
             .into_affine();
 
@@ -313,14 +313,14 @@ impl<E: PairingEngine> HyraxProof<E> {
         );
         assert!(rs);
 
-        let eval_input_tau = eval_value::<E>(&input_vec, &rr_q_vec);
-        let comm_input = poly_commit_vec::<E>(
+        let eval_input_tau = eval_value::<G>(&input_vec, &rr_q_vec);
+        let comm_input = poly_commit_vec::<G>(
             &params.gen_1.generators,
             &vec![eval_input_tau],
             &params.gen_1.h,
-            E::Fr::zero(),
+            G::Fr::zero(),
         );
-        let comm_eval_z = (self.comm_y1.mul(E::Fr::one() - &qr_vec[0])
+        let comm_eval_z = (self.comm_y1.mul(G::Fr::one() - &qr_vec[0])
             + &(comm_input.mul(qr_vec[0])))
             .into_affine();
 

@@ -1,46 +1,46 @@
 use crate::hyrax::evaluate::{eval_eq, poly_commit_vec, random_bytes_to_fr};
 use crate::hyrax::params::{MultiCommitmentSetupParameters, PolyCommitmentSetupParameters};
 use math::{
-    bytes::ToBytes, log2, msm::VariableBaseMSM, AffineCurve, Field, One, PairingEngine, PrimeField,
+    bytes::ToBytes, log2, msm::VariableBaseMSM, AffineCurve, Curve, Field, One, PrimeField,
     ProjectiveCurve, UniformRand, Zero,
 };
 use merlin::Transcript;
 use rand::Rng;
 
-pub struct EqProof<E: PairingEngine> {
-    pub alpha: E::G1Affine,
-    pub z: E::Fr,
+pub struct EqProof<G: Curve> {
+    pub alpha: G::Affine,
+    pub z: G::Fr,
 }
 
-impl<E: PairingEngine> EqProof<E> {
+impl<G: Curve> EqProof<G> {
     pub fn prover<R: Rng>(
-        params: &MultiCommitmentSetupParameters<E>,
-        claim1: E::Fr,
-        blind1: E::Fr,
-        claim2: E::Fr,
-        blind2: E::Fr,
+        params: &MultiCommitmentSetupParameters<G>,
+        claim1: G::Fr,
+        blind1: G::Fr,
+        claim2: G::Fr,
+        blind2: G::Fr,
         rng: &mut R,
         transcript: &mut Transcript,
     ) -> Self {
-        let r = E::Fr::rand(rng);
-        let c1 = poly_commit_vec::<E>(&params.generators, &vec![claim1], &params.h, blind1);
+        let r = G::Fr::rand(rng);
+        let c1 = poly_commit_vec::<G>(&params.generators, &vec![claim1], &params.h, blind1);
         transcript.append_message(b"C1", &math::to_bytes!(c1).unwrap());
-        let c2 = poly_commit_vec::<E>(&params.generators, &vec![claim2], &params.h, blind2);
+        let c2 = poly_commit_vec::<G>(&params.generators, &vec![claim2], &params.h, blind2);
         transcript.append_message(b"C2", &math::to_bytes!(c2).unwrap());
         let alpha = params.h.mul(r).into_affine();
         transcript.append_message(b"alpha", &math::to_bytes!(alpha).unwrap());
         let mut buf = [0u8; 32];
         transcript.challenge_bytes(b"c", &mut buf);
-        let c = random_bytes_to_fr::<E>(&buf);
+        let c = random_bytes_to_fr::<G>(&buf);
         let z = c * &(blind1 - &blind2) + &r;
         Self { alpha, z }
     }
 
     pub fn verify(
         &self,
-        params: &MultiCommitmentSetupParameters<E>,
-        comm1: E::G1Affine,
-        comm2: E::G1Affine,
+        params: &MultiCommitmentSetupParameters<G>,
+        comm1: G::Affine,
+        comm2: G::Affine,
         transcript: &mut Transcript,
     ) -> bool {
         transcript.append_message(b"C1", &math::to_bytes!(comm1).unwrap());
@@ -48,7 +48,7 @@ impl<E: PairingEngine> EqProof<E> {
         transcript.append_message(b"alpha", &math::to_bytes!(self.alpha).unwrap());
         let mut buf = [0u8; 32];
         transcript.challenge_bytes(b"c", &mut buf);
-        let c = random_bytes_to_fr::<E>(&buf);
+        let c = random_bytes_to_fr::<G>(&buf);
         let comm = (comm1.into_projective() - &comm2.into_projective()).into_affine();
         let lhs = params.h.mul(self.z);
         let rhs = comm.mul(c) + &self.alpha.into_projective();
@@ -56,29 +56,29 @@ impl<E: PairingEngine> EqProof<E> {
     }
 }
 
-pub struct KnowledgeProof<E: PairingEngine> {
-    pub t_comm: E::G1Affine,
-    pub z1: E::Fr,
-    pub z2: E::Fr,
+pub struct KnowledgeProof<G: Curve> {
+    pub t_comm: G::Affine,
+    pub z1: G::Fr,
+    pub z2: G::Fr,
 }
 
-impl<E: PairingEngine> KnowledgeProof<E> {
+impl<G: Curve> KnowledgeProof<G> {
     pub fn prover<R: Rng>(
-        params: &MultiCommitmentSetupParameters<E>,
-        claim: E::Fr,
-        blind: E::Fr,
+        params: &MultiCommitmentSetupParameters<G>,
+        claim: G::Fr,
+        blind: G::Fr,
         rng: &mut R,
         transcript: &mut Transcript,
-    ) -> (Self, E::G1Affine) {
-        let t1 = E::Fr::rand(rng);
-        let t2 = E::Fr::rand(rng);
-        let claim_comm = poly_commit_vec::<E>(&params.generators, &vec![claim], &params.h, blind);
+    ) -> (Self, G::Affine) {
+        let t1 = G::Fr::rand(rng);
+        let t2 = G::Fr::rand(rng);
+        let claim_comm = poly_commit_vec::<G>(&params.generators, &vec![claim], &params.h, blind);
         transcript.append_message(b"C", &math::to_bytes!(claim_comm).unwrap());
-        let t_comm = poly_commit_vec::<E>(&params.generators, &vec![t1], &params.h, t2);
+        let t_comm = poly_commit_vec::<G>(&params.generators, &vec![t1], &params.h, t2);
         transcript.append_message(b"alpha", &math::to_bytes!(t_comm).unwrap());
         let mut buf = [0u8; 31];
         transcript.challenge_bytes(b"c", &mut buf);
-        let c = random_bytes_to_fr::<E>(&buf);
+        let c = random_bytes_to_fr::<G>(&buf);
         let z1 = claim * &c + &t1;
         let z2 = blind * &c + &t2;
         let proof = Self {
@@ -91,63 +91,63 @@ impl<E: PairingEngine> KnowledgeProof<E> {
 
     pub fn verify(
         &self,
-        params: &MultiCommitmentSetupParameters<E>,
-        claim_comm: E::G1Affine,
+        params: &MultiCommitmentSetupParameters<G>,
+        claim_comm: G::Affine,
         transcript: &mut Transcript,
     ) -> bool {
         transcript.append_message(b"C", &math::to_bytes!(claim_comm).unwrap());
         transcript.append_message(b"alpha", &math::to_bytes!(self.t_comm).unwrap());
         let mut buf = [0u8; 31];
         transcript.challenge_bytes(b"c", &mut buf);
-        let c = random_bytes_to_fr::<E>(&buf);
-        let lhs = poly_commit_vec::<E>(&params.generators, &vec![self.z1], &params.h, self.z2);
+        let c = random_bytes_to_fr::<G>(&buf);
+        let lhs = poly_commit_vec::<G>(&params.generators, &vec![self.z1], &params.h, self.z2);
         let rhs = claim_comm.mul(c) + &self.t_comm.into_projective();
         lhs == rhs.into_affine()
     }
 }
 
-pub struct ProductProof<E: PairingEngine> {
-    pub comm_alpha: E::G1Affine,
-    pub comm_beta: E::G1Affine,
-    pub comm_delta: E::G1Affine,
-    pub z: Vec<E::Fr>,
+pub struct ProductProof<G: Curve> {
+    pub comm_alpha: G::Affine,
+    pub comm_beta: G::Affine,
+    pub comm_delta: G::Affine,
+    pub z: Vec<G::Fr>,
 }
 
-impl<E: PairingEngine> ProductProof<E> {
+impl<G: Curve> ProductProof<G> {
     pub fn prover<R: Rng>(
-        params: &MultiCommitmentSetupParameters<E>,
-        claim_x: E::Fr,
-        blind_x: E::Fr,
-        claim_y: E::Fr,
-        blind_y: E::Fr,
-        prod: E::Fr,
-        blind_prod: E::Fr,
+        params: &MultiCommitmentSetupParameters<G>,
+        claim_x: G::Fr,
+        blind_x: G::Fr,
+        claim_y: G::Fr,
+        blind_y: G::Fr,
+        prod: G::Fr,
+        blind_prod: G::Fr,
         rng: &mut R,
         transcript: &mut Transcript,
-    ) -> (Self, E::G1Affine, E::G1Affine, E::G1Affine) {
-        let comm_x = poly_commit_vec::<E>(&params.generators, &vec![claim_x], &params.h, blind_x);
+    ) -> (Self, G::Affine, G::Affine, G::Affine) {
+        let comm_x = poly_commit_vec::<G>(&params.generators, &vec![claim_x], &params.h, blind_x);
         transcript.append_message(b"X", &math::to_bytes!(comm_x).unwrap());
-        let comm_y = poly_commit_vec::<E>(&params.generators, &vec![claim_y], &params.h, blind_y);
+        let comm_y = poly_commit_vec::<G>(&params.generators, &vec![claim_y], &params.h, blind_y);
         transcript.append_message(b"Y", &math::to_bytes!(comm_y).unwrap());
         let comm_prod =
-            poly_commit_vec::<E>(&params.generators, &vec![prod], &params.h, blind_prod);
+            poly_commit_vec::<G>(&params.generators, &vec![prod], &params.h, blind_prod);
         transcript.append_message(b"Z", &math::to_bytes!(comm_prod).unwrap());
 
-        let b1 = E::Fr::rand(rng);
-        let b2 = E::Fr::rand(rng);
-        let b3 = E::Fr::rand(rng);
-        let b4 = E::Fr::rand(rng);
-        let b5 = E::Fr::rand(rng);
-        let comm_alpha = poly_commit_vec::<E>(&params.generators, &vec![b1], &params.h, b2);
+        let b1 = G::Fr::rand(rng);
+        let b2 = G::Fr::rand(rng);
+        let b3 = G::Fr::rand(rng);
+        let b4 = G::Fr::rand(rng);
+        let b5 = G::Fr::rand(rng);
+        let comm_alpha = poly_commit_vec::<G>(&params.generators, &vec![b1], &params.h, b2);
         transcript.append_message(b"alpha", &math::to_bytes!(comm_alpha).unwrap());
-        let comm_beta = poly_commit_vec::<E>(&params.generators, &vec![b3], &params.h, b4);
+        let comm_beta = poly_commit_vec::<G>(&params.generators, &vec![b3], &params.h, b4);
         transcript.append_message(b"beta", &math::to_bytes!(comm_beta).unwrap());
-        let comm_delta = poly_commit_vec::<E>(&vec![comm_x], &vec![b3], &params.h, b5);
+        let comm_delta = poly_commit_vec::<G>(&vec![comm_x], &vec![b3], &params.h, b5);
         transcript.append_message(b"delta", &math::to_bytes!(comm_delta).unwrap());
 
         let mut buf = [0u8; 31];
         transcript.challenge_bytes(b"c", &mut buf);
-        let c = random_bytes_to_fr::<E>(&buf);
+        let c = random_bytes_to_fr::<G>(&buf);
 
         let z1 = b1 + &(c * &claim_x);
         let z2 = b2 + &(c * &blind_x);
@@ -166,10 +166,10 @@ impl<E: PairingEngine> ProductProof<E> {
 
     pub fn verify(
         &self,
-        params: &MultiCommitmentSetupParameters<E>,
-        comm_x: E::G1Affine,
-        comm_y: E::G1Affine,
-        comm_prod: E::G1Affine,
+        params: &MultiCommitmentSetupParameters<G>,
+        comm_x: G::Affine,
+        comm_y: G::Affine,
+        comm_prod: G::Affine,
         transcript: &mut Transcript,
     ) -> bool {
         let z1 = self.z[0];
@@ -187,65 +187,65 @@ impl<E: PairingEngine> ProductProof<E> {
 
         let mut buf = [0u8; 31];
         transcript.challenge_bytes(b"c", &mut buf);
-        let c = random_bytes_to_fr::<E>(&buf);
+        let c = random_bytes_to_fr::<G>(&buf);
 
         let rs1_lhs = self.comm_alpha + comm_x.mul(c).into_affine();
-        let rs1_rhs = poly_commit_vec::<E>(&params.generators, &vec![z1], &params.h, z2);
+        let rs1_rhs = poly_commit_vec::<G>(&params.generators, &vec![z1], &params.h, z2);
         let rs1 = rs1_lhs == rs1_rhs;
 
         let rs2_lhs = self.comm_beta + comm_y.mul(c).into_affine();
-        let rs2_rhs = poly_commit_vec::<E>(&params.generators, &vec![z3], &params.h, z4);
+        let rs2_rhs = poly_commit_vec::<G>(&params.generators, &vec![z3], &params.h, z4);
         let rs2 = rs2_lhs == rs2_rhs;
 
         let rs3_lhs = self.comm_delta + comm_prod.mul(c).into_affine();
-        let rs3_rhs = poly_commit_vec::<E>(&vec![comm_x], &vec![z3], &params.h, z5);
+        let rs3_rhs = poly_commit_vec::<G>(&vec![comm_x], &vec![z3], &params.h, z5);
         let rs3 = rs3_lhs == rs3_rhs;
 
         rs1 && rs2 && rs3
     }
 }
 
-pub struct DotProductProof<E: PairingEngine> {
-    pub z_vec: Vec<E::Fr>,
-    pub delta: E::G1Affine,
-    pub beta: E::G1Affine,
-    pub z_delta: E::Fr,
-    pub z_beta: E::Fr,
+pub struct DotProductProof<G: Curve> {
+    pub z_vec: Vec<G::Fr>,
+    pub delta: G::Affine,
+    pub beta: G::Affine,
+    pub z_delta: G::Fr,
+    pub z_beta: G::Fr,
 }
 
-impl<E: PairingEngine> DotProductProof<E> {
+impl<G: Curve> DotProductProof<G> {
     pub fn prover<R: Rng>(
-        params: &PolyCommitmentSetupParameters<E>,
-        x_vec: &Vec<E::Fr>,
-        blind_x: E::Fr,
-        a_vec: &Vec<E::Fr>,
-        y: E::Fr,
-        blind_y: E::Fr,
+        params: &PolyCommitmentSetupParameters<G>,
+        x_vec: &Vec<G::Fr>,
+        blind_x: G::Fr,
+        a_vec: &Vec<G::Fr>,
+        y: G::Fr,
+        blind_y: G::Fr,
         rng: &mut R,
         transcript: &mut Transcript,
-    ) -> (Self, E::G1Affine, E::G1Affine) {
+    ) -> (Self, G::Affine, G::Affine) {
         assert_eq!(a_vec.len(), x_vec.len());
         assert!(params.n >= a_vec.len());
         let size = a_vec.len();
 
-        let d_vec = (0..size).map(|_| E::Fr::rand(rng)).collect::<Vec<_>>();
-        let r_beta = E::Fr::rand(rng);
-        let r_delta = E::Fr::rand(rng);
+        let d_vec = (0..size).map(|_| G::Fr::rand(rng)).collect::<Vec<_>>();
+        let r_beta = G::Fr::rand(rng);
+        let r_delta = G::Fr::rand(rng);
 
         let comm_x =
-            poly_commit_vec::<E>(&params.gen_n.generators, &x_vec, &params.gen_n.h, blind_x);
+            poly_commit_vec::<G>(&params.gen_n.generators, &x_vec, &params.gen_n.h, blind_x);
         transcript.append_message(b"Cx", &math::to_bytes!(comm_x).unwrap());
 
         let comm_y =
-            poly_commit_vec::<E>(&params.gen_1.generators, &vec![y], &params.gen_1.h, blind_y);
+            poly_commit_vec::<G>(&params.gen_1.generators, &vec![y], &params.gen_1.h, blind_y);
         transcript.append_message(b"Cy", &math::to_bytes!(comm_y).unwrap());
 
         let delta =
-            poly_commit_vec::<E>(&params.gen_n.generators, &d_vec, &params.gen_n.h, r_delta);
+            poly_commit_vec::<G>(&params.gen_n.generators, &d_vec, &params.gen_n.h, r_delta);
         transcript.append_message(b"delta", &math::to_bytes!(comm_x).unwrap());
 
         let dotprod_a_d = (0..size).map(|i| a_vec[i] * &d_vec[i]).product();
-        let beta = poly_commit_vec::<E>(
+        let beta = poly_commit_vec::<G>(
             &params.gen_1.generators,
             &vec![dotprod_a_d],
             &params.gen_1.h,
@@ -255,7 +255,7 @@ impl<E: PairingEngine> DotProductProof<E> {
 
         let mut buf = [0u8; 31];
         transcript.challenge_bytes(b"c", &mut buf);
-        let c = random_bytes_to_fr::<E>(&buf);
+        let c = random_bytes_to_fr::<G>(&buf);
 
         let z_vec = (0..d_vec.len())
             .map(|i| c * &x_vec[i] + &d_vec[i])
@@ -277,10 +277,10 @@ impl<E: PairingEngine> DotProductProof<E> {
 
     pub fn verify(
         &self,
-        params: &PolyCommitmentSetupParameters<E>,
-        comm_x: E::G1Affine,
-        comm_y: E::G1Affine,
-        a_vec: &Vec<E::Fr>,
+        params: &PolyCommitmentSetupParameters<G>,
+        comm_x: G::Affine,
+        comm_y: G::Affine,
+        a_vec: &Vec<G::Fr>,
         transcript: &mut Transcript,
     ) -> bool {
         transcript.append_message(b"Cx", &math::to_bytes!(comm_x).unwrap());
@@ -290,10 +290,10 @@ impl<E: PairingEngine> DotProductProof<E> {
 
         let mut buf = [0u8; 31];
         transcript.challenge_bytes(b"c", &mut buf);
-        let c = random_bytes_to_fr::<E>(&buf);
+        let c = random_bytes_to_fr::<G>(&buf);
 
         let rs1_lhs = comm_x.mul(c).into_affine() + self.delta;
-        let rs1_rhs = poly_commit_vec::<E>(
+        let rs1_rhs = poly_commit_vec::<G>(
             &params.gen_n.generators,
             &self.z_vec,
             &params.gen_n.h,
@@ -305,7 +305,7 @@ impl<E: PairingEngine> DotProductProof<E> {
         let dotprod_z_a = (0..a_vec.len())
             .map(|i| self.z_vec[i] * &a_vec[i])
             .product();
-        let rs2_rhs = poly_commit_vec::<E>(
+        let rs2_rhs = poly_commit_vec::<G>(
             &params.gen_1.generators,
             &vec![dotprod_z_a],
             &params.gen_n.h,
@@ -317,42 +317,42 @@ impl<E: PairingEngine> DotProductProof<E> {
     }
 }
 
-pub struct LogDotProductProof<E: PairingEngine> {
-    pub bullet_reduce_proof: BulletReduceProof<E>,
-    pub delta: E::G1Affine,
-    pub beta: E::G1Affine,
-    pub z1: E::Fr,
-    pub z2: E::Fr,
+pub struct LogDotProductProof<G: Curve> {
+    pub bullet_reduce_proof: BulletReduceProof<G>,
+    pub delta: G::Affine,
+    pub beta: G::Affine,
+    pub z1: G::Fr,
+    pub z2: G::Fr,
 }
 
-impl<E: PairingEngine> LogDotProductProof<E> {
+impl<G: Curve> LogDotProductProof<G> {
     pub fn prover<R: Rng>(
-        params: &PolyCommitmentSetupParameters<E>,
-        x_vec: &Vec<E::Fr>,
-        blind_x: E::Fr,
-        a_vec: &Vec<E::Fr>,
-        y: E::Fr,
-        blind_y: E::Fr,
+        params: &PolyCommitmentSetupParameters<G>,
+        x_vec: &Vec<G::Fr>,
+        blind_x: G::Fr,
+        a_vec: &Vec<G::Fr>,
+        y: G::Fr,
+        blind_y: G::Fr,
         rng: &mut R,
         transcript: &mut Transcript,
-    ) -> (Self, E::G1Affine, E::G1Affine) {
+    ) -> (Self, G::Affine, G::Affine) {
         assert_eq!(a_vec.len(), x_vec.len());
         assert!(params.n >= a_vec.len());
         let size = a_vec.len();
 
-        let d = E::Fr::rand(rng);
-        let r_beta = E::Fr::rand(rng);
-        let r_delta = E::Fr::rand(rng);
+        let d = G::Fr::rand(rng);
+        let r_beta = G::Fr::rand(rng);
+        let r_delta = G::Fr::rand(rng);
         let blind_vec = (0..log2(size))
-            .map(|_| (E::Fr::rand(rng), E::Fr::rand(rng)))
+            .map(|_| (G::Fr::rand(rng), G::Fr::rand(rng)))
             .collect::<Vec<_>>();
 
         let comm_x =
-            poly_commit_vec::<E>(&params.gen_n.generators, &x_vec, &params.gen_n.h, blind_x);
+            poly_commit_vec::<G>(&params.gen_n.generators, &x_vec, &params.gen_n.h, blind_x);
         transcript.append_message(b"Cx", &math::to_bytes!(comm_x).unwrap());
 
         let comm_y =
-            poly_commit_vec::<E>(&params.gen_1.generators, &vec![y], &params.gen_1.h, blind_y);
+            poly_commit_vec::<G>(&params.gen_1.generators, &vec![y], &params.gen_1.h, blind_y);
         transcript.append_message(b"Cy", &math::to_bytes!(comm_y).unwrap());
 
         let blind_gamma = blind_x + &blind_y;
@@ -360,16 +360,16 @@ impl<E: PairingEngine> LogDotProductProof<E> {
             BulletReduceProof::prover(&params, &x_vec, &a_vec, blind_gamma, &blind_vec, transcript);
         let y_hat = x_hat * &a_hat;
 
-        let delta = poly_commit_vec::<E>(&vec![g_hat], &vec![d], &params.gen_1.h, r_delta);
+        let delta = poly_commit_vec::<G>(&vec![g_hat], &vec![d], &params.gen_1.h, r_delta);
         transcript.append_message(b"delta", &math::to_bytes!(delta).unwrap());
 
         let beta =
-            poly_commit_vec::<E>(&params.gen_1.generators, &vec![d], &params.gen_1.h, r_beta);
+            poly_commit_vec::<G>(&params.gen_1.generators, &vec![d], &params.gen_1.h, r_beta);
         transcript.append_message(b"beta", &math::to_bytes!(beta).unwrap());
 
         let mut buf = [0u8; 31];
         transcript.challenge_bytes(b"c", &mut buf);
-        let c = random_bytes_to_fr::<E>(&buf);
+        let c = random_bytes_to_fr::<G>(&buf);
         let z1 = d + &(c * &y_hat);
         let z2 = a_hat * &(c * &r_hat_gamma + &r_beta) + &r_delta;
 
@@ -386,10 +386,10 @@ impl<E: PairingEngine> LogDotProductProof<E> {
 
     pub fn verify(
         &self,
-        params: &PolyCommitmentSetupParameters<E>,
-        comm_x: E::G1Affine,
-        comm_y: E::G1Affine,
-        a_vec: &Vec<E::Fr>,
+        params: &PolyCommitmentSetupParameters<G>,
+        comm_x: G::Affine,
+        comm_y: G::Affine,
+        a_vec: &Vec<G::Fr>,
         transcript: &mut Transcript,
     ) -> bool {
         transcript.append_message(b"Cx", &math::to_bytes!(comm_x).unwrap());
@@ -405,7 +405,7 @@ impl<E: PairingEngine> LogDotProductProof<E> {
 
         let mut buf = [0u8; 31];
         transcript.challenge_bytes(b"c", &mut buf);
-        let c = random_bytes_to_fr::<E>(&buf);
+        let c = random_bytes_to_fr::<G>(&buf);
 
         let lhs = (gamma_hat.mul(c) + &self.beta.into_projective()).mul(a_hat)
             + &self.delta.into_projective();
@@ -416,15 +416,15 @@ impl<E: PairingEngine> LogDotProductProof<E> {
     }
 
     pub fn reduce_prover<R: Rng>(
-        params: &PolyCommitmentSetupParameters<E>,
-        poly: &Vec<E::Fr>,
-        blind_poly: &Vec<E::Fr>,
-        ry: &Vec<E::Fr>,
-        ry_blind: E::Fr,
-        eval: E::Fr,
+        params: &PolyCommitmentSetupParameters<G>,
+        poly: &Vec<G::Fr>,
+        blind_poly: &Vec<G::Fr>,
+        ry: &Vec<G::Fr>,
+        ry_blind: G::Fr,
+        eval: G::Fr,
         rng: &mut R,
         transcript: &mut Transcript,
-    ) -> (Self, E::G1Affine) {
+    ) -> (Self, G::Affine) {
         let n = poly.len();
         let size = log2(n) as usize;
         assert_eq!(ry.len(), size);
@@ -432,19 +432,19 @@ impl<E: PairingEngine> LogDotProductProof<E> {
         let r_size = (2usize).pow((size - size / 2) as u32);
         let mut blinds = blind_poly.clone();
         if blind_poly.len() == 0 {
-            blinds = vec![E::Fr::zero(); l_size];
+            blinds = vec![G::Fr::zero(); l_size];
         }
         assert_eq!(l_size, blinds.len());
-        let l_eq_ry = eval_eq::<E>(&(ry[0..size / 2].to_vec()));
-        let r_eq_ry = eval_eq::<E>(&ry[size / 2..size].to_vec());
+        let l_eq_ry = eval_eq::<G>(&(ry[0..size / 2].to_vec()));
+        let r_eq_ry = eval_eq::<G>(&ry[size / 2..size].to_vec());
         let lz = (0..r_size)
             .map(|j| {
                 (0..l_size)
                     .map(|i| l_eq_ry[i] * &poly[i * r_size + j])
                     .sum()
             })
-            .collect::<Vec<E::Fr>>();
-        let lz_blind: E::Fr = (0..l_size).map(|i| l_eq_ry[i] * &blinds[i]).sum();
+            .collect::<Vec<G::Fr>>();
+        let lz_blind: G::Fr = (0..l_size).map(|i| l_eq_ry[i] * &blinds[i]).sum();
         let (proof, _, comm_y) = Self::prover(
             params, &lz, lz_blind, &r_eq_ry, eval, ry_blind, rng, transcript,
         );
@@ -454,39 +454,39 @@ impl<E: PairingEngine> LogDotProductProof<E> {
 
     pub fn reduce_verifier(
         &self,
-        params: &PolyCommitmentSetupParameters<E>,
-        ry: &Vec<E::Fr>,
-        comms_witness: &Vec<E::G1Affine>,
-        comm_ry: E::G1Affine,
+        params: &PolyCommitmentSetupParameters<G>,
+        ry: &Vec<G::Fr>,
+        comms_witness: &Vec<G::Affine>,
+        comm_ry: G::Affine,
         transcript: &mut Transcript,
     ) -> bool {
         let size = ry.len();
-        let l_eq_ry = eval_eq::<E>(&(ry[0..size / 2].to_vec()));
-        let r_eq_ry = eval_eq::<E>(&ry[size / 2..size].to_vec());
-        let comm_lz = poly_commit_vec::<E>(
+        let l_eq_ry = eval_eq::<G>(&(ry[0..size / 2].to_vec()));
+        let r_eq_ry = eval_eq::<G>(&ry[size / 2..size].to_vec());
+        let comm_lz = poly_commit_vec::<G>(
             &comms_witness,
             &l_eq_ry.clone(),
             &params.gen_1.h,
-            E::Fr::zero(),
+            G::Fr::zero(),
         );
         self.verify(params, comm_lz, comm_ry, &r_eq_ry, transcript)
     }
 }
 
-pub struct BulletReduceProof<E: PairingEngine> {
-    pub l_vec: Vec<E::G1Affine>,
-    pub r_vec: Vec<E::G1Affine>,
+pub struct BulletReduceProof<G: Curve> {
+    pub l_vec: Vec<G::Affine>,
+    pub r_vec: Vec<G::Affine>,
 }
 
-impl<E: PairingEngine> BulletReduceProof<E> {
+impl<G: Curve> BulletReduceProof<G> {
     pub fn prover(
-        params: &PolyCommitmentSetupParameters<E>,
-        a_vec: &Vec<E::Fr>,
-        b_vec: &Vec<E::Fr>,
-        blind_gamma: E::Fr,
-        blind_vec: &Vec<(E::Fr, E::Fr)>,
+        params: &PolyCommitmentSetupParameters<G>,
+        a_vec: &Vec<G::Fr>,
+        b_vec: &Vec<G::Fr>,
+        blind_gamma: G::Fr,
+        blind_vec: &Vec<(G::Fr, G::Fr)>,
         transcript: &mut Transcript,
-    ) -> (Self, E::G1Affine, E::Fr, E::Fr, E::G1Affine, E::Fr) {
+    ) -> (Self, G::Affine, G::Fr, G::Fr, G::Affine, G::Fr) {
         let mut g_vec = params.gen_n.generators.clone();
         let q = params.gen_1.generators[0];
         let h = params.gen_1.h;
@@ -498,8 +498,8 @@ impl<E: PairingEngine> BulletReduceProof<E> {
         assert!(n.is_power_of_two());
         assert_eq!(n, b_vec.len());
         let lg_n = log2(n) as usize;
-        let mut l_vec: Vec<E::G1Affine> = Vec::with_capacity(lg_n);
-        let mut r_vec: Vec<E::G1Affine> = Vec::with_capacity(lg_n);
+        let mut l_vec: Vec<G::Affine> = Vec::with_capacity(lg_n);
+        let mut r_vec: Vec<G::Affine> = Vec::with_capacity(lg_n);
         let mut blinds_iter = blind_vec.iter();
         let mut blind_fin = blind_gamma;
 
@@ -508,13 +508,13 @@ impl<E: PairingEngine> BulletReduceProof<E> {
             n = n / 2;
             let (al, ar) = a_vec.split_at(n);
             let (bl, br) = b_vec.split_at(n);
-            let cl: E::Fr = inner_product::<E>(al, br);
-            let cr: E::Fr = inner_product::<E>(ar, bl);
+            let cl: G::Fr = inner_product::<G>(al, br);
+            let cr: G::Fr = inner_product::<G>(ar, bl);
             let (gl, gr) = g_vec.split_at(n);
             // let (hL, hR) = h_vec.split_at(n);
             let (blind_l, blind_r) = blinds_iter.next().unwrap();
-            // let L: E::G1Projective = VariableBaseMSM::multi_scalar_mul(&gr.to_vec().append(&mut vec![Q, H]) , al.to_vec().append(&mut vec![cl, *blind_l]));
-            // let R: E::G1Projective = VariableBaseMSM::multi_scalar_mul(&gl.to_vec().append(&mut vec![Q, H]) , ar.to_vec().append(&mut vec![cr, *blind_r]));
+            // let L: G::G1Projective = VariableBaseMSM::multi_scalar_mul(&gr.to_vec().append(&mut vec![Q, H]) , al.to_vec().append(&mut vec![cl, *blind_l]));
+            // let R: G::G1Projective = VariableBaseMSM::multi_scalar_mul(&gl.to_vec().append(&mut vec![Q, H]) , ar.to_vec().append(&mut vec![cr, *blind_r]));
             let mut l = VariableBaseMSM::multi_scalar_mul(
                 gr,
                 al.into_iter()
@@ -558,16 +558,16 @@ impl<E: PairingEngine> BulletReduceProof<E> {
             // V challenge x
             let mut buf_x = [0u8; 31];
             transcript.challenge_bytes(b"x", &mut buf_x);
-            let x = random_bytes_to_fr::<E>(&buf_x);
+            let x = random_bytes_to_fr::<G>(&buf_x);
             let x_inv = x.inverse().unwrap();
             // P & V compute:
-            let g_new: Vec<E::G1Affine> = (0..n)
+            let g_new: Vec<G::Affine> = (0..n)
                 .map(|i| (gl[i].mul(x_inv) + &(gr[i].mul(x))).into_affine())
                 .collect();
             // let P_new = L * x*x + P + R * x_inv*x_inv;
             // P computes:
-            let a_new: Vec<E::Fr> = (0..n).map(|i| al[i] * &x + &(ar[i] * &x_inv)).collect();
-            let b_new: Vec<E::Fr> = (0..n).map(|i| bl[i] * &x_inv + &(br[i] * &x)).collect();
+            let a_new: Vec<G::Fr> = (0..n).map(|i| al[i] * &x + &(ar[i] * &x_inv)).collect();
+            let b_new: Vec<G::Fr> = (0..n).map(|i| bl[i] * &x_inv + &(br[i] * &x)).collect();
             a_vec = a_new;
             b_vec = b_new;
             g_vec = g_new;
@@ -595,31 +595,31 @@ impl<E: PairingEngine> BulletReduceProof<E> {
 
     pub fn verify(
         &self,
-        g_vec: &Vec<E::G1Affine>,
-        gamma: E::G1Affine,
-        b_vec: &Vec<E::Fr>,
+        g_vec: &Vec<G::Affine>,
+        gamma: G::Affine,
+        b_vec: &Vec<G::Fr>,
         transcript: &mut Transcript,
-    ) -> (E::Fr, E::G1Affine, E::G1Affine) {
+    ) -> (G::Fr, G::Affine, G::Affine) {
         let lg_n = self.l_vec.len();
         let n = 1 << lg_n;
         assert_eq!(lg_n, self.r_vec.len());
         let mut x_sq_vec = Vec::with_capacity(lg_n);
         let mut x_inv_sq_vec = Vec::with_capacity(lg_n);
-        let mut allinv = E::Fr::one();
+        let mut allinv = G::Fr::one();
         for i in 0..lg_n {
             transcript.append_message(b"L", &math::to_bytes!(self.l_vec[i]).unwrap());
             transcript.append_message(b"R", &math::to_bytes!(self.r_vec[i]).unwrap());
             // V challenge x
             let mut buf_x = [0u8; 31];
             transcript.challenge_bytes(b"x", &mut buf_x);
-            let x = random_bytes_to_fr::<E>(&buf_x);
+            let x = random_bytes_to_fr::<G>(&buf_x);
             let x_inv = x.inverse().unwrap();
             x_sq_vec.push(x * &x);
             x_inv_sq_vec.push(x_inv * &x_inv);
             allinv = allinv * &x_inv;
         }
         // Compute s values inductively. Here adpots optimization from Dalek.
-        let mut s: Vec<E::Fr> = Vec::with_capacity(n);
+        let mut s: Vec<G::Fr> = Vec::with_capacity(n);
         s.push(allinv);
         for i in 1..n {
             let lg_i = (32 - 1 - (i as u32).leading_zeros()) as usize;
@@ -652,7 +652,7 @@ impl<E: PairingEngine> BulletReduceProof<E> {
         );
         gamma_hat += &VariableBaseMSM::multi_scalar_mul(
             &vec![gamma],
-            &vec![E::Fr::one()]
+            &vec![G::Fr::one()]
                 .into_iter()
                 .map(|e| e.into_repr())
                 .collect::<Vec<_>>(),
@@ -661,7 +661,7 @@ impl<E: PairingEngine> BulletReduceProof<E> {
     }
 }
 
-pub fn inner_product<E: PairingEngine>(a: &[E::Fr], b: &[E::Fr]) -> E::Fr {
+pub fn inner_product<G: Curve>(a: &[G::Fr], b: &[G::Fr]) -> G::Fr {
     assert_eq!(a.len(), b.len());
     let out = (0..a.len()).map(|i| a[i] * &b[i]).sum();
     out

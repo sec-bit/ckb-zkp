@@ -1,4 +1,4 @@
-use math::{log2, PairingEngine, Zero};
+use math::{log2, Curve, Zero};
 use std::cmp;
 
 ///operation
@@ -103,11 +103,7 @@ impl Circuit {
         Self { depth, layers }
     }
 
-    pub fn evaluate<E: PairingEngine>(
-        &self,
-        inputs: &Vec<E::Fr>,
-        aux: &Vec<E::Fr>,
-    ) -> Vec<Vec<E::Fr>> {
+    pub fn evaluate<G: Curve>(&self, inputs: &Vec<G::Fr>, aux: &Vec<G::Fr>) -> Vec<Vec<G::Fr>> {
         let n = self.layers.len();
         let mut evals = vec![vec![]; n];
         let mut next_layer_values = Vec::new();
@@ -120,9 +116,9 @@ impl Circuit {
                 assert!(input_size >= inputs.len());
                 assert!(input_size >= aux.len());
                 values = aux.clone();
-                values.extend(&vec![E::Fr::zero(); input_size - inputs.len()]);
+                values.extend(&vec![G::Fr::zero(); input_size - inputs.len()]);
                 values.extend(inputs.clone());
-                values.extend(&vec![E::Fr::zero(); input_size - aux.len()]);
+                values.extend(&vec![G::Fr::zero(); input_size - aux.len()]);
             } else {
                 let next_layer_size = next_layer_values.len();
                 for gate in layer.gates.iter() {
