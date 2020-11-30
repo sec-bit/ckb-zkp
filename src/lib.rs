@@ -42,7 +42,7 @@ pub use scheme::spartan;
 
 /// re-export libra.
 #[cfg(feature = "libra")]
-pub mod libra;
+pub use scheme::libra;
 
 /// re-export bn_256.
 #[cfg(feature = "bn_256")]

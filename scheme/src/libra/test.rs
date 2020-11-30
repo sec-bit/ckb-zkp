@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod bn_256 {
     use crate::libra::circuit::Circuit;
-    use crate::libra::data_structure::SumCheckCommitmentSetupParameters;
+    use crate::libra::data_structure::Parameters;
     use crate::libra::libra_linear_gkr::{linear_gkr_prover, linear_gkr_verifier};
     use crate::libra::libra_zk_linear_gkr::{zk_linear_gkr_prover, zk_linear_gkr_verifier};
     use curve::bn_256::Bn_256;
@@ -65,7 +65,7 @@ mod bn_256 {
         let (inputs, layers) = prepare_constrcut_circuit::<Bn_256>();
         println!("prepare for constructing circuit...ok");
 
-        let params = SumCheckCommitmentSetupParameters::<Bn_256>::new(rng);
+        let params = Parameters::<Bn_256>::new(rng, 8);
         println!("prepare for constructing circuit...ok");
 
         let circuit = Circuit::<Bn_256>::new(&inputs, &layers);
@@ -81,7 +81,7 @@ mod bn_256 {
 #[cfg(test)]
 mod bls12_381 {
     use crate::libra::circuit::Circuit;
-    use crate::libra::data_structure::SumCheckCommitmentSetupParameters;
+    use crate::libra::data_structure::Parameters;
     use crate::libra::libra_linear_gkr::{linear_gkr_prover, linear_gkr_verifier};
     use crate::libra::libra_zk_linear_gkr::{zk_linear_gkr_prover, zk_linear_gkr_verifier};
     use curve::bls12_381::Bls12_381;
@@ -145,7 +145,7 @@ mod bls12_381 {
         let (inputs, layers) = prepare_constrcut_circuit::<Bls12_381>();
         println!("prepare for constructing circuit...ok");
 
-        let params = SumCheckCommitmentSetupParameters::<Bls12_381>::new(rng);
+        let params = Parameters::<Bls12_381>::new(rng, 8);
         println!("prepare for constructing circuit...ok");
 
         let circuit = Circuit::<Bls12_381>::new(&inputs, &layers);

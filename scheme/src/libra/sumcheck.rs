@@ -507,11 +507,6 @@ pub fn sum_check_eval_prover<E: PairingEngine, R: Rng>(
     transcript.challenge_bytes(b"c", &mut buf);
     let c = random_bytes_to_fr::<E>(&buf);
 
-    // println!(
-    //     "sum_check_eval_verify ----- w[0] = {}, w[1] = {}, comm_poly = {}, comm_claim_value = {}, proof.d_commit = {}, proof.dot_cd_commit = {}, c = {}, comm1 = {}, comm2 = {}",
-    //     w[0], w[1], comm_poly, comm_claim_value, d_commit, dot_cd_commit, c, comm1, comm2
-    // );
-    // z[i] = c * poly[i] + d_vec[i]
     let z = (0..poly_size)
         .map(|i| c * &polynomial[i] + &d_vec[i])
         .collect::<Vec<E::Fr>>();
@@ -556,11 +551,6 @@ pub fn sum_check_eval_verify<E: PairingEngine>(
     transcript.challenge_bytes(b"c", &mut buf);
     let c = random_bytes_to_fr::<E>(&buf);
 
-    // println!(
-    //     "sum_check_eval_verify ----- w[0] = {}, w[1] = {}, comm_poly = {}, comm_claim_value = {}, proof.d_commit = {}, proof.dot_cd_commit = {}, c = {}, comm_claim = {}, comm_eval = {}",
-    //     w[0], w[1], comm_poly, comm_claim_value, proof.d_commit, proof.dot_cd_commit, c, comm_claim, comm_eval
-    // );
-    // commit(d)
     let mut coeffs = Vec::new();
     let mut rc = E::Fr::one();
     for _ in 0..bit_size {

@@ -11,7 +11,7 @@ pub fn linear_gkr_prover<E: PairingEngine>(
     circuit: &Circuit<E>,
 ) -> (LinearGKRProof<E>, Vec<E::Fr>) {
     let mut transcript = Transcript::new(b"libra - linear gkr");
-    let circuit_evals = circuit.evaluate();
+    let circuit_evals = circuit.evaluate().unwrap();
 
     let mut alpha = E::Fr::one();
     let mut beta = E::Fr::zero();
@@ -27,7 +27,6 @@ pub fn linear_gkr_prover<E: PairingEngine>(
 
     // sumcheck
     for d in (1..circuit.depth).rev() {
-        println!("linear_gkr_prover -- layer = {}", d);
         let mut claim = alpha * &result_u + &(beta * &result_v);
         let uv_size = circuit.layers[d - 1].bit_size;
 
@@ -41,7 +40,7 @@ pub fn linear_gkr_prover<E: PairingEngine>(
             alpha,
             beta,
         );
-        println!("initialize_phase_one...");
+
         let (proof_phase_one, ru) = sumcheck_phase_one::<E>(
             &circuit_evals[d - 1],
             &(mul_hg_vec, add_hg_vec1, add_hg_vec2),
@@ -49,7 +48,6 @@ pub fn linear_gkr_prover<E: PairingEngine>(
             claim,
             &mut transcript,
         );
-        println!("sumcheck_phase_one...");
 
         let eval_ru = proof_phase_one.poly_value_at_r.clone();
         claim = eval_ru[0] * &eval_ru[1] + &(eval_ru[0] * &eval_ru[2]) + &eval_ru[3];
@@ -64,7 +62,6 @@ pub fn linear_gkr_prover<E: PairingEngine>(
             alpha,
             beta,
         );
-        println!("initialize_phase_two...");
 
         let (proof_phase_two, rv) = sumcheck_phase_two::<E>(
             &circuit_evals[d - 1],
@@ -73,7 +70,6 @@ pub fn linear_gkr_prover<E: PairingEngine>(
             claim,
             &mut transcript,
         );
-        println!("sumcheck_phase_two...");
 
         let eval_rv = proof_phase_two.poly_value_at_r.clone();
         // claim = eval_rv[1] * &eval_rv[0] * &fu + &(eval_rv[2] * &fu) + &(eval_rv[2] * &eval_rv[0]);
@@ -172,10 +168,6 @@ pub fn linear_gkr_verifier<E: PairingEngine>(
     for (d, lproof) in proof.proofs.iter().enumerate() {
         let mut claim = alpha * &result_u + &(beta * &result_v);
 
-        println!(
-            "linear_gkr_verifier - verifier...d = {}",
-            circuit.depth - d - 1
-        );
         let (proof1, proof2) = (&lproof.proof_phase_one, &lproof.proof_phase_two);
         let bit_size = circuit.layers[circuit.depth - d - 2].bit_size;
         ru_vec = Vec::new();
@@ -194,7 +186,6 @@ pub fn linear_gkr_verifier<E: PairingEngine>(
             ru_vec.push(r_u);
             claim = poly.evaluate(r_u);
         }
-        println!("linear_gkr_verifier - phase one...");
 
         let eval_ru_final = proof1.poly_value_at_r.clone();
         transcript.append_message(b"claim_final", &math::to_bytes!(eval_ru_final).unwrap());
@@ -219,7 +210,6 @@ pub fn linear_gkr_verifier<E: PairingEngine>(
             rv_vec.push(r_v);
             claim = poly.evaluate(r_v);
         }
-        println!("linear_gkr_verifier - phase two...");
 
         let eval_rv_final = proof2.poly_value_at_r.clone();
         transcript.append_message(b"claim_final", &math::to_bytes!(eval_rv_final).unwrap());

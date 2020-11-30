@@ -1,7 +1,5 @@
 use crate::libra::circuit::Circuit;
-use crate::libra::data_structure::{
-    SumCheckCommitmentSetupParameters, ZKLayerProof, ZKLinearGKRProof,
-};
+use crate::libra::data_structure::{Parameters, ZKLayerProof, ZKLinearGKRProof};
 use crate::libra::evaluate::{eval_output, eval_value, poly_commit_vec, random_bytes_to_fr};
 use crate::libra::libra_linear_gkr::{initialize_phase_one, initialize_phase_two};
 use crate::libra::sumcheck::{sum_check_eval_verify, zk_sumcheck_phase_one, zk_sumcheck_phase_two};
@@ -10,12 +8,12 @@ use merlin::Transcript;
 use rand::Rng;
 
 pub fn zk_linear_gkr_prover<E: PairingEngine, R: Rng>(
-    params: &SumCheckCommitmentSetupParameters<E>,
+    params: &Parameters<E>,
     circuit: &Circuit<E>,
     rng: &mut R,
 ) -> (ZKLinearGKRProof<E>, Vec<E::Fr>) {
     let mut transcript = Transcript::new(b"libra - zk linear gkr");
-    let circuit_evals = circuit.evaluate();
+    let circuit_evals = circuit.evaluate().unwrap();
 
     let mut alpha = E::Fr::one();
     let mut beta = E::Fr::zero();
@@ -32,7 +30,6 @@ pub fn zk_linear_gkr_prover<E: PairingEngine, R: Rng>(
 
     // sumcheck
     for d in (1..circuit.depth).rev() {
-        println!("linear_gkr_prover -- layer = {}", d);
         let mut claim = alpha * &result_u + &(beta * &result_v);
         let uv_size = circuit.layers[d - 1].bit_size;
 
@@ -46,9 +43,9 @@ pub fn zk_linear_gkr_prover<E: PairingEngine, R: Rng>(
             alpha,
             beta,
         );
-        println!("initialize_phase_one...");
+
         let (proof_phase_one, ru) = zk_sumcheck_phase_one::<E, R>(
-            params,
+            &params.sc_params,
             &circuit_evals[d - 1],
             &(mul_hg_vec, add_hg_vec1, add_hg_vec2),
             uv_size,
@@ -57,7 +54,6 @@ pub fn zk_linear_gkr_prover<E: PairingEngine, R: Rng>(
             rng,
             &mut transcript,
         );
-        println!("sumcheck_phase_one...");
 
         let eval_ru = proof_phase_one.poly_value_at_r.clone();
         claim = eval_ru[0] * &eval_ru[1] + &(eval_ru[0] * &eval_ru[2]) + &eval_ru[3];
@@ -73,10 +69,9 @@ pub fn zk_linear_gkr_prover<E: PairingEngine, R: Rng>(
             alpha,
             beta,
         );
-        println!("initialize_phase_two...");
 
         let (proof_phase_two, rv) = zk_sumcheck_phase_two::<E, R>(
-            params,
+            &params.sc_params,
             &circuit_evals[d - 1],
             &(mul_hg_vec, add_hg_vec, fu),
             uv_size,
@@ -85,7 +80,6 @@ pub fn zk_linear_gkr_prover<E: PairingEngine, R: Rng>(
             rng,
             &mut transcript,
         );
-        println!("sumcheck_phase_two...");
 
         let eval_rv = proof_phase_two.poly_value_at_r.clone();
         // claim = eval_rv[1] * &eval_rv[0] * &fu + &(eval_rv[2] * &fu) + &(eval_rv[2] * &eval_rv[0]);
@@ -117,7 +111,7 @@ pub fn zk_linear_gkr_prover<E: PairingEngine, R: Rng>(
 }
 
 pub fn zk_linear_gkr_verifier<E: PairingEngine>(
-    params: &SumCheckCommitmentSetupParameters<E>,
+    params: &Parameters<E>,
     circuit: &Circuit<E>,
     output: &Vec<E::Fr>,
     input: &Vec<E::Fr>,
@@ -142,15 +136,12 @@ pub fn zk_linear_gkr_verifier<E: PairingEngine>(
     for (d, lproof) in proof.proofs.iter().enumerate() {
         let claim = alpha * &result_u + &(beta * &result_v);
         let mut comm_claim = poly_commit_vec::<E>(
-            &params.gen_1.generators,
+            &params.pc_params.gen_1.generators,
             &vec![claim],
-            &params.gen_1.h,
+            &params.pc_params.gen_1.h,
             claim_blind,
         );
-        println!(
-            "linear_gkr_verifier - verifier...d = {}",
-            circuit.depth - d - 1
-        );
+
         let (proof1, proof2) = (&lproof.proof_phase_one, &lproof.proof_phase_two);
         let bit_size = circuit.layers[circuit.depth - d - 2].bit_size;
         ru_vec = Vec::new();
@@ -171,7 +162,7 @@ pub fn zk_linear_gkr_verifier<E: PairingEngine>(
             transcript.append_message(b"comm_eval", &math::to_bytes!(comm_eval).unwrap());
 
             let result = sum_check_eval_verify::<E>(
-                params,
+                &params.sc_params,
                 comm_poly,
                 comm_eval,
                 comm_claim,
@@ -185,7 +176,6 @@ pub fn zk_linear_gkr_verifier<E: PairingEngine>(
             ru_vec.push(r_u);
             comm_claim = comm_eval;
         }
-        println!("linear_gkr_verifier - phase one...");
 
         let eval_ru_final = proof1.poly_value_at_r.clone();
         // transcript.append_message(b"claim_final", &math::to_bytes!(eval_ru_final).unwrap());
@@ -194,9 +184,9 @@ pub fn zk_linear_gkr_verifier<E: PairingEngine>(
             + &(eval_ru_final[0] * &eval_ru_final[2])
             + &eval_ru_final[3];
         let final_comm_claim = poly_commit_vec::<E>(
-            &params.gen_1.generators,
+            &params.pc_params.gen_1.generators,
             &vec![claim_final],
-            &params.gen_1.h,
+            &params.pc_params.gen_1.h,
             proof1.blind_eval,
         );
         assert_eq!(comm_claim, final_comm_claim);
@@ -216,7 +206,7 @@ pub fn zk_linear_gkr_verifier<E: PairingEngine>(
             transcript.append_message(b"comm_eval", &math::to_bytes!(comm_eval).unwrap());
 
             let result = sum_check_eval_verify::<E>(
-                params,
+                &params.sc_params,
                 comm_poly,
                 comm_eval,
                 comm_claim,
@@ -230,7 +220,6 @@ pub fn zk_linear_gkr_verifier<E: PairingEngine>(
             rv_vec.push(r_v);
             comm_claim = comm_eval;
         }
-        println!("linear_gkr_verifier - phase two...");
 
         let eval_rv_final = proof2.poly_value_at_r.clone();
         // transcript.append_message(b"claim_final", &math::to_bytes!(eval_rv_final).unwrap());
@@ -239,9 +228,9 @@ pub fn zk_linear_gkr_verifier<E: PairingEngine>(
             + &(eval_rv_final[2] * &eval_ru_final[0])
             + &(eval_rv_final[2] * &eval_rv_final[0]);
         let final_comm_claim = poly_commit_vec::<E>(
-            &params.gen_1.generators,
+            &params.pc_params.gen_1.generators,
             &vec![claim_final],
-            &params.gen_1.h,
+            &params.pc_params.gen_1.h,
             proof2.blind_eval,
         );
         assert_eq!(comm_claim, final_comm_claim);

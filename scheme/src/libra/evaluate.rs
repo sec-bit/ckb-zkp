@@ -26,19 +26,6 @@ pub fn eval_output<E: PairingEngine>(
     let eq_vec = eval_eq::<E>(&rs);
     let result = (0..outputs.len()).map(|i| outputs[i] * &eq_vec[i]).sum();
     (result, rs)
-
-    // for _ in 0..bit_size {
-    //     let t = (2 as usize).pow((bit_size - 1) as u32);
-    //     for j in 0..t - 1 {
-    //         let mut buf = [0u8; 32];
-    //         transcript.challenge_bytes(b"challenge_nextround", &mut buf);
-    //         let r_j = random_bytes_to_fr::<E>(&buf);
-    //         outputs[j] = outputs[j] * &(E::Fr::one() - &r_j) + &(outputs[j + t] * &r_j);
-    //         rs.push(r_j);
-    //     }
-    // }
-
-    // (outputs[0], rs)
 }
 
 pub fn eval_eq_x_y<E: PairingEngine>(rx: &Vec<E::Fr>, ry: &Vec<E::Fr>) -> E::Fr {

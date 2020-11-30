@@ -15,27 +15,7 @@ pub struct Gate<E: PairingEngine> {
 }
 
 impl<E: PairingEngine> Gate<E> {
-    pub fn new(
-        g: usize,
-        op: u8,
-        left_node: usize,
-        right_node: usize,
-        value: E::Fr,
-        // gates_count: usize,
-        // next_layer_gates_count: usize,
-    ) -> Self {
-        // if gates_count >= g {
-        //     // illegal g
-        // }
-        // if op > 4 {
-        //     // illegal operation
-        // } else if op > 2
-        //     && next_layer_gates_count >= left_node
-        //     && next_layer_gates_count >= right_node
-        // {
-        //     // illegal left, right
-        // }
-
+    pub fn new(g: usize, op: u8, left_node: usize, right_node: usize, value: E::Fr) -> Self {
         Self {
             g,
             op,
@@ -72,26 +52,28 @@ impl<E: PairingEngine> Layer<E> {
     pub fn mid_layer_new(
         gates_raw: &Vec<(u8, usize, usize)>,
         next_layer_gates_count: usize,
-    ) -> Self {
+    ) -> Result<Self, Error> {
         let mut gates = Vec::new();
         let mut gates_count: usize = 0;
         for (g, &(op, left, right)) in gates_raw.iter().enumerate() {
             if op != 0 && op != 1 {
-                // illegal op
+                return Err(Error::IllegalOperator);
             }
             if left >= next_layer_gates_count || right >= next_layer_gates_count {
-                // illegal left, right
+                return Err(Error::IllegalNode);
             }
             let gate = Gate::new(g, op, left, right, E::Fr::zero());
             gates.push(gate);
             gates_count += 1;
         }
         let bit_size = log2(gates_count.next_power_of_two()) as usize;
-        Self {
+        let layer = Self {
             gates_count,
             bit_size,
             gates,
-        }
+        };
+
+        Ok(layer)
     }
 }
 
@@ -111,17 +93,16 @@ impl<E: PairingEngine> Circuit<E> {
         depth += 1;
 
         for i in 0..layers_raw.len() {
-            let gate_layer = Layer::mid_layer_new(&layers_raw[i], next_layer_gates_count);
+            let gate_layer = Layer::mid_layer_new(&layers_raw[i], next_layer_gates_count).unwrap();
             depth += 1;
             next_layer_gates_count = gate_layer.gates_count;
             layers.push(gate_layer);
         }
 
-        // layers.reverse();
         Circuit { depth, layers }
     }
 
-    pub fn evaluate(&self) -> Vec<Vec<E::Fr>> {
+    pub fn evaluate(&self) -> Result<Vec<Vec<E::Fr>>, Error> {
         let mut evals = Vec::new();
         let mut next_layer_values = Vec::new();
         for (d, layer) in self.layers.iter().enumerate() {
@@ -134,7 +115,7 @@ impl<E: PairingEngine> Circuit<E> {
                 let next_layer_size = next_layer_values.len();
                 for gate in layer.gates.iter() {
                     if gate.left_node >= next_layer_size || gate.right_node >= next_layer_size {
-                        // illegal left, right
+                        return Err(Error::IllegalNode);
                     }
                     if gate.op == 0 {
                         // add
@@ -147,7 +128,7 @@ impl<E: PairingEngine> Circuit<E> {
                             next_layer_values[gate.left_node] * &next_layer_values[gate.right_node],
                         );
                     } else {
-                        // illegal op
+                        return Err(Error::IllegalOperator);
                     }
                 }
             }
@@ -155,6 +136,13 @@ impl<E: PairingEngine> Circuit<E> {
             evals.push(values);
         }
         assert_eq!(evals.len(), self.depth);
-        evals
+        Ok(evals)
     }
+}
+
+#[derive(Debug)]
+pub enum Error {
+    IllegalOperator,
+
+    IllegalNode,
 }

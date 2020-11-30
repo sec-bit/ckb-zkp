@@ -1,16 +1,10 @@
 use math::fft::DensePolynomial as Polynomial;
 use math::PairingEngine;
 
-pub struct SetupParameters<E: PairingEngine> {
+pub struct Parameters<E: PairingEngine> {
     pub sc_params: SumCheckCommitmentSetupParameters<E>,
     pub pc_params: PolyCommitmentSetupParameters<E>,
 }
-
-// pub struct ZK_SetupParameters<E: PairingEngine> {
-//     pub sc_params: SumCheckCommitmentSetupParameters<E>,
-//     pub pc_params: PolyCommitmentSetupParameters<E>,
-//     pub commits: Vec<PolyCommitmentSetupParameters<E>>, //TODO
-// }
 
 #[derive(Clone)]
 pub struct MultiCommitmentSetupParameters<E: PairingEngine> {
@@ -23,6 +17,7 @@ pub struct MultiCommitmentSetupParameters<E: PairingEngine> {
 pub struct SumCheckCommitmentSetupParameters<E: PairingEngine> {
     pub gen_1: MultiCommitmentSetupParameters<E>,
     pub gen_3: MultiCommitmentSetupParameters<E>,
+    pub gen_4: MultiCommitmentSetupParameters<E>,
 }
 
 #[derive(Clone)]
