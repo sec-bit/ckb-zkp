@@ -1,13 +1,11 @@
-use ckb_zkp::{
-    bn_256::{Bn_256, Fr},
-    groth16::{
-        create_random_proof, generate_random_parameters, verifier::prepare_verifying_key,
-        verify_proof, Parameters, Proof, VerifyKey,
-    },
-    math::PrimeField,
-    r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError},
-};
+use curve::bn_256::{Bn_256, Fr};
+use math::PrimeField;
 use rand::prelude::*;
+use scheme::groth16::{
+    create_random_proof, generate_random_parameters, verifier::prepare_verifying_key, verify_proof,
+    Parameters, Proof, VerifyKey,
+};
+use scheme::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 use std::time::Instant;
 
 struct Mini<F: PrimeField> {
