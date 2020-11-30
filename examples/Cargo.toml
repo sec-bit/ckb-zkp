@@ -3,7 +3,7 @@ name = "example"
 version = "0.1.0"
 authors = ["SECBIT Labs"]
 description = "implementation of the different zero-knowledge proof system schemes"
-keywords = ["asvc", "clinkv2", "marlin", "spartan", "mimc"]
+keywords = ["asvc", "clinkv2", "marlin", "spartan", "mimc", "hyrax"]
 categories = ["cryptography"]
 license = "MIT/Apache-2.0"
 edition = "2018"
@@ -16,7 +16,7 @@ curve = { path = "../curve", default-features = false }
 rand = { version = "0.7", default-features = false }
 rand_core = { version = "0.5", default-features = false }
 postcard = { version = "0.5", default-features = false, features = ["alloc"] }
-scheme = { path = "../scheme", default-features = false, features = ["asvc", "groth16", "spartan"]}
+scheme = { path = "../scheme", default-features = false, features = ["asvc", "groth16", "spartan", "hyrax"]}
 sha2 = "0.9"
 blake2 = { version = "0.8", default-features = false }
 

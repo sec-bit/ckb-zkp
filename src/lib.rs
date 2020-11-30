@@ -40,6 +40,9 @@ pub use scheme::clinkv2;
 #[cfg(feature = "spartan")]
 pub use scheme::spartan;
 
+#[cfg(feature = "hyrax")]
+pub use scheme::hyrax;
+
 /// re-export bn_256.
 #[cfg(feature = "bn_256")]
 pub use curve::bn_256;

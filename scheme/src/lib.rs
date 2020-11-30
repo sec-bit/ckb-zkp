@@ -64,3 +64,6 @@ pub mod clinkv2;
 
 #[cfg(feature = "spartan")]
 pub mod spartan;
+
+#[cfg(feature = "hyrax")]
+pub mod hyrax;
