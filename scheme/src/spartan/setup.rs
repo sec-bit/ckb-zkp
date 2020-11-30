@@ -5,16 +5,16 @@ use crate::spartan::data_structure::{
 };
 use crate::Vec;
 use core::cmp;
-use math::{log2, PairingEngine, ProjectiveCurve, UniformRand};
+use math::{log2, Curve, ProjectiveCurve, UniformRand};
 use rand::Rng;
 
-pub fn generate_setup_nizk_parameters<E, R>(
+pub fn generate_setup_nizk_parameters<G, R>(
     rng: &mut R,
     num_aux: usize,
     num_inputs: usize,
-) -> Result<NizkParameters<E>, SynthesisError>
+) -> Result<NizkParameters<G>, SynthesisError>
 where
-    E: PairingEngine,
+    G: Curve,
     R: Rng,
 {
     let r1cs_satisfied_params =
@@ -25,14 +25,14 @@ where
     })
 }
 
-pub fn generate_setup_snark_parameters<E, R>(
+pub fn generate_setup_snark_parameters<G, R>(
     rng: &mut R,
     num_aux: usize,
     num_inputs: usize,
     num_constraints: usize,
-) -> Result<SnarkParameters<E>, SynthesisError>
+) -> Result<SnarkParameters<G>, SynthesisError>
 where
-    E: PairingEngine,
+    G: Curve,
     R: Rng,
 {
     let r1cs_satisfied_params =
@@ -49,14 +49,14 @@ where
     })
 }
 
-impl<E: PairingEngine> R1CSSatisfiedParameters<E> {
+impl<G: Curve> R1CSSatisfiedParameters<G> {
     pub fn new<R>(
         rng: &mut R,
         num_aux: usize,
         num_inputs: usize,
-    ) -> Result<R1CSSatisfiedParameters<E>, SynthesisError>
+    ) -> Result<R1CSSatisfiedParameters<G>, SynthesisError>
     where
-        E: PairingEngine,
+        G: Curve,
         R: Rng,
     {
         let n = log2(cmp::max(num_aux, num_inputs).next_power_of_two()) as usize;
@@ -71,20 +71,20 @@ impl<E: PairingEngine> R1CSSatisfiedParameters<E> {
     }
 }
 
-impl<E: PairingEngine> PolyCommitmentParameters<E> {
+impl<G: Curve> PolyCommitmentParameters<G> {
     pub fn new<R: Rng>(
         rng: &mut R,
         num: usize,
-    ) -> Result<PolyCommitmentParameters<E>, SynthesisError> {
+    ) -> Result<PolyCommitmentParameters<G>, SynthesisError> {
         let n = (2usize).pow((num - num / 2) as u32);
         let mut generators = Vec::new();
         for _ in 0..n {
-            generators.push(E::G1Projective::rand(rng).into_affine());
+            generators.push(G::Projective::rand(rng).into_affine());
         }
-        let h = E::G1Projective::rand(rng).into_affine();
+        let h = G::Projective::rand(rng).into_affine();
         let gen_n = MultiCommitmentParameters { n, generators, h };
 
-        let g = E::G1Projective::rand(rng).into_affine();
+        let g = G::Projective::rand(rng).into_affine();
         let gen_1 = MultiCommitmentParameters {
             n: 1,
             generators: vec![g],
@@ -97,25 +97,25 @@ impl<E: PairingEngine> PolyCommitmentParameters<E> {
     }
 }
 
-impl<E: PairingEngine> SumCheckCommitmentParameters<E> {
+impl<G: Curve> SumCheckCommitmentParameters<G> {
     pub fn new<R: Rng>(
         rng: &mut R,
-        gen_1: MultiCommitmentParameters<E>,
-    ) -> Result<SumCheckCommitmentParameters<E>, SynthesisError> {
+        gen_1: MultiCommitmentParameters<G>,
+    ) -> Result<SumCheckCommitmentParameters<G>, SynthesisError> {
         let mut n = 3;
         let mut generators = Vec::new();
         for _ in 0..n {
-            generators.push(E::G1Projective::rand(rng).into_affine());
+            generators.push(G::Projective::rand(rng).into_affine());
         }
-        let h = E::G1Projective::rand(rng).into_affine();
+        let h = G::Projective::rand(rng).into_affine();
         let gen_3 = MultiCommitmentParameters { n, generators, h };
 
         n = 4;
         generators = Vec::new();
         for _ in 0..n {
-            generators.push(E::G1Projective::rand(rng).into_affine());
+            generators.push(G::Projective::rand(rng).into_affine());
         }
-        let h = E::G1Projective::rand(rng).into_affine();
+        let h = G::Projective::rand(rng).into_affine();
         let gen_4 = MultiCommitmentParameters { n, generators, h };
 
         let sc_params = SumCheckCommitmentParameters {
@@ -128,12 +128,12 @@ impl<E: PairingEngine> SumCheckCommitmentParameters<E> {
     }
 }
 
-impl<E: PairingEngine> R1CSEvalsParameters<E> {
+impl<G: Curve> R1CSEvalsParameters<G> {
     pub fn new<R: Rng>(
         rng: &mut R,
         n: usize,
         m: usize,
-    ) -> Result<R1CSEvalsParameters<E>, SynthesisError> {
+    ) -> Result<R1CSEvalsParameters<G>, SynthesisError> {
         let num_ops_params = log2(n) as usize + 4; //  (3 * 5).next_power_of_two().log2();
         let ops_params = PolyCommitmentParameters::new::<R>(rng, num_ops_params).unwrap();
 
@@ -143,7 +143,7 @@ impl<E: PairingEngine> R1CSEvalsParameters<E> {
         let num_derefs_params = log2(n) as usize + 3; //  (3 * 2).next_power_of_two().log2();
         let derefs_params = PolyCommitmentParameters::new::<R>(rng, num_derefs_params).unwrap();
 
-        let params = R1CSEvalsParameters::<E> {
+        let params = R1CSEvalsParameters::<G> {
             ops_params,
             mem_params,
             derefs_params,

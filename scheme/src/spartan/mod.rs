@@ -10,7 +10,7 @@ pub mod test;
 pub mod verify;
 
 pub mod snark {
-    use math::PairingEngine;
+    use math::Curve;
     use rand::Rng;
 
     use crate::r1cs::{ConstraintSynthesizer, SynthesisError};
@@ -18,31 +18,31 @@ pub mod snark {
     use super::data_structure::{EncodeCommit, EncodeMemory, SnarkParameters};
     use super::r1cs::R1CSInstance;
 
-    pub type Proof<E> = super::data_structure::SNARKProof<E>;
+    pub type Proof<G> = super::data_structure::SNARKProof<G>;
 
-    pub struct Parameters<E: PairingEngine> {
-        params: SnarkParameters<E>,
-        r1cs: R1CSInstance<E>,
-        encode: EncodeMemory<E>,
-        encode_comm: EncodeCommit<E>,
+    pub struct Parameters<G: Curve> {
+        params: SnarkParameters<G>,
+        r1cs: R1CSInstance<G>,
+        encode: EncodeMemory<G>,
+        encode_comm: EncodeCommit<G>,
     }
 
     #[derive(Serialize, Deserialize)]
-    pub struct ProveKey<E: PairingEngine> {
-        params: SnarkParameters<E>,
-        r1cs: R1CSInstance<E>,
-        encode: EncodeMemory<E>,
+    pub struct ProveKey<G: Curve> {
+        params: SnarkParameters<G>,
+        r1cs: R1CSInstance<G>,
+        encode: EncodeMemory<G>,
     }
 
     #[derive(Serialize, Deserialize)]
-    pub struct VerifyKey<E: PairingEngine> {
-        params: SnarkParameters<E>,
-        r1cs: R1CSInstance<E>,
-        encode_comm: EncodeCommit<E>,
+    pub struct VerifyKey<G: Curve> {
+        params: SnarkParameters<G>,
+        r1cs: R1CSInstance<G>,
+        encode_comm: EncodeCommit<G>,
     }
 
-    impl<E: PairingEngine> Parameters<E> {
-        pub fn keypair(self) -> (ProveKey<E>, VerifyKey<E>) {
+    impl<G: Curve> Parameters<G> {
+        pub fn keypair(self) -> (ProveKey<G>, VerifyKey<G>) {
             (
                 ProveKey {
                     params: self.params.clone(),
@@ -58,20 +58,20 @@ pub mod snark {
         }
     }
 
-    pub fn generate_random_parameters<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, R: Rng>(
+    pub fn generate_random_parameters<G: Curve, C: ConstraintSynthesizer<G::Fr>, R: Rng>(
         c: C,
         rng: &mut R,
-    ) -> Result<Parameters<E>, SynthesisError> {
-        let r1cs = super::r1cs::generate_r1cs::<E, C>(c)?;
+    ) -> Result<Parameters<G>, SynthesisError> {
+        let r1cs = super::r1cs::generate_r1cs::<G, C>(c)?;
 
-        let params = super::setup::generate_setup_snark_parameters::<E, R>(
+        let params = super::setup::generate_setup_snark_parameters::<G, R>(
             rng,
             r1cs.num_aux,
             r1cs.num_inputs,
             r1cs.num_constraints,
         )?;
 
-        let (encode, encode_comm) = super::spark::encode::<E, R>(&params, &r1cs, rng)?;
+        let (encode, encode_comm) = super::spark::encode::<G, R>(&params, &r1cs, rng)?;
 
         Ok(Parameters {
             params,
@@ -81,20 +81,20 @@ pub mod snark {
         })
     }
 
-    pub fn create_random_proof<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, R: Rng>(
-        pk: &ProveKey<E>,
+    pub fn create_random_proof<G: Curve, C: ConstraintSynthesizer<G::Fr>, R: Rng>(
+        pk: &ProveKey<G>,
         c: C,
         rng: &mut R,
-    ) -> Result<Proof<E>, SynthesisError> {
+    ) -> Result<Proof<G>, SynthesisError> {
         super::prover::create_snark_proof(&pk.params, &pk.r1cs, c, &pk.encode, rng)
     }
 
-    pub fn verify_proof<E: PairingEngine>(
-        vk: &VerifyKey<E>,
-        proof: &Proof<E>,
-        publics: &[E::Fr],
+    pub fn verify_proof<G: Curve>(
+        vk: &VerifyKey<G>,
+        proof: &Proof<G>,
+        publics: &[G::Fr],
     ) -> Result<bool, SynthesisError> {
-        super::verify::verify_snark_proof::<E>(
+        super::verify::verify_snark_proof::<G>(
             &vk.params,
             &vk.r1cs,
             publics,
@@ -105,7 +105,7 @@ pub mod snark {
 }
 
 pub mod nizk {
-    use math::PairingEngine;
+    use math::Curve;
     use rand::Rng;
 
     use crate::r1cs::{ConstraintSynthesizer, SynthesisError};
@@ -113,27 +113,27 @@ pub mod nizk {
     use super::data_structure::NizkParameters;
     use super::r1cs::R1CSInstance;
 
-    pub type Proof<E> = super::data_structure::NIZKProof<E>;
+    pub type Proof<G> = super::data_structure::NIZKProof<G>;
 
-    pub struct Parameters<E: PairingEngine> {
-        params: NizkParameters<E>,
-        r1cs: R1CSInstance<E>,
+    pub struct Parameters<G: Curve> {
+        params: NizkParameters<G>,
+        r1cs: R1CSInstance<G>,
     }
 
     #[derive(Serialize, Deserialize)]
-    pub struct ProveKey<E: PairingEngine> {
-        params: NizkParameters<E>,
-        r1cs: R1CSInstance<E>,
+    pub struct ProveKey<G: Curve> {
+        params: NizkParameters<G>,
+        r1cs: R1CSInstance<G>,
     }
 
     #[derive(Serialize, Deserialize)]
-    pub struct VerifyKey<E: PairingEngine> {
-        params: NizkParameters<E>,
-        r1cs: R1CSInstance<E>,
+    pub struct VerifyKey<G: Curve> {
+        params: NizkParameters<G>,
+        r1cs: R1CSInstance<G>,
     }
 
-    impl<E: PairingEngine> Parameters<E> {
-        pub fn keypair(self) -> (ProveKey<E>, VerifyKey<E>) {
+    impl<G: Curve> Parameters<G> {
+        pub fn keypair(self) -> (ProveKey<G>, VerifyKey<G>) {
             (
                 ProveKey {
                     params: self.params.clone(),
@@ -147,13 +147,13 @@ pub mod nizk {
         }
     }
 
-    pub fn generate_random_parameters<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, R: Rng>(
+    pub fn generate_random_parameters<G: Curve, C: ConstraintSynthesizer<G::Fr>, R: Rng>(
         c: C,
         rng: &mut R,
-    ) -> Result<Parameters<E>, SynthesisError> {
-        let r1cs = super::r1cs::generate_r1cs::<E, C>(c)?;
+    ) -> Result<Parameters<G>, SynthesisError> {
+        let r1cs = super::r1cs::generate_r1cs::<G, C>(c)?;
 
-        let params = super::setup::generate_setup_nizk_parameters::<E, R>(
+        let params = super::setup::generate_setup_nizk_parameters::<G, R>(
             rng,
             r1cs.num_aux,
             r1cs.num_inputs,
@@ -162,19 +162,19 @@ pub mod nizk {
         Ok(Parameters { params, r1cs })
     }
 
-    pub fn create_random_proof<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, R: Rng>(
-        pk: &ProveKey<E>,
+    pub fn create_random_proof<G: Curve, C: ConstraintSynthesizer<G::Fr>, R: Rng>(
+        pk: &ProveKey<G>,
         c: C,
         rng: &mut R,
-    ) -> Result<Proof<E>, SynthesisError> {
+    ) -> Result<Proof<G>, SynthesisError> {
         super::prover::create_nizk_proof(&pk.params, &pk.r1cs, c, rng)
     }
 
-    pub fn verify_proof<E: PairingEngine>(
-        vk: &VerifyKey<E>,
-        proof: &Proof<E>,
-        publics: &[E::Fr],
+    pub fn verify_proof<G: Curve>(
+        vk: &VerifyKey<G>,
+        proof: &Proof<G>,
+        publics: &[G::Fr],
     ) -> Result<bool, SynthesisError> {
-        super::verify::verify_nizk_proof::<E>(&vk.params, &vk.r1cs, publics, proof)
+        super::verify::verify_nizk_proof::<G>(&vk.params, &vk.r1cs, publics, proof)
     }
 }
