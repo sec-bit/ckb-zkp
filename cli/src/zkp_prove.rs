@@ -72,6 +72,28 @@ macro_rules! handle_scheme {
                 postcard::to_allocvec(&proof).unwrap()
 
             }
+            "spartan_snark" => {
+                use ckb_zkp::spartan::snark::{Parameters, create_random_proof};
+                let mut srs_path = PathBuf::from(SETUP_DIR);
+                srs_path.push(format!("{}-{}-{}.universal_setup", $scheme, $curve_name, $circuit));
+                println!("Will use universal setup file: {:?}", srs_path);
+                let srs_bytes = std::fs::read(&srs_path).unwrap_or(vec![]);
+                let srs: Parameters<$curve> = postcard::from_bytes(&srs_bytes).unwrap();
+                let (pk, _vk) = srs.keypair();
+                let proof = create_random_proof(&pk, $c, rng).unwrap();
+                postcard::to_allocvec(&proof).unwrap()
+            }
+            "spartan_nizk" => {
+                use ckb_zkp::spartan::nizk::{Parameters, create_random_proof};
+                let mut srs_path = PathBuf::from(SETUP_DIR);
+                srs_path.push(format!("{}-{}-{}.universal_setup", $scheme, $curve_name, $circuit));
+                println!("Will use universal setup file: {:?}", srs_path);
+                let srs_bytes = std::fs::read(&srs_path).unwrap_or(vec![]);
+                let srs: Parameters<$curve> = postcard::from_bytes(&srs_bytes).unwrap();
+                let (pk, _vk) = srs.keypair();
+                let proof = create_random_proof(&pk, $c, rng).unwrap();
+                postcard::to_allocvec(&proof).unwrap()
+            }
             _ => return Err(format!("SCHEME: {} not implement.", $scheme)),
         };
 
@@ -114,11 +136,12 @@ fn main() -> Result<(), String> {
         println!("Usage: zkp-prove [SCHEME] [CURVE] [CIRCUIT] [ARGUMENTS]");
         println!("");
         println!("SCHEME:");
-        println!("    groth16      -- Groth16 zero-knowledge proof system.");
-        println!("    bulletproofs -- Bulletproofs zero-knowledge proof system.");
-        println!("    marlin       -- Marlin zero-knowledge proof system.");
-        println!("    clinkv2      -- CLINKv2 zero-knowledge proof system.");
-        println!("    spartan      -- Spartan zero-knowledge proof system.");
+        println!("    groth16       -- Groth16 zero-knowledge proof system.");
+        println!("    bulletproofs  -- Bulletproofs zero-knowledge proof system.");
+        println!("    marlin        -- Marlin zero-knowledge proof system.");
+        println!("    clinkv2       -- CLINKv2 zero-knowledge proof system.");
+        println!("    spartan_snark -- Spartan with snark zero-knowledge proof system.");
+        println!("    spartan_nizk  -- Spartan with nizk zero-knowledge proof system.");
         println!("");
         println!("CURVE:");
         println!("    bn_256    -- BN_256 pairing curve.");

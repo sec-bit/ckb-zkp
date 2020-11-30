@@ -20,6 +20,7 @@ pub mod snark {
 
     pub type Proof<E> = super::data_structure::SNARKProof<E>;
 
+    #[derive(Serialize, Deserialize)]
     pub struct Parameters<E: PairingEngine> {
         params: SnarkParameters<E>,
         r1cs: R1CSInstance<E>,
@@ -115,6 +116,7 @@ pub mod nizk {
 
     pub type Proof<E> = super::data_structure::NIZKProof<E>;
 
+    #[derive(Serialize, Deserialize)]
     pub struct Parameters<E: PairingEngine> {
         params: NizkParameters<E>,
         r1cs: R1CSInstance<E>,

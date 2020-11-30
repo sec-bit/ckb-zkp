@@ -52,6 +52,30 @@ macro_rules! handle_scheme {
                 std::fs::write(vk_path, srs_bytes).unwrap();
                 return Ok(());
             }
+            "spartan_snark" => {
+                use ckb_zkp::spartan::snark::generate_random_parameters;
+                let vk_name = format!("{}-{}-{}.universal_setup", $scheme, $curve_name, $circuit);
+                println!("Spartan snark universal setup: {}", vk_name);
+                vk_path.push(vk_name);
+                // use hash circuit because it is bigger.
+                //let hash_off = Hash::<<$curve as Curve>::Fr>::power_off();
+                let srs = generate_random_parameters::<$curve, _, _>($c, rng).unwrap();
+                let srs_bytes = postcard::to_allocvec(&srs).unwrap();
+                std::fs::write(vk_path, srs_bytes).unwrap();
+                return Ok(());
+            }
+            "spartan_nizk" => {
+                use ckb_zkp::spartan::nizk::generate_random_parameters;
+                let vk_name = format!("{}-{}-{}.universal_setup", $scheme, $curve_name, $circuit);
+                println!("Spartan nizk universal setup: {}", vk_name);
+                vk_path.push(vk_name);
+                // use hash circuit because it is bigger.
+                //let hash_off = Hash::<<$curve as Curve>::Fr>::power_off();
+                let srs = generate_random_parameters::<$curve, _, _>($c, rng).unwrap();
+                let srs_bytes = postcard::to_allocvec(&srs).unwrap();
+                std::fs::write(vk_path, srs_bytes).unwrap();
+                return Ok(());
+            }
             _ => return Err(format!("SCHEME: {} not implement.", $scheme)),
         };
 
@@ -76,10 +100,11 @@ fn main() -> Result<(), String> {
         println!("Usage: setup [SCHEME] [CURVE] [CIRCUIT]");
         println!("");
         println!("SCHEME:");
-        println!("    groth16      -- Groth16 zero-knowledge proof system.");
-        println!("    marlin       -- Marlin zero-knowledge proof system.");
-        println!("    clinkv2      -- CLINKv2 zero-knowledge proof system.");
-        println!("    spartan      -- Spartan zero-knowledge proof system.");
+        println!("    groth16       -- Groth16 zero-knowledge proof system.");
+        println!("    marlin        -- Marlin zero-knowledge proof system.");
+        println!("    clinkv2       -- CLINKv2 zero-knowledge proof system.");
+        println!("    spartan_snark -- Spartan with snark zero-knowledge proof system.");
+        println!("    spartan_nizk  -- Spartan with nizk zero-knowledge proof system.");
         println!("");
         println!("CURVE:");
         println!("    bn_256    -- BN_256 pairing curve.");

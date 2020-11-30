@@ -88,6 +88,34 @@ macro_rules! handle_scheme {
                 let proof: Proof<$curve> = postcard::from_bytes(&$proof_bytes).unwrap();
                 verify_proof(&ivk, &proof, $publics).unwrap()
             }
+            "spartan_snark" => {
+                use ckb_zkp::spartan::snark::{verify_proof, Parameters, Proof};
+                let mut srs_path = PathBuf::from(SETUP_DIR);
+                srs_path.push(format!(
+                    "{}-{}-{}.universal_setup",
+                    $scheme, $curve_name, $circuit
+                ));
+                println!("Will use universal setup file: {:?}", srs_path);
+                let srs_bytes = std::fs::read(&srs_path).unwrap_or(vec![]);
+                let srs: Parameters<$curve> = postcard::from_bytes(&srs_bytes).unwrap();
+                let (_pk, vk) = srs.keypair();
+                let proof: Proof<$curve> = postcard::from_bytes(&$proof_bytes).unwrap();
+                verify_proof(&vk, &proof, $publics).unwrap()
+            }
+            "spartan_nizk" => {
+                use ckb_zkp::spartan::nizk::{verify_proof, Parameters, Proof};
+                let mut srs_path = PathBuf::from(SETUP_DIR);
+                srs_path.push(format!(
+                    "{}-{}-{}.universal_setup",
+                    $scheme, $curve_name, $circuit
+                ));
+                println!("Will use universal setup file: {:?}", srs_path);
+                let srs_bytes = std::fs::read(&srs_path).unwrap_or(vec![]);
+                let srs: Parameters<$curve> = postcard::from_bytes(&srs_bytes).unwrap();
+                let (_pk, vk) = srs.keypair();
+                let proof: Proof<$curve> = postcard::from_bytes(&$proof_bytes).unwrap();
+                verify_proof(&vk, &proof, $publics).unwrap()
+            }
             _ => return Err(format!("SCHEME: {} not implement.", $scheme)),
         };
 
