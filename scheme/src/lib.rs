@@ -67,3 +67,7 @@ pub mod spartan;
 
 #[cfg(feature = "hyrax")]
 pub mod hyrax;
+
+#[cfg(feature = "libra")]
+pub mod libra;
+

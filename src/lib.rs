@@ -40,8 +40,14 @@ pub use scheme::clinkv2;
 #[cfg(feature = "spartan")]
 pub use scheme::spartan;
 
+/// re-export hyrax.
 #[cfg(feature = "hyrax")]
 pub use scheme::hyrax;
+
+/// re-export libra.
+#[cfg(feature = "libra")]
+pub mod scheme::libra;
+
 
 /// re-export bn_256.
 #[cfg(feature = "bn_256")]
