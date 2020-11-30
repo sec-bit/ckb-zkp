@@ -30,7 +30,7 @@ pub fn eval_outputs<G: Curve>(
     for (_, output) in outputs.iter().enumerate() {
         let mut output = output.clone();
         output.append(&mut vec![G::Fr::zero(); g - output.len()]);
-        let result = (0..g).map(|j| output[j] * &eq_q_vec[j]).sum(); //TODO
+        let result = (0..g).map(|j| output[j] * &eq_q_vec[j]).sum();
         eq_qs_vec.push(result);
     }
     let mut q_aside_vec = Vec::new();

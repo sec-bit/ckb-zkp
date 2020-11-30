@@ -51,10 +51,8 @@ impl<G: Curve> ZkSumcheckProof<G> {
         let mut comm_claim = comm_a0;
 
         let log_g = ql_vec.len();
-        // let g = 2usize.pow(log_g as u32);
         let log_ng: usize = log2(ng) as usize;
         let log_n: usize = log2(n) as usize;
-        // let mut claim = claim;
 
         let mut circuit_evals = circuit_evals.clone();
 
@@ -509,7 +507,6 @@ impl<G: Curve> ZkSumcheckProof<G> {
         xy: (G::Fr, G::Fr),
         log_g: usize,
         log_n: usize,
-        // polys: &Vec<Vec<G::Fr>>,
         m_vec: &Vec<Vec<G::Fr>>,
         pie_vec: &Vec<G::Fr>,
         r_alpha_vec: &Vec<G::Fr>,

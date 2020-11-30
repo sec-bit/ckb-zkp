@@ -51,26 +51,28 @@ impl Layer {
     pub fn mid_layer_new(
         gates_raw: &Vec<(u8, usize, usize)>,
         next_layer_gates_count: usize,
-    ) -> Self {
+    ) -> Result<Self, Error> {
         let mut gates = Vec::new();
         let mut gates_count: usize = 0;
         for (g, &(op, left, right)) in gates_raw.iter().enumerate() {
             if op != 0 && op != 1 {
-                // illegal op
+                return Err(Error::IllegalOperator);
             }
             if left >= next_layer_gates_count || right >= next_layer_gates_count {
-                // illegal left, right
+                return Err(Error::IllegalNode);
             }
             let gate = Gate::new(g, op, left, right);
             gates.push(gate);
             gates_count += 1;
         }
         let bit_size = log2(gates_count.next_power_of_two()) as usize;
-        Self {
+        let layer = Self {
             gates_count,
             bit_size,
             gates,
-        }
+        };
+
+        Ok(layer)
     }
 }
 
@@ -94,7 +96,7 @@ impl Circuit {
         depth += 1;
 
         for i in 0..layers_raw.len() {
-            let gate_layer = Layer::mid_layer_new(&layers_raw[i], next_layer_gates_count);
+            let gate_layer = Layer::mid_layer_new(&layers_raw[i], next_layer_gates_count).unwrap();
             next_layer_gates_count = gate_layer.gates_count;
             layers.push(gate_layer);
             depth += 1;
@@ -146,4 +148,11 @@ impl Circuit {
         assert_eq!(evals.len(), self.depth);
         evals
     }
+}
+
+#[derive(Debug)]
+pub enum Error {
+    IllegalOperator,
+
+    IllegalNode,
 }
