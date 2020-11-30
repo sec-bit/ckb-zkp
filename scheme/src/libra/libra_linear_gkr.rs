@@ -4,25 +4,23 @@ use crate::libra::evaluate::{
     eval_eq, eval_fgu, eval_hg, eval_output, eval_value, random_bytes_to_fr,
 };
 use crate::libra::sumcheck::{sumcheck_phase_one, sumcheck_phase_two};
-use math::{bytes::ToBytes, One, PairingEngine, Zero};
+use math::{bytes::ToBytes, Curve, One, Zero};
 use merlin::Transcript;
 
-pub fn linear_gkr_prover<E: PairingEngine>(
-    circuit: &Circuit<E>,
-) -> (LinearGKRProof<E>, Vec<E::Fr>) {
+pub fn linear_gkr_prover<G: Curve>(circuit: &Circuit<G>) -> (LinearGKRProof<G>, Vec<G::Fr>) {
     let mut transcript = Transcript::new(b"libra - linear gkr");
     let circuit_evals = circuit.evaluate().unwrap();
 
-    let mut alpha = E::Fr::one();
-    let mut beta = E::Fr::zero();
+    let mut alpha = G::Fr::one();
+    let mut beta = G::Fr::zero();
     // V_0(g^(0)), g^(0)
-    let (mut result_u, mut gu) = eval_output::<E>(
+    let (mut result_u, mut gu) = eval_output::<G>(
         &circuit_evals[circuit_evals.len() - 1],
         circuit.layers[circuit.depth - 1].bit_size,
         &mut transcript,
     );
-    let mut gv = vec![E::Fr::zero(); gu.len()];
-    let mut result_v = E::Fr::zero();
+    let mut gv = vec![G::Fr::zero(); gu.len()];
+    let mut result_v = G::Fr::zero();
     let mut proofs = Vec::new();
 
     // sumcheck
@@ -41,7 +39,7 @@ pub fn linear_gkr_prover<E: PairingEngine>(
             beta,
         );
 
-        let (proof_phase_one, ru) = sumcheck_phase_one::<E>(
+        let (proof_phase_one, ru) = sumcheck_phase_one::<G>(
             &circuit_evals[d - 1],
             &(mul_hg_vec, add_hg_vec1, add_hg_vec2),
             uv_size,
@@ -63,7 +61,7 @@ pub fn linear_gkr_prover<E: PairingEngine>(
             beta,
         );
 
-        let (proof_phase_two, rv) = sumcheck_phase_two::<E>(
+        let (proof_phase_two, rv) = sumcheck_phase_two::<G>(
             &circuit_evals[d - 1],
             &(mul_hg_vec, add_hg_vec, fu),
             uv_size,
@@ -74,7 +72,7 @@ pub fn linear_gkr_prover<E: PairingEngine>(
         let eval_rv = proof_phase_two.poly_value_at_r.clone();
         // claim = eval_rv[1] * &eval_rv[0] * &fu + &(eval_rv[2] * &fu) + &(eval_rv[2] * &eval_rv[0]);
 
-        let proof = LayerProof::<E> {
+        let proof = LayerProof::<G> {
             proof_phase_one,
             proof_phase_two,
         };
@@ -87,10 +85,10 @@ pub fn linear_gkr_prover<E: PairingEngine>(
             result_v = eval_rv[0];
             let mut buf = [0u8; 32];
             transcript.challenge_bytes(b"challenge_alpha", &mut buf);
-            alpha = random_bytes_to_fr::<E>(&buf);
+            alpha = random_bytes_to_fr::<G>(&buf);
             let mut buf = [0u8; 32];
             transcript.challenge_bytes(b"challenge_beta", &mut buf);
-            beta = random_bytes_to_fr::<E>(&buf);
+            beta = random_bytes_to_fr::<G>(&buf);
         }
     }
 
@@ -99,69 +97,69 @@ pub fn linear_gkr_prover<E: PairingEngine>(
     (proof, output)
 }
 
-pub fn initialize_phase_one<E: PairingEngine>(
-    gu: &Vec<E::Fr>,
-    gv: &Vec<E::Fr>,
-    gates: &Vec<Gate<E>>,
-    v_vec: &Vec<E::Fr>,
+pub fn initialize_phase_one<G: Curve>(
+    gu: &Vec<G::Fr>,
+    gv: &Vec<G::Fr>,
+    gates: &Vec<Gate<G>>,
+    v_vec: &Vec<G::Fr>,
     bit_size: usize,
-    alpha: E::Fr,
-    beta: E::Fr,
-) -> (Vec<E::Fr>, Vec<E::Fr>, Vec<E::Fr>) {
-    let evals_gu_vec = eval_eq::<E>(&gu);
-    let evals_gv_vec = eval_eq::<E>(&gv);
+    alpha: G::Fr,
+    beta: G::Fr,
+) -> (Vec<G::Fr>, Vec<G::Fr>, Vec<G::Fr>) {
+    let evals_gu_vec = eval_eq::<G>(&gu);
+    let evals_gv_vec = eval_eq::<G>(&gv);
 
     let evals_g_vec = (0..evals_gu_vec.len())
         .map(|i| alpha * &evals_gu_vec[i] + &(beta * &evals_gv_vec[i]))
         .collect::<Vec<_>>();
 
-    let (mul_hg_vec, add_hg_vec1, add_hg_vec2) = eval_hg::<E>(&evals_g_vec, v_vec, gates, bit_size);
+    let (mul_hg_vec, add_hg_vec1, add_hg_vec2) = eval_hg::<G>(&evals_g_vec, v_vec, gates, bit_size);
 
     (mul_hg_vec, add_hg_vec1, add_hg_vec2)
 }
 
-pub fn initialize_phase_two<E: PairingEngine>(
-    gu: &Vec<E::Fr>,
-    gv: &Vec<E::Fr>,
-    ru: &Vec<E::Fr>,
-    gates: &Vec<Gate<E>>,
-    v_vec: &Vec<E::Fr>,
+pub fn initialize_phase_two<G: Curve>(
+    gu: &Vec<G::Fr>,
+    gv: &Vec<G::Fr>,
+    ru: &Vec<G::Fr>,
+    gates: &Vec<Gate<G>>,
+    v_vec: &Vec<G::Fr>,
     bit_size: usize,
-    alpha: E::Fr,
-    beta: E::Fr,
-) -> (Vec<E::Fr>, Vec<E::Fr>, E::Fr) {
-    let evals_gu_vec = eval_eq::<E>(&gu);
-    let evals_gv_vec = eval_eq::<E>(&gv);
-    let evals_ru_vec = eval_eq::<E>(&ru);
+    alpha: G::Fr,
+    beta: G::Fr,
+) -> (Vec<G::Fr>, Vec<G::Fr>, G::Fr) {
+    let evals_gu_vec = eval_eq::<G>(&gu);
+    let evals_gv_vec = eval_eq::<G>(&gv);
+    let evals_ru_vec = eval_eq::<G>(&ru);
     assert_eq!(v_vec.len(), evals_ru_vec.len());
-    let eval_ru: E::Fr = (0..v_vec.len()).map(|i| v_vec[i] * &evals_ru_vec[i]).sum();
+    let eval_ru: G::Fr = (0..v_vec.len()).map(|i| v_vec[i] * &evals_ru_vec[i]).sum();
 
     let evals_g_vec = (0..evals_gu_vec.len())
         .map(|i| alpha * &evals_gu_vec[i] + &(beta * &evals_gv_vec[i]))
         .collect::<Vec<_>>();
 
-    let (mul_hg_vec, add_hg_vec) = eval_fgu::<E>(&evals_g_vec, &evals_ru_vec, gates, bit_size);
+    let (mul_hg_vec, add_hg_vec) = eval_fgu::<G>(&evals_g_vec, &evals_ru_vec, gates, bit_size);
     (mul_hg_vec, add_hg_vec, eval_ru)
 }
 
-pub fn linear_gkr_verifier<E: PairingEngine>(
-    circuit: &Circuit<E>,
-    output: &Vec<E::Fr>,
-    input: &Vec<E::Fr>,
-    proof: LinearGKRProof<E>,
+pub fn linear_gkr_verifier<G: Curve>(
+    circuit: &Circuit<G>,
+    output: &Vec<G::Fr>,
+    input: &Vec<G::Fr>,
+    proof: LinearGKRProof<G>,
 ) -> bool {
     let mut transcript = Transcript::new(b"libra - linear gkr");
 
-    let mut alpha = E::Fr::one();
-    let mut beta = E::Fr::zero();
-    let (mut result_u, _) = eval_output::<E>(
+    let mut alpha = G::Fr::one();
+    let mut beta = G::Fr::zero();
+    let (mut result_u, _) = eval_output::<G>(
         &output,
         circuit.layers[circuit.depth - 1].bit_size,
         &mut transcript,
     );
-    let mut result_v = E::Fr::zero();
-    let mut eval_ru_x = E::Fr::zero();
-    let mut eval_rv_y = E::Fr::zero();
+    let mut result_v = G::Fr::zero();
+    let mut eval_ru_x = G::Fr::zero();
+    let mut eval_rv_y = G::Fr::zero();
     let mut ru_vec = Vec::new();
     let mut rv_vec = Vec::new();
     assert_eq!(circuit.depth - 1, proof.proofs.len());
@@ -176,13 +174,13 @@ pub fn linear_gkr_verifier<E: PairingEngine>(
         for i in 0..bit_size {
             let poly = &proof1.polys[i];
             assert_eq!(
-                poly.evaluate(E::Fr::zero()) + &poly.evaluate(E::Fr::one()),
+                poly.evaluate(G::Fr::zero()) + &poly.evaluate(G::Fr::one()),
                 claim
             );
             transcript.append_message(b"poly", &math::to_bytes!(poly).unwrap());
             let mut buf = [0u8; 32];
             transcript.challenge_bytes(b"challenge_nextround", &mut buf);
-            let r_u = random_bytes_to_fr::<E>(&buf);
+            let r_u = random_bytes_to_fr::<G>(&buf);
             ru_vec.push(r_u);
             claim = poly.evaluate(r_u);
         }
@@ -200,13 +198,13 @@ pub fn linear_gkr_verifier<E: PairingEngine>(
             // let comm_poly = proof2.comm_polys[i];
             let poly = &proof2.polys[i];
             assert_eq!(
-                poly.evaluate(E::Fr::zero()) + &poly.evaluate(E::Fr::one()),
+                poly.evaluate(G::Fr::zero()) + &poly.evaluate(G::Fr::one()),
                 claim
             );
             transcript.append_message(b"poly", &math::to_bytes!(poly).unwrap());
             let mut buf = [0u8; 32];
             transcript.challenge_bytes(b"challenge_nextround", &mut buf);
-            let r_v = random_bytes_to_fr::<E>(&buf);
+            let r_v = random_bytes_to_fr::<G>(&buf);
             rv_vec.push(r_v);
             claim = poly.evaluate(r_v);
         }
@@ -224,17 +222,17 @@ pub fn linear_gkr_verifier<E: PairingEngine>(
             result_v = eval_rv_final[0];
             let mut buf = [0u8; 32];
             transcript.challenge_bytes(b"challenge_alpha", &mut buf);
-            alpha = random_bytes_to_fr::<E>(&buf);
+            alpha = random_bytes_to_fr::<G>(&buf);
             let mut buf = [0u8; 32];
             transcript.challenge_bytes(b"challenge_beta", &mut buf);
-            beta = random_bytes_to_fr::<E>(&buf);
+            beta = random_bytes_to_fr::<G>(&buf);
         } else {
             eval_ru_x = eval_ru_final[0];
             eval_rv_y = eval_rv_final[0];
         }
     }
-    let eval_ru_input = eval_value::<E>(&input, &ru_vec);
-    let eval_rv_input = eval_value::<E>(&input, &rv_vec);
+    let eval_ru_input = eval_value::<G>(&input, &ru_vec);
+    let eval_rv_input = eval_value::<G>(&input, &rv_vec);
 
     (eval_ru_x == eval_ru_input) && (eval_rv_y == eval_rv_input)
 }

@@ -1,4 +1,4 @@
-use math::{log2, PairingEngine, Zero};
+use math::{log2, Curve, Zero};
 
 ///operation
 /// 0. add
@@ -6,16 +6,16 @@ use math::{log2, PairingEngine, Zero};
 /// 2. dummy
 /// 3. input
 /// 4. direct relay
-pub struct Gate<E: PairingEngine> {
+pub struct Gate<G: Curve> {
     pub g: usize,
     pub op: u8,
     pub left_node: usize,
     pub right_node: usize,
-    pub value: E::Fr,
+    pub value: G::Fr,
 }
 
-impl<E: PairingEngine> Gate<E> {
-    pub fn new(g: usize, op: u8, left_node: usize, right_node: usize, value: E::Fr) -> Self {
+impl<G: Curve> Gate<G> {
+    pub fn new(g: usize, op: u8, left_node: usize, right_node: usize, value: G::Fr) -> Self {
         Self {
             g,
             op,
@@ -26,14 +26,14 @@ impl<E: PairingEngine> Gate<E> {
     }
 }
 
-pub struct Layer<E: PairingEngine> {
+pub struct Layer<G: Curve> {
     pub gates_count: usize,
     pub bit_size: usize,
-    pub gates: Vec<Gate<E>>,
+    pub gates: Vec<Gate<G>>,
 }
 
-impl<E: PairingEngine> Layer<E> {
-    pub fn input_new(inputs: &Vec<E::Fr>) -> Self {
+impl<G: Curve> Layer<G> {
+    pub fn input_new(inputs: &Vec<G::Fr>) -> Self {
         let mut gates = Vec::new();
         let mut gates_count: usize = 0;
         for (g, &value) in inputs.iter().enumerate() {
@@ -62,7 +62,7 @@ impl<E: PairingEngine> Layer<E> {
             if left >= next_layer_gates_count || right >= next_layer_gates_count {
                 return Err(Error::IllegalNode);
             }
-            let gate = Gate::new(g, op, left, right, E::Fr::zero());
+            let gate = Gate::new(g, op, left, right, G::Fr::zero());
             gates.push(gate);
             gates_count += 1;
         }
@@ -77,13 +77,13 @@ impl<E: PairingEngine> Layer<E> {
     }
 }
 
-pub struct Circuit<E: PairingEngine> {
+pub struct Circuit<G: Curve> {
     pub depth: usize,
-    pub layers: Vec<Layer<E>>,
+    pub layers: Vec<Layer<G>>,
 }
 
-impl<E: PairingEngine> Circuit<E> {
-    pub fn new(inputs: &Vec<E::Fr>, layers_raw: &Vec<Vec<(u8, usize, usize)>>) -> Circuit<E> {
+impl<G: Curve> Circuit<G> {
+    pub fn new(inputs: &Vec<G::Fr>, layers_raw: &Vec<Vec<(u8, usize, usize)>>) -> Circuit<G> {
         let mut layers = Vec::new();
         let mut depth = 0;
 
@@ -102,7 +102,7 @@ impl<E: PairingEngine> Circuit<E> {
         Circuit { depth, layers }
     }
 
-    pub fn evaluate(&self) -> Result<Vec<Vec<E::Fr>>, Error> {
+    pub fn evaluate(&self) -> Result<Vec<Vec<G::Fr>>, Error> {
         let mut evals = Vec::new();
         let mut next_layer_values = Vec::new();
         for (d, layer) in self.layers.iter().enumerate() {

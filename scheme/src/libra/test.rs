@@ -5,14 +5,14 @@ mod bn_256 {
     use crate::libra::libra_linear_gkr::{linear_gkr_prover, linear_gkr_verifier};
     use crate::libra::libra_zk_linear_gkr::{zk_linear_gkr_prover, zk_linear_gkr_verifier};
     use curve::bn_256::Bn_256;
-    use math::{One, PairingEngine, Zero};
+    use math::{Curve, One, Zero};
     use rand::thread_rng;
 
-    fn prepare_constrcut_circuit<E: PairingEngine>() -> (Vec<E::Fr>, Vec<Vec<(u8, usize, usize)>>) {
+    fn prepare_constrcut_circuit<G: Curve>() -> (Vec<G::Fr>, Vec<Vec<(u8, usize, usize)>>) {
         let mut inputs = Vec::new();
-        let mut value = E::Fr::zero();
+        let mut value = G::Fr::zero();
         for _ in 0..16 {
-            value += &E::Fr::one();
+            value += &G::Fr::one();
             inputs.push(value)
         }
         let mut layers = Vec::new();
@@ -85,14 +85,14 @@ mod bls12_381 {
     use crate::libra::libra_linear_gkr::{linear_gkr_prover, linear_gkr_verifier};
     use crate::libra::libra_zk_linear_gkr::{zk_linear_gkr_prover, zk_linear_gkr_verifier};
     use curve::bls12_381::Bls12_381;
-    use math::{One, PairingEngine, Zero};
+    use math::{Curve, One, Zero};
     use rand::thread_rng;
 
-    fn prepare_constrcut_circuit<E: PairingEngine>() -> (Vec<E::Fr>, Vec<Vec<(u8, usize, usize)>>) {
+    fn prepare_constrcut_circuit<G: Curve>() -> (Vec<G::Fr>, Vec<Vec<(u8, usize, usize)>>) {
         let mut inputs = Vec::new();
-        let mut value = E::Fr::zero();
+        let mut value = G::Fr::zero();
         for _ in 0..16 {
-            value += &E::Fr::one();
+            value += &G::Fr::one();
             inputs.push(value)
         }
         let mut layers = Vec::new();
