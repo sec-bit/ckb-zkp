@@ -3,7 +3,7 @@ use crate::hyrax::commitment::{EqProof, LogDotProductProof};
 use crate::hyrax::evaluate::{
     eval_outputs, eval_value, packing_poly_commit, poly_commit_vec, random_bytes_to_fr,
 };
-use crate::hyrax::params::PolyCommitmentSetupParameters;
+use crate::hyrax::params::Parameters;
 use crate::hyrax::zk_sumcheck_proof::ZkSumcheckProof;
 // use core::ops::{Deref, Neg};
 use math::{bytes::ToBytes, AffineCurve, Curve, One, ProjectiveCurve, UniformRand, Zero};
@@ -23,7 +23,7 @@ pub struct HyraxProof<G: Curve> {
 
 impl<G: Curve> HyraxProof<G> {
     pub fn prover<R: Rng>(
-        params: &PolyCommitmentSetupParameters<G>,
+        params: &Parameters<G>,
         witnesses: &Vec<Vec<G::Fr>>,
         inputs: &Vec<Vec<G::Fr>>,
         circuit: &Circuit,
@@ -50,25 +50,23 @@ impl<G: Curve> HyraxProof<G> {
             witness_vec.extend(vec![G::Fr::zero(); wl.next_power_of_two() - wl]);
         }
         let (comm_witness, witness_blind) = packing_poly_commit::<G, R>(
-            &params.gen_n.generators,
+            &params.pc_params.gen_n.generators,
             &witness_vec,
-            &params.gen_n.h,
+            &params.pc_params.gen_n.h,
             rng,
             true,
         );
         transcript.append_message(b"comm_witness", &math::to_bytes!(comm_witness).unwrap());
-        println!("generate packing commit for witness...ok");
 
-        //
         let (result_u, mut q_aside_vec, mut ql_vec) = eval_outputs::<G>(&outputs, &mut transcript);
         let mut qr_vec = ql_vec.clone();
         let mut u0 = G::Fr::one();
         let mut u1 = G::Fr::zero();
         let mut rc0 = G::Fr::zero();
         let comm_a = poly_commit_vec::<G>(
-            &params.gen_1.generators,
+            &params.sc_params.gen_1.generators,
             &vec![result_u],
-            &params.gen_1.h,
+            &params.sc_params.gen_1.h,
             G::Fr::zero(),
         );
         transcript.append_message(b"comm_claim_a0", &math::to_bytes!(comm_a).unwrap());
@@ -98,7 +96,7 @@ impl<G: Curve> HyraxProof<G> {
 
             let (proof, q_aside_vec_tmp, ql_vec_tmp, qr_vec_tmp, eval_vec, blind_vec) =
                 ZkSumcheckProof::prover::<R>(
-                    params,
+                    &params.sc_params,
                     comm_claim,
                     rc0,
                     (u0, u1),
@@ -133,14 +131,13 @@ impl<G: Curve> HyraxProof<G> {
             }
             proofs.push(proof);
         }
-        println!("linear_gkr_prover -- sumcheck...ok");
 
         let mut rl_q_vec = q_aside_vec.clone();
         rl_q_vec.extend(ql_vec[1..ql_vec.len()].to_vec());
         let blind_eval0 = G::Fr::rand(rng);
         let eval_w_rl = eval_value::<G>(&witness_vec, &rl_q_vec);
         let (prod_proof0, comm_y0) = LogDotProductProof::reduce_prover::<R>(
-            params,
+            &params.pc_params,
             &witness_vec,
             &witness_blind,
             &rl_q_vec,
@@ -152,7 +149,7 @@ impl<G: Curve> HyraxProof<G> {
         let eval_at_zy_blind0 = (G::Fr::one() - &ql_vec[0]) * &blind_eval0;
 
         let eq_proof0 = EqProof::prover(
-            &params.gen_1,
+            &params.pc_params.gen_1,
             x,
             rx,
             x,
@@ -166,7 +163,7 @@ impl<G: Curve> HyraxProof<G> {
         let blind_eval1 = G::Fr::rand(rng);
         let eval_w_rr = eval_value::<G>(&witness_vec, &rr_q_vec);
         let (prod_proof1, comm_y1) = LogDotProductProof::reduce_prover::<R>(
-            params,
+            &params.pc_params,
             &witness_vec,
             &witness_blind,
             &rr_q_vec,
@@ -178,7 +175,7 @@ impl<G: Curve> HyraxProof<G> {
         let eval_at_zy_blind1 = (G::Fr::one() - &qr_vec[0]) * &blind_eval1;
 
         let eq_proof1 = EqProof::prover(
-            &params.gen_1,
+            &params.pc_params.gen_1,
             y,
             ry,
             y,
@@ -202,7 +199,7 @@ impl<G: Curve> HyraxProof<G> {
 
     pub fn verify(
         &self,
-        params: &PolyCommitmentSetupParameters<G>,
+        params: &Parameters<G>,
         outputs: &Vec<Vec<G::Fr>>,
         inputs: &Vec<Vec<G::Fr>>,
         circuit: &Circuit,
@@ -222,9 +219,9 @@ impl<G: Curve> HyraxProof<G> {
         let (result_u, mut q_aside_vec, mut ql_vec) = eval_outputs::<G>(&outputs, &mut transcript);
         let mut qr_vec = ql_vec.clone();
         let mut comm_a = poly_commit_vec::<G>(
-            &params.gen_1.generators,
+            &params.sc_params.gen_1.generators,
             &vec![result_u],
-            &params.gen_1.h,
+            &params.sc_params.gen_1.h,
             G::Fr::zero(),
         );
         transcript.append_message(b"comm_claim_a0", &math::to_bytes!(comm_a).unwrap());
@@ -238,7 +235,7 @@ impl<G: Curve> HyraxProof<G> {
             let ng = next_gate_num.next_power_of_two();
             let (comm_x_tmp, comm_y_tmp, q_aside_vec_tmp, ql_vec_tmp, qr_vec_tmp) = self.proofs[d]
                 .verify(
-                    params,
+                    &params.sc_params,
                     comm_a,
                     (u0, u1),
                     (&q_aside_vec, &ql_vec, &qr_vec),
@@ -265,7 +262,6 @@ impl<G: Curve> HyraxProof<G> {
                 transcript.append_message(b"comm_a_i", &math::to_bytes!(comm_a).unwrap());
             }
         }
-        println!("linear_gkr_verifier -- sumcheck...ok");
 
         let mut input_vec = Vec::new();
         for i in 0..n {
@@ -278,7 +274,7 @@ impl<G: Curve> HyraxProof<G> {
         let mut rl_q_vec = q_aside_vec.clone();
         rl_q_vec.extend(ql_vec[1..ql_vec.len()].to_vec());
         let rs = self.prod_proof0.reduce_verifier(
-            params,
+            &params.pc_params,
             &rl_q_vec,
             &self.comm_witness,
             self.comm_y0,
@@ -288,24 +284,27 @@ impl<G: Curve> HyraxProof<G> {
 
         let eval_input_tau = eval_value::<G>(&input_vec, &rl_q_vec);
         let comm_input = poly_commit_vec::<G>(
-            &params.gen_1.generators,
+            &params.pc_params.gen_1.generators,
             &vec![eval_input_tau],
-            &params.gen_1.h,
+            &params.pc_params.gen_1.h,
             G::Fr::zero(),
         );
         let comm_eval_z = (self.comm_y0.mul(G::Fr::one() - &ql_vec[0])
             + &(comm_input.mul(ql_vec[0])))
             .into_affine();
 
-        let result = self
-            .eq_proof0
-            .verify(&params.gen_1, comm_x, comm_eval_z, &mut transcript);
+        let result = self.eq_proof0.verify(
+            &params.pc_params.gen_1,
+            comm_x,
+            comm_eval_z,
+            &mut transcript,
+        );
         assert!(result);
 
         let mut rr_q_vec = q_aside_vec.clone();
         rr_q_vec.extend(qr_vec[1..qr_vec.len()].to_vec());
         let rs = self.prod_proof1.reduce_verifier(
-            params,
+            &params.pc_params,
             &rr_q_vec,
             &self.comm_witness,
             self.comm_y1,
@@ -315,18 +314,21 @@ impl<G: Curve> HyraxProof<G> {
 
         let eval_input_tau = eval_value::<G>(&input_vec, &rr_q_vec);
         let comm_input = poly_commit_vec::<G>(
-            &params.gen_1.generators,
+            &params.pc_params.gen_1.generators,
             &vec![eval_input_tau],
-            &params.gen_1.h,
+            &params.pc_params.gen_1.h,
             G::Fr::zero(),
         );
         let comm_eval_z = (self.comm_y1.mul(G::Fr::one() - &qr_vec[0])
             + &(comm_input.mul(qr_vec[0])))
             .into_affine();
 
-        let result = self
-            .eq_proof1
-            .verify(&params.gen_1, comm_y, comm_eval_z, &mut transcript);
+        let result = self.eq_proof1.verify(
+            &params.pc_params.gen_1,
+            comm_y,
+            comm_eval_z,
+            &mut transcript,
+        );
         assert!(result);
 
         true

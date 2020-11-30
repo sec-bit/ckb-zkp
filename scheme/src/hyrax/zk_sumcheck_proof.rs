@@ -3,7 +3,7 @@ use crate::hyrax::commitment::ProductProof;
 use crate::hyrax::evaluate::{
     combine_with_r, construct_matrix, convert_to_bit, eval_eq, poly_commit_vec, random_bytes_to_fr,
 };
-use crate::hyrax::params::PolyCommitmentSetupParameters;
+use crate::hyrax::params::SumCheckCommitmentSetupParameters;
 use core::ops::{Deref, Neg};
 use math::fft::DensePolynomial as Polynomial;
 use math::{bytes::ToBytes, log2, AffineCurve, Curve, Field, ProjectiveCurve, UniformRand, Zero};
@@ -27,7 +27,7 @@ pub struct ZkSumcheckProof<G: Curve> {
 
 impl<G: Curve> ZkSumcheckProof<G> {
     pub fn prover<R: Rng>(
-        params: &PolyCommitmentSetupParameters<G>,
+        params: &SumCheckCommitmentSetupParameters<G>,
         comm_a0: G::Affine,
         rc0: G::Fr,
         u: (G::Fr, G::Fr),
@@ -182,9 +182,9 @@ impl<G: Curve> ZkSumcheckProof<G> {
             polys.push(coeffs.clone());
             let poly = Polynomial::from_coefficients_vec(coeffs);
             let comm_poly = poly_commit_vec::<G>(
-                &params.gen_n.generators,
+                &params.gen_4.generators,
                 &poly.deref().to_vec(),
-                &params.gen_n.h,
+                &params.gen_4.h,
                 r_alpha_vec[j],
             );
             transcript.append_message(b"comm_poly", &math::to_bytes!(comm_poly).unwrap());
@@ -314,9 +314,9 @@ impl<G: Curve> ZkSumcheckProof<G> {
             polys.push(coeffs.clone());
             let poly = Polynomial::from_coefficients_vec(coeffs);
             let comm_poly = poly_commit_vec::<G>(
-                &params.gen_n.generators,
+                &params.gen_3.generators,
                 &poly.deref().to_vec(),
-                &params.gen_n.h,
+                &params.gen_3.h,
                 r_alpha_vec[log_n + j],
             );
             transcript.append_message(b"comm_poly", &math::to_bytes!(comm_poly).unwrap());
@@ -416,9 +416,9 @@ impl<G: Curve> ZkSumcheckProof<G> {
             polys.push(coeffs.clone());
             let poly = Polynomial::from_coefficients_vec(coeffs);
             let comm_poly = poly_commit_vec::<G>(
-                &params.gen_n.generators,
+                &params.gen_3.generators,
                 &poly.deref().to_vec(),
-                &params.gen_n.h,
+                &params.gen_3.h,
                 r_alpha_vec[log_n + log_ng + j],
             );
             transcript.append_message(b"comm_poly", &math::to_bytes!(comm_poly).unwrap());
@@ -505,7 +505,7 @@ impl<G: Curve> ZkSumcheckProof<G> {
     }
 
     pub fn sumcheck_prover<R: Rng>(
-        params: &PolyCommitmentSetupParameters<G>,
+        params: &SumCheckCommitmentSetupParameters<G>,
         xy: (G::Fr, G::Fr),
         log_g: usize,
         log_n: usize,
@@ -549,9 +549,9 @@ impl<G: Curve> ZkSumcheckProof<G> {
                 d_vec.push(d0);
                 r_delta_vec.push(r_delta);
                 let delta_comm = poly_commit_vec::<G>(
-                    &params.gen_n.generators,
+                    &params.gen_4.generators,
                     &vec![d3, d2, d1, d0],
-                    &params.gen_n.h,
+                    &params.gen_4.h,
                     r_delta,
                 );
                 transcript.append_message(b"comm_delta", &math::to_bytes!(delta_comm).unwrap());
@@ -570,9 +570,9 @@ impl<G: Curve> ZkSumcheckProof<G> {
                 d_vec.push(d0);
                 r_delta_vec.push(r_delta);
                 let delta_comm = poly_commit_vec::<G>(
-                    &params.gen_n.generators,
+                    &params.gen_3.generators,
                     &vec![d2, d1, d0],
-                    &params.gen_n.h,
+                    &params.gen_3.h,
                     r_delta,
                 );
                 transcript.append_message(b"comm_delta", &math::to_bytes!(delta_comm).unwrap());
@@ -636,7 +636,7 @@ impl<G: Curve> ZkSumcheckProof<G> {
 
     pub fn verify(
         &self,
-        params: &PolyCommitmentSetupParameters<G>,
+        params: &SumCheckCommitmentSetupParameters<G>,
         comm_claim: G::Affine,
         u: (G::Fr, G::Fr),
         q_vec: (&Vec<G::Fr>, &Vec<G::Fr>, &Vec<G::Fr>),
@@ -680,14 +680,13 @@ impl<G: Curve> ZkSumcheckProof<G> {
 
         let result = self.sumcheck_verify(params, &m_vec, log_ng, log_n, transcript);
         assert!(result);
-        println!("sumcheck_verify....{}", result);
 
         (self.comm_x, self.comm_y, rs, r0, r1)
     }
 
     pub fn sumcheck_verify(
         &self,
-        params: &PolyCommitmentSetupParameters<G>,
+        params: &SumCheckCommitmentSetupParameters<G>,
         m_vec: &Vec<Vec<G::Fr>>,
         log_g: usize,
         log_n: usize,
@@ -726,30 +725,30 @@ impl<G: Curve> ZkSumcheckProof<G> {
             let left: G::Affine;
             if j < log_n {
                 left = poly_commit_vec::<G>(
-                    &params.gen_n.generators,
+                    &params.gen_4.generators,
                     &vec![
                         self.z_vec[j * 4 + 0],
                         self.z_vec[j * 4 + 1],
                         self.z_vec[j * 4 + 2],
                         self.z_vec[j * 4 + 3],
                     ],
-                    &params.gen_n.h,
+                    &params.gen_4.h,
                     self.z_delta_vec[j],
                 );
             } else {
                 left = poly_commit_vec::<G>(
-                    &params.gen_n.generators,
+                    &params.gen_3.generators,
                     &vec![
                         self.z_vec[log_n + j * 3 + 0],
                         self.z_vec[log_n + j * 3 + 1],
                         self.z_vec[log_n + j * 3 + 2],
                     ],
-                    &params.gen_n.h,
+                    &params.gen_3.h,
                     self.z_delta_vec[j],
                 );
             }
+
             if left.into_projective() != right {
-                println!("{} left != right", j);
                 return false;
             }
         }
@@ -773,9 +772,10 @@ impl<G: Curve> ZkSumcheckProof<G> {
         let right = poly_commit_vec::<G>(
             &params.gen_1.generators,
             &vec![prod_jz_star],
-            &params.gen_n.h,
+            &params.gen_1.h,
             self.zc,
         );
+
         left == right.into_projective()
     }
 }

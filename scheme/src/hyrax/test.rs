@@ -1,8 +1,8 @@
 #[cfg(test)]
-mod Bn_256 {
+mod bn_256 {
     use crate::hyrax::circuit::Circuit;
     use crate::hyrax::hyrax_proof::HyraxProof;
-    use crate::hyrax::params::PolyCommitmentSetupParameters;
+    use crate::hyrax::params::Parameters;
     use curve::bn_256::Bn_256;
     use math::{Curve, UniformRand};
     use rand::thread_rng;
@@ -41,7 +41,7 @@ mod Bn_256 {
         let mut witnesses = Vec::new();
         let mut inputs = Vec::new();
         let n = 4;
-        for i in 0..n {
+        for _ in 0..n {
             witnesses.push(
                 (0..8)
                     .map(|_| <Bn_256 as Curve>::Fr::rand(rng))
@@ -53,7 +53,7 @@ mod Bn_256 {
                     .collect::<Vec<_>>(),
             );
         }
-        let params = PolyCommitmentSetupParameters::new(rng, 8);
+        let params = Parameters::new(rng, 8);
         println!("generate parameters...");
         let result = hyrax_zk_linear_gkr::<Bn_256, _>(&params, &witnesses, &inputs, &circuit, rng);
         assert!(result);
@@ -61,7 +61,7 @@ mod Bn_256 {
     }
 
     fn hyrax_zk_linear_gkr<G: Curve, R: Rng>(
-        params: &PolyCommitmentSetupParameters<G>,
+        params: &Parameters<G>,
         witnesses: &Vec<Vec<G::Fr>>,
         inputs: &Vec<Vec<G::Fr>>,
         circuit: &Circuit,
