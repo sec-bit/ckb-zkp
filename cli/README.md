@@ -7,95 +7,68 @@ A cli toolkit for zkp.
 ## Usage
 
 - **YOU NEED TRUSTED-SETUP** to run Groth16 scheme
-  - `cargo run --bin trusted-setup mimc` (Proving key and verification key will be generated in the `trusted_setup` directory)
+  - `cargo run --bin setup groth16 bn_256 hash` (Proving key and verification key will be generated in the `setup_files` directory)
   - The random common reference string (CRS) generated in this way is for testing purposes only. These parameters would have to be generated securely by a trusted setup, which is normally through a trusted third party or a multi-party computation.
 
-- Use default groth16 as scheme and bn_256 as curve, and prove knowledge of the preimage of a MiMC hash invocation which is the secret string.
-  - `cargo run --bin zkp-prove mimc --string=iamsecret` (A proof file will be generated at `proofs_files` directory)
-  - `cargo run --bin zkp-verify mimc proofs_files/mimc.groth16-bn_256.proof`
+- Use groth16 as scheme and bn_256 as curve, and prove knowledge of the preimage of a MiMC hash invocation which is the secret string.
+  - `cargo run --bin zkp-prove groth16 bn_256 hash iamsecret` (A proof file will be generated at `proof_files` directory)
+  - `cargo run --bin zkp-verify proofs_files/groth16-bn_256-hash.proof.json`
 
-- Use custom schemes and curves as backend, and prove knowledge of the preimage of a MiMC hash invocation which is the file value.
-  - `cargo run --bin zkp-prove mimc groth16 bls12_381 --file=README.md` (A proof file will be generated at `proofs_files` directory)
-  - `cargo run --bin zkp-verify mimc groth16 bls12_381 proofs_files/README.md.mimc.groth16-bls12_381.proof`
-  
-### trusted-setup
+### setup
 
 ```
-trusted-setup
+setup
 
-Usage: trusted-setup [CIRCUIT] <scheme> <curve> <OPTIONS>
+Usage: setup [SCHEME] [CURVE] [CIRCUIT]
 
-CIRCUIT: 
-    mimc    -- MiMC hash & proof.
-    greater -- Greater than comparison proof.
-    less    -- Less than comparison proof.
-    between -- Between comparison proof.
+SCHEME:
+    groth16       -- Groth16 zero-knowledge proof system.
+    marlin        -- Marlin zero-knowledge proof system.
+    spartan_snark -- Spartan with snark zero-knowledge proof system.
+    spartan_nizk  -- Spartan with nizk zero-knowledge proof system.
 
-scheme:
-    groth16      -- Groth16 zero-knowledge proof system. [Default]
-    bulletproofs -- Bulletproofs zero-knowledge proof system.
-
-curve:
-    bn_256    -- BN_256 pairing curve. [Default]
+CURVE:
+    bn_256    -- BN_256 pairing curve.
     bls12_381 -- BLS12_381 pairing curve.
 
-OPTIONS:
-    --prepare -- use prepared verification key when verifying proof.
+CIRCUIT:
+    mini    -- Mini circuit. proof: x * (y + 2) = z.
+    hash    -- Hash circuit. proof: mimc hash.
 
 ```
-  
+
 ### zkp-prove
 
 ```
 zkp-prove
 
-Usage: zkp-prove [CIRCUIT] <scheme> <curve> [CIRCUIT OPTIONS] <OPTIONS>
+Usage: zkp-prove [SCHEME] [CURVE] [CIRCUIT] [ARGUMENTS]
 
-CIRCUIT:
-    mimc    -- MiMC hash & proof.
-    greater -- Greater than comparison proof.
-    less    -- Less than comparison proof.
-    between -- Between comparison proof.
+SCHEME:
+    groth16       -- Groth16 zero-knowledge proof system.
+    bulletproofs  -- Bulletproofs zero-knowledge proof system.
+    marlin        -- Marlin zero-knowledge proof system.
+    spartan_snark -- Spartan with snark zero-knowledge proof system.
+    spartan_nizk  -- Spartan with nizk zero-knowledge proof system.
 
-scheme:
-    groth16      -- Groth16 zero-knowledge proof system. [Default]
-    bulletproofs -- Bulletproofs zero-knowledge proof system.
-
-curve:
-    bn_256    -- BN_256 pairing curve. [Default]
+CURVE:
+    bn_256    -- BN_256 pairing curve.
     bls12_381 -- BLS12_381 pairing curve.
 
-OPTIONS:
-    --json    -- input/ouput use json type file.
-    --prepare -- use prepared verification key when verifying proof.
-```
+CIRCUIT:
+    mini    -- Mini circuit. proof: x * (y + 2) = z.
+    hash    -- Hash circuit. proof: mimc hash.
 
-You can use the `--json` option to get the proof file in JSON format.
+CIRCUIT ARGUMENTS:
+    [arguments]    -- circuits arguments.
+
+```
 
 ### zkp-verify
 
 ```
 zkp-verify
 
-Usage: zkp-verify [CIRCUIT] <scheme> <curve> [FILE] <OPTIONS>
+Usage: zkp-verify [PROOF_FILE]
 
-CIRCUIT:
-    mimc    -- MiMC hash & proof.
-    greater -- Greater than comparison proof.
-    less    -- Less than comparison proof.
-    between -- Between comparison proof.
-
-scheme:
-    groth16      -- Groth16 zero-knowledge proof system. [Default]
-    bulletproofs -- Bulletproofs zero-knowledge proof system.
-
-curve:
-    bn_256    -- BN_256 pairing curve. [Default]
-    bls12_381 -- BLS12_381 pairing curve.
-
-OPTIONS:
-    --json    -- input/ouput use json type file.
-    --prepare -- use prepared verification key when verifying proof.
 ```
-
-You can use the `--json` option to pass the proof file in JSON format.
