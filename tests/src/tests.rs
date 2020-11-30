@@ -146,12 +146,12 @@ fn test_bulletproofs() {
         num: num,
     };
 
-    let (gens, r1cs, proof, publics) = create_random_proof::<E, _, _>(c, rng).unwrap();
+    let (gens, r1cs, proof) = create_random_proof::<E, _, _>(c, rng).unwrap();
     // let gens_bytes = postcard::to_allocvec(&gens).unwrap();
     // let r1cs_bytes = postcard::to_allocvec(&r1cs).unwrap();
     // let proof_bytes = postcard::to_allocvec(&proof).unwrap();
     let proof_bytes = postcard::to_allocvec(&(gens, r1cs, proof)).unwrap();
-    let public_bytes = postcard::to_allocvec(&publics).unwrap();
+    let public_bytes = postcard::to_allocvec(&vec![Fr::from(10u32)]).unwrap();
 
     println!("Bulletproofs verifying...");
 

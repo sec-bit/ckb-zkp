@@ -43,10 +43,8 @@ macro_rules! handle_scheme {
                 postcard::to_allocvec(&proof).unwrap()
             }
             "bulletproofs" => {
-                use ckb_zkp::bulletproofs::{verify_proof, create_random_proof};
-                let (gens, r1cs, proof, publics) =
-                    create_random_proof::<$curve, _, _>($c, &mut rand::thread_rng()).unwrap();
-                assert!(verify_proof(&gens, &proof, &r1cs, &publics).unwrap());
+                use ckb_zkp::bulletproofs::create_random_proof;
+                let (gens, r1cs, proof) = create_random_proof::<$curve, _, _>($c, &mut rand::thread_rng()).unwrap();
                 let mut gens_bytes = postcard::to_allocvec(&gens).unwrap();
                 let mut r1cs_bytes = postcard::to_allocvec(&r1cs).unwrap();
                 let mut proof_bytes = postcard::to_allocvec(&proof).unwrap();
@@ -103,6 +101,9 @@ fn main() -> Result<(), String> {
         println!("SCHEME:");
         println!("    groth16      -- Groth16 zero-knowledge proof system.");
         println!("    bulletproofs -- Bulletproofs zero-knowledge proof system.");
+        println!("    marlin       -- Marlin zero-knowledge proof system.");
+        println!("    clinkv2      -- CLINKv2 zero-knowledge proof system.");
+        println!("    spartan      -- Spartan zero-knowledge proof system.");
         println!("");
         println!("CURVE:");
         println!("    bn_256    -- BN_256 pairing curve.");

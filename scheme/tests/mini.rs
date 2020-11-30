@@ -133,7 +133,7 @@ fn mini_bulletproofs() {
         num: num,
     };
 
-    let (gens, r1cs, proof, publics) = create_random_proof::<BabyJubJub, _, _>(c, rng).unwrap();
+    let (gens, r1cs, proof) = create_random_proof::<BabyJubJub, _, _>(c, rng).unwrap();
 
     let proof_bytes = postcard::to_allocvec(&proof).unwrap();
     println!("Bulletproof proof...ok, size: {}", proof_bytes.len());
@@ -145,7 +145,7 @@ fn mini_bulletproofs() {
         z: None,
         num: num,
     };
-    assert!(verify_proof(&gens, &proof, &r1cs, &publics).unwrap());
+    assert!(verify_proof(&gens, &proof, &r1cs, &[Fr::from(10u32)]).unwrap());
 }
 
 use scheme::clinkv2::r1cs as clinkv2_r1cs;

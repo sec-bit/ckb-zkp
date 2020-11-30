@@ -191,7 +191,7 @@ pub struct Proof<G: Curve> {
 pub fn create_random_proof<G, C, R>(
     circuit: C,
     rng: &mut R,
-) -> Result<(Generators<G>, R1csCircuit<G>, Proof<G>, Vec<G::Fr>), SynthesisError>
+) -> Result<(Generators<G>, R1csCircuit<G>, Proof<G>), SynthesisError>
 where
     G: Curve,
     C: ConstraintSynthesizer<G::Fr>,
@@ -302,7 +302,7 @@ where
 
     let proof = prove(&generators, &r1cs_circuit, &input, rng);
 
-    Ok((generators, r1cs_circuit.matrix_to_map(), proof, input.s))
+    Ok((generators, r1cs_circuit.matrix_to_map(), proof))
 }
 
 // bulletproofs arithmetic circuit proof with R1CS format
@@ -716,7 +716,9 @@ pub fn verify_proof<G: Curve>(
             }
         }
     }
-    let c = vector_matrix_product_t::<G::Fr>(&public_inputs.to_vec(), &C1);
+    let mut r1_public_inputs = vec![G::Fr::one()];
+    r1_public_inputs.extend(public_inputs);
+    let c = vector_matrix_product_t::<G::Fr>(&r1_public_inputs, &C1);
 
     // zQ * WL, zQ * WR
     let zQ_WL: Vec<G::Fr> = vector_product::<G::Fr>(&z_Q, &WL, gens.N, gens.n);
