@@ -281,6 +281,28 @@ impl AbstractHashSha256Output {
         })
     }
 
+    pub fn alloc_input<F: PrimeField, CS: ConstraintSystem<F>>(
+        mut cs: CS,
+        bytes: Vec<u8>, // standard sha256 hash result.
+    ) -> Result<Self, SynthesisError> {
+        let s = bytes
+            .iter()
+            .flat_map(|&byte| (0..8).rev().map(move |i| (byte >> i) & 1u8 == 1u8));
+
+        let mut values = vec![];
+        let mut variables = vec![];
+        for (i, v) in s.enumerate() {
+            let alloc = AllocatedBit::alloc_input(cs.ns(|| format!("output_bit_{}", i)), Some(v))?;
+            variables.push(alloc.get_variable());
+            values.push(alloc.into());
+        }
+
+        Ok(Self {
+            value: Some(values),
+            variables: variables,
+        })
+    }
+
     pub fn get_value(&self) -> Option<Vec<Boolean>> {
         self.value.clone()
     }

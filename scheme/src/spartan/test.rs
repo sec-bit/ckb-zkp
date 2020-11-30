@@ -223,7 +223,7 @@ mod bn_256 {
     use crate::spartan::spark::encode;
     use crate::spartan::verify::{verify_nizk_proof, verify_snark_proof};
     use curve::bn_256::{Bn_256, Fr};
-    use math::{One, PairingEngine};
+    use math::{Curve, One};
     use rand::thread_rng;
 
     #[test]
@@ -242,10 +242,10 @@ mod bn_256 {
             generate_setup_nizk_parameters::<Bn_256, _>(rng, r1cs.num_aux, r1cs.num_inputs)
                 .unwrap();
         let c1 = TestDemo::<Fr> {
-            lhs: Some(<Bn_256 as PairingEngine>::Fr::one()),
-            rhs: Some(<Bn_256 as PairingEngine>::Fr::one() + &<Bn_256 as PairingEngine>::Fr::one()),
-            ohs: Some(<Bn_256 as PairingEngine>::Fr::one()),
-            phs: Some(<Bn_256 as PairingEngine>::Fr::one()),
+            lhs: Some(<Bn_256 as Curve>::Fr::one()),
+            rhs: Some(<Bn_256 as Curve>::Fr::one() + &<Bn_256 as Curve>::Fr::one()),
+            ohs: Some(<Bn_256 as Curve>::Fr::one()),
+            phs: Some(<Bn_256 as Curve>::Fr::one()),
         };
 
         println!("Creating proof...");
@@ -255,7 +255,7 @@ mod bn_256 {
         let result = verify_nizk_proof::<Bn_256>(
             &params,
             &r1cs,
-            &vec![<Bn_256 as PairingEngine>::Fr::one()],
+            &vec![<Bn_256 as Curve>::Fr::one()],
             &proof,
         )
         .unwrap();
@@ -286,10 +286,10 @@ mod bn_256 {
         .unwrap();
 
         let c1 = TestDemo::<Fr> {
-            lhs: Some(<Bn_256 as PairingEngine>::Fr::one()),
-            rhs: Some(<Bn_256 as PairingEngine>::Fr::one() + &<Bn_256 as PairingEngine>::Fr::one()),
-            ohs: Some(<Bn_256 as PairingEngine>::Fr::one()),
-            phs: Some(<Bn_256 as PairingEngine>::Fr::one()),
+            lhs: Some(<Bn_256 as Curve>::Fr::one()),
+            rhs: Some(<Bn_256 as Curve>::Fr::one() + &<Bn_256 as Curve>::Fr::one()),
+            ohs: Some(<Bn_256 as Curve>::Fr::one()),
+            phs: Some(<Bn_256 as Curve>::Fr::one()),
         };
         println!("[snark_spartan]Generate parameters...ok");
 
@@ -305,7 +305,7 @@ mod bn_256 {
         let result = verify_snark_proof::<Bn_256>(
             &params,
             &r1cs,
-            &vec![<Bn_256 as PairingEngine>::Fr::one()],
+            &vec![<Bn_256 as Curve>::Fr::one()],
             &proof,
             &encode_commit,
         )

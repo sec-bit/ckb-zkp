@@ -1,4 +1,4 @@
-use math::{msm::VariableBaseMSM, Curve, Field, PrimeField};
+use math::{Curve, Field};
 
 use crate::r1cs::{Index, LinearCombination};
 use crate::Vec;
@@ -291,21 +291,7 @@ fn quick_multiexp<G>(exponents: &Vec<G::Fr>, bases: &Vec<G::Affine>) -> G::Proje
 where
     G: Curve,
 {
-    // use std::time::Instant;
-    // let t1 = Instant::now();
-    let scalars = exponents[..]
-        .into_iter()
-        .map(|s| s.into_repr())
-        .collect::<Vec<_>>();
-
-    let result = VariableBaseMSM::multi_scalar_mul(bases, &scalars[..]);
-    // let duration = t1.elapsed();
-    // println!(
-    //     "len = {}, Time elapsed in quick_multiexp is: {:?}",
-    //     exponents.len(),
-    //     duration
-    // );
-    result
+    G::vartime_multiscalar_mul(exponents, bases)
 }
 
 fn random_bytes_to_fr<F: Field>(bytes: &[u8]) -> F {

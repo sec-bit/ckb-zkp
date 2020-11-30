@@ -1,4 +1,4 @@
-use math::{log2, Field, One, PairingEngine, Zero};
+use math::{log2, Curve, Field, One, Zero};
 
 use crate::{BTreeMap, String, Vec};
 
@@ -7,22 +7,22 @@ use crate::r1cs::{
 };
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct R1CSInstance<E: PairingEngine> {
+pub struct R1CSInstance<G: Curve> {
     pub num_inputs: usize,
     pub num_aux: usize,
     pub num_constraints: usize,
-    pub a_matrix: Vec<Vec<(E::Fr, Index)>>,
-    pub b_matrix: Vec<Vec<(E::Fr, Index)>>,
-    pub c_matrix: Vec<Vec<(E::Fr, Index)>>,
+    pub a_matrix: Vec<Vec<(G::Fr, Index)>>,
+    pub b_matrix: Vec<Vec<(G::Fr, Index)>>,
+    pub c_matrix: Vec<Vec<(G::Fr, Index)>>,
 }
 
-impl<E: PairingEngine> ConstraintSystem<E::Fr> for R1CSInstance<E> {
+impl<G: Curve> ConstraintSystem<G::Fr> for R1CSInstance<G> {
     type Root = Self;
 
     #[inline]
     fn alloc<F, A, AR>(&mut self, _: A, _: F) -> Result<Variable, SynthesisError>
     where
-        F: FnOnce() -> Result<E::Fr, SynthesisError>,
+        F: FnOnce() -> Result<G::Fr, SynthesisError>,
         A: FnOnce() -> AR,
         AR: Into<String>,
     {
@@ -38,7 +38,7 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for R1CSInstance<E> {
     #[inline]
     fn alloc_input<F, A, AR>(&mut self, _: A, _: F) -> Result<Variable, SynthesisError>
     where
-        F: FnOnce() -> Result<E::Fr, SynthesisError>,
+        F: FnOnce() -> Result<G::Fr, SynthesisError>,
         A: FnOnce() -> AR,
         AR: Into<String>,
     {
@@ -55,9 +55,9 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for R1CSInstance<E> {
     where
         A: FnOnce() -> AR,
         AR: Into<String>,
-        LA: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
-        LB: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
-        LC: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
+        LA: FnOnce(LinearCombination<G::Fr>) -> LinearCombination<G::Fr>,
+        LB: FnOnce(LinearCombination<G::Fr>) -> LinearCombination<G::Fr>,
+        LC: FnOnce(LinearCombination<G::Fr>) -> LinearCombination<G::Fr>,
     {
         self.a_matrix.push(vec![]);
         self.b_matrix.push(vec![]);
@@ -116,9 +116,9 @@ fn push_constraints<F: Field>(
     }
 }
 
-pub fn generate_r1cs<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>>(
+pub fn generate_r1cs<G: Curve, C: ConstraintSynthesizer<G::Fr>>(
     circuit: C,
-) -> Result<R1CSInstance<E>, SynthesisError> {
+) -> Result<R1CSInstance<G>, SynthesisError> {
     let mut r1cs = R1CSInstance {
         num_inputs: 0,
         num_aux: 0,
@@ -129,7 +129,7 @@ pub fn generate_r1cs<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>>(
     };
 
     // Allocate the "one" input variable
-    r1cs.alloc_input(|| "", || Ok(E::Fr::one()))?;
+    r1cs.alloc_input(|| "", || Ok(G::Fr::one()))?;
     // Synthesize the circuit.
     circuit.generate_constraints(&mut r1cs)?;
     let num_constraints_t = (2usize).pow(log2(r1cs.num_constraints));
@@ -150,10 +150,10 @@ pub fn generate_r1cs<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>>(
     Ok(r1cs)
 }
 
-pub fn switch_matrix_to_list<E: PairingEngine>(
-    m_matrix: &Vec<Vec<(E::Fr, Index)>>,
+pub fn switch_matrix_to_list<G: Curve>(
+    m_matrix: &Vec<Vec<(G::Fr, Index)>>,
     witness_len: usize,
-) -> Result<(Vec<E::Fr>, Vec<usize>, Vec<usize>), SynthesisError> {
+) -> Result<(Vec<G::Fr>, Vec<usize>, Vec<usize>), SynthesisError> {
     let mut vals = Vec::new();
     let mut rows = Vec::new();
     let mut cols = Vec::new();
