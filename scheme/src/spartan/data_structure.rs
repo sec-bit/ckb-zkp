@@ -1,256 +1,256 @@
 use math::fft::DensePolynomial as Polynomial;
-use math::{Field, PairingEngine};
+use math::{Curve, Field};
 
 use crate::Vec;
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct PolyCommitmentParameters<E: PairingEngine> {
+pub struct PolyCommitmentParameters<G: Curve> {
     pub n: usize,
-    pub gen_n: MultiCommitmentParameters<E>,
-    pub gen_1: MultiCommitmentParameters<E>,
+    pub gen_n: MultiCommitmentParameters<G>,
+    pub gen_1: MultiCommitmentParameters<G>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct MultiCommitmentParameters<E: PairingEngine> {
+pub struct MultiCommitmentParameters<G: Curve> {
     pub n: usize,
-    pub generators: Vec<E::G1Affine>,
-    pub h: E::G1Affine,
+    pub generators: Vec<G::Affine>,
+    pub h: G::Affine,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct SumCheckCommitmentParameters<E: PairingEngine> {
-    pub gen_1: MultiCommitmentParameters<E>,
-    pub gen_3: MultiCommitmentParameters<E>,
-    pub gen_4: MultiCommitmentParameters<E>,
+pub struct SumCheckCommitmentParameters<G: Curve> {
+    pub gen_1: MultiCommitmentParameters<G>,
+    pub gen_3: MultiCommitmentParameters<G>,
+    pub gen_4: MultiCommitmentParameters<G>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct R1CSSatisfiedParameters<E: PairingEngine> {
-    pub pc_params: PolyCommitmentParameters<E>,
-    pub sc_params: SumCheckCommitmentParameters<E>,
+pub struct R1CSSatisfiedParameters<G: Curve> {
+    pub pc_params: PolyCommitmentParameters<G>,
+    pub sc_params: SumCheckCommitmentParameters<G>,
     pub n: usize,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct R1CSEvalsParameters<E: PairingEngine> {
-    pub ops_params: PolyCommitmentParameters<E>,
-    pub mem_params: PolyCommitmentParameters<E>,
-    pub derefs_params: PolyCommitmentParameters<E>,
+pub struct R1CSEvalsParameters<G: Curve> {
+    pub ops_params: PolyCommitmentParameters<G>,
+    pub mem_params: PolyCommitmentParameters<G>,
+    pub derefs_params: PolyCommitmentParameters<G>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct NizkParameters<E: PairingEngine> {
-    pub r1cs_satisfied_params: R1CSSatisfiedParameters<E>,
+pub struct NizkParameters<G: Curve> {
+    pub r1cs_satisfied_params: R1CSSatisfiedParameters<G>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct SnarkParameters<E: PairingEngine> {
-    pub r1cs_eval_params: R1CSEvalsParameters<E>,
-    pub r1cs_satisfied_params: R1CSSatisfiedParameters<E>,
+pub struct SnarkParameters<G: Curve> {
+    pub r1cs_eval_params: R1CSEvalsParameters<G>,
+    pub r1cs_satisfied_params: R1CSSatisfiedParameters<G>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct AddrTimestamps<E: PairingEngine> {
+pub struct AddrTimestamps<G: Curve> {
     pub addr_index: Vec<Vec<usize>>,
-    pub addrs: Vec<Vec<E::Fr>>,
-    pub read_ts_list: Vec<Vec<E::Fr>>,
-    pub audit_ts: Vec<E::Fr>,
+    pub addrs: Vec<Vec<G::Fr>>,
+    pub read_ts_list: Vec<Vec<G::Fr>>,
+    pub audit_ts: Vec<G::Fr>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct EncodeCommit<E: PairingEngine> {
+pub struct EncodeCommit<G: Curve> {
     pub n: usize,
     pub m: usize,
-    pub ops_commit: Vec<E::G1Affine>,
-    pub mem_commit: Vec<E::G1Affine>,
+    pub ops_commit: Vec<G::Affine>,
+    pub mem_commit: Vec<G::Affine>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct EncodeMemory<E: PairingEngine> {
-    pub row_addr_ts: AddrTimestamps<E>,
-    pub col_addr_ts: AddrTimestamps<E>,
-    pub val_list: Vec<Vec<E::Fr>>,
-    pub ops_list: Vec<E::Fr>,
-    pub mem_list: Vec<E::Fr>,
+pub struct EncodeMemory<G: Curve> {
+    pub row_addr_ts: AddrTimestamps<G>,
+    pub col_addr_ts: AddrTimestamps<G>,
+    pub val_list: Vec<Vec<G::Fr>>,
+    pub ops_list: Vec<G::Fr>,
+    pub mem_list: Vec<G::Fr>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct SumCheckEvalProof<E: PairingEngine> {
-    pub d_commit: E::G1Affine,
-    pub dot_cd_commit: E::G1Affine,
-    pub z: Vec<E::Fr>,
-    pub z_delta: E::Fr,
-    pub z_beta: E::Fr,
+pub struct SumCheckEvalProof<G: Curve> {
+    pub d_commit: G::Affine,
+    pub dot_cd_commit: G::Affine,
+    pub z: Vec<G::Fr>,
+    pub z_delta: G::Fr,
+    pub z_beta: G::Fr,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct NIZKProof<E: PairingEngine> {
-    pub r1cs_satisfied_proof: R1CSSatProof<E>,
-    pub r: (Vec<E::Fr>, Vec<E::Fr>),
+pub struct NIZKProof<G: Curve> {
+    pub r1cs_satisfied_proof: R1CSSatProof<G>,
+    pub r: (Vec<G::Fr>, Vec<G::Fr>),
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct SNARKProof<E: PairingEngine> {
-    pub r1cs_satisfied_proof: R1CSSatProof<E>,
-    pub matrix_evals: (E::Fr, E::Fr, E::Fr),
-    pub r1cs_evals_proof: R1CSEvalsProof<E>,
+pub struct SNARKProof<G: Curve> {
+    pub r1cs_satisfied_proof: R1CSSatProof<G>,
+    pub matrix_evals: (G::Fr, G::Fr, G::Fr),
+    pub r1cs_evals_proof: R1CSEvalsProof<G>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct R1CSSatProof<E: PairingEngine> {
-    pub commit_witness: Vec<E::G1Affine>,
-    pub proof_one: SumCheckProof<E>,
-    pub proof_two: SumCheckProof<E>,
-    pub w_ry: E::Fr,
-    pub product_proof: DotProductProof<E>,
-    pub knowledge_product_commit: KnowledgeProductCommit<E>,
-    pub knowledge_product_proof: KnowledgeProductProof<E>,
-    pub sc1_eq_proof: EqProof<E>,
-    pub sc2_eq_proof: EqProof<E>,
-    pub commit_ry: E::G1Affine,
+pub struct R1CSSatProof<G: Curve> {
+    pub commit_witness: Vec<G::Affine>,
+    pub proof_one: SumCheckProof<G>,
+    pub proof_two: SumCheckProof<G>,
+    pub w_ry: G::Fr,
+    pub product_proof: DotProductProof<G>,
+    pub knowledge_product_commit: KnowledgeProductCommit<G>,
+    pub knowledge_product_proof: KnowledgeProductProof<G>,
+    pub sc1_eq_proof: EqProof<G>,
+    pub sc2_eq_proof: EqProof<G>,
+    pub commit_ry: G::Affine,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct R1CSEvalsProof<E: PairingEngine> {
-    pub prod_layer_proof: ProductLayerProof<E>,
-    pub hash_layer_proof: HashLayerProof<E>,
-    pub derefs_commit: Vec<E::G1Affine>,
+pub struct R1CSEvalsProof<G: Curve> {
+    pub prod_layer_proof: ProductLayerProof<G>,
+    pub hash_layer_proof: HashLayerProof<G>,
+    pub derefs_commit: Vec<G::Affine>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct PolyCommitments<E: PairingEngine> {
-    pub commit: E::G1Affine,
+pub struct PolyCommitments<G: Curve> {
+    pub commit: G::Affine,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct SumCheckProof<E: PairingEngine> {
-    pub comm_polys: Vec<E::G1Affine>,
-    pub comm_evals: Vec<E::G1Affine>,
-    pub proofs: Vec<SumCheckEvalProof<E>>,
+pub struct SumCheckProof<G: Curve> {
+    pub comm_polys: Vec<G::Affine>,
+    pub comm_evals: Vec<G::Affine>,
+    pub proofs: Vec<SumCheckEvalProof<G>>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct WitnessProof<E: PairingEngine> {
-    pub proof_phase_one_sumcheck: SumCheckProof<E>,
-    pub proof_phase_two_sumcheck: SumCheckProof<E>,
+pub struct WitnessProof<G: Curve> {
+    pub proof_phase_one_sumcheck: SumCheckProof<G>,
+    pub proof_phase_two_sumcheck: SumCheckProof<G>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct KnowledgeProof<E: PairingEngine> {
-    pub t_commit: E::G1Affine,
-    pub z1: E::Fr,
-    pub z2: E::Fr,
+pub struct KnowledgeProof<G: Curve> {
+    pub t_commit: G::Affine,
+    pub z1: G::Fr,
+    pub z2: G::Fr,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct ProductProof<E: PairingEngine> {
-    pub commit_alpha: E::G1Affine,
-    pub commit_beta: E::G1Affine,
-    pub commit_delta: E::G1Affine,
-    pub z: Vec<E::Fr>,
+pub struct ProductProof<G: Curve> {
+    pub commit_alpha: G::Affine,
+    pub commit_beta: G::Affine,
+    pub commit_delta: G::Affine,
+    pub z: Vec<G::Fr>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct EqProof<E: PairingEngine> {
-    pub alpha: E::G1Affine,
-    pub z: E::Fr,
+pub struct EqProof<G: Curve> {
+    pub alpha: G::Affine,
+    pub z: G::Fr,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct InnerProductProof<E: PairingEngine> {
-    pub l_vec: Vec<E::G1Affine>,
-    pub r_vec: Vec<E::G1Affine>,
+pub struct InnerProductProof<G: Curve> {
+    pub l_vec: Vec<G::Affine>,
+    pub r_vec: Vec<G::Affine>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct DotProductProof<E: PairingEngine> {
-    pub inner_product_proof: InnerProductProof<E>,
-    pub delta: E::G1Affine,
-    pub beta: E::G1Affine,
-    pub z1: E::Fr,
-    pub z2: E::Fr,
+pub struct DotProductProof<G: Curve> {
+    pub inner_product_proof: InnerProductProof<G>,
+    pub delta: G::Affine,
+    pub beta: G::Affine,
+    pub z1: G::Fr,
+    pub z2: G::Fr,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct KnowledgeProductCommit<E: PairingEngine> {
-    pub va_commit: E::G1Affine,
-    pub vb_commit: E::G1Affine,
-    pub vc_commit: E::G1Affine,
-    pub prod_commit: E::G1Affine,
+pub struct KnowledgeProductCommit<G: Curve> {
+    pub va_commit: G::Affine,
+    pub vb_commit: G::Affine,
+    pub vc_commit: G::Affine,
+    pub prod_commit: G::Affine,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct KnowledgeProductProof<E: PairingEngine> {
-    pub knowledge_proof: KnowledgeProof<E>,
-    pub product_proof: ProductProof<E>,
+pub struct KnowledgeProductProof<G: Curve> {
+    pub knowledge_proof: KnowledgeProof<G>,
+    pub product_proof: ProductProof<G>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct HashForMemoryChecking<E: PairingEngine> {
-    pub init_hash: Vec<E::Fr>,
-    pub read_ts_hash_list: Vec<Vec<E::Fr>>,
-    pub write_ts_hash_list: Vec<Vec<E::Fr>>,
-    pub audit_ts_hash: Vec<E::Fr>,
+pub struct HashForMemoryChecking<G: Curve> {
+    pub init_hash: Vec<G::Fr>,
+    pub read_ts_hash_list: Vec<Vec<G::Fr>>,
+    pub write_ts_hash_list: Vec<Vec<G::Fr>>,
+    pub audit_ts_hash: Vec<G::Fr>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct ProdForMemoryChecking<E: PairingEngine> {
-    pub init_prod: ProductCircuit<E>,
-    pub read_ts_prod_list: Vec<ProductCircuit<E>>,
-    pub write_ts_prod_list: Vec<ProductCircuit<E>>,
-    pub audit_ts_prod: ProductCircuit<E>,
+pub struct ProdForMemoryChecking<G: Curve> {
+    pub init_prod: ProductCircuit<G>,
+    pub read_ts_prod_list: Vec<ProductCircuit<G>>,
+    pub write_ts_prod_list: Vec<ProductCircuit<G>>,
+    pub audit_ts_prod: ProductCircuit<G>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct ProductCircuit<E: PairingEngine> {
-    pub left_vec: Vec<Vec<E::Fr>>,
-    pub right_vec: Vec<Vec<E::Fr>>,
+pub struct ProductCircuit<G: Curve> {
+    pub left_vec: Vec<Vec<G::Fr>>,
+    pub right_vec: Vec<Vec<G::Fr>>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct MemoryLayer<E: PairingEngine> {
-    pub hash: HashForMemoryChecking<E>,
-    pub prod: ProdForMemoryChecking<E>,
+pub struct MemoryLayer<G: Curve> {
+    pub hash: HashForMemoryChecking<G>,
+    pub prod: ProdForMemoryChecking<G>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct ProductLayerProof<E: PairingEngine> {
-    pub proof_memory: ProductCircuitEvalProof<E>,
-    pub proof_ops: ProductCircuitEvalProof<E>,
-    pub eval_dotp: (Vec<E::Fr>, Vec<E::Fr>),
-    pub eval_row: (E::Fr, Vec<E::Fr>, Vec<E::Fr>, E::Fr),
-    pub eval_col: (E::Fr, Vec<E::Fr>, Vec<E::Fr>, E::Fr),
+pub struct ProductLayerProof<G: Curve> {
+    pub proof_memory: ProductCircuitEvalProof<G>,
+    pub proof_ops: ProductCircuitEvalProof<G>,
+    pub eval_dotp: (Vec<G::Fr>, Vec<G::Fr>),
+    pub eval_row: (G::Fr, Vec<G::Fr>, Vec<G::Fr>, G::Fr),
+    pub eval_col: (G::Fr, Vec<G::Fr>, Vec<G::Fr>, G::Fr),
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct LayerProductCircuitProof<E: PairingEngine> {
-    pub polys: Vec<Polynomial<E::Fr>>,
-    pub claim_prod_left: Vec<E::Fr>,
-    pub claim_prod_right: Vec<E::Fr>,
+pub struct LayerProductCircuitProof<G: Curve> {
+    pub polys: Vec<Polynomial<G::Fr>>,
+    pub claim_prod_left: Vec<G::Fr>,
+    pub claim_prod_right: Vec<G::Fr>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct ProductCircuitEvalProof<E: PairingEngine> {
-    pub layers_proof: Vec<LayerProductCircuitProof<E>>,
-    pub claim_dotp: (Vec<E::Fr>, Vec<E::Fr>, Vec<E::Fr>),
+pub struct ProductCircuitEvalProof<G: Curve> {
+    pub layers_proof: Vec<LayerProductCircuitProof<G>>,
+    pub claim_dotp: (Vec<G::Fr>, Vec<G::Fr>, Vec<G::Fr>),
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct HashLayerProof<E: PairingEngine> {
-    pub proof_derefs: DotProductProof<E>,
-    pub proof_ops: DotProductProof<E>,
-    pub proof_mem: DotProductProof<E>,
-    pub evals_derefs: (Vec<E::Fr>, Vec<E::Fr>),
-    pub evals_row: (Vec<E::Fr>, Vec<E::Fr>, E::Fr),
-    pub evals_col: (Vec<E::Fr>, Vec<E::Fr>, E::Fr),
-    pub evals_val: Vec<E::Fr>,
+pub struct HashLayerProof<G: Curve> {
+    pub proof_derefs: DotProductProof<G>,
+    pub proof_ops: DotProductProof<G>,
+    pub proof_mem: DotProductProof<G>,
+    pub evals_derefs: (Vec<G::Fr>, Vec<G::Fr>),
+    pub evals_row: (Vec<G::Fr>, Vec<G::Fr>, G::Fr),
+    pub evals_col: (Vec<G::Fr>, Vec<G::Fr>, G::Fr),
+    pub evals_val: Vec<G::Fr>,
 }
 
-pub fn random_bytes_to_fr<E: PairingEngine>(bytes: &[u8]) -> E::Fr {
+pub fn random_bytes_to_fr<G: Curve>(bytes: &[u8]) -> G::Fr {
     let mut r_bytes = [0u8; 31];
     // only use the first 31 bytes, to avoid value over modulus
     // we could mod modulus here too to keep value in range
     r_bytes.copy_from_slice(&bytes[0..31]);
-    let r = <E::Fr as Field>::from_random_bytes(&r_bytes);
+    let r = <G::Fr as Field>::from_random_bytes(&r_bytes);
     r.unwrap()
 }
