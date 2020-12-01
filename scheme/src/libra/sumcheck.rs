@@ -171,8 +171,8 @@ pub struct ZKSumCheckProof<G: Curve> {
     pub comm_polys: Vec<G::Affine>,
     pub comm_evals: Vec<G::Affine>,
     pub proofs: Vec<SumCheckEvalProof<G>>,
-    pub poly_value_at_r: Vec<G::Fr>,
-    pub blind_eval: G::Fr,
+    // pub poly_value_at_r: Vec<G::Fr>,
+    // pub blind_eval: G::Fr,
 }
 
 impl<G: Curve> ZKSumCheckProof<G> {
@@ -185,7 +185,7 @@ impl<G: Curve> ZKSumCheckProof<G> {
         blind_claim: G::Fr,
         rng: &mut R,
         transcript: &mut Transcript,
-    ) -> (Self, Vec<G::Fr>) {
+    ) -> (Self, Vec<G::Fr>, G::Fr, Vec<G::Fr>) {
         let mut size = f_vec.len();
         let (mut mul_hg_vec, mut add_hg_vec1, mut add_hg_vec2) =
             (g_vec.0.clone(), g_vec.1.clone(), g_vec.2.clone());
@@ -296,10 +296,8 @@ impl<G: Curve> ZKSumCheckProof<G> {
             comm_evals,
             comm_polys,
             proofs,
-            poly_value_at_r,
-            blind_eval: blind_evals[bit_size - 1],
         };
-        (proof, ru)
+        (proof, poly_value_at_r, blind_evals[bit_size - 1], ru)
     }
 
     pub fn phase_two_prover<R: Rng>(
@@ -311,7 +309,7 @@ impl<G: Curve> ZKSumCheckProof<G> {
         blind_claim: G::Fr,
         rng: &mut R,
         transcript: &mut Transcript,
-    ) -> (Self, Vec<G::Fr>) {
+    ) -> (Self, Vec<G::Fr>, G::Fr, Vec<G::Fr>) {
         let mut size = f_vec.len();
         let (mut mul_hg_vec, mut add_hg_vec, fu) = (g_vec.0.clone(), g_vec.1.clone(), g_vec.2);
         let mut f_vec = f_vec.clone();
@@ -420,10 +418,8 @@ impl<G: Curve> ZKSumCheckProof<G> {
             comm_evals,
             comm_polys,
             proofs,
-            poly_value_at_r,
-            blind_eval: blind_evals[bit_size - 1],
         };
-        (proof, rv)
+        (proof, poly_value_at_r, blind_evals[bit_size - 1], rv)
     }
 }
 
@@ -506,6 +502,10 @@ impl<G: Curve> SumCheckEvalProof<G> {
         let mut buf = [0u8; 32];
         transcript.challenge_bytes(b"c", &mut buf);
         let c = random_bytes_to_fr::<G>(&buf);
+        // println!(
+        //     "proof -- w[0]={}, w[1]={}, cx={}, cy={}, delta={}, beta={}",
+        //     w[0], w[1], comm_poly, comm_claim_value, d_commit, dot_cd_commit
+        // );
         let z = (0..poly_size)
             .map(|i| c * &polynomial[i] + &d_vec[i])
             .collect::<Vec<G::Fr>>();
@@ -546,6 +546,10 @@ impl<G: Curve> SumCheckEvalProof<G> {
         let mut buf = [0u8; 32];
         transcript.challenge_bytes(b"c", &mut buf);
         let c = random_bytes_to_fr::<G>(&buf);
+        // println!(
+        //     "verify -- w[0]={}, w[1]={}, cx={}, cy={}, delta={}, beta={}",
+        //     w[0], w[1], comm_poly, comm_claim_value, self.d_commit, self.dot_cd_commit
+        // );
         let mut coeffs = Vec::new();
         let mut rc = G::Fr::one();
         for _ in 0..bit_size {

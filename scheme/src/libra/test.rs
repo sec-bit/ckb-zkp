@@ -60,9 +60,7 @@ mod bn_256 {
         let (proof, output) = LinearGKRProof::<Bn_256>::prover(&circuit, &inputs, &witnesses);
         println!("generate proof...ok");
 
-        let mut inputs2 = witnesses.clone();
-        inputs2.extend(&inputs);
-        let result = proof.verify(&circuit, &output, &inputs2);
+        let result = proof.verify(&circuit, &output, &inputs);
         println!("verifier...{}", result);
     }
 
@@ -84,9 +82,7 @@ mod bn_256 {
             ZKLinearGKRProof::prover::<_>(&params, &circuit, &inputs, &witnesses, rng);
         println!("generate proof...ok");
 
-        let mut inputs2 = witnesses.clone();
-        inputs2.extend(&inputs);
-        let result = proof.verify(&params, &circuit, &output, &inputs2);
+        let result = proof.verify(&params, &circuit, &output, &inputs);
         println!("verifier...{}", result);
     }
 }
@@ -153,9 +149,7 @@ mod bls12_381 {
         let (proof, output) = LinearGKRProof::<Bls12_381>::prover(&circuit, &inputs, &witnesses);
         println!("generate proof...ok");
 
-        let mut inputs2 = witnesses.clone();
-        inputs2.extend(&inputs);
-        let result = proof.verify(&circuit, &output, &inputs2);
+        let result = proof.verify(&circuit, &output, &inputs);
         println!("verifier...{}", result);
     }
 
@@ -177,9 +171,7 @@ mod bls12_381 {
             ZKLinearGKRProof::<Bls12_381>::prover::<_>(&params, &circuit, &inputs, &witnesses, rng);
         println!("generate proof...ok");
 
-        let mut inputs2 = witnesses.clone();
-        inputs2.extend(&inputs);
-        let result = proof.verify(&params, &circuit, &output, &inputs2);
+        let result = proof.verify(&params, &circuit, &output, &inputs);
         println!("verifier...{}", result);
     }
 }
