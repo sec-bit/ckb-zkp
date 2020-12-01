@@ -1,8 +1,11 @@
 use crate::libra::circuit::Gate;
 use core::ops::AddAssign;
 use curve::ProjectiveCurve;
-use math::{msm::VariableBaseMSM, AffineCurve, Curve, Field, One, PrimeField, Zero};
+use math::{
+    log2, msm::VariableBaseMSM, AffineCurve, Curve, Field, One, PrimeField, UniformRand, Zero,
+};
 use merlin::Transcript;
+use rand::Rng;
 
 pub fn eval_output<G: Curve>(
     output: &Vec<G::Fr>,
@@ -40,7 +43,7 @@ pub fn eval_eq_x_y<G: Curve>(rx: &Vec<G::Fr>, ry: &Vec<G::Fr>) -> G::Fr {
 pub fn eval_hg<G: Curve>(
     evals_g_vec: &Vec<G::Fr>,
     v_vec: &Vec<G::Fr>,
-    gates: &Vec<Gate<G>>,
+    gates: &Vec<Gate>,
     bit_size: usize,
 ) -> (Vec<G::Fr>, Vec<G::Fr>, Vec<G::Fr>) {
     let mut mul_hg_vec = vec![G::Fr::zero(); (2usize).pow(bit_size as u32)];
@@ -62,7 +65,7 @@ pub fn eval_hg<G: Curve>(
 pub fn eval_fgu<G: Curve>(
     evals_g_vec: &Vec<G::Fr>,
     ru_vec: &Vec<G::Fr>,
-    gates: &Vec<Gate<G>>,
+    gates: &Vec<Gate>,
     bit_size: usize,
 ) -> (Vec<G::Fr>, Vec<G::Fr>) {
     let mut mul_hg_vec = vec![G::Fr::zero(); (2usize).pow(bit_size as u32)];
@@ -141,4 +144,38 @@ pub fn eval_value<G: Curve>(value: &Vec<G::Fr>, r: &Vec<G::Fr>) -> G::Fr {
     let eq_vec = eval_eq::<G>(&r);
     let result = (0..value.len()).map(|i| value[i] * &eq_vec[i]).sum();
     result
+}
+
+pub fn packing_poly_commit<G: Curve, R: Rng>(
+    generators: &Vec<G::Affine>,
+    values: &Vec<G::Fr>,
+    h: &G::Affine,
+    rng: &mut R,
+    is_blind: bool,
+) -> (Vec<G::Affine>, Vec<G::Fr>) {
+    let mut comms = Vec::new();
+    let mut blinds = Vec::new();
+
+    let n = values.len();
+    let size = log2(n) as usize;
+    let l_size = (2usize).pow((size / 2) as u32);
+    let r_size = (2usize).pow((size - size / 2) as u32);
+    assert_eq!(n, l_size * r_size);
+
+    for i in 0..l_size {
+        let mut blind = G::Fr::zero();
+        if is_blind {
+            blind = G::Fr::rand(rng);
+        }
+        blinds.push(blind);
+
+        let commit = poly_commit_vec::<G>(
+            generators,
+            &values[i * r_size..(i + 1) * r_size].to_vec(),
+            h,
+            blind,
+        );
+        comms.push(commit);
+    }
+    (comms, blinds)
 }

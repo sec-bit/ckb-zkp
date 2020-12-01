@@ -1,47 +1,47 @@
 use math::{log2, Curve, Zero};
+use std::cmp;
 
 ///operation
 /// 0. add
 /// 1. multiple
 /// 2. dummy
 /// 3. input
-/// 4. direct relay
-pub struct Gate<G: Curve> {
+pub struct Gate {
     pub g: usize,
     pub op: u8,
     pub left_node: usize,
     pub right_node: usize,
-    pub value: G::Fr,
 }
 
-impl<G: Curve> Gate<G> {
-    pub fn new(g: usize, op: u8, left_node: usize, right_node: usize, value: G::Fr) -> Self {
+impl Gate {
+    pub fn new(g: usize, op: u8, left_node: usize, right_node: usize) -> Self {
         Self {
             g,
             op,
             left_node,
             right_node,
-            value,
         }
     }
 }
 
-pub struct Layer<G: Curve> {
+pub struct Layer {
     pub gates_count: usize,
     pub bit_size: usize,
-    pub gates: Vec<Gate<G>>,
+    pub gates: Vec<Gate>,
 }
 
-impl<G: Curve> Layer<G> {
-    pub fn input_new(inputs: &Vec<G::Fr>) -> Self {
+impl Layer {
+    pub fn input_new(num_input: usize, num_aux: usize) -> Self {
+        let gates_num = cmp::max(num_aux, num_input).next_power_of_two() * 2;
+        let bit_size = log2(gates_num) as usize;
+
         let mut gates = Vec::new();
-        let mut gates_count: usize = 0;
-        for (g, &value) in inputs.iter().enumerate() {
-            let gate = Gate::new(g, 3, 0, 0, value);
+        let mut gates_count = 0;
+        for g in 0..gates_num {
+            let gate = Gate::new(g, 3, 0, 0);
             gates.push(gate);
             gates_count += 1;
         }
-        let bit_size = log2(gates_count.next_power_of_two()) as usize;
         Self {
             gates_count,
             bit_size,
@@ -62,11 +62,12 @@ impl<G: Curve> Layer<G> {
             if left >= next_layer_gates_count || right >= next_layer_gates_count {
                 return Err(Error::IllegalNode);
             }
-            let gate = Gate::new(g, op, left, right, G::Fr::zero());
+            let gate = Gate::new(g, op, left, right);
             gates.push(gate);
             gates_count += 1;
         }
         let bit_size = log2(gates_count.next_power_of_two()) as usize;
+
         let layer = Self {
             gates_count,
             bit_size,
@@ -77,17 +78,21 @@ impl<G: Curve> Layer<G> {
     }
 }
 
-pub struct Circuit<G: Curve> {
+pub struct Circuit {
     pub depth: usize,
-    pub layers: Vec<Layer<G>>,
+    pub layers: Vec<Layer>,
 }
 
-impl<G: Curve> Circuit<G> {
-    pub fn new(inputs: &Vec<G::Fr>, layers_raw: &Vec<Vec<(u8, usize, usize)>>) -> Circuit<G> {
+impl Circuit {
+    pub fn new(
+        num_inputs: usize,
+        num_aux: usize,
+        layers_raw: &Vec<Vec<(u8, usize, usize)>>,
+    ) -> Circuit {
         let mut layers = Vec::new();
         let mut depth = 0;
 
-        let layer_input = Layer::input_new(inputs);
+        let layer_input = Layer::input_new(num_inputs, num_aux);
         let mut next_layer_gates_count = layer_input.gates_count;
         layers.push(layer_input);
         depth += 1;
@@ -102,19 +107,28 @@ impl<G: Curve> Circuit<G> {
         Circuit { depth, layers }
     }
 
-    pub fn evaluate(&self) -> Result<Vec<Vec<G::Fr>>, Error> {
+    pub fn evaluate<G: Curve>(
+        &self,
+        inputs: &Vec<G::Fr>,
+        aux: &Vec<G::Fr>,
+    ) -> Result<Vec<Vec<G::Fr>>, Error> {
         let mut evals = Vec::new();
         let mut next_layer_values = Vec::new();
         for (d, layer) in self.layers.iter().enumerate() {
             let mut values = Vec::new();
             if d == 0 {
-                for gate in layer.gates.iter() {
-                    values.push(gate.value);
-                }
+                let input_size = 2usize.pow(layer.bit_size as u32 - 1);
+                assert!(input_size >= inputs.len());
+                assert!(input_size >= aux.len());
+                values = aux.clone();
+                values.extend(&vec![G::Fr::zero(); input_size - inputs.len()]);
+                values.extend(inputs.clone());
+                values.extend(&vec![G::Fr::zero(); input_size - aux.len()]);
             } else {
                 let next_layer_size = next_layer_values.len();
                 for gate in layer.gates.iter() {
                     if gate.left_node >= next_layer_size || gate.right_node >= next_layer_size {
+                        // illegal left, right
                         return Err(Error::IllegalNode);
                     }
                     if gate.op == 0 {
@@ -128,6 +142,7 @@ impl<G: Curve> Circuit<G> {
                             next_layer_values[gate.left_node] * &next_layer_values[gate.right_node],
                         );
                     } else {
+                        // illegal op
                         return Err(Error::IllegalOperator);
                     }
                 }
