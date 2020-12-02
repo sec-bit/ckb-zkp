@@ -28,8 +28,8 @@ The following document is more focused on CKB smart contracts. [Check this doc](
   - [Build contracts](#build-contracts)
     - [Enable `debug!` macro in release mode](#enable-debug-macro-in-release-mode)
   - [Tests](#tests)
-    - [Prerequisites for testing](#prerequisites-for-testing)
-    - [Run tests](#run-tests)
+    - [Run cli tests](#run-cli-tests)
+    - [Run contacts tests](#run-contacts-tests)
   - [Deployment](#deployment)
     - [Invoking the contract on-chain](#invoking-the-contract-on-chain)
     - [Debugging the `capsule` itself (Temporary usage)](#debugging-the-capsule-itself-temporary-usage)
@@ -97,54 +97,47 @@ capsule build --release
 
 A simplified, one-time blockchain context is used in the tests environment using [ckb-tool](https://github.com/jjyr/ckb-tool) crate. Needless to setup an authentic blockchain and run a ckb node, one can simply send a transaction to invoke the contract and checkout if the contract works as expected.
 
-### Prerequisites for testing
+### Run cli tests
 
 1. Go to _./cli_ and generate a vk file and a proof file using ckb-zkp's command line utility.
 
-   Use groth16 scheme & bn_256 curve:
+   Use groth16 scheme & bls12_381 curve:
 
    1. Complete trusted-setup:
 
       ```sh
       # ./cli
-      cargo run --bin trusted-setup mimc
+      cargo run --bin setup groth16 bls12_381 hash
       ```
 
    2. Prove the secret string.
 
       ```sh
       # ./cli
-      cargo run --bin zkp-prove mimc --string=iamsecret
+      cargo run --bin zkp-prove groth16 bls12_381 hash iamsecret
       ```
 
-      When successful, it will create a proof file at proofs_files.
+      When successful, it will create a proof file at proof_files.
 
    3. (Optional) Do the verification.
 
       ```sh
       # ./cli
-      cargo run --bin zkp-verify mimc proofs_files/mimc.groth16-bn_256.proof
+      cargo run --bin zkp-verify proof_files/groth16-bls12_381-hash.proof.json
       ```
 
-   Use groth16 as scheme and bls12_381 as curve:
+   Know supported schemes and curves:
 
    ```sh
    # ./cli
-   # trusted-setup
-   cargo run --bin trusted-setup mimc groth16 bls12_381
-   # Prove the secret string
-   cargo run --bin zkp-prove mimc groth16 bls12_381 --string=iamsecret
-   # Verification.
-   cargo run --bin zkp-verify mimc groth16 bls12_381 proofs_files/mimc.groth16-bls12_381.proof
+   cargo run --bin setup
+   cargo run --bin zkp-prove
+   cargo run --bin zkp-verify
    ```
 
    See [cli document](./cli) for further help.
 
-### Run tests
-
-**Make sure vk file(s) and proof file(s) are prepared and can be found by the test suit.**
-
-Then type the following command.
+### Run contacts tests
 
 ATTENTION:
 
