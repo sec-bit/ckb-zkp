@@ -32,11 +32,12 @@ pub struct Layer {
 
 impl Layer {
     pub fn input_new(num_inputs: usize, num_aux: usize) -> Self {
-        let bit_size = cmp::max(num_aux, num_inputs).next_power_of_two() * 2;
+        let gates_num = cmp::max(num_aux, num_inputs).next_power_of_two() * 2;
+        let bit_size = log2(gates_num) as usize;
 
         let mut gates = Vec::new();
         let mut gates_count = 0;
-        for g in 0..bit_size {
+        for g in 0..2usize.pow(bit_size as u32) {
             let gate = Gate::new(g, 3, 0, 0);
             gates.push(gate);
             gates_count += 1;
@@ -105,7 +106,11 @@ impl Circuit {
         Self { depth, layers }
     }
 
-    pub fn evaluate<G: Curve>(&self, inputs: &Vec<G::Fr>, aux: &Vec<G::Fr>) -> Vec<Vec<G::Fr>> {
+    pub fn evaluate<G: Curve>(
+        &self,
+        inputs: &Vec<G::Fr>,
+        aux: &Vec<G::Fr>,
+    ) -> Result<Vec<Vec<G::Fr>>, Error> {
         let n = self.layers.len();
         let mut evals = vec![vec![]; n];
         let mut next_layer_values = Vec::new();
@@ -114,7 +119,7 @@ impl Circuit {
         for (d, layer) in self.layers.iter().enumerate() {
             let mut values = Vec::new();
             if d == 0 {
-                let input_size = layer.bit_size / 2;
+                let input_size = 2usize.pow(layer.bit_size as u32 - 1);
                 assert!(input_size >= inputs.len());
                 assert!(input_size >= aux.len());
                 values = aux.clone();
@@ -126,6 +131,7 @@ impl Circuit {
                 for gate in layer.gates.iter() {
                     if gate.left_node >= next_layer_size || gate.right_node >= next_layer_size {
                         // illegal left, right
+                        return Err(Error::IllegalNode);
                     }
                     if gate.op == 0 {
                         // add
@@ -139,6 +145,7 @@ impl Circuit {
                         );
                     } else {
                         // illegal op
+                        return Err(Error::IllegalNode);
                     }
                 }
             }
@@ -146,7 +153,7 @@ impl Circuit {
             evals[n - d - 1] = values;
         }
         assert_eq!(evals.len(), self.depth);
-        evals
+        Ok(evals)
     }
 }
 

@@ -34,7 +34,7 @@ impl<G: Curve> HyraxProof<G> {
         let mut circuit_evals = Vec::new();
         let mut outputs = Vec::new();
         for i in 0..n {
-            let circuit_eval = circuit.evaluate::<G>(&inputs[i], &witnesses[i]);
+            let circuit_eval = circuit.evaluate::<G>(&inputs[i], &witnesses[i]).unwrap();
             outputs.push(circuit_eval[0].clone());
             circuit_evals.push(circuit_eval);
         }
@@ -72,6 +72,7 @@ impl<G: Curve> HyraxProof<G> {
         transcript.append_message(b"comm_claim_a0", &math::to_bytes!(comm_a).unwrap());
 
         let mut comm_claim = comm_a;
+        let mut claim = result_u;
         let mut proofs = Vec::new();
         let mut x = G::Fr::zero();
         let mut y = G::Fr::zero();
@@ -97,6 +98,7 @@ impl<G: Curve> HyraxProof<G> {
             let (proof, q_aside_vec_tmp, ql_vec_tmp, qr_vec_tmp, eval_vec, blind_vec) =
                 ZkSumcheckProof::prover::<R>(
                     &params.sc_params,
+                    claim,
                     comm_claim,
                     rc0,
                     (u0, u1),
@@ -127,6 +129,7 @@ impl<G: Curve> HyraxProof<G> {
                 u1 = random_bytes_to_fr::<G>(&buf);
                 comm_claim = (proof.comm_x.mul(u0) + &proof.comm_y.mul(u1)).into_affine();
                 rc0 = rx * &u0 + &(ry * &u1);
+                claim = x * &u0 + &(y * &u1);
                 transcript.append_message(b"comm_a_i", &math::to_bytes!(comm_claim).unwrap());
             }
             proofs.push(proof);
@@ -207,7 +210,6 @@ impl<G: Curve> HyraxProof<G> {
         let mut transcript = Transcript::new(b"hyrax - linear gkr");
 
         let n = outputs.len();
-        assert_eq!(n, outputs.len());
         assert_eq!(n.next_power_of_two(), n);
         assert!(n > 0);
 
