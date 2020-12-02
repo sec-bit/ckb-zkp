@@ -1,4 +1,5 @@
-use math::{log2, Curve, Zero};
+use crate::libra::evaluate::eval_eq;
+use math::{log2, Curve, One, Zero};
 use std::cmp;
 
 ///operation
@@ -76,6 +77,50 @@ impl Layer {
 
         Ok(layer)
     }
+
+    pub fn eval_operators<G: Curve>(
+        &self,
+        gu_vec: &Vec<G::Fr>,
+        gv_vec: &Vec<G::Fr>,
+        ru_vec: &Vec<G::Fr>,
+        rv_vec: &Vec<G::Fr>,
+        alpha: G::Fr,
+        beta: G::Fr,
+    ) -> (G::Fr, G::Fr) {
+        let mut add_gate_eval = G::Fr::zero();
+        let mut mult_gate_eval = G::Fr::zero();
+        let eq_gu_vec = eval_eq::<G>(&gu_vec);
+        let eq_gv_vec = eval_eq::<G>(&gv_vec);
+        let eq_ru_vec = eval_eq::<G>(&ru_vec);
+        let eq_rv_vec = eval_eq::<G>(&rv_vec);
+
+        for gate in self.gates.iter() {
+            let eval = alpha * &eq_gu_vec[gate.g] + &(beta * &eq_gv_vec[gate.g]);
+            if gate.op == 0 {
+                add_gate_eval += &(eq_ru_vec[gate.left_node] * &eq_rv_vec[gate.right_node] * &eval);
+            } else if gate.op == 1 {
+                mult_gate_eval +=
+                    &(eq_ru_vec[gate.left_node] * &eq_rv_vec[gate.right_node] * &eval);
+            }
+        }
+        (add_gate_eval, mult_gate_eval)
+    }
+}
+
+pub fn convert_to_bit<G: Curve>(n: usize, log_g: usize) -> Vec<G::Fr> {
+    let mut n_vec = Vec::new();
+    let mut n = n;
+    while n > 0 {
+        if n % 2 == 0 {
+            n_vec.push(G::Fr::zero());
+        } else {
+            n_vec.push(G::Fr::one());
+        }
+        n /= 2;
+    }
+    n_vec.extend(vec![G::Fr::zero(); log_g - n_vec.len()]);
+    n_vec.reverse();
+    n_vec
 }
 
 pub struct Circuit {

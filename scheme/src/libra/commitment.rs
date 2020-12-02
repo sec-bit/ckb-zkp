@@ -23,10 +23,10 @@ impl<G: Curve> EqProof<G> {
         transcript: &mut Transcript,
     ) -> Self {
         let r = G::Fr::rand(rng);
-        let c1 = poly_commit_vec::<G>(&params.generators, &vec![claim1], &params.h, blind1);
-        transcript.append_message(b"C1", &math::to_bytes!(c1).unwrap());
-        let c2 = poly_commit_vec::<G>(&params.generators, &vec![claim2], &params.h, blind2);
-        transcript.append_message(b"C2", &math::to_bytes!(c2).unwrap());
+        let comm1 = poly_commit_vec::<G>(&params.generators, &vec![claim1], &params.h, blind1);
+        transcript.append_message(b"C1", &math::to_bytes!(comm1).unwrap());
+        let comm2 = poly_commit_vec::<G>(&params.generators, &vec![claim2], &params.h, blind2);
+        transcript.append_message(b"C2", &math::to_bytes!(comm2).unwrap());
         let alpha = params.h.mul(r).into_affine();
         transcript.append_message(b"alpha", &math::to_bytes!(alpha).unwrap());
         let mut buf = [0u8; 32];

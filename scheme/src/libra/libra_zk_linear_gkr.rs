@@ -1,5 +1,5 @@
 use crate::libra::circuit::Circuit;
-use crate::libra::commitment::{EqProof, LogDotProductProof};
+use crate::libra::commitment::{EqProof, LogDotProductProof, ProductProof};
 use crate::libra::data_structure::Parameters;
 use crate::libra::evaluate::{
     eval_output, eval_value, packing_poly_commit, poly_commit_vec, random_bytes_to_fr,
@@ -15,6 +15,9 @@ pub struct ZKLayerProof<G: Curve> {
     pub proof_phase_two: ZKSumCheckProof<G>,
     pub comm_x: G::Affine,
     pub comm_y: G::Affine,
+    pub comm_z: G::Affine,
+    pub prod_proof: ProductProof<G>,
+    pub eq_proof: EqProof<G>,
 }
 
 pub struct ZKLinearGKRProof<G: Curve> {
@@ -64,8 +67,7 @@ impl<G: Curve> ZKLinearGKRProof<G> {
         let mut final_y = G::Fr::zero();
         let mut final_blind_x = G::Fr::zero();
         let mut final_blind_y = G::Fr::zero();
-        // let mut final_comm_x: G::Affine;
-        // let mut final_comm_y: G::Affine;
+
         // sumcheck
         for d in (1..circuit.depth).rev() {
             let mut claim = alpha * &result_u + &(beta * &result_v);
@@ -90,7 +92,7 @@ impl<G: Curve> ZKLinearGKRProof<G> {
                 rng,
                 &mut transcript,
             );
-            // let eval_ru = proof_phase_one.poly_value_at_r.clone();
+
             claim = eval_ru[0] * &eval_ru[1] + &(eval_ru[0] * &eval_ru[2]) + &eval_ru[3];
             let rx = G::Fr::rand(rng);
             let comm_x = poly_commit_vec::<G>(
@@ -100,7 +102,6 @@ impl<G: Curve> ZKLinearGKRProof<G> {
                 rx,
             );
             transcript.append_message(b"comm_x", &math::to_bytes!(comm_x).unwrap());
-
             // phase2
             let (mul_hg_vec, add_hg_vec, fu) = initialize_phase_two::<G>(
                 &gu,
@@ -112,7 +113,7 @@ impl<G: Curve> ZKLinearGKRProof<G> {
                 alpha,
                 beta,
             );
-            let (proof_phase_two, eval_rv, _, rv) = ZKSumCheckProof::phase_two_prover::<R>(
+            let (proof_phase_two, eval_rv, blind_v, rv) = ZKSumCheckProof::phase_two_prover::<R>(
                 &params.sc_params,
                 &circuit_evals[d - 1],
                 &(mul_hg_vec, add_hg_vec, fu),
@@ -130,6 +131,32 @@ impl<G: Curve> ZKLinearGKRProof<G> {
                 ry,
             );
             transcript.append_message(b"comm_y", &math::to_bytes!(comm_y).unwrap());
+
+            let z = eval_ru[0] * &eval_rv[0];
+            let rz = G::Fr::rand(rng);
+            let (prod_proof, _, _, comm_z) = ProductProof::prover::<R>(
+                &params.sc_params.gen_1,
+                eval_ru[0],
+                rx,
+                eval_rv[0],
+                ry,
+                z,
+                rz,
+                rng,
+                &mut transcript,
+            );
+
+            let eval = z * &eval_rv[1] + &((eval_ru[0] + &eval_rv[0]) * &eval_rv[2]);
+            let eval_blind = rz * &eval_rv[1] + &((rx + &ry) * &eval_rv[2]);
+            let eq_proof = EqProof::prover(
+                &params.sc_params.gen_1,
+                eval,
+                eval_blind,
+                eval,
+                blind_v,
+                rng,
+                &mut transcript,
+            );
 
             if d > 1 {
                 gu = ru.clone();
@@ -156,6 +183,9 @@ impl<G: Curve> ZKLinearGKRProof<G> {
                 proof_phase_two,
                 comm_x,
                 comm_y,
+                comm_z,
+                prod_proof,
+                eq_proof,
             };
             proofs.push(proof);
         }
@@ -237,7 +267,7 @@ impl<G: Curve> ZKLinearGKRProof<G> {
 
         let mut alpha = G::Fr::one();
         let mut beta = G::Fr::zero();
-        let (result_u, _) = eval_output::<G>(
+        let (result_u, gu) = eval_output::<G>(
             &output,
             circuit.layers[circuit.depth - 1].bit_size,
             &mut transcript,
@@ -256,6 +286,8 @@ impl<G: Curve> ZKLinearGKRProof<G> {
         let mut comm_y_final = comm_claim;
         let mut ru_vec = Vec::new();
         let mut rv_vec = Vec::new();
+        let mut gu_vec = gu.clone();
+        let mut gv_vec = gu.clone();
         assert_eq!(circuit.depth - 1, self.proofs.len());
         for (d, lproof) in self.proofs.iter().enumerate() {
             let (proof1, proof2) = (&lproof.proof_phase_one, &lproof.proof_phase_two);
@@ -268,7 +300,7 @@ impl<G: Curve> ZKLinearGKRProof<G> {
                 transcript.append_message(b"comm_poly", &math::to_bytes!(comm_poly).unwrap());
                 let mut buf = [0u8; 32];
                 transcript.challenge_bytes(b"challenge_nextround", &mut buf);
-                let r_u = random_bytes_to_fr::<G>(&buf);
+                let r_i = random_bytes_to_fr::<G>(&buf);
                 let comm_eval = proof1.comm_evals[i];
                 transcript.append_message(
                     b"comm_claim_per_round",
@@ -280,12 +312,12 @@ impl<G: Curve> ZKLinearGKRProof<G> {
                     comm_poly,
                     comm_eval,
                     comm_claim,
-                    r_u,
+                    r_i,
                     3,
                     &mut transcript,
                 );
                 assert!(result);
-                ru_vec.push(r_u);
+                ru_vec.push(r_i);
                 comm_claim = comm_eval;
             }
             transcript.append_message(b"comm_x", &math::to_bytes!(lproof.comm_x).unwrap());
@@ -295,7 +327,7 @@ impl<G: Curve> ZKLinearGKRProof<G> {
                 transcript.append_message(b"comm_poly", &math::to_bytes!(comm_poly).unwrap());
                 let mut buf = [0u8; 32];
                 transcript.challenge_bytes(b"challenge_nextround", &mut buf);
-                let r_v = random_bytes_to_fr::<G>(&buf);
+                let r_i = random_bytes_to_fr::<G>(&buf);
                 let comm_eval = proof2.comm_evals[i];
                 transcript.append_message(
                     b"comm_claim_per_round",
@@ -307,15 +339,40 @@ impl<G: Curve> ZKLinearGKRProof<G> {
                     comm_poly,
                     comm_eval,
                     comm_claim,
-                    r_v,
+                    r_i,
                     3,
                     &mut transcript,
                 );
                 assert!(result);
-                rv_vec.push(r_v);
+                rv_vec.push(r_i);
                 comm_claim = comm_eval;
             }
             transcript.append_message(b"comm_y", &math::to_bytes!(lproof.comm_y).unwrap());
+
+            let result = lproof.prod_proof.verify(
+                &params.sc_params.gen_1,
+                lproof.comm_x,
+                lproof.comm_y,
+                lproof.comm_z,
+                &mut transcript,
+            );
+            assert!(result);
+
+            let (add_gate_eval, mult_gate_eval) = circuit.layers[circuit.depth - d - 1]
+                .eval_operators::<G>(&gu_vec, &gv_vec, &ru_vec, &rv_vec, alpha, beta);
+            let comm_final = ((lproof.comm_x + lproof.comm_y).mul(add_gate_eval)
+                + &(lproof.comm_z.mul(mult_gate_eval)))
+                .into_affine();
+            let result = lproof.eq_proof.verify(
+                &params.sc_params.gen_1,
+                comm_final,
+                comm_claim,
+                &mut transcript,
+            );
+            assert!(result);
+
+            gu_vec = ru_vec.clone();
+            gv_vec = rv_vec.clone();
 
             if d < circuit.depth - 2 {
                 let mut buf = [0u8; 32];

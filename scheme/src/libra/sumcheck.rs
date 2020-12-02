@@ -502,10 +502,6 @@ impl<G: Curve> SumCheckEvalProof<G> {
         let mut buf = [0u8; 32];
         transcript.challenge_bytes(b"c", &mut buf);
         let c = random_bytes_to_fr::<G>(&buf);
-        // println!(
-        //     "proof -- w[0]={}, w[1]={}, cx={}, cy={}, delta={}, beta={}",
-        //     w[0], w[1], comm_poly, comm_claim_value, d_commit, dot_cd_commit
-        // );
         let z = (0..poly_size)
             .map(|i| c * &polynomial[i] + &d_vec[i])
             .collect::<Vec<G::Fr>>();
@@ -546,10 +542,6 @@ impl<G: Curve> SumCheckEvalProof<G> {
         let mut buf = [0u8; 32];
         transcript.challenge_bytes(b"c", &mut buf);
         let c = random_bytes_to_fr::<G>(&buf);
-        // println!(
-        //     "verify -- w[0]={}, w[1]={}, cx={}, cy={}, delta={}, beta={}",
-        //     w[0], w[1], comm_poly, comm_claim_value, self.d_commit, self.dot_cd_commit
-        // );
         let mut coeffs = Vec::new();
         let mut rc = G::Fr::one();
         for _ in 0..bit_size {
