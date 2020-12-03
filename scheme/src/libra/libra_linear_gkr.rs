@@ -142,8 +142,6 @@ impl<G: Curve> LinearGKRProof<G> {
                 + &eval_ru_final[3];
             assert_eq!(claim, claim_final);
             for i in 0..bit_size {
-                // let comm_eval = proof2.comm_evals[i];
-                // let comm_poly = proof2.comm_polys[i];
                 let poly = &proof2.polys[i];
                 assert_eq!(
                     poly.evaluate(G::Fr::zero()) + &poly.evaluate(G::Fr::one()),

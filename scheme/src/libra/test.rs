@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod bn_256 {
     use crate::libra::circuit::Circuit;
-    use crate::libra::data_structure::Parameters;
     use crate::libra::libra_linear_gkr::LinearGKRProof;
     use crate::libra::libra_zk_linear_gkr::ZKLinearGKRProof;
+    use crate::libra::params::Parameters;
     use curve::bn_256::Bn_256;
     use math::{Curve, One, Zero};
     use rand::thread_rng;
@@ -90,9 +90,9 @@ mod bn_256 {
 #[cfg(test)]
 mod bls12_381 {
     use crate::libra::circuit::Circuit;
-    use crate::libra::data_structure::Parameters;
     use crate::libra::libra_linear_gkr::LinearGKRProof;
     use crate::libra::libra_zk_linear_gkr::ZKLinearGKRProof;
+    use crate::libra::params::Parameters;
     use curve::bls12_381::Bls12_381;
     use math::{Curve, One, Zero};
     use rand::thread_rng;

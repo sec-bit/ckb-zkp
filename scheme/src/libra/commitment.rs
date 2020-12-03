@@ -1,5 +1,5 @@
-use crate::libra::data_structure::{MultiCommitmentSetupParameters, PolyCommitmentSetupParameters};
 use crate::libra::evaluate::{eval_eq, poly_commit_vec, random_bytes_to_fr};
+use crate::libra::params::{MultiCommitmentSetupParameters, PolyCommitmentSetupParameters};
 use math::{
     bytes::ToBytes, log2, msm::VariableBaseMSM, AffineCurve, Curve, Field, One, PrimeField,
     ProjectiveCurve, UniformRand, Zero,

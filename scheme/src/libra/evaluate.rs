@@ -13,21 +13,21 @@ pub fn eval_output<G: Curve>(
     transcript: &mut Transcript,
 ) -> (G::Fr, Vec<G::Fr>) {
     let mut outputs = output.clone();
-    let mut rs = Vec::new();
+
     outputs.append(&mut vec![
         G::Fr::zero();
         (2usize).pow(bit_size as u32) - outputs.len()
     ]);
 
-    for _ in 0..bit_size {
-        let mut buf = [0u8; 32];
-        transcript.challenge_bytes(b"challenge_nextround", &mut buf);
-        let r_j = random_bytes_to_fr::<G>(&buf);
-        rs.push(r_j);
-    }
+    let rs = (0..bit_size)
+        .map(|_| {
+            let mut buf = [0u8; 32];
+            transcript.challenge_bytes(b"challenge_nextround", &mut buf);
+            random_bytes_to_fr::<G>(&buf)
+        })
+        .collect::<Vec<_>>();
 
-    let eq_vec = eval_eq::<G>(&rs);
-    let result = (0..outputs.len()).map(|i| outputs[i] * &eq_vec[i]).sum();
+    let result = eval_value::<G>(&outputs, &rs);
     (result, rs)
 }
 
@@ -36,6 +36,41 @@ pub fn eval_eq_x_y<G: Curve>(rx: &Vec<G::Fr>, ry: &Vec<G::Fr>) -> G::Fr {
     let result = (0..rx.len())
         .map(|i| (G::Fr::one() - &rx[i]) * &(G::Fr::one() - &ry[i]) + &(rx[i] * &ry[i]))
         .product();
+    result
+}
+
+pub fn combine_with_r<G: Curve>(values: &Vec<G::Fr>, r: G::Fr) -> Vec<G::Fr> {
+    let len = values.len() / 2;
+    assert!(len.is_power_of_two());
+    let mut new_values: Vec<G::Fr> = vec![G::Fr::zero(); len];
+    for i in 0..len {
+        new_values[i] = r * &values[i + len] + &((G::Fr::one() - &r) * &values[i]);
+    }
+    new_values
+}
+
+// ~eq(x, rx)
+pub fn eval_eq<G: Curve>(rx: &Vec<G::Fr>) -> Vec<G::Fr> {
+    let base: usize = 2;
+    let rlen = rx.len();
+    let pow_len = base.pow(rlen as u32);
+
+    let mut evals: Vec<G::Fr> = vec![G::Fr::one(); pow_len];
+    let mut size = 1;
+    for i in 0..rlen {
+        let scalar = rx[rlen - i - 1];
+        for j in 0..size {
+            evals[size + j] = scalar * &evals[j]; // eval * scalar
+            evals[j] = (G::Fr::one() - &scalar) * &evals[j]; // eval * (1- scalar)
+        }
+        size *= 2;
+    }
+    evals
+}
+
+pub fn eval_value<G: Curve>(value: &Vec<G::Fr>, r: &Vec<G::Fr>) -> G::Fr {
+    let eq_vec = eval_eq::<G>(&r);
+    let result = (0..value.len()).map(|i| value[i] * &eq_vec[i]).sum();
     result
 }
 
@@ -82,25 +117,6 @@ pub fn eval_fgu<G: Curve>(
     (mul_hg_vec, add_hg_vec)
 }
 
-// ~eq(x, rx)
-pub fn eval_eq<G: Curve>(rx: &Vec<G::Fr>) -> Vec<G::Fr> {
-    let base: usize = 2;
-    let rlen = rx.len();
-    let pow_len = base.pow(rlen as u32);
-
-    let mut evals: Vec<G::Fr> = vec![G::Fr::one(); pow_len];
-    let mut size = 1;
-    for i in 0..rlen {
-        let scalar = rx[rlen - i - 1];
-        for j in 0..size {
-            evals[size + j] = scalar * &evals[j]; // eval * scalar
-            evals[j] = (G::Fr::one() - &scalar) * &evals[j]; // eval * (1- scalar)
-        }
-        size *= 2;
-    }
-    evals
-}
-
 pub fn random_bytes_to_fr<G: Curve>(bytes: &[u8]) -> G::Fr {
     let mut r_bytes = [0u8; 31];
     // only use the first 31 bytes, to avoid value over modulus
@@ -128,22 +144,6 @@ pub fn poly_commit_vec<G: Curve>(
     commit.add_assign(&(h.mul(blind_value)));
 
     commit.into_affine()
-}
-
-pub fn combine_with_r<G: Curve>(values: &Vec<G::Fr>, r: G::Fr) -> Vec<G::Fr> {
-    let len = values.len() / 2;
-    assert!(len.is_power_of_two());
-    let mut new_values: Vec<G::Fr> = vec![G::Fr::zero(); len];
-    for i in 0..len {
-        new_values[i] = r * &values[i + len] + &((G::Fr::one() - &r) * &values[i]);
-    }
-    new_values
-}
-
-pub fn eval_value<G: Curve>(value: &Vec<G::Fr>, r: &Vec<G::Fr>) -> G::Fr {
-    let eq_vec = eval_eq::<G>(&r);
-    let result = (0..value.len()).map(|i| value[i] * &eq_vec[i]).sum();
-    result
 }
 
 pub fn packing_poly_commit<G: Curve, R: Rng>(

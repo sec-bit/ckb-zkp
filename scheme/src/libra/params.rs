@@ -1,11 +1,10 @@
-use crate::libra::data_structure::{
-    MultiCommitmentSetupParameters,
-    Parameters,
-    PolyCommitmentSetupParameters,
-    SumCheckCommitmentSetupParameters, //ZK_SetupParameters,
-};
 use math::{Curve, ProjectiveCurve, UniformRand};
 use rand::Rng;
+
+pub struct Parameters<G: Curve> {
+    pub sc_params: SumCheckCommitmentSetupParameters<G>,
+    pub pc_params: PolyCommitmentSetupParameters<G>,
+}
 
 impl<G: Curve> Parameters<G> {
     pub fn new<R: Rng>(rng: &mut R, num: usize) -> Self {
@@ -17,6 +16,13 @@ impl<G: Curve> Parameters<G> {
             sc_params,
         }
     }
+}
+
+#[derive(Clone)]
+pub struct PolyCommitmentSetupParameters<G: Curve> {
+    pub n: usize,
+    pub gen_n: MultiCommitmentSetupParameters<G>,
+    pub gen_1: MultiCommitmentSetupParameters<G>,
 }
 
 impl<G: Curve> PolyCommitmentSetupParameters<G> {
@@ -32,6 +38,13 @@ impl<G: Curve> PolyCommitmentSetupParameters<G> {
 
         Self { n, gen_n, gen_1 }
     }
+}
+
+#[derive(Clone)]
+pub struct SumCheckCommitmentSetupParameters<G: Curve> {
+    pub gen_1: MultiCommitmentSetupParameters<G>,
+    pub gen_3: MultiCommitmentSetupParameters<G>,
+    pub gen_4: MultiCommitmentSetupParameters<G>,
 }
 
 impl<G: Curve> SumCheckCommitmentSetupParameters<G> {
@@ -50,6 +63,13 @@ impl<G: Curve> SumCheckCommitmentSetupParameters<G> {
             gen_4,
         }
     }
+}
+
+#[derive(Clone)]
+pub struct MultiCommitmentSetupParameters<G: Curve> {
+    pub n: usize,
+    pub generators: Vec<G::Affine>,
+    pub h: G::Affine,
 }
 
 impl<G: Curve> MultiCommitmentSetupParameters<G> {

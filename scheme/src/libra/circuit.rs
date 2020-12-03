@@ -1,5 +1,5 @@
 use crate::libra::evaluate::eval_eq;
-use math::{log2, Curve, One, Zero};
+use math::{log2, Curve, Zero};
 use std::cmp;
 
 ///operation
@@ -36,13 +36,10 @@ impl Layer {
         let gates_num = cmp::max(num_aux, num_input).next_power_of_two() * 2;
         let bit_size = log2(gates_num) as usize;
 
-        let mut gates = Vec::new();
-        let mut gates_count = 0;
-        for g in 0..gates_num {
-            let gate = Gate::new(g, 3, 0, 0);
-            gates.push(gate);
-            gates_count += 1;
-        }
+        let gates = (0..gates_num)
+            .map(|g| Gate::new(g, 3, 0, 0))
+            .collect::<Vec<Gate>>();
+        let gates_count = gates.len();
         Self {
             gates_count,
             bit_size,
@@ -55,7 +52,6 @@ impl Layer {
         next_layer_gates_count: usize,
     ) -> Result<Self, Error> {
         let mut gates = Vec::new();
-        let mut gates_count: usize = 0;
         for (g, &(op, left, right)) in gates_raw.iter().enumerate() {
             if op != 0 && op != 1 {
                 return Err(Error::IllegalOperator);
@@ -65,8 +61,8 @@ impl Layer {
             }
             let gate = Gate::new(g, op, left, right);
             gates.push(gate);
-            gates_count += 1;
         }
+        let gates_count = gates.len();
         let bit_size = log2(gates_count.next_power_of_two()) as usize;
 
         let layer = Self {
@@ -105,22 +101,6 @@ impl Layer {
         }
         (add_gate_eval, mult_gate_eval)
     }
-}
-
-pub fn convert_to_bit<G: Curve>(n: usize, log_g: usize) -> Vec<G::Fr> {
-    let mut n_vec = Vec::new();
-    let mut n = n;
-    while n > 0 {
-        if n % 2 == 0 {
-            n_vec.push(G::Fr::zero());
-        } else {
-            n_vec.push(G::Fr::one());
-        }
-        n /= 2;
-    }
-    n_vec.extend(vec![G::Fr::zero(); log_g - n_vec.len()]);
-    n_vec.reverse();
-    n_vec
 }
 
 pub struct Circuit {

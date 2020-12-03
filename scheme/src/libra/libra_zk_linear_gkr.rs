@@ -1,10 +1,10 @@
 use crate::libra::circuit::Circuit;
 use crate::libra::commitment::{EqProof, LogDotProductProof, ProductProof};
-use crate::libra::data_structure::Parameters;
 use crate::libra::evaluate::{
     eval_output, eval_value, packing_poly_commit, poly_commit_vec, random_bytes_to_fr,
 };
 use crate::libra::libra_linear_gkr::{initialize_phase_one, initialize_phase_two};
+use crate::libra::params::Parameters;
 use crate::libra::sumcheck::ZKSumCheckProof;
 use math::{bytes::ToBytes, AffineCurve, Curve, One, ProjectiveCurve, UniformRand, Zero};
 use merlin::Transcript;

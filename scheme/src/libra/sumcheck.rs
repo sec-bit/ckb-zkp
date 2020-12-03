@@ -1,5 +1,5 @@
-use crate::libra::data_structure::SumCheckCommitmentSetupParameters;
 use crate::libra::evaluate::{combine_with_r, poly_commit_vec, random_bytes_to_fr};
+use crate::libra::params::SumCheckCommitmentSetupParameters;
 use math::fft::DensePolynomial as Polynomial;
 use math::{bytes::ToBytes, AffineCurve, Curve, Field, One, ProjectiveCurve, UniformRand, Zero};
 use merlin::Transcript;
@@ -17,7 +17,6 @@ impl<G: Curve> SumCheckProof<G> {
         g_vec: &(Vec<G::Fr>, Vec<G::Fr>, Vec<G::Fr>),
         bit_size: usize,
         claim: G::Fr,
-        // rng: &mut R,
         transcript: &mut Transcript,
     ) -> (Self, Vec<G::Fr>) {
         let mut size = f_vec.len();
