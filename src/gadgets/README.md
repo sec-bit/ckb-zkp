@@ -2,7 +2,7 @@
 
 > https://hackmd.io/@p0n1/ByEc6d928
 
-This doc mainly lists the gadgets that the zkp-toolkit library has implemented in the first stage. In the implementation process, the code of bellman, libsnark, and ethsnarks is referenced. The code of each gadget is located in the `zkp-toolkit/src/gadget` folder. We briefly analyze the design and implementation of each gadget here.
+This doc mainly lists the gadgets that the zkp-toolkit library has implemented in the first stage. In the implementation process, the code of bellman, libsnark, and ethsnarks is referenced. The code of each gadget is located in the `zkp-toolkit/src/gadgets` folder. We briefly analyze the design and implementation of each gadget here.
 
 ## Gadget list
 
