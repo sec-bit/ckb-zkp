@@ -1,29 +1,30 @@
+version = "0.4.4"
 deployment = "deployment.toml"
 
 [[contracts]]
 name = "universal_groth16_verifier"
 template_type = "Rust"
 
-[[contracts]]
-name = "universal_marlin_verifier"
-template_type = "Rust"
+# [[contracts]]
+# name = "universal_marlin_verifier"
+# template_type = "Rust"
 
-[[contracts]]
-name = "mini_bulletproofs_verifier"
-template_type = "Rust"
+# [[contracts]]
+# name = "mini_bulletproofs_verifier"
+# template_type = "Rust"
 
-[[contracts]]
-name = "mini_clinkv2_kzg10_verifier"
-template_type = "Rust"
+# [[contracts]]
+# name = "mini_clinkv2_kzg10_verifier"
+# template_type = "Rust"
 
-[[contracts]]
-name = "mini_clinkv2_ipa_verifier"
-template_type = "Rust"
+# [[contracts]]
+# name = "mini_clinkv2_ipa_verifier"
+# template_type = "Rust"
 
-[[contracts]]
-name = "universal_spartan_nizk_verifier"
-template_type = "Rust"
+# [[contracts]]
+# name = "universal_spartan_nizk_verifier"
+# template_type = "Rust"
 
-[[contracts]]
-name = "universal_spartan_snark_verifier"
-template_type = "Rust"
+# [[contracts]]
+# name = "universal_spartan_snark_verifier"
+# template_type = "Rust"

@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-ckb-std = "0.6.1"
+ckb-std = "0.6.2"
 postcard = { version = "0.5", default-features = false, features = ["alloc"] }
 
 [dependencies.ckb-zkp]

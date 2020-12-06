@@ -65,10 +65,8 @@ A contract for verification is deployed on the ckb chain. The prover and the ver
 2. Install the CKB contract development framework [capsule](https://github.com/nervosnetwork/capsule). Access the [wiki page](https://github.com/nervosnetwork/capsule/wiki) for more details about `capsule`.
 
    ```sh
-   cargo install capsule --git https://github.com/nervosnetwork/capsule.git --rev=089a5505
+   cargo install ckb-capsule
    ```
-
-   `capsule` is under development and not stable, so please specify the revision when installing.
 
 3. Deploy a ckb dev chain if you need to deploy the contract to the blockchain. See https://docs.nervos.org/dev-guide/devchain.html for guidance.
 
@@ -91,7 +89,7 @@ capsule build --release
 
 ### Enable `debug!` macro in release mode
 
-**In `ckb-std` version 0.2.2 and newer, `debug!` macro is disabled in release mode**. If you still want to enable `debug!` macro in **release** mode, insert `debug-assertions = true` under `[profile.release]` in `contracts/mimc-groth16-verifier/Cargo.toml`.
+**In `ckb-std` version 0.6.2 and newer, `debug!` macro is disabled in release mode**. If you still want to enable `debug!` macro in **release** mode, insert `debug-assertions = true` under `[profile.release]` in `contracts/universal_groth16_verifier/Cargo.toml`.
 
 ## Tests
 
@@ -225,11 +223,10 @@ Test setup:
 
 - Release mode;
 - stripped;
-- using `jjy0/ckb-capsule-recipe-rust:2020-6-2` to build and test and measure running costs;
+- using `jjy0/ckb-capsule-recipe-rust` to build and test and measure running costs;
 - using scheme groth16 and curve bn_256;
-- ckb-std version 0.3.0;
-- ckb-zkp revision d90fe30e;
-- ckb-tool and ckb-testtool version 0.0.1;
+- ckb-std version 0.6.2;
+- ckb-tool and ckb-testtool version 0.2.2;
 - Default profile setting: `overflow-checks = true`.
 
 | LTO     | `opt-level` | `codegen-units` | `panic`   | Binary size(Byte) | Execution cost (cycles) |
@@ -257,11 +254,10 @@ Test setup:
 - Release mode;
 - stripped;
 - Profile: `LTO = true`, `codegen-units = 1`, `panic = "abort"`;
-- using `jjy0/ckb-capsule-recipe-rust:2020-6-2` to build and test and measure running costs;
+- using `jjy0/ckb-capsule-recipe-rust` to build and test and measure running costs;
 - using scheme groth16 and curve bn_256;
-- ckb-std version 0.3.0;
-- ckb-zkp revision d90fe30e;
-- ckb-tool and ckb-testtool version 0.0.1.
+- ckb-std version 0.6.2;
+- ckb-tool and ckb-testtool version 0.2.2.
 
 | Curve     | `opt-level` | Binary size(Byte) | Execution cost (cycles) |
 | --------- | ----------- | ----------------- | ----------------------- |
@@ -281,11 +277,10 @@ Test setup:
 - Release mode;
 - stripped;
 - Profile: `LTO = true`,`opt-level = "z"` `codegen-units = 1`, `panic = "abort"`;
-- using `jjy0/ckb-capsule-recipe-rust:2020-6-2` to build and test and measure running costs;
+- using `jjy0/ckb-capsule-recipe-rust` to build and test and measure running costs;
 - using scheme groth16;
-- ckb-std 0.3.0;
-- ckb-zkp revision d90fe30e;
-- ckb-tool and ckb-testtool version 0.0.1.
+- ckb-std 0.6.2;
+- ckb-tool and ckb-testtool version 0.2.2.
 
 | Feature enabled   | Binary size(Byte) | Curve using | Execution cost (cycles) | Execution cost Diff |
 | ----------------- | ----------------- | ----------- | ----------------------- | ------------------- |
