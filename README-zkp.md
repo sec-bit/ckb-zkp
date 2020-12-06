@@ -4,58 +4,114 @@
 
 Zero-knowledge proofs toolkit with pure Rust.
 
-This project is part of *zkp-toolkit-ckb* and is supported by the Nervos Foundation. It provides multiple zkp schemes and curve options, which can also be used to implement on-chain zkp verifiers for the CKB-VM.
+This project is part of *zkp-toolkit-ckb* and is supported by the Nervos Foundation. It provides multiple zkp schemes and curve options, which can also be used to implement on-chain zkp verifiers for the CKB-VM. You can check the [original proposal](https://talk.nervos.org/t/secbit-labs-zkp-toolkit-ckb-a-zero-knowledge-proof-toolkit-for-ckb/4254) for more feature details.
 
 ## Example
 
-Use the [MiMC](http://eprint.iacr.org/2016/492) gadget and [Groth16](https://eprint.iacr.org/2016/260) scheme we supported as an example.
+Use the Mini circuit and [Groth16](https://eprint.iacr.org/2016/260) scheme we supported as an example.
 
 ```rust
+use ckb_zkp::bn_256::{Bn_256, Fr};
+use ckb_zkp::math::PrimeField;
+use ckb_zkp::groth16::{
+    create_random_proof, generate_random_parameters, verifier::prepare_verifying_key, verify_proof,
+    Parameters, Proof, VerifyKey,
+};
+use ckb_zkp::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 use rand::prelude::*;
-use ckb-zkp::curve::bn_256::{Bn_256, Fr};
-use ckb-zkp::gadget::mimc::{constants, MiMC};
-use ckb-zkp::math::ToBytes;
-use ckb-zkp::scheme::groth16::generate_random_parameters;
-use ckb-zkp::{prove, prove_to_bytes, verify, verify_from_bytes, Curve, Circuit, Scheme};
 
-/// testing for use groth16 & bn_256 & mimc gadget.
+struct Mini<F: PrimeField> {
+    pub x: Option<F>,
+    pub y: Option<F>,
+    pub z: Option<F>,
+    pub num: u32,
+}
+
+impl<F: PrimeField> ConstraintSynthesizer<F> for Mini<F> {
+    fn generate_constraints<CS: ConstraintSystem<F>>(
+        self,
+        cs: &mut CS,
+    ) -> Result<(), SynthesisError> {
+        let var_x = cs.alloc(|| "x", || self.x.ok_or(SynthesisError::AssignmentMissing))?;
+
+        let var_y = cs.alloc(|| "y", || self.y.ok_or(SynthesisError::AssignmentMissing))?;
+
+        let var_z = cs.alloc_input(
+            || "z(output)",
+            || self.z.ok_or(SynthesisError::AssignmentMissing),
+        )?;
+
+        for _ in 0..self.num {
+            cs.enforce(
+                || "x * (y + 2) = z",
+                |lc| lc + var_x,
+                |lc| lc + var_y + (F::from(2u32), CS::one()),
+                |lc| lc + var_z,
+            );
+        }
+
+        Ok(())
+    }
+}
+
+/// test for use groth16 & bn_256 & mimc gadget.
 fn main() {
-    let bytes = vec![1, 2, 3, 4, 5]; // this is your secret.
     let mut rng = thread_rng();
 
     // TRUSTED SETUP
     println!("TRUSTED SETUP...");
-    let constants = constants::<Fr>();
-    let c = MiMC::<Fr> {
-        xl: None,
-        xr: None,
-        constants: &constants,
+    let c = Mini::<Fr> {
+        x: None,
+        y: None,
+        z: None,
+        num: 10, // 10-times constraints
     };
     let params = generate_random_parameters::<Bn_256, _, _>(c, &mut rng).unwrap();
 
-    // you need save this proving key,
-    // when proving, use it as a params.
-    let mut pk_bytes = vec![];
-    params.write(&mut pk_bytes).unwrap();
+    // you need save this verify key,
+    // when verify, use it as a params.
+    let vk_bytes = postcard::to_allocvec(&params.vk).unwrap();
 
-    // you need save this verification key,
-    // when verifying, use it as a params.
-    let mut vk_bytes = vec![];
-    params.vk.write(&mut vk_bytes).unwrap();
+    // you need save this prove key,
+    // when prove, use it as a params.
+    let params_bytes = postcard::to_allocvec(&params).unwrap();
 
-    println!("START PROVE...");
-    let proof = prove(
-        Circuit::MiMC(bytes),
-        Scheme::Groth16,
-        Curve::Bn_256,
-        &pk_bytes,
-        rng,
-    )
-    .unwrap();
+    // Prepare the verification key (for proof verification)
+    let pvk = prepare_verifying_key(&params.vk);
 
-    println!("START VERIFY...");
-    let is_ok = verify(proof, &vk_bytes);
-    assert!(is_ok);
+    let x = Fr::from(2u32);
+    let y = Fr::from(3u32);
+    let z = Fr::from(10u32);
+
+    let circuit = Mini {
+        x: Some(x),
+        y: Some(y),
+        z: Some(z),
+        num: 10,
+    };
+
+    println!("GROTH16 START PROVE...");
+    let proof = create_random_proof(&params, circuit, &mut rng).unwrap();
+
+    println!("GROTH16 START VERIFY...");
+    assert!(verify_proof(&pvk, &proof, &[Fr::from(10u32)]).unwrap());
+
+    println!("Test serialize & verify...");
+    let circuit = Mini {
+        x: Some(x),
+        y: Some(y),
+        z: Some(z),
+        num: 10,
+    };
+    let params2: Parameters<Bn_256> = postcard::from_bytes(&params_bytes).unwrap();
+    let vk2: VerifyKey<Bn_256> = postcard::from_bytes(&vk_bytes).unwrap();
+    let pvk2 = prepare_verifying_key(&vk2);
+    let proof = create_random_proof(&params2, circuit, &mut rng).unwrap();
+    let proof_bytes = postcard::to_allocvec(&proof).unwrap();
+    let proof2: Proof<Bn_256> = postcard::from_bytes(&proof_bytes).unwrap();
+    assert!(verify_proof(&pvk2, &proof2, &[Fr::from(10u32)]).unwrap());
+
+    println!("all is ok");
 }
 ```
 
@@ -67,24 +123,40 @@ fn main() {
 4. Multiple out-of-the-box gadgets.
 5. `no-std` is supported.
 
-Currently, [Groth16](https://eprint.iacr.org/2016/260) and [bulletproofs](https://crypto.stanford.edu/bulletproofs/) are supported. You can describe zkp circuits for the Groth16 scheme through the powerful constraint system. Specially, we implemented a modified version of bulletproofs with R1CS support. It also supports to describe constraints through the same constraint system. So gadgets could be sharable between Groth16 and bulletproofs. We're working on that.
+Currently, We supported multiple zkp schemes and curves, And we also supported some useful gadgets that could be sharable between schemes by standard R1CS.
 
-You can check the [original proposal](https://talk.nervos.org/t/secbit-labs-zkp-toolkit-ckb-a-zero-knowledge-proof-toolkit-for-ckb/4254) for more feature details.
+### Schemes
+- [Groth16](https://eprint.iacr.org/2016/260) most popular zkSNARKs, smallest proof size.
+- [bulletproofs](https://crypto.stanford.edu/bulletproofs/)  Compressible proofs, no trusted-setup.
+- [Spartan](https://eprint.iacr.org/2019/550) without trusted setup.
+- [Marlin](https://eprint.iacr.org/2019/1047) Universal and Updatable SRS.
+- [CLINKv2]() Optimized for parallel data processing, support large-scale data (up to GigaBytes), no trusted-setup.
+- [aSVC](https://eprint.iacr.org/2020/527) Aggregatable Subvector Commitments for Stateless Cryptocurrencies.
+
+### Curves
+- [bls12_381]() pairing-friendly.
+- [bn_256]() pairing-friendly.
+- [jubjub](https://z.cash/zh/technology/jubjub/)
+- [baby_jubjub](https://eips.ethereum.org/EIPS/eip-2494) designed to work inside zk-SNARK circuits in Ethereum.
+
+### gadgets
+- BLAKE2s
+- Boolean
+- Lookup
+- Merkletree
+- MiMC
+- Multieq
+- Poseidon
+- Rangeproof
+- Rescue
+- SHA256
+- ... Many others ...
+
+Check the [gadget doc](./src/gadgets) for more details.
 
 ## CLI-Command
 
 Check [CLI usage](./cli) for hands-on examples.
-
-## Gadgets
-
-- MiMC hash
-- GreaterThan
-- LessThan
-- Between
-- Boolean
-- ... Many others ...
-
-Check the [gadget doc](./src/gadget) for more details.
 
 ## Security
 
