@@ -89,7 +89,7 @@ capsule build --release
 
 ### Enable `debug!` macro in release mode
 
-**In `ckb-std` version 0.6.2 and newer, `debug!` macro is disabled in release mode**. If you still want to enable `debug!` macro in **release** mode, insert `debug-assertions = true` under `[profile.release]` in `contracts/universal_groth16_verifier/Cargo.toml`.
+**In `ckb-std` version 0.7.2 and newer, `debug!` macro is disabled in release mode**. If you still want to enable `debug!` macro in **release** mode, insert `debug-assertions = true` under `[profile.release]` in `contracts/universal_groth16_verifier/Cargo.toml`.
 
 ## Tests
 
@@ -225,7 +225,7 @@ Test setup:
 - stripped;
 - using `jjy0/ckb-capsule-recipe-rust` to build and test and measure running costs;
 - using scheme groth16 and curve bn_256;
-- ckb-std version 0.6.2;
+- ckb-std version 0.7.2;
 - ckb-tool and ckb-testtool version 0.2.2;
 - Default profile setting: `overflow-checks = true`.
 
@@ -256,7 +256,7 @@ Test setup:
 - Profile: `LTO = true`, `codegen-units = 1`, `panic = "abort"`;
 - using `jjy0/ckb-capsule-recipe-rust` to build and test and measure running costs;
 - using scheme groth16 and curve bn_256;
-- ckb-std version 0.6.2;
+- ckb-std version 0.7.2;
 - ckb-tool and ckb-testtool version 0.2.2.
 
 | Curve     | `opt-level` | Binary size(Byte) | Execution cost (cycles) |
@@ -279,7 +279,7 @@ Test setup:
 - Profile: `LTO = true`,`opt-level = "z"` `codegen-units = 1`, `panic = "abort"`;
 - using `jjy0/ckb-capsule-recipe-rust` to build and test and measure running costs;
 - using scheme groth16;
-- ckb-std 0.6.2;
+- ckb-std 0.7.2;
 - ckb-tool and ckb-testtool version 0.2.2.
 
 | Feature enabled   | Binary size(Byte) | Curve using | Execution cost (cycles) | Execution cost Diff |

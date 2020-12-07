@@ -5,9 +5,9 @@ deployment = "deployment.toml"
 name = "universal_groth16_verifier"
 template_type = "Rust"
 
-# [[contracts]]
-# name = "universal_marlin_verifier"
-# template_type = "Rust"
+#[[contracts]]
+#name = "universal_marlin_verifier"
+#template_type = "Rust"
 
 # [[contracts]]
 # name = "mini_bulletproofs_verifier"
