@@ -1,8 +1,8 @@
 pub mod circuit;
-pub mod data_structure;
+pub mod commitment;
 pub mod evaluate;
 pub mod libra_linear_gkr;
 pub mod libra_zk_linear_gkr;
-pub mod setup;
+pub mod params;
 pub mod sumcheck;
 pub mod test;
