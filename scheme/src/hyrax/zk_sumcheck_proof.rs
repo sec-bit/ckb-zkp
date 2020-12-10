@@ -88,7 +88,6 @@ impl<G: Curve> ZkSumcheckProof<G> {
 
         // sumcheck #1
         let mut rs = Vec::new();
-        // let mut evalt = G::Fr::zero();
         let mut size = n;
         for j in 0..log_n {
             size /= 2;
