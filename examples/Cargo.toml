@@ -84,6 +84,10 @@ name = "libra_zk_linear_gkr"
 path = "src/scheme/libra/libra_zk_linear_gkr.rs"
 
 [[bin]]
+name = "hyrax_zk_parallel_gkr"
+path = "src/scheme/hyrax/hyrax_zk_parallel_gkr.rs"
+
+[[bin]]
 name = "mimc_clinkv2_kzg10"
 path = "src/scheme/clinkv2/mimc_clinkv2_kzg10.rs"
 
