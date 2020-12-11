@@ -157,9 +157,9 @@ pub fn verify<G: Curve>(
 
 #[cfg(test)]
 mod tests {
-    use core::time::Instant;
     use curve::{Bls12_381, Bn_256};
     use math::UniformRand;
+    use std::time::Instant;
 
     use super::*;
 
