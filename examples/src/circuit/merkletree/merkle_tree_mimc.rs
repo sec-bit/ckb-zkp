@@ -75,10 +75,23 @@ fn main() {
     println!("Running merkletree mimc circuit...");
     // TRUSTED SETUP
     println!("TRUSTED SETUP...");
-    let proof: MerkleProof<Fr, MergeMimc> = MerkleProof::new(0, vec![Fr::zero(); 3]);
+    let leaves = vec![
+        Fr::zero(),
+        Fr::zero(),
+        Fr::zero(),
+        Fr::zero(),
+        Fr::zero(),
+        Fr::zero(),
+        Fr::zero(),
+        Fr::zero(),
+    ];
+
+    let tree = CBMTMIMC::build_merkle_tree(leaves.clone());
+    let root = tree.root();
+    let proof_path = tree.build_proof(&(0 as u32)).unwrap();
     let c = MerkleTreeCircuit {
-        proof: Some(proof),
-        root: Some(Fr::zero()),
+        proof: Some(proof_path),
+        root: Some(root),
         leaf: Some(Fr::zero()),
     };
     println!("Before generate_random_parameters");
