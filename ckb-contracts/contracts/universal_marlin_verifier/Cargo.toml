@@ -8,6 +8,6 @@ ckb-std = "0.7.2"
 postcard = { version = "0.5", default-features = false, features = ["alloc"] }
 
 [dependencies.ckb-zkp]
-path = "../../"
+git = "https://github.com/sec-bit/ckb-zkp"
 default-features = false
 features = ["marlin", "bn_256"]
