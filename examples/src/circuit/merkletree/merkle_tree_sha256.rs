@@ -46,8 +46,6 @@ impl ConstraintSynthesizer<Fr> for MerkleTreeCircuit {
         self,
         cs: &mut CS,
     ) -> Result<(), SynthesisError> {
-        println!("root: {:?}", self.root.clone().unwrap());
-        println!("leaf: {:?}", self.leaf.clone().unwrap());
         let var_root = AbstractHashSha256Output::alloc_input(
             cs.ns(|| "tree_root"),
             self.root.unwrap().clone(),
@@ -84,9 +82,18 @@ impl ConstraintSynthesizer<Fr> for MerkleTreeCircuit {
 fn main() {
     let mut rng = thread_rng();
     // begin loop
-    // test 4 elements merkle tree.
+    // test 8 elements merkle tree.
     // in order to fill circuit, the hash digest has to have 32 elements.
-    let leaves = vec![vec![1u8; 32], vec![2u8; 32], vec![3u8; 32], vec![4u8; 32]];
+    let leaves = vec![
+        vec![1u8; 32],
+        vec![2u8; 32],
+        vec![3u8; 32],
+        vec![4u8; 32],
+        vec![5u8; 32],
+        vec![6u8; 32],
+        vec![7u8; 32],
+        vec![8u8; 32],
+    ];
 
     let tree = CBMTMIMC::build_merkle_tree(leaves.clone());
     let root = tree.root();
@@ -109,8 +116,17 @@ fn main() {
     for (i, leaf) in leaves.iter().enumerate() {
         // TRUSTED SETUP
         println!("TRUSTED SETUP...");
-        // Construct empty parameters
-        let leaves_empty = vec![vec![0; 32], vec![0; 32], vec![0; 32], vec![0; 32]];
+        // Construct empty parameters for trusted setup
+        let leaves_empty = vec![
+            vec![0; 32],
+            vec![0; 32],
+            vec![0; 32],
+            vec![0; 32],
+            vec![0; 32],
+            vec![0; 32],
+            vec![0; 32],
+            vec![0; 32],
+        ];
         let tree_empty = CBMTMIMC::build_merkle_tree(leaves_empty.clone());
         let root_empty = tree_empty.root();
         let proof_path_empty = tree_empty.build_proof(&(i as u32)).unwrap();
@@ -121,6 +137,7 @@ fn main() {
         };
         println!("before generate_random_parameters");
         let start = Instant::now();
+        // Since the input parameters of the sha256 circuit are different from the mimc circuit, the generate_random_parameters function must be in the loop
         let params = generate_random_parameters::<Bn_256, _, _>(c, &mut rng).unwrap();
         // Prepare the verification key (for proof verification)
         let pvk = prepare_verifying_key(&params.vk);
