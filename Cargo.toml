@@ -31,7 +31,7 @@ exclude = [
 
 [features]
 default = ["full"]
-full = ["std", "gadgets", "bn_256", "bls12_381", "groth16", "bulletproofs", "marlin", "clinkv2", "spartan", "asvc"]
+full = ["std", "gadgets", "bn_256", "bls12_381", "groth16", "bulletproofs", "marlin", "clinkv2", "spartan", "asvc", "libra", "hyrax"]
 parallel = ["std", "math/parallel", "curve/parallel", "scheme/parallel"]
 std = ["math/std", "curve/std", "scheme/std"]
 gadgets = []
@@ -43,6 +43,8 @@ asvc = ["scheme/asvc"]
 marlin = ["scheme/marlin"]
 clinkv2 = ["scheme/clinkv2"]
 spartan = ["scheme/spartan"]
+hyrax = ["scheme/hyrax"]
+libra = ["scheme/libra"]
 
 
 [dependencies]

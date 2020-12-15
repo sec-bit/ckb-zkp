@@ -10,7 +10,7 @@ edition = "2018"
 
 [features]
 default = ["full"]
-full = ["std", "groth16", "bulletproofs", "marlin", "clinkv2", "spartan", "asvc"]
+full = ["std", "groth16", "bulletproofs", "marlin", "clinkv2", "spartan", "asvc", "libra", "hyrax"]
 std = ["math/std"]
 parallel = ["std", "rayon", "math/parallel"]
 groth16 = []
@@ -19,6 +19,8 @@ marlin = ["rand_chacha", "merlin"]
 clinkv2 = ["merlin", "digest"]
 spartan = ["merlin"]
 asvc = []
+hyrax = ["merlin"]
+libra = ["merlin"]
 
 [dependencies]
 math = { path = "../math", default-features = false }
