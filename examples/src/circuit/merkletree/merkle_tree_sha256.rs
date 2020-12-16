@@ -33,7 +33,7 @@ impl Merge for MergeSha256 {
         h.finalize().to_vec()
     }
 }
-type CBMTMIMC = CBMT<Vec<u8>, MergeSha256>;
+type CBMTSHA256 = CBMT<Vec<u8>, MergeSha256>;
 
 struct MerkleTreeCircuit {
     proof: Option<MerkleProof<Vec<u8>, MergeSha256>>,
@@ -95,7 +95,7 @@ fn main() {
         vec![8u8; 32],
     ];
 
-    let tree = CBMTMIMC::build_merkle_tree(leaves.clone());
+    let tree = CBMTSHA256::build_merkle_tree(leaves.clone());
     let root = tree.root();
 
     // Vec<u8> to Vec<Fr>
@@ -127,7 +127,7 @@ fn main() {
             vec![0; 32],
             vec![0; 32],
         ];
-        let tree_empty = CBMTMIMC::build_merkle_tree(leaves_empty.clone());
+        let tree_empty = CBMTSHA256::build_merkle_tree(leaves_empty.clone());
         let root_empty = tree_empty.root();
         let proof_path_empty = tree_empty.build_proof(&(i as u32)).unwrap();
         let c = MerkleTreeCircuit {
