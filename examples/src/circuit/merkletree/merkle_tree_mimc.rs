@@ -75,10 +75,24 @@ fn main() {
     println!("Running merkletree mimc circuit...");
     // TRUSTED SETUP
     println!("TRUSTED SETUP...");
-    let proof: MerkleProof<Fr, MergeMimc> = MerkleProof::new(0, vec![Fr::zero(); 3]);
+    // Construct empty parameters for trusted setup
+    let leaves_empty = vec![
+        Fr::zero(),
+        Fr::zero(),
+        Fr::zero(),
+        Fr::zero(),
+        Fr::zero(),
+        Fr::zero(),
+        Fr::zero(),
+        Fr::zero(),
+    ];
+
+    let tree_empty = CBMTMIMC::build_merkle_tree(leaves_empty.clone());
+    let root_empty = tree_empty.root();
+    let proof_path_empty = tree_empty.build_proof(&(0 as u32)).unwrap();
     let c = MerkleTreeCircuit {
-        proof: Some(proof),
-        root: Some(Fr::zero()),
+        proof: Some(proof_path_empty),
+        root: Some(root_empty),
         leaf: Some(Fr::zero()),
     };
     println!("Before generate_random_parameters");
@@ -89,7 +103,7 @@ fn main() {
     let total_setup = start.elapsed();
     println!("GROTH16 SETUP TIME: {:?}", total_setup);
     // begin loop
-    // test 10 elements merkle tree.
+    // test 8 elements merkle tree.
     let leaves = vec![
         Fr::from(1u32),
         Fr::from(2u32),

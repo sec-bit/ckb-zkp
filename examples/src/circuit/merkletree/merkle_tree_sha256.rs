@@ -51,7 +51,6 @@ impl ConstraintSynthesizer<Fr> for MerkleTreeCircuit {
             self.root.unwrap().clone(),
         )
         .unwrap();
-
         let var_leaf =
             AbstractHashSha256Output::alloc(cs.ns(|| format!("leaf",)), self.leaf.unwrap())
                 .unwrap();
@@ -82,33 +81,71 @@ impl ConstraintSynthesizer<Fr> for MerkleTreeCircuit {
 /// test for use groth16 & bn_256 & mimc gadget.
 fn main() {
     let mut rng = thread_rng();
-    // TRUSTED SETUP
-    println!("TRUSTED SETUP...");
-    let proof: MerkleProof<Vec<u8>, MergeSha256> = MerkleProof::new(0, vec![vec![0; 32]; 2]);
-    let c = MerkleTreeCircuit {
-        proof: Some(proof),
-        root: Some(vec![0; 32]),
-        leaf: Some(vec![0; 32]),
-    };
-    println!("before generate_random_parameters");
-    let start = Instant::now();
-    let params = generate_random_parameters::<Bn_256, _, _>(c, &mut rng).unwrap();
-    // Prepare the verification key (for proof verification)
-    let pvk = prepare_verifying_key(&params.vk);
-    let total_setup = start.elapsed();
-    println!("GROTH16 SETUP TIME: {:?}", total_setup);
     // begin loop
-    // test 10 elements merkle tree.
+    // test 8 elements merkle tree.
     // in order to fill circuit, the hash digest has to have 32 elements.
-    let leaves = vec![vec![1u8; 32], vec![2u8; 32], vec![3u8; 32], vec![4u8; 32]];
+    let leaves = vec![
+        vec![1u8; 32],
+        vec![2u8; 32],
+        vec![3u8; 32],
+        vec![4u8; 32],
+        vec![5u8; 32],
+        vec![6u8; 32],
+        vec![7u8; 32],
+        vec![8u8; 32],
+    ];
 
     let tree = CBMTMIMC::build_merkle_tree(leaves.clone());
     let root = tree.root();
 
-    for (i, leaf) in leaves.iter().enumerate() {
-        let proof_path = tree.build_proof(&(i as u32)).unwrap();
-        assert!(proof_path.verify(&root, leaf));
+    // Vec<u8> to Vec<Fr>
+    let mut root_val = [Fr::zero(); 256];
+    let s = root
+        .iter()
+        .flat_map(|&byte| (0..8).rev().map(move |i| (byte >> i) & 1u8 == 1u8));
 
+    for (i, v) in s.enumerate() {
+        root_val[i] = if Some(v).ok_or(SynthesisError::AssignmentMissing).unwrap() {
+            Some(Fr::one())
+        } else {
+            Some(Fr::zero())
+        }
+        .unwrap();
+    }
+
+    for (i, leaf) in leaves.iter().enumerate() {
+        // TRUSTED SETUP
+        println!("TRUSTED SETUP...");
+        // Construct empty parameters for trusted setup
+        let leaves_empty = vec![
+            vec![0; 32],
+            vec![0; 32],
+            vec![0; 32],
+            vec![0; 32],
+            vec![0; 32],
+            vec![0; 32],
+            vec![0; 32],
+            vec![0; 32],
+        ];
+        let tree_empty = CBMTMIMC::build_merkle_tree(leaves_empty.clone());
+        let root_empty = tree_empty.root();
+        let proof_path_empty = tree_empty.build_proof(&(i as u32)).unwrap();
+        let c = MerkleTreeCircuit {
+            proof: Some(proof_path_empty),
+            root: Some(root_empty.clone()),
+            leaf: Some(vec![0; 32]),
+        };
+        println!("before generate_random_parameters");
+        let start = Instant::now();
+        // Since the input parameters of the sha256 circuit are different from the mimc circuit, the generate_random_parameters function must be in the loop
+        let params = generate_random_parameters::<Bn_256, _, _>(c, &mut rng).unwrap();
+        // Prepare the verification key (for proof verification)
+        let pvk = prepare_verifying_key(&params.vk);
+        let total_setup = start.elapsed();
+        println!("GROTH16 SETUP TIME: {:?}", total_setup);
+
+        let proof_path = tree.build_proof(&(i as u32)).unwrap();
+        assert!(proof_path.verify(&root, &leaves[i]));
         let circuit = MerkleTreeCircuit {
             proof: Some(proof_path),
             root: Some(root.clone()),
@@ -121,20 +158,6 @@ fn main() {
         let p_time = p_start.elapsed();
         println!("GROTH16 PROVE TIME: {:?}", p_time);
 
-        // Vec<u8> to Vec<Fr>
-        let mut root_val = [Fr::zero(); 256];
-        let s = root
-            .iter()
-            .flat_map(|&byte| (0..8).rev().map(move |i| (byte >> i) & 1u8 == 1u8));
-
-        for (i, v) in s.enumerate() {
-            root_val[i] = if Some(v).ok_or(SynthesisError::AssignmentMissing).unwrap() {
-                Some(Fr::one())
-            } else {
-                Some(Fr::zero())
-            }
-            .unwrap();
-        }
         println!("GROTH16 START VERIFY...");
         let v_start = Instant::now();
         assert!(verify_proof(&pvk, &proof, &root_val).unwrap());
