@@ -3,7 +3,7 @@ use math::{Curve, One, Zero};
 use scheme::libra::circuit::Circuit;
 use scheme::libra::libra_linear_gkr::LinearGKRProof;
 
-fn prepare_constrcut_circuit<G: Curve>() -> (Vec<G::Fr>, Vec<G::Fr>, Vec<Vec<(u8, usize, usize)>>) {
+fn prepare_construct_circuit<G: Curve>() -> (Vec<G::Fr>, Vec<G::Fr>, Vec<Vec<(u8, usize, usize)>>) {
     let mut inputs = Vec::new();
     let mut witnesses = Vec::new();
     let mut value = G::Fr::zero();
@@ -44,7 +44,7 @@ fn prepare_constrcut_circuit<G: Curve>() -> (Vec<G::Fr>, Vec<G::Fr>, Vec<Vec<(u8
 
 pub fn libra_linear_gkr() {
     println!("start linear_gkr...");
-    let (inputs, witnesses, layers) = prepare_constrcut_circuit::<Curve25519>();
+    let (inputs, witnesses, layers) = prepare_construct_circuit::<Curve25519>();
     println!("prepare for constructing circuit...ok");
 
     let circuit = Circuit::new(inputs.len(), witnesses.len(), &layers);

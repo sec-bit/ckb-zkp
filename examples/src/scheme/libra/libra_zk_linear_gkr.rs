@@ -5,7 +5,7 @@ use scheme::libra::circuit::Circuit;
 use scheme::libra::libra_zk_linear_gkr::ZKLinearGKRProof;
 use scheme::libra::params::Parameters;
 
-fn prepare_constrcut_circuit<G: Curve>() -> (Vec<G::Fr>, Vec<G::Fr>, Vec<Vec<(u8, usize, usize)>>) {
+fn prepare_construct_circuit<G: Curve>() -> (Vec<G::Fr>, Vec<G::Fr>, Vec<Vec<(u8, usize, usize)>>) {
     let mut inputs = Vec::new();
     let mut witnesses = Vec::new();
     let mut value = G::Fr::zero();
@@ -48,7 +48,7 @@ pub fn libra_zk_linear_gkr() {
     let rng = &mut thread_rng();
     println!("start zk linear gkr...");
 
-    let (inputs, witnesses, layers) = prepare_constrcut_circuit::<Bn_256>();
+    let (inputs, witnesses, layers) = prepare_construct_circuit::<Bn_256>();
     println!("prepare for constructing circuit...ok");
 
     let params = Parameters::<Bn_256>::new(rng, 8);
