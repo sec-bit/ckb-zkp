@@ -1,10 +1,10 @@
 use crate::libra::evaluate::{combine_with_r, poly_commit_vec, random_bytes_to_fr};
 use crate::libra::params::SumCheckCommitmentSetupParameters;
+use core::ops::{Add, Deref};
 use math::fft::DensePolynomial as Polynomial;
 use math::{bytes::ToBytes, AffineCurve, Curve, Field, One, ProjectiveCurve, UniformRand, Zero};
 use merlin::Transcript;
 use rand::Rng;
-use std::ops::{Add, Deref};
 
 pub struct SumCheckProof<G: Curve> {
     pub polys: Vec<Polynomial<G::Fr>>,

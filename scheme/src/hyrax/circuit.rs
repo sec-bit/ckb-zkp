@@ -1,5 +1,5 @@
+use core::cmp;
 use math::{log2, Curve, Zero};
-use std::cmp;
 
 ///operation
 /// 0. add
