@@ -7,7 +7,7 @@ edition = "2018"
 ckb-std = "0.7.2"
 postcard = { version = "0.5", default-features = false, features = ["alloc"] }
 
-[dependencies.zkp-tookit]
+[dependencies.zkp-toolkit]
 git = "https://github.com/sec-bit/ckb-zkp/zkp-toolkit"
 default-features = false
 features = ["marlin", "bn_256"]
