@@ -1,6 +1,6 @@
-use ckb_zkp::gadgets::rescue::RescueConstant;
 use math::One;
 use math::{test_rng, BitIterator, PrimeField};
+use zkp_toolkit::gadgets::rescue::RescueConstant;
 
 use curve::bn_256::{Bn_256, Fr};
 use rand::Rng;
@@ -86,7 +86,6 @@ impl<'a, F: PrimeField> ConstraintSynthesizer<F> for RescueDemo<'a, F> {
         cs: &mut CS,
         index: usize,
     ) -> Result<(), SynthesisError> {
-
         cs.alloc_input(|| "", || Ok(F::one()), index)?;
 
         let xl_value = self.xl;

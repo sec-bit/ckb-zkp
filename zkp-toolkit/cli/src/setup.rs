@@ -1,6 +1,6 @@
-use ckb_zkp::math::Curve;
 use std::env;
 use std::path::PathBuf;
+use zkp_toolkit::math::Curve;
 
 mod circuits;
 use circuits::CliCircuit;
@@ -35,14 +35,14 @@ macro_rules! handle_scheme {
         let rng = &mut rand::thread_rng();
         let (vk_bytes, pk_bytes) = match $scheme {
             "groth16" => {
-                use ckb_zkp::groth16::generate_random_parameters;
+                use zkp_toolkit::groth16::generate_random_parameters;
                 let params = generate_random_parameters::<$curve, _, _>($c, rng).unwrap();
                 let vk = postcard::to_allocvec(&params.vk).unwrap();
                 let pk = postcard::to_allocvec(&params).unwrap();
                 (vk, pk)
             }
             "marlin" => {
-                use ckb_zkp::marlin::universal_setup;
+                use zkp_toolkit::marlin::universal_setup;
                 // set max circuit num: 2^16
                 let srs = universal_setup::<$curve, _>(2usize.pow(16), rng).unwrap();
                 let srs_bytes = postcard::to_allocvec(&srs).unwrap();
@@ -53,7 +53,7 @@ macro_rules! handle_scheme {
                 return Ok(());
             }
             "spartan_snark" => {
-                use ckb_zkp::spartan::snark::generate_random_parameters;
+                use zkp_toolkit::spartan::snark::generate_random_parameters;
                 let vk_name = format!("{}-{}-{}.universal_setup", $scheme, $curve_name, $circuit);
                 println!("Spartan snark universal setup: {}", vk_name);
                 vk_path.push(vk_name);
@@ -65,7 +65,7 @@ macro_rules! handle_scheme {
                 return Ok(());
             }
             "spartan_nizk" => {
-                use ckb_zkp::spartan::nizk::generate_random_parameters;
+                use zkp_toolkit::spartan::nizk::generate_random_parameters;
                 let vk_name = format!("{}-{}-{}.universal_setup", $scheme, $curve_name, $circuit);
                 println!("Spartan nizk universal setup: {}", vk_name);
                 vk_path.push(vk_name);
@@ -128,11 +128,11 @@ fn main() -> Result<(), String> {
 
     match curve {
         "bn_256" => {
-            use ckb_zkp::bn_256::Bn_256;
+            use zkp_toolkit::bn_256::Bn_256;
             handle_circuit!(Bn_256, curve, scheme, circuit);
         }
         "bls12_381" => {
-            use ckb_zkp::bls12_381::Bls12_381;
+            use zkp_toolkit::bls12_381::Bls12_381;
             handle_circuit!(Bls12_381, curve, scheme, circuit);
         }
         _ => return Err(format!("Curve: {} not implement.", curve)),

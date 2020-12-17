@@ -1,4 +1,3 @@
-use ckb_zkp::gadgets::poseidon::PoseidonConstant;
 use math::One;
 use math::{test_rng, BitIterator, PrimeField};
 use rand::Rng;
@@ -9,6 +8,7 @@ use scheme::clinkv2::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisEr
 /// This is our demo circuit for proving knowledge of the
 /// preimage of a Poseidon hash invocation.
 use std::time::Instant;
+use zkp_toolkit::gadgets::poseidon::PoseidonConstant;
 
 // Hash Poseidon utilizes Sponge Construction
 // r, bitrate; c, capacity; M, state value, equal to r + c;
@@ -78,7 +78,6 @@ impl<'a, F: PrimeField> ConstraintSynthesizer<F> for PoseidonDemo<'a, F> {
         cs: &mut CS,
         index: usize,
     ) -> Result<(), SynthesisError> {
-
         cs.alloc_input(|| "", || Ok(F::one()), index)?;
 
         let xl_value = self.xl;

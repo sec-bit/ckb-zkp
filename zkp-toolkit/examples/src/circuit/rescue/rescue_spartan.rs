@@ -1,6 +1,6 @@
-use ckb_zkp::gadgets::rescue::RescueConstant;
 use math::{test_rng, BitIterator, PrimeField};
 use scheme::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
+use zkp_toolkit::gadgets::rescue::RescueConstant;
 
 // Hash Rescue utilizes Sponge Construction
 // r, bitrate; c, capacity; M, state value, equal to r + c;

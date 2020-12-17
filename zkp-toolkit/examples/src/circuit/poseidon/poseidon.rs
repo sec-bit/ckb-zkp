@@ -1,8 +1,8 @@
-/// This is our demo circuit for proving knowledge of the
-/// preimage of a Poseidon hash invocation.
-use ckb_zkp::gadgets::poseidon::PoseidonConstant;
 use math::{test_rng, BitIterator, PrimeField};
 use scheme::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
+/// This is our demo circuit for proving knowledge of the
+/// preimage of a Poseidon hash invocation.
+use zkp_toolkit::gadgets::poseidon::PoseidonConstant;
 
 // Hash Poseidon utilizes Sponge Construction
 // r, bitrate; c, capacity; M, state value, equal to r + c;

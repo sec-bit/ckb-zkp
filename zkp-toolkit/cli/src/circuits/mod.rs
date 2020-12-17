@@ -1,5 +1,5 @@
-use ckb_zkp::math::Field;
-use ckb_zkp::r1cs::ConstraintSynthesizer;
+use zkp_toolkit::math::Field;
+use zkp_toolkit::r1cs::ConstraintSynthesizer;
 
 pub enum Publics<F: Field> {
     Mini(u64),

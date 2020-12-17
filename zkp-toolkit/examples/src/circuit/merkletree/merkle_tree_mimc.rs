@@ -1,13 +1,13 @@
-use ckb_zkp::gadgets::merkletree::cbmt::Merge;
-use ckb_zkp::gadgets::merkletree::cbmt::MerkleProof;
-use ckb_zkp::gadgets::merkletree::cbmt::CBMT;
-use ckb_zkp::gadgets::merkletree::cbmt_constraints::MerkleProofGadget;
-use ckb_zkp::gadgets::mimc::AbstractHashMimc;
-use ckb_zkp::gadgets::mimc::AbstractHashMimcOutput;
 use math::Zero;
+use zkp_toolkit::gadgets::merkletree::cbmt::Merge;
+use zkp_toolkit::gadgets::merkletree::cbmt::MerkleProof;
+use zkp_toolkit::gadgets::merkletree::cbmt::CBMT;
+use zkp_toolkit::gadgets::merkletree::cbmt_constraints::MerkleProofGadget;
+use zkp_toolkit::gadgets::mimc::AbstractHashMimc;
+use zkp_toolkit::gadgets::mimc::AbstractHashMimcOutput;
 
-use ckb_zkp::gadgets::mimc::hash;
 use curve::bn_256::{Bn_256, Fr};
+use zkp_toolkit::gadgets::mimc::hash;
 
 use math::ToBytes;
 use rand::prelude::*;
