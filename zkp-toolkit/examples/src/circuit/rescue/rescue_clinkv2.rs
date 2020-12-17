@@ -8,7 +8,7 @@ use scheme::clinkv2::kzg10::{
     create_random_proof, verify_proof, ProveAssignment, VerifyAssignment, KZG10,
 };
 use scheme::clinkv2::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 // Hash Rescue utilizes Sponge Construction
 // r, bitrate; c, capacity; M, state value, equal to r + c;

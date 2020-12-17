@@ -8,6 +8,10 @@ members = [
     "contracts/mini_clinkv2_ipa_verifier",
     "contracts/mini_clinkv2_kzg10_verifier",
 ]
+exclude = [
+    "bench-tests",
+    "dependencies",
+]
 
 [profile.release]
 # set debug-assertions to true to enable debug macro.

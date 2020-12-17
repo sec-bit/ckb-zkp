@@ -221,15 +221,8 @@ pub fn construct_matrix<G: Curve>(
     let mut add_gate_eval = G::Fr::zero();
     let mut mult_gate_eval = G::Fr::zero();
 
-    let mut eq_node_r0_vec = Vec::new();
-    let mut eq_node_r1_vec = Vec::new();
-    for i in 0..2usize.pow(log_g as u32) {
-        let node_vec = convert_to_bit::<G>(i, log_g);
-        let eq_node_r0 = eval_eq_x_y::<G>(&node_vec, &r0);
-        let eq_node_r1 = eval_eq_x_y::<G>(&node_vec, &r1);
-        eq_node_r0_vec.push(eq_node_r0);
-        eq_node_r1_vec.push(eq_node_r1);
-    }
+    let eq_node_r0_vec = eval_eq::<G>(&r0);
+    let eq_node_r1_vec = eval_eq::<G>(&r1);
 
     for gate in gates.iter() {
         let eval = eval_0 * &(eq_ql_vec[gate.g] * &u0 + &(eq_qr_vec[gate.g] * &u1));

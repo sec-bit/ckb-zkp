@@ -60,8 +60,11 @@ mod bn_256 {
         let (proof, output) = LinearGKRProof::<Bn_256>::prover(&circuit, &inputs, &witnesses);
         println!("generate proof...ok");
 
-        let result = proof.verify(&circuit, &output, &inputs);
+        let mut inputs2 = witnesses.clone();
+        inputs2.extend(&inputs);
+        let result = proof.verify(&circuit, &output, &inputs2);
         println!("verifier...{}", result);
+        assert!(result);
     }
 
     #[test]
@@ -84,6 +87,7 @@ mod bn_256 {
 
         let result = proof.verify(&params, &circuit, &output, &inputs);
         println!("verifier...{}", result);
+        assert!(result);
     }
 }
 
@@ -149,8 +153,11 @@ mod bls12_381 {
         let (proof, output) = LinearGKRProof::<Bls12_381>::prover(&circuit, &inputs, &witnesses);
         println!("generate proof...ok");
 
-        let result = proof.verify(&circuit, &output, &inputs);
+        let mut inputs2 = witnesses.clone();
+        inputs2.extend(&inputs);
+        let result = proof.verify(&circuit, &output, &inputs2);
         println!("verifier...{}", result);
+        assert!(result);
     }
 
     #[test]
@@ -173,5 +180,6 @@ mod bls12_381 {
 
         let result = proof.verify(&params, &circuit, &output, &inputs);
         println!("verifier...{}", result);
+        assert!(result);
     }
 }

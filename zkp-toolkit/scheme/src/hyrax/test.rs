@@ -55,12 +55,13 @@ mod bn_256 {
         }
         let params = Parameters::new(rng, 8);
         println!("generate parameters...");
-        let result = hyrax_zk_linear_gkr::<Bn_256, _>(&params, &witnesses, &inputs, &circuit, rng);
+        let result =
+            hyrax_zk_parallel_gkr::<Bn_256, _>(&params, &witnesses, &inputs, &circuit, rng);
         assert!(result);
         println!("hyrax linear gkr...ok");
     }
 
-    fn hyrax_zk_linear_gkr<G: Curve, R: Rng>(
+    fn hyrax_zk_parallel_gkr<G: Curve, R: Rng>(
         params: &Parameters<G>,
         witnesses: &Vec<Vec<G::Fr>>,
         inputs: &Vec<Vec<G::Fr>>,
@@ -70,9 +71,9 @@ mod bn_256 {
         assert_eq!(witnesses.len(), inputs.len());
         let (proof, outputs) =
             HyraxProof::prover(params, witnesses, inputs, circuit, witnesses.len(), rng);
-        println!("hyrax_zk_linear_gkr -- generate proof...ok");
+        println!("hyrax_zk_parallel_gkr -- generate proof...ok");
         let result = proof.verify(params, &outputs, inputs, circuit);
-        println!("hyrax_zk_linear_gkr -- verify...{}", result);
+        println!("hyrax_zk_parallel_gkr -- verify...{}", result);
         result
     }
 }

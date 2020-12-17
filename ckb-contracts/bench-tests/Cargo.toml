@@ -1,5 +1,5 @@
 [package]
-name = "tests"
+name = "bench-tests"
 version = "0.1.0"
 edition = "2018"
 
@@ -7,7 +7,7 @@ edition = "2018"
 rand = "0.7"
 postcard = { version = "0.5", default-features = false, features = ["alloc"] }
 blake2 = { version = "0.8", default-features = false }
-ckb-zkp = { path = "../zkp-toolkit" }
+ckb-zkp = { git = "https://github.com/sec-bit/ckb-zkp" }
 ckb-tool = "0.2.2"
 ckb-testtool = "0.2.2"
 

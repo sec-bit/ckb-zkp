@@ -207,7 +207,7 @@ pub fn spartan_snark_bn_256() {
     let total_setup = start.elapsed();
     println!("SPARTAN SNARK CREATE PROOF TIME: {:?}", total_setup);
 
-    let start = Instant::now();
+    let _start = Instant::now();
     let result = verify_snark_proof::<Bn_256>(
         &params,
         &r1cs,
