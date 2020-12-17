@@ -55,3 +55,11 @@ pub use curve::bn_256;
 /// re-export bls12_381.
 #[cfg(feature = "bls12_381")]
 pub use curve::bls12_381;
+
+/// re-export jubjub.
+#[cfg(feature = "jubjub")]
+pub use curve::jubjub;
+
+/// re-export baby_jubjub.
+#[cfg(feature = "baby_jubjub")]
+pub use curve::baby_jubjub;

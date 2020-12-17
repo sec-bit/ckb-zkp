@@ -223,22 +223,19 @@ Test setup:
 
 - Release mode;
 - stripped;
-- using `jjy0/ckb-capsule-recipe-rust` to build and test and measure running costs;
+- using `jjy0/ckb-capsule-recipe-rust:2020-9-28` to build and test and measure running costs;
 - using scheme groth16 and curve bn_256;
 - ckb-std version 0.7.2;
 - ckb-tool and ckb-testtool version 0.2.2;
-- Default profile setting: `overflow-checks = true`.
+- Default profile setting: `overflow-checks = true` and `panic = 'abort'`.
 
-| LTO     | `opt-level` | `codegen-units` | `panic`   | Binary size(Byte) | Execution cost (cycles) |
-| ------- | ----------- | --------------- | --------- | ----------------- | ----------------------- |
-| not set | not set     | not set         | not set   | 496,472           | 94,503,867              |
-| `true`  | not set     | not set         | not set   | 418,576           | 99,383,945              |
-| not set | `"z"`       | not set         | not set   | 217,944           | 1,145,530,398           |
-| `true`  | `"z"`       | not set         | not set   | 172,816           | 212,532,245             |
-| not set | `"z"`       | `1`             | not set   | 136,024           | 1,181,106,112           |
-| `true`  | `"z"`       | `1`             | not set   | 115,472           | 222,347,063             |
-| `true`  | `"z"`       | `1`             | `"abort"` | 115,472           | 222,347,059             |
-| `true`  | `"s"`       | `1`             | `"abort"` | 213,776           | 158,341,065             |
+| LTO     | `opt-level` | `codegen-units` | Binary size(Byte) | Execution cost (cycles) |
+| ------- | ----------- | --------------- | ----------------- | ----------------------- |
+| not set | not set     | not set         | 192,152           | 90,944,391              |
+| `true`  | not set     | not set         | 172,976           | 93,392,615              |
+| `true`  | `"s"`       | not set         | 107,440           | 151,462,521             |
+| `true`  | `"z"`       | not set         | 70,576            | 191,976,741             |
+| `true`  | `"z"`       | `1`             | 58,288            | 195,535,979             |
 
 Here comes a rough result:
 
@@ -247,48 +244,48 @@ Here comes a rough result:
 
 ### Curve benchmark
 
-Currently, we use two different curves in proving and verifying, so we performed a simple benchmark on execution costs separately.
+Currently, we use different curves in proving and verifying, so we performed a simple benchmark on execution costs separately.
 
 Test setup:
 
 - Release mode;
 - stripped;
-- Profile: `LTO = true`, `codegen-units = 1`, `panic = "abort"`;
-- using `jjy0/ckb-capsule-recipe-rust` to build and test and measure running costs;
-- using scheme groth16 and curve bn_256;
+- Profile: `LTO = true`, `codegen-units = 1`, `panic = "abort"`, `overflow-checks = true`, `opt-level = "z"`;
+- using `jjy0/ckb-capsule-recipe-rust:2020-9-28` to build and test and measure running costs;
+- using scheme bulletproofs (it can use all curves);
 - ckb-std version 0.7.2;
 - ckb-tool and ckb-testtool version 0.2.2.
 
-| Curve     | `opt-level` | Binary size(Byte) | Execution cost (cycles) |
-| --------- | ----------- | ----------------- | ----------------------- |
-| bn_256    | "z"         | 115,472           | 222,347,059             |
-| bn_256    | "s"         | 213,776           | 158,341,065             |
-| bls12_381 | "z"         | 115,472           | 354,875,909             |
-| bls12_381 | "s"         | 213,776           | 314,460,704             |
+| Curve       | Binary size(Byte) | Execution cost (cycles) |
+| ----------- | ----------------- | ----------------------- |
+| bn_256      | 91,056            | 796,836,045             |
+| bls12_381   | 91,056            | 1,908,755,330           |
+| JubJub      | 74,672            | 695,621,515             |
+| Baby_JubJub | 74,762            | 691,819,058             |
 
 ### Disabling ckb-zkp's crate features of curves for the verifier contract
 
-Different curves are enabled as features of crate ckb-zkp in the contract, which is specified in _./contracts/mimc-groth16-verifier/Cargo.toml_, at array `[dependencies.zkp.features]`.
-
-The number of enabled features will impact the contract binary size and execution cost. If one curve is not enabled as a crate feature, this curve cannot be used for verification.
+Currently, we use different schemes in proving and verifying, so we performed a simple benchmark on execution costs separately.
 
 Test setup:
 
 - Release mode;
 - stripped;
-- Profile: `LTO = true`,`opt-level = "z"` `codegen-units = 1`, `panic = "abort"`;
-- using `jjy0/ckb-capsule-recipe-rust` to build and test and measure running costs;
-- using scheme groth16;
+- Profile: `LTO = true`, `codegen-units = 1`, `panic = "abort"`, `overflow-checks = true`, `opt-level = "z"`;
+- using `jjy0/ckb-capsule-recipe-rust:2020-9-28` to build and test and measure running costs;
+- using curve bn_256 (it can use all schemes);
 - ckb-std 0.7.2;
 - ckb-tool and ckb-testtool version 0.2.2.
 
-| Feature enabled   | Binary size(Byte) | Curve using | Execution cost (cycles) | Execution cost Diff |
-| ----------------- | ----------------- | ----------- | ----------------------- | ------------------- |
-| None              | 29,456            | N/A         | N/A                     | N/A                 |
-| bn_256            | 74,512            | bn_256      | 222,299,004             | -48,055             |
-| bls12_381         | 74,512            | bls12_381   | 354,787,488             | -88,421‬            |
-| bls12_381, bn_256 | 115,472           | bn_256      | 222,347,059             | 0                   |
-| bls12_381, bn_256 | 115,472           | bls12_381   | 354,875,909             | 0                   |
+| Scheme          | Binary size(Byte) | Execution cost (cycles) |
+| --------------- | ----------------- | ----------------------- |
+| Groth16         | 58,288            | 195,535,979             |
+| Bulletproofs    | 91,056            | 796,836,045             |
+| Marlin          | 132,016           | 500,725,146             |
+| Spartan (nizk)  | 91,056            | 1,085,652,230           |
+| Spartan (snark) | 119,728           | 1,911,833,747           |
+| CLINKv2 (ipa)   | 82,864            | 508,330,342             |
+| CLINKv2 (kzg10) | 82,864            | 213,212,113             |
 
 ### Further optimizations
 

@@ -48,7 +48,6 @@ impl Loader {
         let mut base_path = PathBuf::new();
         base_path.push(dir);
         base_path.push("..");
-        base_path.push("ckb-contracts");
         base_path.push("build");
         base_path.push(load_prefix);
         Loader(base_path)
