@@ -21,7 +21,7 @@ path = "src/setup.rs"
 name = "setup"
 
 [dependencies]
-ckb-zkp = { path = ".." }
+zkp-toolkit = { path = ".." }
 rand = { version = "0.7" }
 serde_json = { version = "1" }
 postcard = { version = "0.5", default-features = false, features = ["alloc"] }

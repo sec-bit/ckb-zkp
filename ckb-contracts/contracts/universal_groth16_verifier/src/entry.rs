@@ -5,7 +5,7 @@ use ckb_std::{ckb_constants::Source, high_level::load_cell_data};
 
 use crate::error::Error;
 
-use ckb_zkp::{
+use zkp_toolkit::{
     bn_256::{Bn_256 as E, Fr},
     groth16::{prepare_verifying_key, verify_proof, Proof, VerifyKey},
 };

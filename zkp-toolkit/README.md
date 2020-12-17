@@ -11,13 +11,13 @@ This project is part of *zkp-toolkit-ckb* and is supported by the Nervos Foundat
 Use the Mini circuit and [Groth16](https://eprint.iacr.org/2016/260) scheme we supported as an example.
 
 ```rust
-use ckb_zkp::bn_256::{Bn_256, Fr};
-use ckb_zkp::math::PrimeField;
-use ckb_zkp::groth16::{
+use zkp_toolkit::bn_256::{Bn_256, Fr};
+use zkp_toolkit::math::PrimeField;
+use zkp_toolkit::groth16::{
     create_random_proof, generate_random_parameters, verifier::prepare_verifying_key, verify_proof,
     Parameters, Proof, VerifyKey,
 };
-use ckb_zkp::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
+use zkp_toolkit::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 use rand::prelude::*;
 
 struct Mini<F: PrimeField> {

@@ -1,5 +1,5 @@
 [package]
-name = "ckb-zkp"
+name = "zkp-toolkit"
 version = "0.1.0"
 authors = ["SECBIT Labs"]
 description = "A library for better use zero-knowledge proof"

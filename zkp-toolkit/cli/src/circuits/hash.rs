@@ -1,6 +1,6 @@
-use ckb_zkp::gadgets::mimc::{hash, mimc};
-use ckb_zkp::math::PrimeField;
-use ckb_zkp::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
+use zkp_toolkit::gadgets::mimc::{hash, mimc};
+use zkp_toolkit::math::PrimeField;
+use zkp_toolkit::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
 use super::{CliCircuit, Publics};
 

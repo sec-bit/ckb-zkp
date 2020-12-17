@@ -5,7 +5,7 @@ use core::result::Result;
 
 use crate::error::Error;
 
-use ckb_zkp::{
+use zkp_toolkit::{
     bn_256::{Bn_256 as E, Fr},
     clinkv2::ipa::{verify_proof, Proof, VerifyAssignment, VerifyKey},
     clinkv2::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError},

@@ -1,7 +1,7 @@
-use ckb_zkp::math::Curve;
 use serde_json::json;
 use std::env;
 use std::path::PathBuf;
+use zkp_toolkit::math::Curve;
 
 mod circuits;
 use circuits::{CliCircuit, Publics};
@@ -40,13 +40,13 @@ macro_rules! handle_scheme {
         let proof_bytes = match $scheme {
             "groth16" => {
                 println!("Will use pk file: {:?}", pk_path);
-                use ckb_zkp::groth16::{create_random_proof, Parameters};
+                use zkp_toolkit::groth16::{create_random_proof, Parameters};
                 let params: Parameters<$curve> = postcard::from_bytes(&pk).unwrap();
                 let proof = create_random_proof(&params, $c, rng).unwrap();
                 postcard::to_allocvec(&proof).unwrap()
             }
             "bulletproofs" => {
-                use ckb_zkp::bulletproofs::create_random_proof;
+                use zkp_toolkit::bulletproofs::create_random_proof;
                 let (gens, r1cs, proof) = create_random_proof::<$curve, _, _>($c, rng).unwrap();
                 let mut gens_bytes = postcard::to_allocvec(&gens).unwrap();
                 let mut r1cs_bytes = postcard::to_allocvec(&r1cs).unwrap();
@@ -61,7 +61,7 @@ macro_rules! handle_scheme {
                 bytes
             }
             "marlin" => {
-                use ckb_zkp::marlin::{index, create_random_proof, UniversalParams};
+                use zkp_toolkit::marlin::{index, create_random_proof, UniversalParams};
                 let mut srs_path = PathBuf::from(SETUP_DIR);
                 srs_path.push(format!("{}-{}.universal_setup", $scheme, $curve_name));
                 println!("Will use universal setup file: {:?}", srs_path);
@@ -73,7 +73,7 @@ macro_rules! handle_scheme {
 
             }
             "spartan_snark" => {
-                use ckb_zkp::spartan::snark::{Parameters, create_random_proof};
+                use zkp_toolkit::spartan::snark::{Parameters, create_random_proof};
                 let mut srs_path = PathBuf::from(SETUP_DIR);
                 srs_path.push(format!("{}-{}-{}.universal_setup", $scheme, $curve_name, $circuit));
                 println!("Will use universal setup file: {:?}", srs_path);
@@ -84,7 +84,7 @@ macro_rules! handle_scheme {
                 postcard::to_allocvec(&proof).unwrap()
             }
             "spartan_nizk" => {
-                use ckb_zkp::spartan::nizk::{Parameters, create_random_proof};
+                use zkp_toolkit::spartan::nizk::{Parameters, create_random_proof};
                 let mut srs_path = PathBuf::from(SETUP_DIR);
                 srs_path.push(format!("{}-{}-{}.universal_setup", $scheme, $curve_name, $circuit));
                 println!("Will use universal setup file: {:?}", srs_path);
@@ -162,11 +162,11 @@ fn main() -> Result<(), String> {
 
     match curve {
         "bn_256" => {
-            use ckb_zkp::bn_256::Bn_256;
+            use zkp_toolkit::bn_256::Bn_256;
             handle_circuit!(Bn_256, curve, scheme, circuit, &args[4..]);
         }
         "bls12_381" => {
-            use ckb_zkp::bls12_381::Bls12_381;
+            use zkp_toolkit::bls12_381::Bls12_381;
             handle_circuit!(Bls12_381, curve, scheme, circuit, &args[4..]);
         }
         _ => return Err(format!("Curve: {} not implement.", curve)),

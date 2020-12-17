@@ -8,7 +8,7 @@ use ckb_tool::ckb_types::{
 };
 use std::time::Instant;
 
-use ckb_zkp::{
+use zkp_toolkit::{
     bn_256::{Bn_256 as E, Fr},
     math::{test_rng, One, PrimeField},
     r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError},
@@ -52,7 +52,7 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for Mini<F> {
 
 #[test]
 fn test_groth16() {
-    use ckb_zkp::groth16::{create_random_proof, generate_random_parameters};
+    use zkp_toolkit::groth16::{create_random_proof, generate_random_parameters};
 
     let num = 10;
     let rng = &mut test_rng(); // Only in test code.
@@ -91,7 +91,7 @@ fn test_groth16() {
 
 #[test]
 fn test_marlin() {
-    use ckb_zkp::marlin::{create_random_proof, index, universal_setup};
+    use zkp_toolkit::marlin::{create_random_proof, index, universal_setup};
 
     let num = 10;
     let rng = &mut test_rng(); // Only in test code.
@@ -132,7 +132,7 @@ fn test_marlin() {
 
 #[test]
 fn test_bulletproofs() {
-    use ckb_zkp::bulletproofs::create_random_proof;
+    use zkp_toolkit::bulletproofs::create_random_proof;
 
     let num = 10;
     let rng = &mut test_rng(); // Only in test code.
@@ -166,7 +166,7 @@ fn test_bulletproofs() {
     );
 }
 
-use ckb_zkp::clinkv2::r1cs as clinkv2_r1cs;
+use zkp_toolkit::clinkv2::r1cs as clinkv2_r1cs;
 
 pub struct Clinkv2Mini<F: PrimeField> {
     pub x: Option<F>,
@@ -227,8 +227,8 @@ impl<F: PrimeField> clinkv2_r1cs::ConstraintSynthesizer<F> for Clinkv2Mini<F> {
 
 #[test]
 fn test_clinkv2_kzg10() {
-    use ckb_zkp::clinkv2::kzg10::{create_random_proof, ProveAssignment, KZG10};
-    use ckb_zkp::clinkv2::r1cs::ConstraintSynthesizer;
+    use zkp_toolkit::clinkv2::kzg10::{create_random_proof, ProveAssignment, KZG10};
+    use zkp_toolkit::clinkv2::r1cs::ConstraintSynthesizer;
 
     let n: usize = 100;
 
@@ -286,8 +286,8 @@ fn test_clinkv2_kzg10() {
 #[test]
 fn test_clinkv2_ipa() {
     use blake2::Blake2s;
-    use ckb_zkp::clinkv2::ipa::{create_random_proof, InnerProductArgPC, ProveAssignment};
-    use ckb_zkp::clinkv2::r1cs::ConstraintSynthesizer;
+    use zkp_toolkit::clinkv2::ipa::{create_random_proof, InnerProductArgPC, ProveAssignment};
+    use zkp_toolkit::clinkv2::r1cs::ConstraintSynthesizer;
 
     let n: usize = 100;
 
@@ -345,7 +345,7 @@ fn test_clinkv2_ipa() {
 
 #[test]
 fn test_spartan_snark() {
-    use ckb_zkp::spartan::snark::{create_random_proof, generate_random_parameters};
+    use zkp_toolkit::spartan::snark::{create_random_proof, generate_random_parameters};
 
     let num = 10;
     let rng = &mut test_rng(); // Only in test code.
@@ -389,7 +389,7 @@ fn test_spartan_snark() {
 
 #[test]
 fn test_spartan_nizk() {
-    use ckb_zkp::spartan::nizk::{create_random_proof, generate_random_parameters};
+    use zkp_toolkit::spartan::nizk::{create_random_proof, generate_random_parameters};
 
     let num = 10;
     let rng = &mut test_rng(); // Only in test code.

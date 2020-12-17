@@ -1,6 +1,6 @@
-use ckb_zkp::math::Curve;
 use std::env;
 use std::path::PathBuf;
+use zkp_toolkit::math::Curve;
 
 mod circuits;
 use circuits::CliCircuit;
@@ -56,14 +56,14 @@ macro_rules! handle_scheme {
         let proof_result = match $scheme {
             "groth16" => {
                 println!("Will use vk file: {:?}", vk_path);
-                use ckb_zkp::groth16::{prepare_verifying_key, verify_proof, Proof, VerifyKey};
+                use zkp_toolkit::groth16::{prepare_verifying_key, verify_proof, Proof, VerifyKey};
                 let vk: VerifyKey<$curve> = postcard::from_bytes(&vk_bytes).unwrap();
                 let proof: Proof<$curve> = postcard::from_bytes(&$proof_bytes).unwrap();
                 let pvk = prepare_verifying_key(&vk);
                 verify_proof(&pvk, &proof, &$publics).unwrap()
             }
             "bulletproofs" => {
-                use ckb_zkp::bulletproofs::{verify_proof, Generators, Proof, R1csCircuit};
+                use zkp_toolkit::bulletproofs::{verify_proof, Generators, Proof, R1csCircuit};
                 let mut gens_len_bytes = [0u8; 4];
                 gens_len_bytes.copy_from_slice($proof_bytes.drain(0..4).as_slice());
                 let gens_len = u32::from_le_bytes(gens_len_bytes) as usize;
@@ -78,7 +78,7 @@ macro_rules! handle_scheme {
                 verify_proof(&gens, &proof, &r1cs, $publics).unwrap()
             }
             "marlin" => {
-                use ckb_zkp::marlin::{index, verify_proof, Proof, UniversalParams};
+                use zkp_toolkit::marlin::{index, verify_proof, Proof, UniversalParams};
                 let mut srs_path = PathBuf::from(SETUP_DIR);
                 srs_path.push(format!("{}-{}.universal_setup", $scheme, $curve_name));
                 println!("Will use universal setup file: {:?}", srs_path);
@@ -89,7 +89,7 @@ macro_rules! handle_scheme {
                 verify_proof(&ivk, &proof, $publics).unwrap()
             }
             "spartan_snark" => {
-                use ckb_zkp::spartan::snark::{verify_proof, Parameters, Proof};
+                use zkp_toolkit::spartan::snark::{verify_proof, Parameters, Proof};
                 let mut srs_path = PathBuf::from(SETUP_DIR);
                 srs_path.push(format!(
                     "{}-{}-{}.universal_setup",
@@ -103,7 +103,7 @@ macro_rules! handle_scheme {
                 verify_proof(&vk, &proof, $publics).unwrap()
             }
             "spartan_nizk" => {
-                use ckb_zkp::spartan::nizk::{verify_proof, Parameters, Proof};
+                use zkp_toolkit::spartan::nizk::{verify_proof, Parameters, Proof};
                 let mut srs_path = PathBuf::from(SETUP_DIR);
                 srs_path.push(format!(
                     "{}-{}-{}.universal_setup",
@@ -162,11 +162,11 @@ fn main() -> Result<(), String> {
 
     match curve {
         "bn_256" => {
-            use ckb_zkp::bn_256::Bn_256;
+            use zkp_toolkit::bn_256::Bn_256;
             handle_circuit!(Bn_256, curve, scheme, circuit, proof, params);
         }
         "bls12_381" => {
-            use ckb_zkp::bls12_381::Bls12_381;
+            use zkp_toolkit::bls12_381::Bls12_381;
             handle_circuit!(Bls12_381, curve, scheme, circuit, proof, params);
         }
         _ => return Err(format!("Curve: {} not implement.", curve)),
