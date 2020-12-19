@@ -6,6 +6,7 @@
 /zkp-toolkit//cli/setup_files
 /bench-tests/Cargo.lock
 **/target/*
+Cargo.lock
 !.gitkeep
 .cache/.cargo/*
 .cargo/config
