@@ -9,6 +9,6 @@ blake2 = { version = "0.8", default-features = false }
 postcard = { version = "0.5", default-features = false, features = ["alloc"] }
 
 [dependencies.zkp-toolkit]
-git = "https://github.com/sec-bit/ckb-zkp/zkp-toolkit"
+git = "https://github.com/sec-bit/ckb-zkp"
 default-features = false
 features = ["clinkv2", "bn_256"]

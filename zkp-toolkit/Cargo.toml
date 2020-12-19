@@ -19,12 +19,17 @@ members = [
 
 [features]
 default = ["full"]
-full = ["std", "gadgets", "bn_256", "bls12_381", "groth16", "bulletproofs", "marlin", "clinkv2", "spartan", "asvc", "libra", "hyrax"]
+full = ["std", "gadgets",
+        "bn_256", "bls12_381", "jubjub", "baby_jubjub",
+        "groth16", "bulletproofs", "marlin", "clinkv2", "spartan", "asvc", "libra", "hyrax"
+]
 parallel = ["std", "math/parallel", "curve/parallel", "scheme/parallel"]
 std = ["math/std", "curve/std", "scheme/std"]
 gadgets = []
 bn_256 = ["curve/bn_256"]
 bls12_381 = ["curve/bls12_381"]
+jubjub = ["curve/jubjub"]
+baby_jubjub = ["curve/baby_jubjub"]
 groth16 = ["scheme/groth16"]
 bulletproofs = ["scheme/bulletproofs"]
 asvc = ["scheme/asvc"]
