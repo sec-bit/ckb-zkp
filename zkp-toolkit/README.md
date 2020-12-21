@@ -68,12 +68,12 @@ fn main() {
     };
     let params = generate_random_parameters::<Bn_256, _, _>(c, &mut rng).unwrap();
 
-    // you need save this verify key,
-    // when verify, use it as a params.
+    // you need to save this verify key,
+    // when verify, use it as a param.
     let vk_bytes = postcard::to_allocvec(&params.vk).unwrap();
 
-    // you need save this prove key,
-    // when prove, use it as a params.
+    // you need to save this prove key,
+    // when prove, use it as a param.
     let params_bytes = postcard::to_allocvec(&params).unwrap();
 
     // Prepare the verification key (for proof verification)
@@ -169,7 +169,7 @@ Check [CLI usage](./cli) for hands-on examples.
 
 ## Security
 
-This project is still under active development and is currently being used for research and experimental purposes only, please **DO NOT USE IT IN PRODUCTION** for now.
+This project is still under active development and is currently being used for research and experimental purposes only. Please **DO NOT USE IT IN PRODUCTION** for now.
 
 ## License
 
