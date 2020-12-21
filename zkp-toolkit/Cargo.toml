@@ -8,15 +8,6 @@ categories = ["cryptography"]
 license = "MIT/Apache-2.0"
 edition = "2018"
 
-[workspace]
-members = [
-    "math",
-    "curve",
-    "scheme",
-    "cli",
-    "examples",
-]
-
 [features]
 default = ["full"]
 full = ["std", "gadgets",
