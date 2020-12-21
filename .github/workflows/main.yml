@@ -72,7 +72,7 @@ jobs:
         # timeout-minutes: 120
         with:
           command: test
-          args: --workspace --all-features --exclude=tests --no-fail-fast
+          args: --release --workspace --all-features --exclude=tests --no-fail-fast
 
       - name: Clear the cargo caches
         run: |
