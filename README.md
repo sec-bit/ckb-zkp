@@ -19,17 +19,40 @@ This project is also known as _zkp-toolkit-ckb_ and is supported by the Nervos F
 
 The following document is more focused on CKB smart contracts. [Check this doc](./zkp-toolkit) for more details on zkp-toolkit usage and features.
 
+## What's new?
+
+### Milestone #2 (2020/12/20)
+
+- More schemes: Marlin, Spartan, CLINKv2, Libra, Hyrax, and aSVC
+- Efficient ECC for zkSNARKs: Jubjub and BabyJubJub
+- More useful gadgets: sha256, blake2s, Poseidon, rescue, and Merkle tree
+- More examples
+- Many new zkp verifiers on CKB-VM
+- Benchmarks on curves, schemes, and CKB-VM
+
+### Milestone #1 (2020/07/10)
+
+An early runnable version of the toolkit with basic features.
+
+- Schemes: Groth16 and Bulletproofs with R1CS
+- Curves: BN256 and BLS12-381
+- Gadgets: basic gadgets
+- Smart contracts: Groth16 verifier on CKB-VM
+
 ## Table of contents
 
 - [ckb-zkp](#ckb-zkp)
+  - [What's new?](#whats-new)
+    - [Milestone #2 (2020/12/20)](#milestone-2-20201220)
+    - [Milestone #1 (2020/07/10)](#milestone-1-20200710)
   - [Table of contents](#table-of-contents)
   - [How does this contract help to verify a zero-knowledge proof?](#how-does-this-contract-help-to-verify-a-zero-knowledge-proof)
   - [Prerequisites](#prerequisites)
   - [Build contracts](#build-contracts)
     - [Enable `debug!` macro in release mode](#enable-debug-macro-in-release-mode)
   - [Tests](#tests)
-    - [Run cli tests](#run-cli-tests)
-    - [Run contacts tests](#run-contacts-tests)
+    - [Run zkp-toolkit cli tests](#run-zkp-toolkit-cli-tests)
+    - [Run CKB contacts tests](#run-ckb-contacts-tests)
   - [Deployment](#deployment)
     - [Invoking the contract on-chain](#invoking-the-contract-on-chain)
     - [Debugging the `capsule` itself (Temporary usage)](#debugging-the-capsule-itself-temporary-usage)
@@ -41,7 +64,7 @@ The following document is more focused on CKB smart contracts. [Check this doc](
   - [Troubleshooting](#troubleshooting)
     - [`capsule` complained `error: Can't found capsule.toml, current directory is not a project`](#capsule-complained-error-cant-found-capsuletoml-current-directory-is-not-a-project)
     - [I can't see any output of my contract in the CKB's log on dev chain.](#i-cant-see-any-output-of-my-contract-in-the-ckbs-log-on-dev-chain)
-    - [The test can't find contract binary/proof file/vk file.](#the-test-cant-find-contract-binaryproof-filevk-file)
+    - [The test can't find contract binary.](#the-test-cant-find-contract-binary)
     - [How is the project mounted into the Docker container?](#how-is-the-project-mounted-into-the-docker-container)
     - [What does "cycles" mean in Nervos ckb?](#what-does-cycles-mean-in-nervos-ckb)
   - [Acknowledgement](#acknowledgement)
@@ -54,13 +77,13 @@ A contract for verification is deployed on the ckb chain. The prover and the ver
 
 1. The prover completes the trusted-setup, and generates a proof (in the form of a file);
 2. The prover sends a transaction that creates some new cells(aka. utxo, but carrying some data), with one containing the proof and vk files and using the previous contract as its type script (which means, this cell should pass the verification of the contract logic);
-3. The miner collects the transaction and execute the assigned contract. All the cells in a transaction assigning one contract as type script are verified by the contract logic. Otherwise, the transaction is rejected by the miner.
+3. The miner collects the transaction and executes the assigned contract. All the cells in a transaction assigning one contract as type script are verified by the contract logic. Otherwise, the transaction is rejected by the miner.
 4. The prover goes public with the transaction, the proof, the vk file, and the verification contract address that is needed to do the verification.
 5. The verifier is able to verify the proof using the information provided by the prover.
 
 ## Prerequisites
 
-1. Ensure version of rustc is **not lower than** 1.42 and use **stable** version of toolchain.
+1. Ensure the version of rustc is **not lower than** 1.42 and use **stable** version of toolchain.
 
 2. Install the CKB contract development framework [capsule](https://github.com/nervosnetwork/capsule). Access the [wiki page](https://github.com/nervosnetwork/capsule/wiki) for more details about `capsule`.
 
@@ -72,12 +95,12 @@ A contract for verification is deployed on the ckb chain. The prover and the ver
 
 ## Build contracts
 
-Like Cargo, you can choose to build the contract in **dev** mode or **release** mode. The product under release mode is suitable for deployment with a reasonable size and execution consumption, and, `debug!` macro is disabled. Dev mode product allows you to use `debug!` macro to print logs in ckb log, but on the cost of larger binary size and execution cycles. The product resides in _./ckb-contracts/build/[release|debug]/universal_groth16_verifier_.
+You can choose to build the contract in **dev** mode or **release** mode like Cargo. The product under release mode is suitable for deployment with a reasonable size and execution consumption, and, `debug!` macro is disabled. Dev mode product allows you to use `debug!` macro to print logs in ckb log, but on the cost of larger binary size and execution cycles. The product resides in _./ckb-contracts/build/[release|debug]/universal_groth16_verifier_.
 
 ATTENTION:
 
 - all the `capsule` commands should be executed at the project root.
-- Users in mainland China can add the [tuna's mirror of crates.io](https://mirrors.tuna.tsinghua.edu.cn/help/crates.io-index.git/) in the file _./cargo/config_ for faster download of dependencies..
+- Users in mainland China can add the [tuna's mirror of crates.io](https://mirrors.tuna.tsinghua.edu.cn/help/crates.io-index.git/) in the file _./cargo/config_ for a faster download of dependencies.
 
 ```sh
 # At ckb-contracts directory.
@@ -94,7 +117,7 @@ capsule build --release
 
 ## Tests
 
-A simplified, one-time blockchain context is used in the tests environment using [ckb-tool](https://github.com/jjyr/ckb-tool) crate. Needless to setup an authentic blockchain and run a ckb node, one can simply send a transaction to invoke the contract and checkout if the contract works as expected.
+A simplified, one-time blockchain context is used in the test environment using [ckb-tool](https://github.com/jjyr/ckb-tool) crate. Needless to setup an authentic blockchain and run a ckb node, one can simply send a transaction to invoke the contract and checkout if the contract works as expected.
 
 ### Run zkp-toolkit cli tests
 
@@ -125,7 +148,7 @@ A simplified, one-time blockchain context is used in the tests environment using
       cargo run --bin zkp-verify proof_files/groth16-bls12_381-hash.proof.json
       ```
 
-   Know supported schemes and curves:
+   Check supported schemes and curves:
 
    ```sh
    # ./zkp-toolkit/cli
@@ -146,7 +169,7 @@ ATTENTION:
 - Or you can specify a test function name, and perform only one test.
 
 ```sh
-# At ckb-contracts/tests directory root
+# At ckb-contracts/bench-tests directory root
 # Dev mode contracts.
 cargo test -- --nocapture --test-threads 1
 # Release mode contracts.
@@ -186,7 +209,7 @@ RUST_LOG=capsule=trace capsule deploy --address <ADDRESS>
 
 ## Optimizations & Benchmarks
 
-In Nervos ckb, [one should pay for data storaging, transaction fees and computer resources](https://docs.nervos.org/key-concepts/economics.html#the-economics-of-the-ckbyte). Paying for data storaging means, one needs to pay an amount of ckb tokens in direct proportion to the size of the transaction he raises. Paying for computer resources means one should pay extra ckbs based on the amount of computer resources that are used to verify a transaction. The computer resources are measured as [**cycles**](https://docs.nervos.org/glossary/glossary-general.html#cycles).
+In Nervos ckb, [one should pay for data storage, transaction fees and computer resources](https://docs.nervos.org/key-concepts/economics.html#the-economics-of-the-ckbyte). Paying for data storage means, one needs to pay a number of ckb tokens in direct proportion to the size of the transaction he raises. Paying for computer resources means one should pay extra ckbs based on the amount of computer resources that are used to verify a transaction. The computer resources are measured as [**cycles**](https://docs.nervos.org/glossary/glossary-general.html#cycles).
 
 On the other hand, [On mainnet Lina, the value of `MAX_BLOCK_BYTES` is `597_000` and `MAX_BLOCK_CYCLES` is `3_500_000_000`.](https://docs.nervos.org/technical-concepts/architecture.html#computing-cycles-and-transaction-size)
 
@@ -194,7 +217,7 @@ For these reasons, we take contract binary size and execution cost both into con
 
 ### Binary size optimization
 
-The deployer should pay for storaging his contract on-chain. The larger the binary is, the more ckb tokens will be spent for deployment. So several compiling options are analyzed to reduce the contract binary size.
+The deployer should pay for storing his contract on-chain. The larger the binary is, the more ckb tokens will be spent for deployment. So several compiling options are analyzed to reduce the contract binary size.
 
 - To build in release mode, this is enabled by default.
 - LTO

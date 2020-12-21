@@ -6,7 +6,7 @@ Zero-knowledge proofs toolkit with pure Rust.
 
 This project is part of *zkp-toolkit-ckb* and is supported by the Nervos Foundation. It provides multiple zkp schemes and curve options, which can also be used to implement on-chain zkp verifiers for the CKB-VM. You can check the [original proposal](https://talk.nervos.org/t/secbit-labs-zkp-toolkit-ckb-a-zero-knowledge-proof-toolkit-for-ckb/4254) for more feature details.
 
-## Example
+## Examples
 
 Use the Mini circuit and [Groth16](https://eprint.iacr.org/2016/260) scheme we supported as an example.
 
@@ -68,12 +68,12 @@ fn main() {
     };
     let params = generate_random_parameters::<Bn_256, _, _>(c, &mut rng).unwrap();
 
-    // you need save this verify key,
-    // when verify, use it as a params.
+    // you need to save this verify key,
+    // when verify, use it as a param.
     let vk_bytes = postcard::to_allocvec(&params.vk).unwrap();
 
-    // you need save this prove key,
-    // when prove, use it as a params.
+    // you need to save this prove key,
+    // when prove, use it as a param.
     let params_bytes = postcard::to_allocvec(&params).unwrap();
 
     // Prepare the verification key (for proof verification)
@@ -115,6 +115,10 @@ fn main() {
 }
 ```
 
+### More
+
+Check more examples at [ckb-zkp/zkp-toolkit/examples](./examples/).
+
 ## Features
 
 1. Efficient computation.
@@ -126,20 +130,25 @@ fn main() {
 Currently, We supported multiple zkp schemes and curves, And we also supported some useful gadgets that could be sharable between schemes by standard R1CS.
 
 ### Schemes
-- [Groth16](https://eprint.iacr.org/2016/260) most popular zkSNARKs, smallest proof size.
-- [bulletproofs](https://crypto.stanford.edu/bulletproofs/)  Compressible proofs, no trusted-setup.
-- [Spartan](https://eprint.iacr.org/2019/550) without trusted setup.
+
+- [Groth16](https://eprint.iacr.org/2016/260) The most popular zkSNARK scheme, smallest proof size.
+- [Bulletproofs](https://crypto.stanford.edu/bulletproofs/) Short proofs, no trusted-setup.
+- [Spartan](https://eprint.iacr.org/2019/550) Efficient and general-purpose zkSNARKs without trusted setup.
 - [Marlin](https://eprint.iacr.org/2019/1047) Universal and Updatable SRS.
 - [CLINKv2]() Optimized for parallel data processing, support large-scale data (up to GigaBytes), no trusted-setup.
+- [Libra](https://eprint.iacr.org/2019/317) Succinct Zero-Knowledge Proofs with Optimal Prover Computation.
+- [Hyrax](https://eprint.iacr.org/2017/1132) Doubly-efficient zkSNARKs without trusted setup.
 - [aSVC](https://eprint.iacr.org/2020/527) Aggregatable Subvector Commitments for Stateless Cryptocurrencies.
 
 ### Curves
+
 - [bls12_381]() pairing-friendly.
 - [bn_256]() pairing-friendly.
 - [jubjub](https://z.cash/zh/technology/jubjub/)
 - [baby_jubjub](https://eips.ethereum.org/EIPS/eip-2494) designed to work inside zk-SNARK circuits in Ethereum.
 
 ### gadgets
+
 - BLAKE2s
 - Boolean
 - Lookup
@@ -160,7 +169,7 @@ Check [CLI usage](./cli) for hands-on examples.
 
 ## Security
 
-This project is still under active development and is currently being used for research and experimental purposes only, please **DO NOT USE IT IN PRODUCTION** for now.
+This project is still under active development and is currently being used for research and experimental purposes only. Please **DO NOT USE IT IN PRODUCTION** for now.
 
 ## License
 
