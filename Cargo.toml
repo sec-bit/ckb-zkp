@@ -6,5 +6,7 @@ members = [
     "zkp-toolkit/scheme",
     "zkp-toolkit/cli",
     "zkp-toolkit/examples",
+]
+exclude = [
     "ckb-contracts/bench-tests",
 ]
