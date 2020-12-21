@@ -12,7 +12,7 @@ A cli toolkit for zkp.
 
 - Use groth16 as scheme and bn_256 as curve, and prove knowledge of the preimage of a MiMC hash invocation which is the secret string.
   - `cargo run --bin zkp-prove groth16 bn_256 hash iamsecret` (A proof file will be generated at `proof_files` directory)
-  - `cargo run --bin zkp-verify proofs_files/groth16-bn_256-hash.proof.json`
+  - `cargo run --bin zkp-verify proof_files/groth16-bn_256-hash.proof.json`
 
 ### setup
 
