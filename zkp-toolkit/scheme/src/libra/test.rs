@@ -8,7 +8,7 @@ mod bn_256 {
     use math::{Curve, One, Zero};
     use rand::thread_rng;
 
-    fn prepare_constrcut_circuit<G: Curve>(
+    fn prepare_construct_circuit<G: Curve>(
     ) -> (Vec<G::Fr>, Vec<G::Fr>, Vec<Vec<(u8, usize, usize)>>) {
         let mut inputs = Vec::new();
         let mut witnesses = Vec::new();
@@ -51,7 +51,7 @@ mod bn_256 {
     #[test]
     fn test_libra_linear_gkr_bn_256() {
         println!("start linear_gkr...");
-        let (inputs, witnesses, layers) = prepare_constrcut_circuit::<Bn_256>();
+        let (inputs, witnesses, layers) = prepare_construct_circuit::<Bn_256>();
         println!("prepare for constructing circuit...ok");
 
         let circuit = Circuit::new(inputs.len(), witnesses.len(), &layers);
@@ -72,7 +72,7 @@ mod bn_256 {
         let rng = &mut thread_rng();
         println!("start zk linear gkr...");
 
-        let (inputs, witnesses, layers) = prepare_constrcut_circuit::<Bn_256>();
+        let (inputs, witnesses, layers) = prepare_construct_circuit::<Bn_256>();
         println!("prepare for constructing circuit...ok");
 
         let params = Parameters::<Bn_256>::new(rng, 8);
@@ -101,7 +101,7 @@ mod bls12_381 {
     use math::{Curve, One, Zero};
     use rand::thread_rng;
 
-    fn prepare_constrcut_circuit<G: Curve>(
+    fn prepare_construct_circuit<G: Curve>(
     ) -> (Vec<G::Fr>, Vec<G::Fr>, Vec<Vec<(u8, usize, usize)>>) {
         let mut inputs = Vec::new();
         let mut witnesses = Vec::new();
@@ -144,7 +144,7 @@ mod bls12_381 {
     #[test]
     fn test_libra_linear_gkr_bls12_381() {
         println!("start linear_gkr...");
-        let (inputs, witnesses, layers) = prepare_constrcut_circuit::<Bls12_381>();
+        let (inputs, witnesses, layers) = prepare_construct_circuit::<Bls12_381>();
         println!("prepare for constructing circuit...ok");
 
         let circuit = Circuit::new(inputs.len(), witnesses.len(), &layers);
@@ -165,7 +165,7 @@ mod bls12_381 {
         let rng = &mut thread_rng();
         println!("start zk linear gkr...");
 
-        let (inputs, witnesses, layers) = prepare_constrcut_circuit::<Bls12_381>();
+        let (inputs, witnesses, layers) = prepare_construct_circuit::<Bls12_381>();
         println!("prepare for constructing circuit...ok");
 
         let params = Parameters::<Bls12_381>::new(rng, 8);
