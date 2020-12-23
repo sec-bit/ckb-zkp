@@ -88,7 +88,7 @@ pub fn poly_commit_vec<G: Curve>(
     h: &G::Affine,
     blind_value: G::Fr,
 ) -> G::Affine {
-    let mut commit = G::vartime_multiscalar_mul(&values, &generators.clone());
+    let mut commit = G::vartime_multiscalar_mul(&values, &generators);
 
     commit.add_assign(&(h.mul(blind_value)));
 
