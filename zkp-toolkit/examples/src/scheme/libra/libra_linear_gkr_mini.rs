@@ -12,7 +12,7 @@ use scheme::libra::libra_linear_gkr::LinearGKRProof;
 ///layer1~layer3 are composed of multiple gates.
 ///     gaten = (op, left, right) represents the nth gate, op represents the operator, add or multiple,
 ///     left represents the number of its left node, right  represents the number of its right node
-///     e.g. layer2: gate0 = (mul, 0, 1) represents layer1-gate0 = layer1-gate0 * layer1-gate1
+///     e.g. layer2: gate0 = (mul, 0, 1) represents layer2-gate0 = layer1-gate0 * layer1-gate1
 fn prepare_construct_circuit<G: Curve>() -> (Vec<G::Fr>, Vec<G::Fr>, Vec<Vec<(u8, usize, usize)>>) {
     let inputs = vec![
         G::Fr::one() + &G::Fr::one(),                 //2
