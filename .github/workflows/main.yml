@@ -55,11 +55,11 @@ jobs:
           restore-keys: |
             ${{ matrix.version }}-${{ matrix.target }}-cargo-trimmed-
 
-      - name: Cache cargo build
-        uses: actions/cache@v2
-        with:
-          path: target
-          key: ${{ matrix.version }}-${{ matrix.target }}-cargo-build-trimmed-${{ hashFiles('**/Cargo.lock') }}
+      # - name: Cache cargo build
+      #   uses: actions/cache@v2
+      #   with:
+      #     path: target
+      #     key: ${{ matrix.version }}-${{ matrix.target }}-cargo-build-trimmed-${{ hashFiles('**/Cargo.lock') }}
 
       # - name: Check build
       #   uses: actions-rs/cargo@v1
@@ -72,7 +72,7 @@ jobs:
         # timeout-minutes: 120
         with:
           command: test
-          args: --workspace --all-features --exclude=tests --no-fail-fast
+          args: --release --workspace --all-features --exclude=tests --no-fail-fast
 
       - name: Clear the cargo caches
         run: |

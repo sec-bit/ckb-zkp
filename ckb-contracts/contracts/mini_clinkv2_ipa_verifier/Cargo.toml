@@ -1,0 +1,14 @@
+[package]
+name = "mini_clinkv2_ipa_verifier"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+ckb-std = "0.7.2"
+blake2 = { version = "0.8", default-features = false }
+postcard = { version = "0.5", default-features = false, features = ["alloc"] }
+
+[dependencies.zkp-toolkit]
+git = "https://github.com/sec-bit/ckb-zkp"
+default-features = false
+features = ["clinkv2", "bn_256"]

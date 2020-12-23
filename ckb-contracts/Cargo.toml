@@ -1,0 +1,26 @@
+[workspace]
+members = [
+    "contracts/universal_groth16_verifier",
+    "contracts/universal_marlin_verifier",
+    "contracts/universal_spartan_nizk_verifier",
+    "contracts/universal_spartan_snark_verifier",
+    "contracts/mini_bulletproofs_verifier",
+    "contracts/mini_clinkv2_ipa_verifier",
+    "contracts/mini_clinkv2_kzg10_verifier",
+]
+exclude = [
+    "bench-tests",
+    "dependencies",
+]
+
+[profile.release]
+overflow-checks = true
+panic = 'abort'
+lto = true
+opt-level = "z"
+codegen-units = 1
+
+[profile.dev]
+overflow-checks = true
+codegen-units = 16
+debug = 0
