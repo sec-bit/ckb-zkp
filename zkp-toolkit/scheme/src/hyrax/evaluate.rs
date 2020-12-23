@@ -1,9 +1,7 @@
 use crate::hyrax::circuit::Gate;
 use core::ops::{AddAssign, Neg};
 use curve::ProjectiveCurve;
-use math::{
-    log2, msm::VariableBaseMSM, AffineCurve, Curve, Field, One, PrimeField, UniformRand, Zero,
-};
+use math::{log2, AffineCurve, Curve, Field, One, UniformRand, Zero};
 use merlin::Transcript;
 use rand::Rng;
 
@@ -90,14 +88,7 @@ pub fn poly_commit_vec<G: Curve>(
     h: &G::Affine,
     blind_value: G::Fr,
 ) -> G::Affine {
-    let scalars = values.clone();
-    let mut commit = VariableBaseMSM::multi_scalar_mul(
-        &generators.clone(),
-        &scalars
-            .into_iter()
-            .map(|e| e.into_repr())
-            .collect::<Vec<_>>(),
-    );
+    let mut commit = G::vartime_multiscalar_mul(&values, &generators);
 
     commit.add_assign(&(h.mul(blind_value)));
 

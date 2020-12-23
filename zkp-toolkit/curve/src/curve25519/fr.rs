@@ -58,7 +58,7 @@ impl FpParameters for FrParameters {
     ]);
 
     /// 2^s ? s=2
-    const TWO_ADICITY: u32 = 4;
+    const TWO_ADICITY: u32 = 2;
 
     /// 2^s root of unity computed by GENERATOR^t
     const ROOT_OF_UNITY: BigInteger = BigInteger([
