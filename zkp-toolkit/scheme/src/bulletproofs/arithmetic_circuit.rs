@@ -844,7 +844,10 @@ mod tests {
         }
         .matrix_to_map();
 
-        let f = [&statement[..], &witness[..]].concat();
+        let mut r1_statement = vec![G::Fr::one()];
+        r1_statement.extend(&statement);
+
+        let f = [&r1_statement[..], &witness[..]].concat();
         let aL = vector_matrix_product_t::<G::Fr>(&f, &r1cs_circuit.CL);
         let aR = vector_matrix_product_t::<G::Fr>(&f, &r1cs_circuit.CR);
         let aO = vector_matrix_product_t::<G::Fr>(&f, &r1cs_circuit.CO);
@@ -853,7 +856,7 @@ mod tests {
             aL: aL,
             aR: aR,
             aO: aO,
-            s: statement,
+            s: r1_statement,
             w: witness,
         };
 
@@ -883,10 +886,8 @@ mod tests {
             n_w,
         };
 
-        let _proof = prove(&generators, &r1cs_circuit, &input, rng);
-
-        //assert!(verify_proof(&generators, &proof, &r1cs_circuit, &input.s).unwrap());
-        assert!(true); // TODO test rebuild
+        let proof = prove(&generators, &r1cs_circuit, &input, rng);
+        assert!(verify_proof(&generators, &proof, &r1cs_circuit, &statement).unwrap());
     }
 
     #[test]
@@ -922,7 +923,7 @@ mod tests {
             vec![zer, zer, zer, zer, zer, one],
             vec![zer, one, zer, zer, zer, zer],
         ];
-        let statement = vec![one, G::Fr::from(35u8)];
+        let statement = vec![G::Fr::from(35u8)];
         let witness = vec![
             G::Fr::from(3u8),
             G::Fr::from(9u8),
@@ -958,7 +959,7 @@ mod tests {
         let CL = vec![vec![zer, one, zer, zer]];
         let CR = vec![vec![zer, zer, one, zer]];
         let CO = vec![vec![zer, zer, zer, one]];
-        let statement = vec![one];
+        let statement = vec![];
         let witness = vec![G::Fr::from(2u8), G::Fr::from(3u8), G::Fr::from(6u8)];
 
         run_protocol3_r1cs_helper::<G>(CL, CR, CO, statement, witness);
@@ -1002,7 +1003,7 @@ mod tests {
             vec![zer, zer, zer, zer, zer, zer, one, zer, zer, zer],
             vec![zer, zer, zer, zer, zer, zer, zer, zer, zer, one],
         ];
-        let statement = vec![one];
+        let statement = vec![];
         let witness = vec![
             G::Fr::from(2u8),
             G::Fr::from(3u8),
@@ -1060,7 +1061,7 @@ mod tests {
             vec![zer, zer, zer, zer, zer, zer, one],
             vec![zer, zer, zer, zer, zer, zer, zer],
         ];
-        let statement = vec![one];
+        let statement = vec![];
         let three = G::Fr::from(3u8);
         let seven = G::Fr::from(7u8);
         let witness = vec![
@@ -1096,7 +1097,7 @@ mod tests {
         let CL = vec![vec![zer, one, one, zer]];
         let CR = vec![vec![one, zer, zer, zer]];
         let CO = vec![vec![zer, zer, zer, one]];
-        let statement = vec![one];
+        let statement = vec![];
         let witness = vec![G::Fr::from(4u8), G::Fr::from(5u8), G::Fr::from(9u8)];
 
         run_protocol3_r1cs_helper::<G>(CL, CR, CO, statement, witness);
