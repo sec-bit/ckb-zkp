@@ -97,6 +97,18 @@ pub trait PairingEngine: Sized + 'static + Copy + Debug + Sync + Send {
         let g2_prep = Self::G2Prepared::from(q.into());
         Self::product_of_pairings(core::iter::once(&(g1_prep, g2_prep)))
     }
+
+    fn vartime_multiscalar_mul_g2(
+        scalars: &[Self::Fr],
+        points: &[Self::G2Affine],
+    ) -> Self::G2Projective {
+        let uints = scalars
+            .into_iter()
+            .map(|s| s.into_repr())
+            .collect::<Vec<_>>();
+
+        crate::msm::VariableBaseMSM::multi_scalar_mul(points, &uints[..])
+    }
 }
 
 /// Projective representation of an elliptic curve point guaranteed to be

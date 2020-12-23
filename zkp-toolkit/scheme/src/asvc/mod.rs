@@ -1,9 +1,9 @@
-use core::ops::{Add, AddAssign, Deref, Div, Mul, MulAssign, Neg, Sub, SubAssign};
+use core::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub, SubAssign};
 use math::{
     fft::{DenseOrSparsePolynomial, DensePolynomial as Polynomial, EvaluationDomain},
     fields::Field,
-    msm::{FixedBaseMSM, VariableBaseMSM},
-    AffineCurve, One, PairingEngine, PrimeField, ProjectiveCurve, UniformRand, Zero,
+    msm::FixedBaseMSM,
+    AffineCurve, Curve, One, PairingEngine, PrimeField, ProjectiveCurve, UniformRand, Zero,
 };
 use rand::Rng;
 
@@ -145,14 +145,7 @@ where
     assert!(num_coefficient >= 1);
     assert!(num_coefficient <= num_powers);
 
-    let commit = VariableBaseMSM::multi_scalar_mul(
-        &prk_params.l_of_g1.clone(),
-        values
-            .into_iter()
-            .map(|e| e.into_repr())
-            .collect::<Vec<_>>()
-            .as_slice(),
-    );
+    let commit = E::vartime_multiscalar_mul(&values, &prk_params.l_of_g1);
 
     let c = Commitment::<E> {
         commit: commit.into_affine(),
@@ -192,15 +185,7 @@ where
         .unwrap();
 
     // π = g_1^q(τ)
-    let witness = VariableBaseMSM::multi_scalar_mul(
-        &prk_params.powers_of_g1.clone(),
-        &witness_polynomial
-            .deref()
-            .to_vec()
-            .into_iter()
-            .map(|e| e.into_repr())
-            .collect::<Vec<_>>(),
-    );
+    let witness = E::vartime_multiscalar_mul(&witness_polynomial, &prk_params.powers_of_g1);
     // println!("[open] evaluate the coeffieients for witness...OK. witness = {}", witness);
 
     let proof = Proof::<E> {
@@ -252,29 +237,14 @@ where
 
         r_polynomial = r_polynomial.add(&l_polynomial);
     }
-    let r_value = VariableBaseMSM::multi_scalar_mul(
-        &vrk_params.powers_of_g1.clone(),
-        &r_polynomial
-            .deref()
-            .into_iter()
-            .map(|e| e.into_repr())
-            .collect::<Vec<_>>(),
-    );
+    let r_value = E::vartime_multiscalar_mul(&r_polynomial, &vrk_params.powers_of_g1);
 
     let mut inner = commit.commit.into_projective();
     inner.sub_assign(&r_value); // inner.sub_assign(&r_value);
     let lhs = E::pairing(inner, vrk_params.powers_of_g2[0]);
 
     // A_I(τ) = ∏(τ - ω^i)
-    let a_value = VariableBaseMSM::multi_scalar_mul(
-        &vrk_params.powers_of_g2.clone(),
-        &a_polynomial
-            .deref()
-            .to_vec()
-            .into_iter()
-            .map(|e| e.into_repr())
-            .collect::<Vec<_>>(),
-    );
+    let a_value = E::vartime_multiscalar_mul_g2(&a_polynomial, &vrk_params.powers_of_g2);
     let rhs = E::pairing(proof.w, a_value);
 
     Ok(lhs == rhs)

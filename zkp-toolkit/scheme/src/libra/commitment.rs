@@ -1,8 +1,7 @@
 use crate::libra::evaluate::{eval_eq, poly_commit_vec, random_bytes_to_fr};
 use crate::libra::params::{MultiCommitmentSetupParameters, PolyCommitmentSetupParameters};
 use math::{
-    bytes::ToBytes, log2, msm::VariableBaseMSM, AffineCurve, Curve, Field, One, PrimeField,
-    ProjectiveCurve, UniformRand, Zero,
+    bytes::ToBytes, log2, AffineCurve, Curve, Field, One, ProjectiveCurve, UniformRand, Zero,
 };
 use merlin::Transcript;
 use rand::Rng;
@@ -513,40 +512,12 @@ impl<G: Curve> BulletReduceProof<G> {
             let (gl, gr) = g_vec.split_at(n);
             // let (hL, hR) = h_vec.split_at(n);
             let (blind_l, blind_r) = blinds_iter.next().unwrap();
-            // let L: G::G1Projective = VariableBaseMSM::multi_scalar_mul(&gr.to_vec().append(&mut vec![Q, H]) , al.to_vec().append(&mut vec![cl, *blind_l]));
-            // let R: G::G1Projective = VariableBaseMSM::multi_scalar_mul(&gl.to_vec().append(&mut vec![Q, H]) , ar.to_vec().append(&mut vec![cr, *blind_r]));
-            let mut l = VariableBaseMSM::multi_scalar_mul(
-                gr,
-                al.into_iter()
-                    .map(|e| e.into_repr())
-                    .collect::<Vec<_>>()
-                    .as_slice(),
-            );
-            l += &(VariableBaseMSM::multi_scalar_mul(
-                vec![q, h].as_slice().clone(),
-                vec![cl, *blind_l]
-                    .as_slice()
-                    .into_iter()
-                    .map(|e| e.into_repr())
-                    .collect::<Vec<_>>()
-                    .as_slice(),
-            ));
-            let mut r = VariableBaseMSM::multi_scalar_mul(
-                gl,
-                ar.into_iter()
-                    .map(|e| e.into_repr())
-                    .collect::<Vec<_>>()
-                    .as_slice(),
-            );
-            r += &(VariableBaseMSM::multi_scalar_mul(
-                vec![q, h].as_slice().clone(),
-                vec![cr, *blind_r]
-                    .as_slice()
-                    .into_iter()
-                    .map(|e| e.into_repr())
-                    .collect::<Vec<_>>()
-                    .as_slice(),
-            ));
+
+            let mut l = G::vartime_multiscalar_mul(al, gr);
+            l += &(G::vartime_multiscalar_mul(&[cl, *blind_l], &[q, h]));
+            let mut r = G::vartime_multiscalar_mul(ar, gl);
+            r += &(G::vartime_multiscalar_mul(&[cr, *blind_r], &[q, h]));
+
             // P -> V: L, R
             let l_aff = l.into_affine();
             let r_aff = r.into_affine();
@@ -585,10 +556,7 @@ impl<G: Curve> BulletReduceProof<G> {
             r_vec: r_vec,
         };
 
-        let gamma_hat = VariableBaseMSM::multi_scalar_mul(
-            &vec![g, q, h],
-            &[a.into_repr(), (a * &b).into_repr(), blind_fin.into_repr()],
-        );
+        let gamma_hat = G::vartime_multiscalar_mul(&[a, (a * &b), blind_fin], &[g, q, h]);
 
         (proof, gamma_hat.into_affine(), a, b, g, blind_fin)
     }
@@ -632,31 +600,11 @@ impl<G: Curve> BulletReduceProof<G> {
         let mut inv_s = s.clone();
         inv_s.reverse();
         let b_s = (0..n).map(|i| b_vec[i] * &s[i]).sum();
-        let g_hat = VariableBaseMSM::multi_scalar_mul(
-            &g_vec[0..s.len()].to_vec().clone(),
-            &s.into_iter().map(|e| e.into_repr()).collect::<Vec<_>>(),
-        );
-        let mut gamma_hat = VariableBaseMSM::multi_scalar_mul(
-            &self.l_vec.as_slice(),
-            &x_sq_vec
-                .into_iter()
-                .map(|e| e.into_repr())
-                .collect::<Vec<_>>(),
-        );
-        gamma_hat += &VariableBaseMSM::multi_scalar_mul(
-            &self.r_vec,
-            &x_inv_sq_vec
-                .into_iter()
-                .map(|e| e.into_repr())
-                .collect::<Vec<_>>(),
-        );
-        gamma_hat += &VariableBaseMSM::multi_scalar_mul(
-            &vec![gamma],
-            &vec![G::Fr::one()]
-                .into_iter()
-                .map(|e| e.into_repr())
-                .collect::<Vec<_>>(),
-        );
+        let g_hat = G::vartime_multiscalar_mul(&s, &g_vec[0..s.len()]);
+        let mut gamma_hat = G::vartime_multiscalar_mul(&x_sq_vec, &self.l_vec);
+        gamma_hat += &G::vartime_multiscalar_mul(&x_inv_sq_vec, &self.r_vec);
+        gamma_hat += &G::vartime_multiscalar_mul(&[G::Fr::one()], &[gamma]);
+
         (b_s, g_hat.into_affine(), gamma_hat.into_affine())
     }
 }

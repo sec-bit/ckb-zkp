@@ -41,9 +41,6 @@ pub fn bullet_inner_product_proof<G: Curve>(
 
         let (blind_l, blind_r) = blinds_iter.next().unwrap();
 
-        // let L: G::Projective = VariableBaseMSM::multi_scalar_mul(&gr.to_vec().append(&mut vec![Q, H]) , al.to_vec().append(&mut vec![cl, *blind_l]));
-        // let R: G::Projective = VariableBaseMSM::multi_scalar_mul(&gl.to_vec().append(&mut vec![Q, H]) , ar.to_vec().append(&mut vec![cr, *blind_r]));
-
         let mut l = G::vartime_multiscalar_mul(&al, &gr);
         l += &(G::vartime_multiscalar_mul(&[cl, *blind_l], &[q, h]));
 
