@@ -1,0 +1,27 @@
+[package]
+name = "zkp-cli"
+version = "0.1.0"
+authors = ["SECBIT Labs"]
+description = "A cli toolkit for zkp use."
+keywords = ["cryptography", "cli", "zkp"]
+categories = ["cryptography"]
+license = "MIT/Apache-2.0"
+edition = "2018"
+
+[[bin]]
+path = "src/zkp_verify.rs"
+name = "zkp-verify"
+
+[[bin]]
+path = "src/zkp_prove.rs"
+name = "zkp-prove"
+
+[[bin]]
+path = "src/setup.rs"
+name = "setup"
+
+[dependencies]
+zkp-toolkit = { path = ".." }
+rand = { version = "0.7" }
+serde_json = { version = "1" }
+postcard = { version = "0.5", default-features = false, features = ["alloc"] }
