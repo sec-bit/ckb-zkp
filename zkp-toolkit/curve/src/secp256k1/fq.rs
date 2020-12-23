@@ -43,7 +43,7 @@ impl FpParameters for FqParameters {
     const GENERATOR: BigInteger = BigInteger([0u64, 17179873092u64, 0u64, 0u64, 0u64]);
 
     /// 2^s ? s=1
-    const TWO_ADICITY: u32 = 2;
+    const TWO_ADICITY: u32 = 1;
 
     /// 2^s root of unity computed by GENERATOR^t TODO
     const ROOT_OF_UNITY: BigInteger = BigInteger([0u64, 4294968273u64, 0u64, 0u64, 0u64]);

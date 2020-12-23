@@ -22,7 +22,7 @@ rand = { version = "0.7", default-features = false }
 rand_xorshift = "0.2"
 
 [features]
-default = [ "std", "secp256k1" ]
+default = [ "std" ]
 
 full = [
      "bls12_377",
