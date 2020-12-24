@@ -119,7 +119,9 @@ fn mini_marlin() {
 #[test]
 fn mini_bulletproofs() {
     //use curve::baby_jubjub::{BabyJubJub as G, Fr}; // size: 100%, time: 100%, 100%
-    use curve::curve25519::{Curve25519 as G, Fr}; // size: 71%, time: 13%, 14%
+    //use curve::curve25519::{Curve25519 as G, Fr}; // size: 71%, time: 13%, 14%
+    //use curve::secp256k1::{Fr, Secp256k1 as G}; // size: 71%, time: 13%, 14%
+    use curve::bn_256::{Bn_256 as G, Fr}; // size: 71%, time: 13%, 14%
     use scheme::bulletproofs::{create_random_proof, verify_proof};
     use std::time::Instant;
 

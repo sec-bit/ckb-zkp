@@ -1,8 +1,8 @@
 #![allow(unused)]
 use crate::{
+    curves::flags::{Flags, SWFlags},
     fields::{Field, LegendreSymbol, PrimeField, SquareRootField},
     io::Cursor,
-    curves::flags::{Flags, SWFlags},
 };
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
