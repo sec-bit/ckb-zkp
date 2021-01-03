@@ -1,11 +1,14 @@
-use crate::libra::evaluate::{eval_eq, poly_commit_vec, random_bytes_to_fr};
-use crate::libra::params::{MultiCommitmentSetupParameters, PolyCommitmentSetupParameters};
 use math::{
     bytes::ToBytes, log2, AffineCurve, Curve, Field, One, ProjectiveCurve, UniformRand, Zero,
 };
 use merlin::Transcript;
 use rand::Rng;
 
+use crate::libra::evaluate::{eval_eq, poly_commit_vec, random_bytes_to_fr};
+use crate::libra::params::{MultiCommitmentSetupParameters, PolyCommitmentSetupParameters};
+use crate::Vec;
+
+#[derive(Serialize, Deserialize)]
 pub struct EqProof<G: Curve> {
     pub alpha: G::Affine,
     pub z: G::Fr,
@@ -105,6 +108,7 @@ impl<G: Curve> KnowledgeProof<G> {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct ProductProof<G: Curve> {
     pub comm_alpha: G::Affine,
     pub comm_beta: G::Affine,
@@ -316,6 +320,7 @@ impl<G: Curve> DotProductProof<G> {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct LogDotProductProof<G: Curve> {
     pub bullet_reduce_proof: BulletReduceProof<G>,
     pub delta: G::Affine,
@@ -472,6 +477,7 @@ impl<G: Curve> LogDotProductProof<G> {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct BulletReduceProof<G: Curve> {
     pub l_vec: Vec<G::Affine>,
     pub r_vec: Vec<G::Affine>,

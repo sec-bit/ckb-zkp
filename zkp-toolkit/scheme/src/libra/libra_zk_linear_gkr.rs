@@ -1,3 +1,7 @@
+use math::{bytes::ToBytes, AffineCurve, Curve, One, ProjectiveCurve, UniformRand, Zero};
+use merlin::Transcript;
+use rand::Rng;
+
 use crate::libra::circuit::Circuit;
 use crate::libra::commitment::{EqProof, LogDotProductProof, ProductProof};
 use crate::libra::evaluate::{
@@ -6,10 +10,9 @@ use crate::libra::evaluate::{
 use crate::libra::libra_linear_gkr::{initialize_phase_one, initialize_phase_two};
 use crate::libra::params::Parameters;
 use crate::libra::sumcheck::ZKSumCheckProof;
-use math::{bytes::ToBytes, AffineCurve, Curve, One, ProjectiveCurve, UniformRand, Zero};
-use merlin::Transcript;
-use rand::Rng;
+use crate::Vec;
 
+#[derive(Serialize, Deserialize)]
 pub struct ZKLayerProof<G: Curve> {
     pub proof_phase_one: ZKSumCheckProof<G>,
     pub proof_phase_two: ZKSumCheckProof<G>,
@@ -20,6 +23,7 @@ pub struct ZKLayerProof<G: Curve> {
     pub eq_proof: EqProof<G>,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct ZKLinearGKRProof<G: Curve> {
     pub comm_witness: Vec<G::Affine>,
     pub proofs: Vec<ZKLayerProof<G>>,

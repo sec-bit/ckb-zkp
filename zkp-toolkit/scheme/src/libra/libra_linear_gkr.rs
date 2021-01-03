@@ -1,10 +1,12 @@
+use math::{bytes::ToBytes, Curve, One, Zero};
+use merlin::Transcript;
+
 use crate::libra::circuit::{Circuit, Gate};
 use crate::libra::evaluate::{
     eval_eq, eval_fgu, eval_hg, eval_output, eval_value, random_bytes_to_fr,
 };
 use crate::libra::sumcheck::SumCheckProof;
-use math::{bytes::ToBytes, Curve, One, Zero};
-use merlin::Transcript;
+use crate::Vec;
 
 pub struct LayerProof<G: Curve> {
     pub proof_phase_one: SumCheckProof<G>,

@@ -1,3 +1,8 @@
+// use core::ops::{Deref, Neg};
+use math::{bytes::ToBytes, AffineCurve, Curve, One, ProjectiveCurve, UniformRand, Zero};
+use merlin::Transcript;
+use rand::Rng;
+
 use crate::hyrax::circuit::Circuit;
 use crate::hyrax::commitment::{EqProof, LogDotProductProof};
 use crate::hyrax::evaluate::{
@@ -5,11 +10,9 @@ use crate::hyrax::evaluate::{
 };
 use crate::hyrax::params::Parameters;
 use crate::hyrax::zk_sumcheck_proof::ZkSumcheckProof;
-// use core::ops::{Deref, Neg};
-use math::{bytes::ToBytes, AffineCurve, Curve, One, ProjectiveCurve, UniformRand, Zero};
-use merlin::Transcript;
-use rand::Rng;
+use crate::Vec;
 
+#[derive(Serialize, Deserialize)]
 pub struct HyraxProof<G: Curve> {
     pub comm_witness: Vec<G::Affine>,
     pub proofs: Vec<ZkSumcheckProof<G>>,

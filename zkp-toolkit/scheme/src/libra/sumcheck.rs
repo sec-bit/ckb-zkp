@@ -1,11 +1,14 @@
-use crate::libra::evaluate::{combine_with_r, poly_commit_vec, random_bytes_to_fr};
-use crate::libra::params::SumCheckCommitmentSetupParameters;
 use core::ops::{Add, Deref};
 use math::fft::DensePolynomial as Polynomial;
 use math::{bytes::ToBytes, AffineCurve, Curve, Field, One, ProjectiveCurve, UniformRand, Zero};
 use merlin::Transcript;
 use rand::Rng;
 
+use crate::libra::evaluate::{combine_with_r, poly_commit_vec, random_bytes_to_fr};
+use crate::libra::params::SumCheckCommitmentSetupParameters;
+use crate::Vec;
+
+#[derive(Serialize, Deserialize)]
 pub struct SumCheckProof<G: Curve> {
     pub polys: Vec<Polynomial<G::Fr>>,
     pub poly_value_at_r: Vec<G::Fr>,
@@ -166,6 +169,7 @@ impl<G: Curve> SumCheckProof<G> {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct ZKSumCheckProof<G: Curve> {
     pub comm_polys: Vec<G::Affine>,
     pub comm_evals: Vec<G::Affine>,
@@ -422,6 +426,7 @@ impl<G: Curve> ZKSumCheckProof<G> {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct SumCheckEvalProof<G: Curve> {
     pub d_commit: G::Affine,
     pub dot_cd_commit: G::Affine,

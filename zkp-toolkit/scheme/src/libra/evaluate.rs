@@ -1,9 +1,11 @@
-use crate::libra::circuit::Gate;
 use core::ops::AddAssign;
 use curve::ProjectiveCurve;
 use math::{log2, AffineCurve, Curve, Field, One, UniformRand, Zero};
 use merlin::Transcript;
 use rand::Rng;
+
+use crate::libra::circuit::Gate;
+use crate::Vec;
 
 pub fn eval_output<G: Curve>(
     output: &Vec<G::Fr>,

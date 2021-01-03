@@ -1,6 +1,8 @@
-use crate::libra::evaluate::eval_eq;
 use core::cmp;
 use math::{log2, Curve, Zero};
+
+use crate::libra::evaluate::eval_eq;
+use crate::Vec;
 
 ///operation
 /// 0. add

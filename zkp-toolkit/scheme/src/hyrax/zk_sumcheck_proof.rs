@@ -1,15 +1,18 @@
-use crate::hyrax::circuit::Gate;
-use crate::hyrax::commitment::ProductProof;
-use crate::hyrax::evaluate::{
-    combine_with_r, construct_matrix, convert_to_bit, eval_eq, poly_commit_vec, random_bytes_to_fr,
-};
-use crate::hyrax::params::SumCheckCommitmentSetupParameters;
 use core::ops::{Deref, Neg};
 use math::fft::DensePolynomial as Polynomial;
 use math::{bytes::ToBytes, log2, AffineCurve, Curve, Field, ProjectiveCurve, UniformRand, Zero};
 use merlin::Transcript;
 use rand::Rng;
 
+use crate::hyrax::circuit::Gate;
+use crate::hyrax::commitment::ProductProof;
+use crate::hyrax::evaluate::{
+    combine_with_r, construct_matrix, convert_to_bit, eval_eq, poly_commit_vec, random_bytes_to_fr,
+};
+use crate::hyrax::params::SumCheckCommitmentSetupParameters;
+use crate::Vec;
+
+#[derive(Serialize, Deserialize)]
 pub struct ZkSumcheckProof<G: Curve> {
     pub prod_proof: ProductProof<G>,
     pub comm_a0: G::Affine,

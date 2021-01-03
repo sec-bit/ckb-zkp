@@ -1,9 +1,11 @@
-use crate::hyrax::circuit::Gate;
 use core::ops::{AddAssign, Neg};
 use curve::ProjectiveCurve;
 use math::{log2, AffineCurve, Curve, Field, One, UniformRand, Zero};
 use merlin::Transcript;
 use rand::Rng;
+
+use crate::hyrax::circuit::Gate;
+use crate::Vec;
 
 pub fn eval_outputs<G: Curve>(
     outputs: &Vec<Vec<G::Fr>>,

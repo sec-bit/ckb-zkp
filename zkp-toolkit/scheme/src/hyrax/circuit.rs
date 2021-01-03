@@ -1,6 +1,8 @@
 use core::cmp;
 use math::{log2, Curve, Zero};
 
+use crate::Vec;
+
 ///operation
 /// 0. add
 /// 1. multiple
