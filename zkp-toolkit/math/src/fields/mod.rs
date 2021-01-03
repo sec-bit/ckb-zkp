@@ -75,6 +75,10 @@ pub trait Field:
     + for<'a> Sub<&'a Self, Output = Self>
     + for<'a> Mul<&'a Self, Output = Self>
     + for<'a> Div<&'a Self, Output = Self>
+    + for<'a> Add<&'a mut Self, Output = Self>
+    + for<'a> Sub<&'a mut Self, Output = Self>
+    + for<'a> Mul<&'a mut Self, Output = Self>
+    + for<'a> Div<&'a mut Self, Output = Self>
     + for<'a> AddAssign<&'a Self>
     + for<'a> SubAssign<&'a Self>
     + for<'a> MulAssign<&'a Self>
@@ -215,6 +219,7 @@ pub trait PrimeField:
     + From<u32>
     + From<u16>
     + From<u8>
+    + From<i32>
 {
     type Params: FpParameters<BigInt = Self::BigInt>;
     type BigInt: BigInteger;

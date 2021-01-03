@@ -268,6 +268,7 @@ macro_rules! impl_Fp {
         impl_prime_field_from_int!($Fp, u32, $FpParameters);
         impl_prime_field_from_int!($Fp, u16, $FpParameters);
         impl_prime_field_from_int!($Fp, u8, $FpParameters);
+        impl_prime_field_from_int!($Fp, i32, $FpParameters);
 
         impl_prime_field_standard_sample!($Fp, $FpParameters);
 
@@ -651,10 +652,17 @@ macro_rules! impl_prime_field_from_int {
             }
         }
     };
+    ($field: ident, u64, $params: ident) => {
+        impl<P: $params> From<u64> for $field<P> {
+            fn from(other: u64) -> Self {
+                Self::from_repr(P::BigInt::from(other))
+            }
+        }
+    };
     ($field: ident, $int: ident, $params: ident) => {
         impl<P: $params> From<$int> for $field<P> {
             fn from(other: $int) -> Self {
-                Self::from_repr(P::BigInt::from(u64::from(other)))
+                Self::from_repr(P::BigInt::from(other as u64))
             }
         }
     };
