@@ -1,0 +1,17 @@
+[package]
+name = "zkp-curve"
+version = "0.1.0"
+authors = ["SECBIT Labs"]
+description = "a general zkp curve trait."
+keywords = ["cryptography", "zkp", "zero-knowledge"]
+categories = ["cryptography"]
+license = "MIT/Apache-2.0"
+edition = "2018"
+
+[features]
+default = ["std"]
+std = ["ark-ff/std", "ark-ec/std"]
+
+[dependencies]
+ark-ff = { git = "https://github.com/arkworks-rs/algebra", default-features = false }
+ark-ec = { git = "https://github.com/arkworks-rs/algebra", default-features = false }

@@ -1,11 +1,10 @@
 [workspace]
 members = [
-    "zkp-toolkit",
-    "zkp-toolkit/math",
-    "zkp-toolkit/curve",
-    "zkp-toolkit/scheme",
-    "zkp-toolkit/cli",
-    "zkp-toolkit/examples",
+    "curve",
+    "curve25519",
+    "r1cs",
+    "groth16",
+    "bulletproofs",
 ]
 exclude = [
     "ckb-contracts/bench-tests",

@@ -1,0 +1,17 @@
+[package]
+name = "zkp-curve25519"
+version = "0.1.0"
+authors = ["SECBIT Labs"]
+description = "a zkp-friendly wrap curve25519 with ark-ff and curve25519-dalek."
+keywords = ["cryptography", "zkp", "zero-knowledge", "curve25519"]
+categories = ["cryptography"]
+license = "MIT/Apache-2.0"
+edition = "2018"
+
+[features]
+default = ["std"]
+std = ["ark-ff/std", "ark-ec/std"]
+
+[dependencies]
+ark-ff = { git = "https://github.com/arkworks-rs/algebra", default-features = false }
+ark-ec = { git = "https://github.com/arkworks-rs/algebra", default-features = false }
