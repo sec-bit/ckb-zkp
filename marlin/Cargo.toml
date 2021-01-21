@@ -1,9 +1,9 @@
 [package]
-name = "zkp-groth16"
+name = "zkp-marlin"
 version = "0.1.0"
 authors = ["SECBIT Labs"]
-description = "a zero-knowledge proof scheme: groth16."
-keywords = ["cryptography", "zkp", "zero-knowledge", "groth16"]
+description = "a zero-knowledge proof scheme: marlin."
+keywords = ["cryptography", "zkp", "zero-knowledge", "marlin"]
 categories = ["cryptography"]
 license = "MIT/Apache-2.0"
 edition = "2018"
@@ -18,6 +18,8 @@ smallvec = "1.6.0"
 rand = { version = "0.7", default-features = false }
 zkp-r1cs = { version = "0.1", path = "../r1cs" }
 rayon = { version = "1", optional = true }
+merlin = { version = "2.0", default-features = false }
+rand_chacha = { version = "0.2", default-features = false }
 ark-ff = { git = "https://github.com/arkworks-rs/algebra", default-features = false }
 ark-poly = { git = "https://github.com/arkworks-rs/algebra", default-features = false }
 ark-ec = { git = "https://github.com/arkworks-rs/algebra", default-features = false }
