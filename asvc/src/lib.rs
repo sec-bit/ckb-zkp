@@ -69,6 +69,13 @@ pub struct Proof<E: PairingEngine> {
     pub w: E::G1Affine,
 }
 
+fn group_gen<E: PairingEngine>(domain: &GeneralEvaluationDomain<E::Fr>) -> E::Fr {
+    match domain {
+        GeneralEvaluationDomain::Radix2(radix) => radix.group_gen,
+        GeneralEvaluationDomain::MixedRadix(mixed) => mixed.group_gen,
+    }
+}
+
 pub fn key_gen<E, R>(n: usize, rng: &mut R) -> Result<Parameters<E>, SynthesisError>
 where
     E: PairingEngine,
@@ -110,19 +117,19 @@ where
     let mut l_of_g1: Vec<E::G1Projective> = Vec::new();
     for i in 0..max_degree {
         // 1/(τ-ω^i)
-        let tau_omega_i_divisor = E::Fr::one().div(&tau.sub(&domain.group_gen.pow(&[i as u64])));
+        let tau_omega_i_divisor =
+            E::Fr::one().div(&tau.sub(&group_gen::<E>(&domain).pow(&[i as u64])));
 
         // ai = g_1^(A(τ)/(τ-ω^i))
         let ai = a.mul(tau_omega_i_divisor.into());
 
         // 1/nω^(n-i) = ω^i/n
-        let a_aside_omega_i_divisor = domain
-            .group_gen
+        let a_aside_omega_i_divisor = group_gen::<E>(&domain)
             .pow(&[i as u64])
-            .div(&E::Fr::from_repr((max_degree as u64).into()));
+            .div(&E::Fr::from_repr((max_degree as u64).into()).unwrap());
 
         // li = g_1^L_i(x) = g_1^(A(τ)/((x-ω^i)*A'(ω^i))) = ai^(1/A'(ω^i))
-        let li = ai.mul(a_aside_omega_i_divisor);
+        let li = ai.mul(a_aside_omega_i_divisor.into());
 
         // ui = (li-1)/(x-ω^i)
         let mut ui = li.sub(&g1);
@@ -194,7 +201,7 @@ where
     let mut divisor_polynomial = DensePolynomial::from_coefficients_vec(vec![E::Fr::one()]);
     for point in points.iter() {
         let tpoly = DensePolynomial::from_coefficients_vec(vec![
-            domain.group_gen.pow(&[*point as u64]).neg(),
+            group_gen::<E>(&domain).pow(&[*point as u64]).neg(),
             E::Fr::one(),
         ]);
         divisor_polynomial = divisor_polynomial.mul(&tpoly);

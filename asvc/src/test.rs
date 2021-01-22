@@ -9,6 +9,15 @@ mod bls12_381 {
 
     use crate::*;
 
+    fn group_gen(
+        domain: &GeneralEvaluationDomain<<Bls12_381 as PairingEngine>::Fr>,
+    ) -> <Bls12_381 as PairingEngine>::Fr {
+        match domain {
+            GeneralEvaluationDomain::Radix2(radix) => radix.group_gen,
+            GeneralEvaluationDomain::MixedRadix(mixed) => mixed.group_gen,
+        }
+    }
+
     #[test]
     fn test_aggregatable_svc() {
         // let rng = &mut thread_rng();
@@ -16,7 +25,8 @@ mod bls12_381 {
         let size: usize = 8;
         let params = key_gen::<Bls12_381, _>(size, rng).unwrap();
 
-        let domain = EvaluationDomain::<<Bls12_381 as PairingEngine>::Fr>::new(size).unwrap();
+        let domain: GeneralEvaluationDomain<<Bls12_381 as PairingEngine>::Fr> =
+            EvaluationDomain::<<Bls12_381 as PairingEngine>::Fr>::new(size).unwrap();
 
         let mut values = Vec::<<Bls12_381 as PairingEngine>::Fr>::new();
         values.push(<Bls12_381 as PairingEngine>::Fr::rand(rng));
@@ -46,7 +56,7 @@ mod bls12_381 {
             point_values,
             points,
             &proof,
-            domain.group_gen,
+            group_gen(&domain),
         )
         .unwrap();
         println!("--------verify position...{}\n", rs);
@@ -58,7 +68,7 @@ mod bls12_381 {
             &params.verification_key,
             index,
             &params.proving_key.update_keys[index as usize],
-            domain.group_gen,
+            group_gen(&domain),
         )
         .unwrap();
         println!("--------verify updating key...{}\n", rs);
@@ -74,7 +84,7 @@ mod bls12_381 {
             delta,
             index,
             &params.proving_key.update_keys[index as usize],
-            domain.group_gen,
+            group_gen(&domain),
             size,
         )
         .unwrap();
@@ -86,7 +96,7 @@ mod bls12_381 {
             index,
             &params.proving_key.update_keys[index as usize],
             &params.proving_key.update_keys[index as usize],
-            domain.group_gen,
+            group_gen(&domain),
             size,
         )
         .unwrap();
@@ -96,7 +106,7 @@ mod bls12_381 {
             point_values_i,
             points_i,
             &proof,
-            domain.group_gen,
+            group_gen(&domain),
         )
         .unwrap();
         println!("--------verify update proof...{}\n", rs);
@@ -114,7 +124,7 @@ mod bls12_381 {
             index,
             &params.proving_key.update_keys[index_i as usize],
             &params.proving_key.update_keys[index as usize],
-            domain.group_gen,
+            group_gen(&domain),
             size,
         )
         .unwrap();
@@ -124,7 +134,7 @@ mod bls12_381 {
             point_values_i,
             points_i,
             &proof,
-            domain.group_gen,
+            group_gen(&domain),
         )
         .unwrap();
         println!("--------verify update proof, different index...{}\n", rs);
@@ -145,14 +155,14 @@ mod bls12_381 {
         point_values.push(values[5]);
         let proof = prove_pos(&params.proving_key, values.clone(), point.clone()).unwrap();
         point_proofs.push(proof);
-        let proofs = aggregate_proofs(points.clone(), point_proofs, domain.group_gen).unwrap();
+        let proofs = aggregate_proofs(points.clone(), point_proofs, group_gen(&domain)).unwrap();
         let rs = verify_pos(
             &params.verification_key,
             &c,
             point_values,
             points,
             &proofs,
-            domain.group_gen,
+            group_gen(&domain),
         )
         .unwrap();
         println!("--------verify aggregate proofs...{}\n", rs);
