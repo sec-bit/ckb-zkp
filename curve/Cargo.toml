@@ -11,6 +11,7 @@ edition = "2018"
 [features]
 default = ["std"]
 std = ["ark-ff/std", "ark-ec/std"]
+parallel = ["std", "ark-ff/parallel", "ark-ec/parallel"]
 
 [dependencies]
 ark-ff = { git = "https://github.com/arkworks-rs/algebra", default-features = false }

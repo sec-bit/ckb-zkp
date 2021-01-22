@@ -5,6 +5,13 @@ members = [
     "r1cs",
     "groth16",
     "bulletproofs",
+    "marlin",
+    "clinkv2",
+    "asvc",
+    "spartan",
+    "libra",
+    "hyrax",
+    "examples",
 ]
 exclude = [
     "ckb-contracts/bench-tests",

@@ -16,14 +16,20 @@ pub trait Curve: 'static + Clone {
     type Fr: PrimeField + SquareRootField;
 
     /// The projective representation of an element.
-    type Projective: ProjectiveCurve<BaseField = Self::Fq, ScalarField = Self::Fr, Affine = Self::Affine>
-        + From<Self::Affine>
+    type Projective: ProjectiveCurve<
+        BaseField = Self::Fq,
+        ScalarField = Self::Fr,
+        Affine = Self::Affine,
+    > + From<Self::Affine>
         + Into<Self::Affine>
         + MulAssign<Self::Fr>; // needed due to https://github.com/rust-lang/rust/issues/69640
 
     /// The affine representation of an element.
-    type Affine: AffineCurve<BaseField = Self::Fq, ScalarField = Self::Fr, Projective = Self::Projective>
-        + From<Self::Projective>
+    type Affine: AffineCurve<
+        BaseField = Self::Fq,
+        ScalarField = Self::Fr,
+        Projective = Self::Projective,
+    > + From<Self::Projective>
         + Into<Self::Projective>;
 
     fn vartime_multiscalar_mul(scalars: &[Self::Fr], points: &[Self::Affine]) -> Self::Projective {

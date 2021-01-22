@@ -10,8 +10,8 @@ edition = "2018"
 
 [features]
 default = ["parallel"]
-std = ["ark-ff/std", "ark-std/std"]
-parallel = ["std", "rayon", "ark-ff/parallel", "ark-std/parallel"]
+std = ["ark-ff/std", "ark-poly/std", "zkp-curve/std", "ark-std/std"]
+parallel = ["std", "rayon", "ark-ff/parallel", "ark-poly/parallel", "zkp-curve/parallel", "ark-std/parallel"]
 
 [dependencies]
 merlin = { version = "2.0", default-features = false }
