@@ -1,4 +1,6 @@
 use ark_ec::PairingEngine;
+use ark_ff::ToBytes;
+use ark_std::io;
 
 use crate::ahp::indexer::{Index, IndexInfo};
 use crate::pc::{Commitment, CommitterKey, Proof as PCProof, Randomness, VerifierKey};
@@ -9,6 +11,18 @@ pub struct IndexVerifierKey<E: PairingEngine> {
     pub index_info: IndexInfo,
     pub index_comms: Vec<Commitment<E>>,
     pub verifier_key: VerifierKey<E>,
+}
+
+impl<E: PairingEngine> ToBytes for IndexVerifierKey<E> {
+    #[inline]
+    fn write<W: io::Write>(&self, mut w: W) -> io::Result<()> {
+        self.index_info.write(&mut w)?;
+        (self.index_comms.len() as u32).write(&mut w)?;
+        for i in &self.index_comms {
+            i.write(&mut w)?;
+        }
+        self.verifier_key.write(&mut w)
+    }
 }
 
 impl<E: PairingEngine> IndexVerifierKey<E> {

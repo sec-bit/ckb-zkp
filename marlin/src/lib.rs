@@ -30,7 +30,7 @@ use std::{
 
 use ark_ec::PairingEngine;
 use ark_ff::to_bytes;
-use ark_poly::EvaluationDomain;
+use ark_poly::{EvaluationDomain, MixedRadixEvaluationDomain, Polynomial};
 use ark_std::UniformRand;
 use rand::Rng;
 use zkp_r1cs::{ConstraintSynthesizer, SynthesisError};
@@ -58,7 +58,7 @@ pub fn universal_setup<E: PairingEngine, R: Rng>(
     max_degree: usize,
     rng: &mut R,
 ) -> Result<UniversalParams<E>, SynthesisError> {
-    let max_degree = EvaluationDomain::<E::Fr>::compute_size_of_domain(max_degree)
+    let max_degree = MixedRadixEvaluationDomain::<E::Fr>::compute_size_of_domain(max_degree)
         .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
     //let srs = PC::setup(max_degree, rng)?;
     let srs = PC::setup(max_degree, rng).unwrap();
@@ -68,7 +68,7 @@ pub fn universal_setup<E: PairingEngine, R: Rng>(
 pub fn index<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>>(
     srs: &UniversalParams<E>,
     c: C,
-) -> Result<(IndexProverKey<E>, IndexVerifierKey<E>), Error> {
+) -> Result<(IndexProverKey<'_, E>, IndexVerifierKey<E>), Error> {
     let index = AHP::index(c)?;
     if srs.max_degree() < index.max_degree() {
         return Err(Error::IndexTooLarge);
@@ -96,7 +96,7 @@ pub fn index<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>>(
 
 /// standard interface for create proof.
 pub fn create_random_proof<E: PairingEngine, R: Rng, C: ConstraintSynthesizer<E::Fr>>(
-    ipk: &IndexProverKey<E>,
+    ipk: &IndexProverKey<'_, E>,
     c: C,
     zk_rng: &mut R,
 ) -> Result<Proof<E>, SynthesisError> {
@@ -152,7 +152,7 @@ pub fn create_random_proof<E: PairingEngine, R: Rng, C: ConstraintSynthesizer<E:
             .iter()
             .find(|p| p.label() == label)
             .ok_or(Error::MissingEval(label.to_string()))?;
-        let eval = p.polynomial().evaluate(*point);
+        let eval = p.polynomial().evaluate(&point);
         evaluations.push(eval);
     }
     fs_rng.absorb(&evaluations);

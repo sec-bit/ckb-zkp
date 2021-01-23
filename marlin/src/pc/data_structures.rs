@@ -1,6 +1,7 @@
 use ark_ec::PairingEngine;
-use ark_ff::{Field, Zero};
-use ark_poly::polynomial::univariate::DensePolynomial as Polynomial;
+use ark_ff::{Field, ToBytes, Zero};
+use ark_poly::{polynomial::univariate::DensePolynomial, Polynomial, UVPolynomial};
+use ark_std::io;
 use core::ops::AddAssign;
 use rand::RngCore;
 
@@ -67,14 +68,14 @@ impl<E: PairingEngine> CommitterKey<E> {
         self.supported_degree
     }
 
-    pub fn powers(&self) -> Powers<E> {
+    pub fn powers(&self) -> Powers<'_, E> {
         Powers {
             powers_of_g: self.powers_of_g.as_slice().into(),
             powers_of_gamma_g: self.powers_of_gamma_g.as_slice().into(),
         }
     }
 
-    pub fn shifted_powers(&self, degree_bound: usize) -> Option<Powers<E>> {
+    pub fn shifted_powers(&self, degree_bound: usize) -> Option<Powers<'_, E>> {
         if degree_bound > self.supported_degree {
             return None;
         }
@@ -97,8 +98,25 @@ pub struct VerifierKey<E: PairingEngine> {
     pub supported_degree: usize,
 }
 
+impl<E: PairingEngine> ToBytes for VerifierKey<E> {
+    fn write<W: io::Write>(&self, mut w: W) -> io::Result<()> {
+        self.g.write(&mut w)?;
+        self.gamma_g.write(&mut w)?;
+        self.h.write(&mut w)?;
+        self.beta_h.write(&mut w)?;
+        (self.supported_degree as u64).write(&mut w)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Comm<E: PairingEngine>(pub E::G1Affine);
+
+impl<E: PairingEngine> ToBytes for Comm<E> {
+    #[inline]
+    fn write<W: io::Write>(&self, mut w: W) -> io::Result<()> {
+        self.0.write(&mut w)
+    }
+}
 
 impl<E: PairingEngine> Comm<E> {
     pub fn empty() -> Self {
@@ -112,21 +130,34 @@ pub struct Commitment<E: PairingEngine> {
     pub shifted_comm: Option<Comm<E>>,
 }
 
+impl<E: PairingEngine> ToBytes for Commitment<E> {
+    #[inline]
+    fn write<W: io::Write>(&self, mut w: W) -> io::Result<()> {
+        self.comm.write(&mut w)?;
+        let shifted_exists = self.shifted_comm.is_some();
+        shifted_exists.write(&mut w)?;
+        self.shifted_comm
+            .as_ref()
+            .unwrap_or(&Comm::empty())
+            .write(&mut w)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Rand<F: Field> {
-    pub blinding_polynomial: Polynomial<F>,
+    pub blinding_polynomial: DensePolynomial<F>,
 }
 
 impl<F: Field> Rand<F> {
     pub fn empty() -> Self {
         Self {
-            blinding_polynomial: Polynomial::zero(),
+            blinding_polynomial: DensePolynomial::zero(),
         }
     }
 
     pub fn rand<R: RngCore>(hiding_bound: usize, rng: &mut R) -> Self {
         let mut randomness = Self::empty();
-        randomness.blinding_polynomial = Polynomial::rand(hiding_bound, rng);
+        randomness.blinding_polynomial = DensePolynomial::rand(hiding_bound, rng);
         randomness
     }
 
@@ -156,7 +187,7 @@ pub struct Randomness<F: Field> {
 #[derive(Clone, Debug)]
 pub struct LabeledPolynomial<'a, F: Field> {
     label: String,
-    polynomial: Cow<'a, Polynomial<F>>,
+    polynomial: Cow<'a, DensePolynomial<F>>,
     degree_bound: Option<usize>,
     hiding_bound: Option<usize>,
 }
@@ -164,7 +195,7 @@ pub struct LabeledPolynomial<'a, F: Field> {
 impl<'a, F: Field> LabeledPolynomial<'a, F> {
     pub fn new_owned(
         label: String,
-        polynomial: Polynomial<F>,
+        polynomial: DensePolynomial<F>,
         degree_bound: Option<usize>,
         hiding_bound: Option<usize>,
     ) -> Self {
@@ -179,12 +210,12 @@ impl<'a, F: Field> LabeledPolynomial<'a, F> {
         &self.label
     }
 
-    pub fn polynomial(&self) -> &Polynomial<F> {
+    pub fn polynomial(&self) -> &DensePolynomial<F> {
         &self.polynomial
     }
 
     pub fn evaluate(&self, point: F) -> F {
-        self.polynomial.evaluate(point)
+        self.polynomial.evaluate(&point)
     }
 
     pub fn degree_bound(&self) -> Option<usize> {
@@ -205,6 +236,13 @@ pub struct LabeledCommitment<E: PairingEngine> {
     label: String,
     commitment: Commitment<E>,
     degree_bound: Option<usize>,
+}
+
+impl<E: PairingEngine> ToBytes for LabeledCommitment<E> {
+    #[inline]
+    fn write<W: io::Write>(&self, writer: W) -> io::Result<()> {
+        self.commitment.write(writer)
+    }
 }
 
 impl<E: PairingEngine> LabeledCommitment<E> {

@@ -1,6 +1,6 @@
 use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
 use ark_ff::{Field, One, Zero};
-use ark_poly::polynomial::univariate::DensePolynomial as Polynomial;
+use ark_poly::{polynomial::univariate::DensePolynomial, UVPolynomial};
 use core::marker::PhantomData;
 use rand::RngCore;
 
@@ -78,7 +78,7 @@ impl<E: PairingEngine> PC<E> {
         randomnesses: impl IntoIterator<Item = &'a Randomness<E::Fr>>,
     ) -> Result<Proof<E>, Error> {
         let supported_degree = ck.supported_degree();
-        let mut p = Polynomial::zero();
+        let mut p = DensePolynomial::zero();
         let mut r = Rand::empty();
         let mut challenge = E::Fr::one();
 
@@ -216,7 +216,7 @@ impl<E: PairingEngine> PC<E> {
             let degree_bound = labeled_commitment.degree_bound();
             let commitment = labeled_commitment.commitment();
             assert_eq!(degree_bound.is_some(), commitment.shifted_comm.is_some());
-            combined_comm += &commitment.comm.0.mul(challenge);
+            combined_comm += &commitment.comm.0.mul(challenge.into());
             combined_value += &(value * &challenge);
 
             if let Some(degree_bound) = degree_bound {
@@ -230,7 +230,7 @@ impl<E: PairingEngine> PC<E> {
                 let shifted_degree = vk.supported_degree - degree_bound;
 
                 let shift_value = point.pow([shifted_degree as u64]) * &value;
-                combined_comm += &shifted_comm.mul(shifted_challenge);
+                combined_comm += &shifted_comm.mul(shifted_challenge.into());
                 combined_value += &(shift_value * &shifted_challenge);
             }
 
@@ -239,13 +239,13 @@ impl<E: PairingEngine> PC<E> {
         Ok((combined_comm, combined_value))
     }
 
-    fn shift_polynomial(p: &Polynomial<E::Fr>, shift: usize) -> Polynomial<E::Fr> {
+    fn shift_polynomial(p: &DensePolynomial<E::Fr>, shift: usize) -> DensePolynomial<E::Fr> {
         if p.is_zero() {
-            Polynomial::zero()
+            DensePolynomial::zero()
         } else {
             let mut shifted_coeffs = vec![E::Fr::zero(); shift];
             shifted_coeffs.extend(&p.coeffs);
-            Polynomial::from_coefficients_vec(shifted_coeffs)
+            DensePolynomial::from_coefficients_vec(shifted_coeffs)
         }
     }
 }
@@ -288,7 +288,7 @@ mod tests {
             let mut values = Vec::new();
             for i in 0..num_polynomials {
                 let degree = rand::distributions::Uniform::from(1..=supported_degree).sample(rng);
-                let polynomial = Polynomial::rand(degree, rng);
+                let polynomial = DensePolynomial::rand(degree, rng);
                 let label = format!("{}", i);
                 let degree_bound = if enforcing_degree_bounds {
                     Some(degree)
@@ -296,7 +296,7 @@ mod tests {
                     None
                 };
                 let hiding_bound = Some(1);
-                let value = polynomial.evaluate(point);
+                let value = polynomial.evaluate(&point);
 
                 polynomials.push(LabeledPolynomial::new_owned(
                     label,
@@ -340,7 +340,7 @@ mod tests {
             let mut polynomials = Vec::new();
             for i in 0..num_polynomials {
                 let degree = rand::distributions::Uniform::from(1..=supported_degree).sample(rng);
-                let polynomial = Polynomial::rand(degree, rng);
+                let polynomial = DensePolynomial::rand(degree, rng);
                 let label = format!("{}", i);
                 let degree_bound = if enforcing_degree_bounds {
                     Some(degree)
@@ -363,7 +363,7 @@ mod tests {
                 for p in polynomials.iter() {
                     let point = E::Fr::rand(rng);
                     let label = p.label();
-                    let eval = p.evaluate(point);
+                    let eval = p.evaluate(&point);
                     query_set.insert((label.clone(), point));
                     evals.insert((label.clone(), point), eval);
                 }

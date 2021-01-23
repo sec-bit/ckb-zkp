@@ -1,5 +1,5 @@
 use ark_ff::PrimeField;
-use ark_poly::EvaluationDomain;
+use ark_poly::{EvaluationDomain, MixedRadixEvaluationDomain};
 use core::marker::PhantomData;
 use zkp_r1cs::SynthesisError;
 
@@ -74,9 +74,9 @@ impl<F: PrimeField> AHP<F> {
     ) -> Result<usize, Error> {
         let zk_bound = 1;
         let num_padded = core::cmp::max(num_constraints, num_variables);
-        let domain_h_size = EvaluationDomain::<F>::compute_size_of_domain(num_padded)
+        let domain_h_size = MixedRadixEvaluationDomain::<F>::compute_size_of_domain(num_padded)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let domain_k_size = EvaluationDomain::<F>::compute_size_of_domain(num_non_zeros)
+        let domain_k_size = MixedRadixEvaluationDomain::<F>::compute_size_of_domain(num_non_zeros)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         Ok(*[
             3 * domain_h_size + 2 * zk_bound - 1, // mask

@@ -1,5 +1,5 @@
 use ark_ff::PrimeField;
-use ark_poly::{Evaluations as EvaluationsOnDomain, MixedRadixEvaluationDomain};
+use ark_poly::{EvaluationDomain, Evaluations, MixedRadixEvaluationDomain, Polynomial};
 use rand::RngCore;
 use zkp_r1cs::SynthesisError;
 
@@ -9,7 +9,7 @@ use crate::ahp::arithmetic::BivariatePoly;
 use crate::ahp::constraint_systems::ProverConstraintSystem;
 use crate::ahp::indexer::IndexInfo;
 use crate::ahp::{Error, AHP};
-use crate::pc::{Evaluations, QuerySet};
+use crate::pc::QuerySet;
 
 pub struct VerifierState<F: PrimeField> {
     pub domain_h: MixedRadixEvaluationDomain<F>,
@@ -145,9 +145,8 @@ impl<F: PrimeField> AHP<F> {
         let domain_x = MixedRadixEvaluationDomain::<F>::new(formatted_input.len())
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let v_x_at_beta = domain_x.evaluate_vanishing_polynomial(beta);
-        let x_poly =
-            &EvaluationsOnDomain::from_vec_and_domain(formatted_input, domain_x).interpolate();
-        let x_at_beta = x_poly.evaluate(beta);
+        let x_poly = &Evaluations::from_vec_and_domain(formatted_input, domain_x).interpolate();
+        let x_at_beta = x_poly.evaluate(&beta);
 
         // outer sumcheck
         let mask_at_beta = Self::get_eval(&evaluations, "mask", beta)?;

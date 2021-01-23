@@ -1,5 +1,6 @@
-use ark_ff::PrimeField;
-use ark_poly::EvaluationDomain;
+use ark_ff::{PrimeField, ToBytes};
+use ark_poly::{EvaluationDomain, MixedRadixEvaluationDomain};
+use ark_std::io;
 use zkp_r1cs::{ConstraintSynthesizer, SynthesisError};
 
 use crate::ahp::arithmetic::{compose_matrix_polynomials, Matrix, MatrixPolynomials};
@@ -12,6 +13,15 @@ pub struct IndexInfo {
     pub num_constraints: usize,
     pub num_variables: usize,
     pub num_non_zeros: usize,
+}
+
+impl ToBytes for IndexInfo {
+    #[inline]
+    fn write<W: io::Write>(&self, mut w: W) -> io::Result<()> {
+        (self.num_variables as u64).write(&mut w)?;
+        (self.num_constraints as u64).write(&mut w)?;
+        (self.num_non_zeros as u64).write(&mut w)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -68,14 +78,15 @@ impl<F: PrimeField> AHP<F> {
         let num_variables = ics.num_input_variables + ics.num_witness_variables;
         let num_non_zeros = ics.num_non_zeros();
 
-        let domain_x =
+        let domain_x: MixedRadixEvaluationDomain<F> =
             EvaluationDomain::new(num_inputs).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let domain_h =
+        let domain_h: MixedRadixEvaluationDomain<F> =
             EvaluationDomain::new(num_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let domain_k =
+        let domain_k: MixedRadixEvaluationDomain<F> =
             EvaluationDomain::new(num_non_zeros).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let domain_b = EvaluationDomain::new(3 * domain_k.size() - 3)
-            .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let domain_b: MixedRadixEvaluationDomain<F> =
+            EvaluationDomain::new(3 * domain_k.size() - 3)
+                .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
         let a = ics.a_matrix.expect("a should not be None");
         let b = ics.b_matrix.expect("b should not be None");

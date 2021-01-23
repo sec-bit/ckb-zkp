@@ -1,5 +1,5 @@
 use ark_ff::{fields, PrimeField};
-use ark_poly::{Evaluations as EvaluationsOnDomain, MixedRadixEvaluationDomain};
+use ark_poly::{EvaluationDomain, Evaluations, MixedRadixEvaluationDomain};
 use ark_std::{cfg_iter, cfg_iter_mut};
 
 #[cfg(feature = "parallel")]
@@ -84,23 +84,23 @@ pub struct MatrixPolynomials<'a, F: PrimeField> {
     pub val: LabeledPolynomial<'a, F>,
     pub row_col: LabeledPolynomial<'a, F>,
 
-    pub row_evals_on_k: Cow<'a, EvaluationsOnDomain<F>>,
-    pub col_evals_on_k: Cow<'a, EvaluationsOnDomain<F>>,
-    pub val_evals_on_k: Cow<'a, EvaluationsOnDomain<F>>,
+    pub row_evals_on_k: Cow<'a, Evaluations<F>>,
+    pub col_evals_on_k: Cow<'a, Evaluations<F>>,
+    pub val_evals_on_k: Cow<'a, Evaluations<F>>,
 
-    pub row_evals_on_b: Cow<'a, EvaluationsOnDomain<F>>,
-    pub col_evals_on_b: Cow<'a, EvaluationsOnDomain<F>>,
-    pub val_evals_on_b: Cow<'a, EvaluationsOnDomain<F>>,
-    pub row_col_evals_on_b: Cow<'a, EvaluationsOnDomain<F>>, // reduce h_2 from 6k-6 to 3k-3
+    pub row_evals_on_b: Cow<'a, Evaluations<F>>,
+    pub col_evals_on_b: Cow<'a, Evaluations<F>>,
+    pub val_evals_on_b: Cow<'a, Evaluations<F>>,
+    pub row_col_evals_on_b: Cow<'a, Evaluations<F>>, // reduce h_2 from 6k-6 to 3k-3
 }
 
 pub fn compose_matrix_polynomials<'a, F: PrimeField>(
     matrix_name: &str,
     matrix: &Matrix<F>,
-    domain_x: EvaluationDomain<F>,
-    domain_h: EvaluationDomain<F>,
-    domain_k: EvaluationDomain<F>,
-    domain_b: EvaluationDomain<F>,
+    domain_x: MixedRadixEvaluationDomain<F>,
+    domain_h: MixedRadixEvaluationDomain<F>,
+    domain_k: MixedRadixEvaluationDomain<F>,
+    domain_b: MixedRadixEvaluationDomain<F>,
 ) -> Result<MatrixPolynomials<'a, F>, Error> {
     let h_elements: Vec<_> = domain_h.elements().collect();
     let h_diag_evals: Vec<_> = domain_h.diagonal_evals();
@@ -136,21 +136,20 @@ pub fn compose_matrix_polynomials<'a, F: PrimeField>(
         .map(|(r, c)| *r * c)
         .collect();
 
-    let row_evals_on_k = EvaluationsOnDomain::from_vec_and_domain(row_vec, domain_k);
-    let col_evals_on_k = EvaluationsOnDomain::from_vec_and_domain(col_vec, domain_k);
-    let val_evals_on_k = EvaluationsOnDomain::from_vec_and_domain(val_vec, domain_k);
-    let row_col_evals_on_k = EvaluationsOnDomain::from_vec_and_domain(row_col_vec, domain_k);
+    let row_evals_on_k = Evaluations::from_vec_and_domain(row_vec, domain_k);
+    let col_evals_on_k = Evaluations::from_vec_and_domain(col_vec, domain_k);
+    let val_evals_on_k = Evaluations::from_vec_and_domain(val_vec, domain_k);
+    let row_col_evals_on_k = Evaluations::from_vec_and_domain(row_col_vec, domain_k);
 
     let row = row_evals_on_k.clone().interpolate();
     let col = col_evals_on_k.clone().interpolate();
     let val = val_evals_on_k.clone().interpolate();
     let row_col = row_col_evals_on_k.interpolate();
 
-    let row_evals_on_b = EvaluationsOnDomain::from_vec_and_domain(domain_b.fft(&row), domain_b);
-    let col_evals_on_b = EvaluationsOnDomain::from_vec_and_domain(domain_b.fft(&col), domain_b);
-    let val_evals_on_b = EvaluationsOnDomain::from_vec_and_domain(domain_b.fft(&val), domain_b);
-    let row_col_evals_on_b =
-        EvaluationsOnDomain::from_vec_and_domain(domain_b.fft(&row_col), domain_b);
+    let row_evals_on_b = Evaluations::from_vec_and_domain(domain_b.fft(&row), domain_b);
+    let col_evals_on_b = Evaluations::from_vec_and_domain(domain_b.fft(&col), domain_b);
+    let val_evals_on_b = Evaluations::from_vec_and_domain(domain_b.fft(&val), domain_b);
+    let row_col_evals_on_b = Evaluations::from_vec_and_domain(domain_b.fft(&row_col), domain_b);
 
     let name = matrix_name.to_string();
 
