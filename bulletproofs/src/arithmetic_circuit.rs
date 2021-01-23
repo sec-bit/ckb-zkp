@@ -4,6 +4,7 @@ use merlin::Transcript;
 use rand::Rng;
 
 use ark_ff::{to_bytes, Field, One, UniformRand, Zero};
+use ark_serialize::*;
 use zkp_curve::{AffineCurve, Curve, ProjectiveCurve};
 use zkp_r1cs::{
     ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable,
@@ -100,7 +101,7 @@ impl<F: Field> ConstraintSystem<F> for ProvingAssignment<F> {
     }
 }
 
-//#[derive(Serialize, Deserialize)]
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct Generators<G: Curve> {
     g_vec_N: Vec<G::Affine>,
     h_vec_N: Vec<G::Affine>,
@@ -113,7 +114,7 @@ pub struct Generators<G: Curve> {
     n_w: usize,
 }
 
-//#[derive(Serialize, Deserialize)]
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct R1csCircuit<G: Curve> {
     pub CL: Vec<Vec<G::Fr>>,
     pub CR: Vec<Vec<G::Fr>>,
@@ -149,7 +150,7 @@ impl<G: Curve> R1csCircuit<G> {
     }
 }
 
-//#[derive(Serialize, Deserialize)]
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct Assignment<G: Curve> {
     pub aL: Vec<G::Fr>,
     aR: Vec<G::Fr>,
@@ -158,7 +159,7 @@ pub struct Assignment<G: Curve> {
     pub w: Vec<G::Fr>,
 }
 
-//#[derive(Serialize, Deserialize)]
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct Proof<G: Curve> {
     A_I: G::Affine,
     A_O: G::Affine,
@@ -178,7 +179,7 @@ pub struct Proof<G: Curve> {
     r_x: Vec<G::Fr>,
     t_x: G::Fr,
     IPP: inner_product_proof::Proof<G>,
-    IPP_P: G::Projective,
+    IPP_P: G::Affine,
 }
 
 // very basic support for R1CS ConstraintSystem
@@ -542,9 +543,10 @@ where
     let x_1 = random_bytes_to_fr::<G::Fr>(&buf_x_1);
     let ux = (gens.u.mul(x_1)).into_affine();
 
-    let IPP_P = quick_multiexp::<G>(&l_x, &gens.g_vec_N)
+    let IPP_P = (quick_multiexp::<G>(&l_x, &gens.g_vec_N)
         + &quick_multiexp::<G>(&r_x, &gens.h_vec_N)
-        + &ux.mul(t_x);
+        + &ux.mul(t_x))
+        .into_affine();
 
     let IPP = inner_product_proof::prove(
         gens.g_vec_N.clone(),
@@ -764,7 +766,7 @@ pub fn verify_proof<G: Curve>(
         gens.g_vec_N.clone(),
         gens.h_vec_N.clone(),
         ux,
-        &proof.IPP_P,
+        &proof.IPP_P.into_projective(),
         &proof.IPP,
     ) {
         return Ok(false);

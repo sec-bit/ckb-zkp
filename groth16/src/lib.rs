@@ -20,6 +20,7 @@ use std::{string::String, vec::Vec};
 
 use ark_ec::PairingEngine;
 use ark_ff::Field;
+use ark_serialize::*;
 use zkp_r1cs::{Index, LinearCombination, SynthesisError};
 
 /// Reduce an R1CS instance to a *Quadratic Arithmetic Program* instance.
@@ -47,7 +48,7 @@ pub use verifier::verify_proof;
 pub use verifier::prepare_verifying_key;
 
 /// A proof in the Groth16 SNARK.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Proof<E: PairingEngine> {
     pub a: E::G1Affine,
     pub b: E::G2Affine,
@@ -55,7 +56,7 @@ pub struct Proof<E: PairingEngine> {
 }
 
 /// A verification key in the Groth16 SNARK.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct VerifyKey<E: PairingEngine> {
     pub alpha_g1: E::G1Affine,
     pub beta_g2: E::G2Affine,
@@ -77,7 +78,7 @@ impl<E: PairingEngine> Default for VerifyKey<E> {
 }
 
 /// Full public (prover and verifier) parameters for the Groth16 zkSNARK.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Parameters<E: PairingEngine> {
     pub vk: VerifyKey<E>,
     pub beta_g1: E::G1Affine,

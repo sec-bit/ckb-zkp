@@ -1,5 +1,6 @@
 use ark_bls12_381::{Bls12_381 as E, Fr};
 use ark_ff::PrimeField;
+use ark_serialize::*;
 use ark_std::test_rng;
 use zkp_groth16::{
     create_random_proof, generate_random_parameters, verifier::prepare_verifying_key, verify_proof,
@@ -72,8 +73,9 @@ fn mini_groth16() {
     };
 
     let proof = create_random_proof(&params, c, rng).unwrap();
-    //let proof_bytes = postcard::to_allocvec(&proof).unwrap();
-    //println!("Groth16 proof...ok, size: {}", proof_bytes.len());
+    let mut proof_bytes = vec![];
+    proof.serialize(&mut proof_bytes).unwrap();
+    println!("Groth16 proof...ok, size: {}", proof_bytes.len());
 
     println!("verifing...");
     assert!(verify_proof(&pvk, &proof, &[Fr::from(10u32)]).unwrap());

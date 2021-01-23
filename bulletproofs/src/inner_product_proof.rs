@@ -3,13 +3,14 @@
 use merlin::Transcript;
 
 use ark_ff::{to_bytes, Field, One};
+use ark_serialize::*;
 use zkp_curve::{AffineCurve, Curve, ProjectiveCurve};
 
 use crate::Vec;
 
 use super::{inner_product, quick_multiexp, random_bytes_to_fr};
 
-//#[derive(Serialize, Deserialize)]
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct Proof<G: Curve> {
     L_vec: Vec<G::Affine>,
     R_vec: Vec<G::Affine>,

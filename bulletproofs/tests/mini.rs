@@ -5,6 +5,7 @@ use zkp_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 // size: 71%, time: 13%, 14%
 use zkp_curve25519::{Curve25519 as G, Fr};
 //use ark_bls12_381::{Bls12_381 as G, Fr};
+use ark_serialize::*;
 use std::time::Instant;
 
 struct Mini<F: PrimeField> {
@@ -58,6 +59,10 @@ fn mini_bulletproofs() {
     let start = Instant::now();
     let (gens, r1cs, proof) = create_random_proof::<G, _, _>(c, rng).unwrap();
     println!("prove time: {:?}", start.elapsed());
+
+    let mut proof_bytes = vec![];
+    proof.serialize(&mut proof_bytes).unwrap();
+    println!("prove size: {}", proof_bytes.len());
 
     println!("Bulletproof verify...");
     let _c = Mini::<Fr> {
