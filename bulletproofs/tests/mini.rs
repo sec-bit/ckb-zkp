@@ -2,8 +2,9 @@ use ark_ff::PrimeField;
 use ark_std::test_rng;
 use zkp_bulletproofs::{create_random_proof, verify_proof};
 use zkp_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
-//use zkp_curve25519::{Curve25519 as G, Fr}; // size: 71%, time: 13%, 14%
-use ark_bls12_381::{Bls12_381 as G, Fr};
+// size: 71%, time: 13%, 14%
+use zkp_curve25519::{Curve25519 as G, Fr};
+//use ark_bls12_381::{Bls12_381 as G, Fr};
 use std::time::Instant;
 
 struct Mini<F: PrimeField> {

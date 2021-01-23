@@ -112,10 +112,11 @@ mod bls12_381 {
     use crate::setup::*;
     use crate::spark::encode;
     use crate::verify::{verify_nizk_proof, verify_snark_proof};
-    use ark_bls12_381::{Bls12_381, Fr};
+    use ark_bls12_381::{Bls12_381 as G, Fr};
     use ark_ff::One;
     use ark_std::test_rng;
     use zkp_curve::Curve;
+    //use zkp_curve25519::{Curve25519 as G, Fr};
 
     #[test]
     fn test_nizk_spartan_bls12_381() {
@@ -128,15 +129,14 @@ mod bls12_381 {
         };
 
         println!("Generate parameters...");
-        let r1cs = generate_r1cs::<Bls12_381, _>(c).unwrap();
+        let r1cs = generate_r1cs::<G, _>(c).unwrap();
         let params =
-            generate_setup_nizk_parameters::<Bls12_381, _>(rng, r1cs.num_aux, r1cs.num_inputs)
-                .unwrap();
+            generate_setup_nizk_parameters::<G, _>(rng, r1cs.num_aux, r1cs.num_inputs).unwrap();
         let c1 = TestDemo::<Fr> {
-            lhs: Some(<Bls12_381 as Curve>::Fr::one()),
-            rhs: Some(<Bls12_381 as Curve>::Fr::one() + &<Bls12_381 as Curve>::Fr::one()),
-            ohs: Some(<Bls12_381 as Curve>::Fr::one()),
-            phs: Some(<Bls12_381 as Curve>::Fr::one()),
+            lhs: Some(<G as Curve>::Fr::one()),
+            rhs: Some(<G as Curve>::Fr::one() + &<G as Curve>::Fr::one()),
+            ohs: Some(<G as Curve>::Fr::one()),
+            phs: Some(<G as Curve>::Fr::one()),
         };
 
         // let mut transcript = Transcript::new(b"spartan nizk");
@@ -145,13 +145,8 @@ mod bls12_381 {
 
         println!("Verify proof...");
         // let mut transcript = Transcript::new(b"spartan nizk");
-        let result = verify_nizk_proof::<Bls12_381>(
-            &params,
-            &r1cs,
-            &vec![<Bls12_381 as Curve>::Fr::one()],
-            &proof,
-        )
-        .unwrap();
+        let result =
+            verify_nizk_proof::<G>(&params, &r1cs, &vec![<G as Curve>::Fr::one()], &proof).unwrap();
 
         assert!(result);
     }
@@ -168,9 +163,9 @@ mod bls12_381 {
         };
 
         println!("[snark_spartan]Generate parameters...");
-        let r1cs = generate_r1cs::<Bls12_381, _>(c).unwrap();
+        let r1cs = generate_r1cs::<G, _>(c).unwrap();
 
-        let params = generate_setup_snark_parameters::<Bls12_381, _>(
+        let params = generate_setup_snark_parameters::<G, _>(
             rng,
             r1cs.num_aux,
             r1cs.num_inputs,
@@ -179,15 +174,15 @@ mod bls12_381 {
         .unwrap();
 
         let c1 = TestDemo::<Fr> {
-            lhs: Some(<Bls12_381 as Curve>::Fr::one()),
-            rhs: Some(<Bls12_381 as Curve>::Fr::one() + &<Bls12_381 as Curve>::Fr::one()),
-            ohs: Some(<Bls12_381 as Curve>::Fr::one()),
-            phs: Some(<Bls12_381 as Curve>::Fr::one()),
+            lhs: Some(<G as Curve>::Fr::one()),
+            rhs: Some(<G as Curve>::Fr::one() + &<G as Curve>::Fr::one()),
+            ohs: Some(<G as Curve>::Fr::one()),
+            phs: Some(<G as Curve>::Fr::one()),
         };
         println!("[snark_spartan]Generate parameters...ok");
 
         println!("[snark_spartan]Encode...");
-        let (encode, encode_commit) = encode::<Bls12_381, _>(&params, &r1cs, rng).unwrap();
+        let (encode, encode_commit) = encode::<G, _>(&params, &r1cs, rng).unwrap();
         println!("[snark_spartan]Encode...ok");
 
         // let mut transcript = Transcript::new(b"spartan snark");
@@ -197,10 +192,10 @@ mod bls12_381 {
 
         println!("[snark_spartan]Verify proof...");
         // let mut transcript = Transcript::new(b"spartan snark");
-        let result = verify_snark_proof::<Bls12_381>(
+        let result = verify_snark_proof::<G>(
             &params,
             &r1cs,
-            &vec![<Bls12_381 as Curve>::Fr::one()],
+            &vec![<G as Curve>::Fr::one()],
             &proof,
             &encode_commit,
         )

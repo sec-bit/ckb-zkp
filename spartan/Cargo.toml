@@ -24,4 +24,5 @@ ark-std = { git = "https://github.com/arkworks-rs/utils", default-features = fal
 rayon = { version = "1", optional = true }
 
 [dev-dependencies]
+zkp-curve25519 = { version = "0.1", path = "../curve25519", default-features = false }
 ark-bls12-381 = { git = "https://github.com/arkworks-rs/curves", default-features = false, features = ["curve"] }
