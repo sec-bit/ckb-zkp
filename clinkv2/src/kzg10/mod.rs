@@ -1,5 +1,6 @@
 use ark_ec::PairingEngine;
 use ark_ff::Field;
+use ark_serialize::*;
 
 pub mod kzg10;
 pub mod prover;

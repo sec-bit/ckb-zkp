@@ -11,6 +11,7 @@ use ark_ec::{
 };
 use ark_ff::{to_bytes, Field, One, PrimeField, ToBytes, UniformRand, Zero};
 use ark_poly::{polynomial::univariate::DensePolynomial, Polynomial, UVPolynomial};
+use ark_serialize::*;
 use ark_std::{cfg_iter, io};
 use core::marker::PhantomData;
 use core::ops::{Add, AddAssign};
@@ -51,7 +52,7 @@ impl<E: PairingEngine> UniversalParams<E> {
 
 /// `Powers` is used to commit to and create evaluation proofs for a given
 /// polynomial.
-#[derive(Derivative)]
+#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
 #[derivative(
     Default(bound = ""),
     Hash(bound = ""),

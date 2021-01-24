@@ -5,10 +5,9 @@ use ckb_std::{ckb_constants::Source, high_level::load_cell_data};
 
 use crate::error::Error;
 
-use zkp_toolkit::{
-    bn_256::{Bn_256 as E, Fr},
-    groth16::{prepare_verifying_key, verify_proof, Proof, VerifyKey},
-};
+use ark_bls12_381::{Bls12_381 as E, Fr};
+use ark_serialize::*;
+use zkp_groth16::{prepare_verifying_key, verify_proof, Proof, VerifyKey};
 
 pub fn main() -> Result<(), Error> {
     // load verify key.
@@ -29,9 +28,10 @@ pub fn main() -> Result<(), Error> {
         Err(err) => return Err(err.into()),
     };
 
-    let vk: VerifyKey<E> = postcard::from_bytes(&vk_data).map_err(|_e| Error::Encoding)?;
-    let proof: Proof<E> = postcard::from_bytes(&proof_data).map_err(|_e| Error::Encoding)?;
-    let publics: Vec<Fr> = postcard::from_bytes(&public_data).map_err(|_e| Error::Encoding)?;
+    let vk = VerifyKey::<E>::deserialize(&vk_data[..]).map_err(|_e| Error::Encoding)?;
+    let proof = Proof::<E>::deserialize(&proof_data[..]).map_err(|_e| Error::Encoding)?;
+    let mut publics = Vec::new();
+    publics.push(Fr::deserialize(&public_data[..]).map_err(|_e| Error::Encoding)?);
 
     let pvk = prepare_verifying_key(&vk);
 
