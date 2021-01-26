@@ -16,6 +16,10 @@ git = "https://github.com/arkworks-rs/curves"
 default-features = false
 features = ["curve"]
 
+[dependencies.ark-ff]
+git = "https://github.com/arkworks-rs/algebra"
+default-features = false
+
 [dependencies.ark-serialize]
 git = "https://github.com/arkworks-rs/algebra"
 default-features = false

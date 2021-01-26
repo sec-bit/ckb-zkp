@@ -5,9 +5,10 @@ use ckb_std::{ckb_constants::Source, high_level::load_cell_data};
 
 use crate::error::Error;
 
+use ark_ff::One;
 use ark_bls12_381::{Bls12_381 as E, Fr};
 use ark_serialize::*;
-use zkp_clinkv2::kzg10::{verify_proof, Proof, VerifyAssignment, VerifyKey},
+use zkp_clinkv2::kzg10::{verify_proof, Proof, VerifyAssignment, VerifyKey};
 use zkp_clinkv2::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
 struct Mini {
@@ -23,7 +24,7 @@ impl ConstraintSynthesizer<Fr> for Mini {
         cs: &mut CS,
         index: usize,
     ) -> Result<(), SynthesisError> {
-        cs.alloc_input(|| "r1", || Ok(F::one()), index)?;
+        cs.alloc_input(|| "r1", || Ok(Fr::one()), index)?;
 
         let var_x = cs.alloc(
             || "x",
@@ -48,7 +49,7 @@ impl ConstraintSynthesizer<Fr> for Mini {
                 cs.enforce(
                     || "x * (y + 2) = z",
                     |lc| lc + var_x,
-                    |lc| lc + var_y + (F::from(2u32), CS::one()),
+                    |lc| lc + var_y + (Fr::from(2u32), CS::one()),
                     |lc| lc + var_z,
                 );
             }
@@ -77,9 +78,9 @@ pub fn main() -> Result<(), Error> {
         Err(err) => return Err(err.into()),
     };
 
-    let proof = Proof::<E>::serialize(&proof_data).map_err(|_e| Error::Encoding)?;
-    let vk = VerifyKey::<E>::serialize(&vk_data).map_err(|_e| Error::Encoding)?;
-    let publics = Vec<Vec<Fr>>::serialize(&public_data).map_err(|_e| Error::Encoding)?;
+    let proof = Proof::<E>::deserialize(&proof_data[..]).map_err(|_e| Error::Encoding)?;
+    let vk = VerifyKey::<E>::deserialize(&vk_data[..]).map_err(|_e| Error::Encoding)?;
+    let publics = Vec::<Vec::<Fr>>::deserialize(&public_data[..]).map_err(|_e| Error::Encoding)?;
 
     // Demo circuit
     let c = Mini {
