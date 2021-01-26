@@ -621,12 +621,12 @@ impl<G: Curve, D: Digest> InnerProductArgPC<G, D> {
             let round_challenge_inv = round_challenge.inverse().unwrap();
 
             cfg_iter_mut!(coeffs_l)
-                .zip(coeffs_r)
-                .for_each(|(c_l, c_r)| *c_l += &(round_challenge_inv * *c_r));
+                .zip(&*coeffs_r)
+                .for_each(|(c_l, c_r)| *c_l += &(round_challenge_inv * c_r));
 
             cfg_iter_mut!(z_l)
-                .zip(z_r)
-                .for_each(|(z_l, z_r)| *z_l += &(round_challenge * *z_r));
+                .zip(&*z_r)
+                .for_each(|(z_l, z_r)| *z_l += &(round_challenge * z_r));
 
             cfg_iter_mut!(key_proj_l)
                 .zip(key_r)

@@ -2,7 +2,7 @@ use ark_ec::PairingEngine;
 use ark_ff::{Field, One, ToBytes, UniformRand, Zero};
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain, Polynomial, UVPolynomial};
-use ark_std::cfg_iter_mut;
+use ark_std::{cfg_iter, cfg_iter_mut};
 use merlin::Transcript;
 use rand::Rng;
 
@@ -143,15 +143,15 @@ pub fn create_random_proof<E: PairingEngine, R: Rng>(
         domain.coset_fft_in_place(&mut bi.coeffs);
 
         // on coset: n values of a*b on coset
-        let mut coset_ab_values = domain.mul_polynomials_in_evaluation_domain(&ai, &bi);
+        let coset_ab_values = domain.mul_polynomials_in_evaluation_domain(&ai, &bi);
 
         drop(ai);
         drop(bi);
 
         // on coset: n values of \sum{eta^i * ab} on coset
-        cfg_iter_mut!(coset_ab_values)
+        cfg_iter!(coset_ab_values)
             .zip(&mut sum_coset_ab)
-            .for_each(|(coset_abij, sum_coset_ab_j)| *sum_coset_ab_j += &(eta_i * *coset_abij));
+            .for_each(|(coset_abij, sum_coset_ab_j)| *sum_coset_ab_j += &(eta_i * coset_abij));
 
         let mut ci_values = vec![zero; domain_size];
         for (coeff, index) in (&circuit.ct[i]).into_iter() {
@@ -169,9 +169,9 @@ pub fn create_random_proof<E: PairingEngine, R: Rng>(
             };
         }
         // on original domain: n values of \sum{eta^i * c} on original domain
-        cfg_iter_mut!(ci_values)
+        cfg_iter!(ci_values)
             .zip(&mut sum_c)
-            .for_each(|(cij, sum_c_j)| *sum_c_j += &(eta_i * *cij));
+            .for_each(|(cij, sum_c_j)| *sum_c_j += &(eta_i * cij));
 
         eta_i = eta_i * &eta;
     }
