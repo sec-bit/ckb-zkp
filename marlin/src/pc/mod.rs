@@ -233,7 +233,7 @@ impl<E: PairingEngine> PC<E> {
                 let shifted_degree = vk.supported_degree - degree_bound;
 
                 let shift_value = point.pow([shifted_degree as u64]) * &value;
-                combined_comm += &shifted_comm.mul(shifted_challenge);
+                combined_comm += &shifted_comm.mul(shifted_challenge.into());
                 combined_value += &(shift_value * &shifted_challenge);
             }
 

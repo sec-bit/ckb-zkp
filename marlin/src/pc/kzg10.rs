@@ -6,9 +6,9 @@ use ark_ff::{One, PrimeField, UniformRand};
 use ark_poly::{
     polynomial::univariate::DensePolynomial as Polynomial, Polynomial as BasePoly, UVPolynomial,
 };
+use ark_std::cfg_iter;
 use core::marker::PhantomData;
 use rand::RngCore;
-use ark_std::cfg_iter;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -55,7 +55,7 @@ impl<E: PairingEngine> KZG10<E> {
         let powers_of_gamma_g =
             E::G1Projective::batch_normalization_into_affine(&powers_of_gamma_g);
 
-        let beta_h = h.mul(beta).into_affine();
+        let beta_h = h.mul(beta.into()).into_affine();
         let h = h.into_affine();
         let prepared_h = h.into();
         let prepared_beta_h = beta_h.into();
@@ -140,7 +140,7 @@ impl<E: PairingEngine> KZG10<E> {
         );
 
         let rand_v = if let Some(rand_poly) = rand_poly {
-            let blinding_evaluation = rand.blinding_polynomial.evaluate(point);
+            let blinding_evaluation = rand.blinding_polynomial.evaluate(&point);
             let blinding_witness_coeffs = Self::convert_to_bigints(&rand_poly.coeffs);
             w +=
                 &VariableBaseMSM::multi_scalar_mul(&ck.powers_of_gamma_g, &blinding_witness_coeffs);
@@ -254,7 +254,7 @@ mod tests {
         let powers = ck.powers();
         let (c, r) = KZG10::<E>::commit(&powers, &p, hiding_bound, Some(rng))?;
         let point = E::Fr::rand(rng);
-        let value = p.evaluate(point);
+        let value = p.evaluate(&point);
         let proof = KZG10::<E>::open(&powers, &p, point, &r)?;
         assert!(KZG10::<E>::check(&vk, &c, point, value, &proof)?);
 

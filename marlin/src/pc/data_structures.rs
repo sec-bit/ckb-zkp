@@ -1,11 +1,11 @@
 use ark_ec::PairingEngine;
-use ark_ff::{Field, Zero, ToBytes};
+use ark_ff::{Field, ToBytes, Zero};
 use ark_poly::{
     polynomial::univariate::DensePolynomial as Polynomial, Polynomial as BasePoly, UVPolynomial,
 };
+use ark_std::io;
 use core::ops::AddAssign;
 use rand::RngCore;
-use ark_std::io;
 
 use crate::{BTreeMap, BTreeSet, Cow, String, Vec};
 
@@ -162,7 +162,10 @@ pub struct Rand<F: Field> {
 impl<F: Field> ToBytes for Rand<F> {
     #[inline]
     fn write<W: io::Write>(&self, mut w: W) -> io::Result<()> {
-        self.blinding_polynomial.write(&mut w)
+        todo!()
+            //Ok(())
+        //self.serialize(&mut w)
+        //self.blinding_polynomial.write(&mut w)
     }
 }
 
@@ -246,7 +249,7 @@ impl<'a, F: Field> LabeledPolynomial<'a, F> {
     }
 
     pub fn evaluate(&self, point: F) -> F {
-        self.polynomial.evaluate(point)
+        self.polynomial.evaluate(&point)
     }
 
     pub fn degree_bound(&self) -> Option<usize> {

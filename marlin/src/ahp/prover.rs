@@ -1,8 +1,8 @@
-use ark_ff::{fields, PrimeField};
-use ark_poly::{EvaluationDomain, Evaluations as EvaluationsOnDomain};
+use ark_ff::{fields, PrimeField, Zero};
+use ark_poly::{EvaluationDomain, Evaluations as EvaluationsOnDomain, GeneralEvaluationDomain};
+use ark_std::{cfg_into_iter, cfg_iter, cfg_iter_mut};
 use rand::RngCore;
 use zkp_r1cs::{ConstraintSynthesizer, SynthesisError};
-use ark_std::{cfg_iter_mut, cfg_into_iter, cfg_iter};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -14,7 +14,7 @@ use crate::ahp::constraint_systems::ProverConstraintSystem;
 use crate::ahp::indexer::{Index, IndexInfo};
 use crate::ahp::verifier::{VerifierFirstMsg, VerifierSecondMsg};
 use crate::ahp::{Error, AHP};
-use crate::pc::{LabeledPolynomial, Polynomial};
+use crate::pc::{LabeledPolynomial, Polynomial, UVPolynomial};
 
 pub struct ProverState<'a, 'b, F: PrimeField> {
     index: &'a Index<'a, F>,
@@ -33,9 +33,9 @@ pub struct ProverState<'a, 'b, F: PrimeField> {
 
     zk_bound: usize,
 
-    domain_x: EvaluationDomain<F>,
-    domain_h: EvaluationDomain<F>,
-    domain_k: EvaluationDomain<F>,
+    domain_x: GeneralEvaluationDomain<F>,
+    domain_h: GeneralEvaluationDomain<F>,
+    domain_k: GeneralEvaluationDomain<F>,
 }
 
 impl<'a, 'b, F: PrimeField> ProverState<'a, 'b, F> {
@@ -121,12 +121,12 @@ impl<F: PrimeField> AHP<F> {
         let z_a = index.a.0.iter().map(|row| inner_product(row)).collect();
         let z_b = index.b.0.iter().map(|row| inner_product(row)).collect();
 
-        let domain_x = EvaluationDomain::new(num_input_variables)
+        let domain_x = GeneralEvaluationDomain::new(num_input_variables)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let domain_h = EvaluationDomain::new(num_constraints)
+        let domain_h = GeneralEvaluationDomain::new(num_constraints)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let domain_k =
-            EvaluationDomain::new(num_non_zeros).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let domain_k = GeneralEvaluationDomain::new(num_non_zeros)
+            .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
         Ok(ProverState {
             index,
@@ -231,7 +231,7 @@ impl<F: PrimeField> AHP<F> {
         verifier_msg: &VerifierFirstMsg<F>,
     ) -> Result<(ProverState<'a, 'b, F>, ProverSecondOracles<'b, F>), Error> {
         let domain_h = state.domain_h;
-        let domain_x = EvaluationDomain::new(state.formatted_input_assignment.len())
+        let domain_x = GeneralEvaluationDomain::new(state.formatted_input_assignment.len())
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let VerifierFirstMsg {
             alpha,
@@ -287,8 +287,8 @@ impl<F: PrimeField> AHP<F> {
         .iter()
         .max()
         .unwrap();
-        let domain =
-            EvaluationDomain::new(domain_size).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let domain = GeneralEvaluationDomain::new(domain_size)
+            .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let mut r_alpha_evals = r_alpha_poly.evaluate_over_domain_by_ref(domain);
         let m_evals = m_poly.evaluate_over_domain_by_ref(domain);
         let t_evals = t_poly.evaluate_over_domain_by_ref(domain);
@@ -322,7 +322,7 @@ impl<F: PrimeField> AHP<F> {
         info: &IndexInfo,
     ) -> impl Iterator<Item = Option<usize>> {
         let domain_h_size =
-            EvaluationDomain::<F>::compute_size_of_domain(info.num_constraints).unwrap();
+            GeneralEvaluationDomain::<F>::compute_size_of_domain(info.num_constraints).unwrap();
         vec![None, Some(domain_h_size - 2), None].into_iter()
     }
 
@@ -391,7 +391,7 @@ impl<F: PrimeField> AHP<F> {
             .map(|((r, c), r_c)| beta * alpha - (alpha * r) - (beta * c) + r_c)
             .collect();
 
-        let domain_b = EvaluationDomain::new(3 * domain_k.size() - 3)
+        let domain_b = GeneralEvaluationDomain::new(3 * domain_k.size() - 3)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
         let a_evals_on_b = cfg_into_iter!(0..domain_b.size())
@@ -428,7 +428,7 @@ impl<F: PrimeField> AHP<F> {
         info: &IndexInfo,
     ) -> impl Iterator<Item = Option<usize>> {
         let domain_k_size =
-            EvaluationDomain::<F>::compute_size_of_domain(info.num_non_zeros).unwrap();
+            GeneralEvaluationDomain::<F>::compute_size_of_domain(info.num_non_zeros).unwrap();
         vec![Some(domain_k_size - 2), None].into_iter()
     }
 

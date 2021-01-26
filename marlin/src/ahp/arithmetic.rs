@@ -1,5 +1,5 @@
 use ark_ff::{fields, PrimeField, ToBytes, FromBytes};
-use ark_poly::{EvaluationDomain, Evaluations as EvaluationsOnDomain};
+use ark_poly::{EvaluationDomain, GeneralEvaluationDomain, Evaluations as EvaluationsOnDomain};
 use ark_std::{cfg_iter, cfg_iter_mut};
 
 #[cfg(feature = "parallel")]
@@ -15,7 +15,7 @@ pub trait BivariatePoly<F: PrimeField> {
     fn diagonal_evals(&self) -> Vec<F>;
 }
 
-impl<F: PrimeField> BivariatePoly<F> for EvaluationDomain<F> {
+impl<F: PrimeField> BivariatePoly<F> for GeneralEvaluationDomain<F> {
     fn bivariate_eval(&self, x: F, y: F) -> F {
         if x != y {
             (self.evaluate_vanishing_polynomial(x) - self.evaluate_vanishing_polynomial(y))
@@ -97,10 +97,10 @@ pub struct MatrixPolynomials<'a, F: PrimeField> {
 pub fn compose_matrix_polynomials<'a, F: PrimeField>(
     matrix_name: &str,
     matrix: &Matrix<F>,
-    domain_x: EvaluationDomain<F>,
-    domain_h: EvaluationDomain<F>,
-    domain_k: EvaluationDomain<F>,
-    domain_b: EvaluationDomain<F>,
+    domain_x: GeneralEvaluationDomain<F>,
+    domain_h: GeneralEvaluationDomain<F>,
+    domain_k: GeneralEvaluationDomain<F>,
+    domain_b: GeneralEvaluationDomain<F>,
 ) -> Result<MatrixPolynomials<'a, F>, Error> {
     let h_elements: Vec<_> = domain_h.elements().collect();
     let h_diag_evals: Vec<_> = domain_h.diagonal_evals();
