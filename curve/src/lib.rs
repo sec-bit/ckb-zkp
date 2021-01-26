@@ -1,6 +1,15 @@
 //! An general zkp curve traint. and implemented the pairing curve.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
+#[cfg(feature = "std")]
+use std::vec::Vec;
+
 use ark_ec::{msm::VariableBaseMSM, PairingEngine};
 use ark_ff::{PrimeField, SquareRootField};
 use core::ops::MulAssign;
