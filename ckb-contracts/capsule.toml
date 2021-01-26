@@ -25,6 +25,6 @@ template_type = "Rust"
 name = "universal_spartan_snark_verifier"
 template_type = "Rust"
 
-# [[contracts]]
-# name = "universal_marlin_verifier"
-# template_type = "Rust"
+[[contracts]]
+name = "universal_marlin_verifier"
+template_type = "Rust"

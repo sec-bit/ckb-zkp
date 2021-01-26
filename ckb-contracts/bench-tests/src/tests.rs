@@ -1,4 +1,3 @@
-use super::*;
 use ckb_testtool::{builtin::ALWAYS_SUCCESS, context::Context};
 use ckb_tool::ckb_types::{
     bytes::Bytes,
@@ -13,6 +12,8 @@ use ark_ff::{One, PrimeField};
 use ark_serialize::*;
 use ark_std::test_rng;
 use zkp_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
+
+use super::*;
 
 const MAX_CYCLES: u64 = 1_000_000_000_000;
 
@@ -70,6 +71,8 @@ fn test_groth16() {
     let mut vk_bytes = Vec::new();
     params.vk.serialize(&mut vk_bytes).unwrap();
 
+    println!("Groth16 proving...");
+
     let c = Mini::<Fr> {
         x: Some(Fr::from(2u32)),
         y: Some(Fr::from(3u32)),
@@ -118,7 +121,6 @@ fn test_bulletproofs() {
     gens.serialize(&mut proof_bytes).unwrap();
     r1cs.serialize(&mut proof_bytes).unwrap();
     proof.serialize(&mut proof_bytes).unwrap();
-    //let proof_bytes = postcard::to_allocvec(&(gens, r1cs, proof)).unwrap();
 
     let mut public_bytes = Vec::new();
     Fr::from(10u32).serialize(&mut public_bytes).unwrap();
@@ -134,46 +136,55 @@ fn test_bulletproofs() {
     );
 }
 
-// #[test]
-// fn test_marlin() {
-//     use zkp_toolkit::marlin::{create_random_proof, index, universal_setup};
+#[test]
+fn test_marlin() {
+    use zkp_marlin::{create_random_proof, index, universal_setup};
 
-//     let num = 10;
-//     let rng = &mut test_rng(); // Only in test code.
+    let num = 10;
+    let rng = &mut test_rng(); // Only in test code.
 
-//     // TRUSTED SETUP
-//     println!("Marlin setup...");
-//     let c = Mini::<Fr> {
-//         x: None,
-//         y: None,
-//         z: None,
-//         num: num,
-//     };
+    // TRUSTED SETUP
+    println!("Marlin setup...");
+    let c = Mini::<Fr> {
+        x: None,
+        y: None,
+        z: None,
+        num: num,
+    };
 
-//     let srs = universal_setup::<E, _>(2usize.pow(10), rng).unwrap();
-//     println!("Marlin indexer...");
-//     let (pk, vk) = index(&srs, c).unwrap();
-//     let vk_bytes = postcard::to_allocvec(&vk).unwrap();
+    let srs = universal_setup::<E, _>(2usize.pow(10), rng).unwrap();
+    let (pk, vk) = index(&srs, c).unwrap();
 
-//     let c = Mini::<Fr> {
-//         x: Some(Fr::from(2u32)),
-//         y: Some(Fr::from(3u32)),
-//         z: Some(Fr::from(10u32)),
-//         num: num,
-//     };
+    println!("Marlin proving...");
 
-//     let proof = create_random_proof(&pk, c, rng).unwrap();
-//     let proof_bytes = postcard::to_allocvec(&proof).unwrap();
-//     let public_bytes = postcard::to_allocvec(&vec![Fr::from(10u32)]).unwrap();
+    let mut vk_bytes = Vec::new();
+    vk.serialize(&mut vk_bytes).unwrap();
 
-//     proving_test(
-//         vk_bytes.into(),
-//         proof_bytes.into(),
-//         public_bytes.into(),
-//         "universal_marlin_verifier",
-//         "marlin verify",
-//     );
-// }
+    let c = Mini::<Fr> {
+        x: Some(Fr::from(2u32)),
+        y: Some(Fr::from(3u32)),
+        z: Some(Fr::from(10u32)),
+        num: num,
+    };
+
+    let proof = create_random_proof(&pk, c, rng).unwrap();
+
+    let mut proof_bytes = Vec::new();
+    proof.serialize(&mut proof_bytes).unwrap();
+
+    let mut public_bytes = Vec::new();
+    Fr::from(10u32).serialize(&mut public_bytes).unwrap();
+
+    println!("Marlin verifying on CKB...");
+
+    proving_test(
+        vk_bytes.into(),
+        proof_bytes.into(),
+        public_bytes.into(),
+        "universal_marlin_verifier",
+        "marlin verify",
+    );
+}
 
 use zkp_clinkv2::r1cs as clinkv2_r1cs;
 
@@ -429,7 +440,6 @@ fn test_spartan_nizk() {
 
     let params = generate_random_parameters::<E, _, _>(c, rng).unwrap();
     let (pk, vk) = params.keypair();
-
 
     let mut vk_bytes = Vec::new();
     vk.serialize(&mut vk_bytes).unwrap();
