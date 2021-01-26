@@ -22,7 +22,7 @@ pub trait Curve: 'static + Clone {
     type Fq: PrimeField + SquareRootField;
 
     /// This is the scalar field of the groups.
-    type Fr: PrimeField + SquareRootField;
+    type Fr: PrimeField + SquareRootField + From<u32>;
 
     /// The projective representation of an element.
     type Projective: From<Self::Affine>
