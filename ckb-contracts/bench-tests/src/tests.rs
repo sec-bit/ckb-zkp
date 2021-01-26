@@ -362,93 +362,104 @@ fn test_clinkv2_ipa() {
     );
 }
 
-// #[test]
-// fn test_spartan_snark() {
-//     use zkp_toolkit::spartan::snark::{create_random_proof, generate_random_parameters};
+#[test]
+fn test_spartan_snark() {
+    use zkp_spartan::snark::{create_random_proof, generate_random_parameters};
 
-//     let num = 10;
-//     let rng = &mut test_rng(); // Only in test code.
+    let num = 10;
+    let rng = &mut test_rng(); // Only in test code.
 
-//     println!("Spartan snark setup...");
+    println!("Spartan snark setup...");
 
-//     let c = Mini::<Fr> {
-//         x: None,
-//         y: None,
-//         z: None,
-//         num: num,
-//     };
+    let c = Mini::<Fr> {
+        x: None,
+        y: None,
+        z: None,
+        num: num,
+    };
 
-//     let params = generate_random_parameters::<E, _, _>(c, rng).unwrap();
-//     let (pk, vk) = params.keypair();
+    let params = generate_random_parameters::<E, _, _>(c, rng).unwrap();
+    let (pk, vk) = params.keypair();
 
-//     let vk_bytes = postcard::to_allocvec(&vk).unwrap();
+    let mut vk_bytes = Vec::new();
+    vk.serialize(&mut vk_bytes).unwrap();
 
-//     println!("Spartan snark Creating proof...");
-//     let c1 = Mini::<Fr> {
-//         x: Some(Fr::from(2u32)),
-//         y: Some(Fr::from(3u32)),
-//         z: Some(Fr::from(10u32)),
-//         num: 10,
-//     };
+    println!("Spartan snark Creating proof...");
+    let c1 = Mini::<Fr> {
+        x: Some(Fr::from(2u32)),
+        y: Some(Fr::from(3u32)),
+        z: Some(Fr::from(10u32)),
+        num: 10,
+    };
 
-//     let proof = create_random_proof(&pk, c1, rng).unwrap();
-//     let proof_bytes = postcard::to_allocvec(&proof).unwrap();
-//     let public_bytes = postcard::to_allocvec(&vec![Fr::from(10u32)]).unwrap();
+    let proof = create_random_proof(&pk, c1, rng).unwrap();
 
-//     println!("Spartan snark verifying on CKB...");
+    let mut proof_bytes = Vec::new();
+    proof.serialize(&mut proof_bytes).unwrap();
 
-//     proving_test(
-//         vk_bytes.into(),
-//         proof_bytes.into(),
-//         public_bytes.into(),
-//         "universal_spartan_snark_verifier",
-//         "spartan snark verify",
-//     );
-// }
+    let mut public_bytes = Vec::new();
+    Fr::from(10u32).serialize(&mut public_bytes).unwrap();
 
-// #[test]
-// fn test_spartan_nizk() {
-//     use zkp_toolkit::spartan::nizk::{create_random_proof, generate_random_parameters};
+    println!("Spartan snark verifying on CKB...");
 
-//     let num = 10;
-//     let rng = &mut test_rng(); // Only in test code.
+    proving_test(
+        vk_bytes.into(),
+        proof_bytes.into(),
+        public_bytes.into(),
+        "universal_spartan_snark_verifier",
+        "spartan snark verify",
+    );
+}
 
-//     println!("Spartan nizk setup...");
+#[test]
+fn test_spartan_nizk() {
+    use zkp_spartan::nizk::{create_random_proof, generate_random_parameters};
 
-//     let c = Mini::<Fr> {
-//         x: None,
-//         y: None,
-//         z: None,
-//         num: num,
-//     };
+    let num = 10;
+    let rng = &mut test_rng(); // Only in test code.
 
-//     let params = generate_random_parameters::<E, _, _>(c, rng).unwrap();
-//     let (pk, vk) = params.keypair();
+    println!("Spartan nizk setup...");
 
-//     let vk_bytes = postcard::to_allocvec(&vk).unwrap();
+    let c = Mini::<Fr> {
+        x: None,
+        y: None,
+        z: None,
+        num: num,
+    };
 
-//     println!("Spartan nizk Creating proof...");
-//     let c1 = Mini::<Fr> {
-//         x: Some(Fr::from(2u32)),
-//         y: Some(Fr::from(3u32)),
-//         z: Some(Fr::from(10u32)),
-//         num: 10,
-//     };
+    let params = generate_random_parameters::<E, _, _>(c, rng).unwrap();
+    let (pk, vk) = params.keypair();
 
-//     let proof = create_random_proof(&pk, c1, rng).unwrap();
-//     let proof_bytes = postcard::to_allocvec(&proof).unwrap();
-//     let public_bytes = postcard::to_allocvec(&vec![Fr::from(10u32)]).unwrap();
 
-//     println!("Spartan nizk verifying on CKB...");
+    let mut vk_bytes = Vec::new();
+    vk.serialize(&mut vk_bytes).unwrap();
 
-//     proving_test(
-//         vk_bytes.into(),
-//         proof_bytes.into(),
-//         public_bytes.into(),
-//         "universal_spartan_nizk_verifier",
-//         "spartan nizk verify",
-//     );
-// }
+    println!("Spartan nizk Creating proof...");
+    let c1 = Mini::<Fr> {
+        x: Some(Fr::from(2u32)),
+        y: Some(Fr::from(3u32)),
+        z: Some(Fr::from(10u32)),
+        num: 10,
+    };
+
+    let proof = create_random_proof(&pk, c1, rng).unwrap();
+
+    let mut proof_bytes = Vec::new();
+    proof.serialize(&mut proof_bytes).unwrap();
+
+    let mut public_bytes = Vec::new();
+    Fr::from(10u32).serialize(&mut public_bytes).unwrap();
+
+    println!("Spartan nizk verifying on CKB...");
+
+    proving_test(
+        vk_bytes.into(),
+        proof_bytes.into(),
+        public_bytes.into(),
+        "universal_spartan_nizk_verifier",
+        "spartan nizk verify",
+    );
+}
 
 fn build_test_context(
     vk: Bytes,

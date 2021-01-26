@@ -7,7 +7,7 @@ use crate::error::Error;
 
 use ark_bls12_381::{Bls12_381 as E, Fr};
 use ark_serialize::*;
-use zkp_spartan::snark::{verify_proof, Proof, VerifyKey},
+use zkp_spartan::snark::{verify_proof, Proof, VerifyKey};
 
 pub fn main() -> Result<(), Error> {
     // load verify key.
