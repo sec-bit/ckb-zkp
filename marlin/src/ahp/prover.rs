@@ -1,9 +1,8 @@
-use ark_ff::{fields, PrimeField, Zero};
-use ark_poly::{polynomial::univariate::DensePolynomial, UVPolynomial};
-use ark_poly::{EvaluationDomain, Evaluations, MixedRadixEvaluationDomain};
-use ark_std::{cfg_into_iter, cfg_iter, cfg_iter_mut};
+use ark_ff::{fields, PrimeField};
+use ark_poly::{EvaluationDomain, Evaluations as EvaluationsOnDomain};
 use rand::RngCore;
 use zkp_r1cs::{ConstraintSynthesizer, SynthesisError};
+use ark_std::{cfg_iter_mut, cfg_into_iter, cfg_iter};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -15,7 +14,7 @@ use crate::ahp::constraint_systems::ProverConstraintSystem;
 use crate::ahp::indexer::{Index, IndexInfo};
 use crate::ahp::verifier::{VerifierFirstMsg, VerifierSecondMsg};
 use crate::ahp::{Error, AHP};
-use crate::pc::LabeledPolynomial;
+use crate::pc::{LabeledPolynomial, Polynomial};
 
 pub struct ProverState<'a, 'b, F: PrimeField> {
     index: &'a Index<'a, F>,
@@ -34,9 +33,9 @@ pub struct ProverState<'a, 'b, F: PrimeField> {
 
     zk_bound: usize,
 
-    domain_x: MixedRadixEvaluationDomain<F>,
-    domain_h: MixedRadixEvaluationDomain<F>,
-    domain_k: MixedRadixEvaluationDomain<F>,
+    domain_x: EvaluationDomain<F>,
+    domain_h: EvaluationDomain<F>,
+    domain_k: EvaluationDomain<F>,
 }
 
 impl<'a, 'b, F: PrimeField> ProverState<'a, 'b, F> {
@@ -122,12 +121,12 @@ impl<F: PrimeField> AHP<F> {
         let z_a = index.a.0.iter().map(|row| inner_product(row)).collect();
         let z_b = index.b.0.iter().map(|row| inner_product(row)).collect();
 
-        let domain_x = MixedRadixEvaluationDomain::new(num_input_variables)
+        let domain_x = EvaluationDomain::new(num_input_variables)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let domain_h = MixedRadixEvaluationDomain::new(num_constraints)
+        let domain_h = EvaluationDomain::new(num_constraints)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let domain_k = MixedRadixEvaluationDomain::new(num_non_zeros)
-            .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let domain_k =
+            EvaluationDomain::new(num_non_zeros).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
         Ok(ProverState {
             index,
@@ -157,9 +156,11 @@ impl<F: PrimeField> AHP<F> {
 
         let v_h = Self::vanishing_polynomial(domain_h.size());
 
-        let x_poly =
-            &Evaluations::from_vec_and_domain(state.formatted_input_assignment.clone(), domain_x)
-                .interpolate();
+        let x_poly = &EvaluationsOnDomain::from_vec_and_domain(
+            state.formatted_input_assignment.clone(),
+            domain_x,
+        )
+        .interpolate();
         let x_evals_on_h = domain_h.fft(&x_poly);
 
         let ratio = domain_h.size() / domain_x.size();
@@ -183,19 +184,22 @@ impl<F: PrimeField> AHP<F> {
             })
             .collect();
 
-        let w_poly = &Evaluations::from_vec_and_domain(w_evals_on_h, domain_h).interpolate()
-            + &(&DensePolynomial::<F>::rand(zk_bound - 1, rng) * &v_h);
+        let w_poly = &EvaluationsOnDomain::from_vec_and_domain(w_evals_on_h, domain_h)
+            .interpolate()
+            + &(&Polynomial::<F>::rand(zk_bound - 1, rng) * &v_h);
         let (w_poly, remainder) = w_poly.divide_by_vanishing_poly(domain_x).unwrap();
         assert!(remainder.is_zero());
 
-        let z_a_poly = &Evaluations::from_vec_and_domain(state.z_a.clone(), domain_h).interpolate()
-            + &(&DensePolynomial::<F>::rand(zk_bound - 1, rng) * &v_h);
+        let z_a_poly = &EvaluationsOnDomain::from_vec_and_domain(state.z_a.clone(), domain_h)
+            .interpolate()
+            + &(&Polynomial::<F>::rand(zk_bound - 1, rng) * &v_h);
 
-        let z_b_poly = &Evaluations::from_vec_and_domain(state.z_b.clone(), domain_h).interpolate()
-            + &(&DensePolynomial::<F>::rand(zk_bound - 1, rng) * &v_h);
+        let z_b_poly = &EvaluationsOnDomain::from_vec_and_domain(state.z_b.clone(), domain_h)
+            .interpolate()
+            + &(&Polynomial::<F>::rand(zk_bound - 1, rng) * &v_h);
 
         let mask_degree = 3 * domain_h.size() + 2 * zk_bound - 3;
-        let mut mask_poly = DensePolynomial::<F>::rand(mask_degree, rng);
+        let mut mask_poly = Polynomial::<F>::rand(mask_degree, rng);
         let sigma = (mask_poly.divide_by_vanishing_poly(domain_h).unwrap().1)[0]; // r_0
         mask_poly[0] -= sigma; // forcing r_0 = 0, sum_over_h(mask_poly) = 0
 
@@ -227,7 +231,7 @@ impl<F: PrimeField> AHP<F> {
         verifier_msg: &VerifierFirstMsg<F>,
     ) -> Result<(ProverState<'a, 'b, F>, ProverSecondOracles<'b, F>), Error> {
         let domain_h = state.domain_h;
-        let domain_x = MixedRadixEvaluationDomain::new(state.formatted_input_assignment.len())
+        let domain_x = EvaluationDomain::new(state.formatted_input_assignment.len())
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let VerifierFirstMsg {
             alpha,
@@ -245,11 +249,10 @@ impl<F: PrimeField> AHP<F> {
             .zip(&z_a.polynomial().coeffs)
             .zip(&z_b.polynomial().coeffs)
             .for_each(|((c, a), b)| *c += (eta_a * a) + &(eta_b * b));
-        let m_poly = DensePolynomial::from_coefficients_vec(m_coeffs);
+        let m_poly = Polynomial::from_coefficients_vec(m_coeffs);
         // r_alpha
         let r_alpha_evals_on_h = domain_h.batch_evals(alpha);
-        let r_alpha_poly =
-            DensePolynomial::from_coefficients_vec(domain_h.ifft(&r_alpha_evals_on_h));
+        let r_alpha_poly = Polynomial::from_coefficients_vec(domain_h.ifft(&r_alpha_evals_on_h));
         // t
         let mut t_evals_on_h = vec![F::zero(); domain_h.size()];
         let matrices = vec![&state.index.a, &state.index.b, &state.index.c];
@@ -262,11 +265,13 @@ impl<F: PrimeField> AHP<F> {
                 }
             }
         }
-        let t_poly = Evaluations::from_vec_and_domain(t_evals_on_h, domain_h).interpolate();
+        let t_poly = EvaluationsOnDomain::from_vec_and_domain(t_evals_on_h, domain_h).interpolate();
         // z
-        let x_poly =
-            Evaluations::from_vec_and_domain(state.formatted_input_assignment.clone(), domain_x)
-                .interpolate();
+        let x_poly = EvaluationsOnDomain::from_vec_and_domain(
+            state.formatted_input_assignment.clone(),
+            domain_x,
+        )
+        .interpolate();
         let w_poly = state.w.as_ref().unwrap();
         let mut z_poly = w_poly.polynomial().mul_by_vanishing_poly(domain_x);
         cfg_iter_mut!(z_poly.coeffs)
@@ -282,8 +287,8 @@ impl<F: PrimeField> AHP<F> {
         .iter()
         .max()
         .unwrap();
-        let domain = MixedRadixEvaluationDomain::new(domain_size)
-            .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let domain =
+            EvaluationDomain::new(domain_size).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let mut r_alpha_evals = r_alpha_poly.evaluate_over_domain_by_ref(domain);
         let m_evals = m_poly.evaluate_over_domain_by_ref(domain);
         let t_evals = t_poly.evaluate_over_domain_by_ref(domain);
@@ -298,7 +303,7 @@ impl<F: PrimeField> AHP<F> {
             });
         let q_1_poly = mask_poly + &r_alpha_evals.interpolate();
         let (h_1_poly, x_g_1_poly) = q_1_poly.divide_by_vanishing_poly(domain_h).unwrap();
-        let g_1_poly = DensePolynomial::from_coefficients_slice(&x_g_1_poly.coeffs[1..]);
+        let g_1_poly = Polynomial::from_coefficients_slice(&x_g_1_poly.coeffs[1..]);
         let oracles = ProverSecondOracles {
             t: LabeledPolynomial::new_owned("t".to_string(), t_poly, None, None),
             h_1: LabeledPolynomial::new_owned("h_1".to_string(), h_1_poly, None, None),
@@ -317,7 +322,7 @@ impl<F: PrimeField> AHP<F> {
         info: &IndexInfo,
     ) -> impl Iterator<Item = Option<usize>> {
         let domain_h_size =
-            MixedRadixEvaluationDomain::<F>::compute_size_of_domain(info.num_constraints).unwrap();
+            EvaluationDomain::<F>::compute_size_of_domain(info.num_constraints).unwrap();
         vec![None, Some(domain_h_size - 2), None].into_iter()
     }
 
@@ -367,8 +372,8 @@ impl<F: PrimeField> AHP<F> {
             t_evals_on_k.push(t * v_h_at_alpha * v_h_at_beta);
         }
 
-        let t_poly = Evaluations::from_vec_and_domain(t_evals_on_k, domain_k).interpolate();
-        let g_2_poly = DensePolynomial::from_coefficients_slice(&t_poly.coeffs[1..]);
+        let t_poly = EvaluationsOnDomain::from_vec_and_domain(t_evals_on_k, domain_k).interpolate();
+        let g_2_poly = Polynomial::from_coefficients_slice(&t_poly.coeffs[1..]);
 
         let denom_a: Vec<_> = cfg_iter!(a_star.row_evals_on_b.evals)
             .zip(&a_star.col_evals_on_b.evals)
@@ -386,7 +391,7 @@ impl<F: PrimeField> AHP<F> {
             .map(|((r, c), r_c)| beta * alpha - (alpha * r) - (beta * c) + r_c)
             .collect();
 
-        let domain_b = MixedRadixEvaluationDomain::new(3 * domain_k.size() - 3)
+        let domain_b = EvaluationDomain::new(3 * domain_k.size() - 3)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
         let a_evals_on_b = cfg_into_iter!(0..domain_b.size())
@@ -397,12 +402,12 @@ impl<F: PrimeField> AHP<F> {
                 tmp * v_h_at_alpha * v_h_at_beta
             })
             .collect();
-        let a_poly = Evaluations::from_vec_and_domain(a_evals_on_b, domain_b).interpolate();
+        let a_poly = EvaluationsOnDomain::from_vec_and_domain(a_evals_on_b, domain_b).interpolate();
 
         let b_evals_on_b = cfg_into_iter!(0..domain_b.size())
             .map(|i| denom_a[i] * denom_b[i] * denom_c[i])
             .collect();
-        let b_poly = Evaluations::from_vec_and_domain(b_evals_on_b, domain_b).interpolate();
+        let b_poly = EvaluationsOnDomain::from_vec_and_domain(b_evals_on_b, domain_b).interpolate();
 
         let h_2_poly = (&a_poly - &(&b_poly * &t_poly))
             .divide_by_vanishing_poly(domain_k)
@@ -423,14 +428,14 @@ impl<F: PrimeField> AHP<F> {
         info: &IndexInfo,
     ) -> impl Iterator<Item = Option<usize>> {
         let domain_k_size =
-            MixedRadixEvaluationDomain::<F>::compute_size_of_domain(info.num_non_zeros).unwrap();
+            EvaluationDomain::<F>::compute_size_of_domain(info.num_non_zeros).unwrap();
         vec![Some(domain_k_size - 2), None].into_iter()
     }
 
-    fn vanishing_polynomial(domain_size: usize) -> DensePolynomial<F> {
+    fn vanishing_polynomial(domain_size: usize) -> Polynomial<F> {
         let mut coeffs = vec![F::zero(); domain_size + 1];
         coeffs[0] = -F::one();
         coeffs[domain_size] = F::one();
-        DensePolynomial::from_coefficients_vec(coeffs)
+        Polynomial::from_coefficients_vec(coeffs)
     }
 }

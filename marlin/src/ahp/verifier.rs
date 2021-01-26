@@ -1,19 +1,18 @@
 use ark_ff::PrimeField;
-use ark_poly::{EvaluationDomain, Evaluations, MixedRadixEvaluationDomain, Polynomial};
+use ark_poly::{EvaluationDomain, Evaluations as EvaluationsOnDomain};
 use rand::RngCore;
 use zkp_r1cs::SynthesisError;
-
-use crate::ToString;
 
 use crate::ahp::arithmetic::BivariatePoly;
 use crate::ahp::constraint_systems::ProverConstraintSystem;
 use crate::ahp::indexer::IndexInfo;
 use crate::ahp::{Error, AHP};
-use crate::pc::QuerySet;
+use crate::pc::{Evaluations, QuerySet};
+use crate::ToString;
 
 pub struct VerifierState<F: PrimeField> {
-    pub domain_h: MixedRadixEvaluationDomain<F>,
-    pub domain_k: MixedRadixEvaluationDomain<F>,
+    pub domain_h: EvaluationDomain<F>,
+    pub domain_k: EvaluationDomain<F>,
     pub eta_a: Option<F>,
     pub eta_b: Option<F>,
     pub eta_c: Option<F>,
@@ -43,9 +42,9 @@ impl<F: PrimeField> AHP<F> {
         if index_info.num_constraints != index_info.num_variables {
             return Err(Error::NonSquareMatrix);
         }
-        let domain_h = MixedRadixEvaluationDomain::new(index_info.num_constraints)
+        let domain_h = EvaluationDomain::new(index_info.num_constraints)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let domain_k = MixedRadixEvaluationDomain::new(index_info.num_non_zeros)
+        let domain_k = EvaluationDomain::new(index_info.num_non_zeros)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
         let msg = VerifierFirstMsg {
@@ -113,10 +112,7 @@ impl<F: PrimeField> AHP<F> {
         query_set
     }
 
-    fn sample_element_outside_domain<R: RngCore>(
-        domain: &MixedRadixEvaluationDomain<F>,
-        rng: &mut R,
-    ) -> F {
+    fn sample_element_outside_domain<R: RngCore>(domain: &EvaluationDomain<F>, rng: &mut R) -> F {
         let mut t = F::rand(rng);
         while domain.evaluate_vanishing_polynomial(t) == F::zero() {
             t = F::rand(rng);
@@ -142,11 +138,12 @@ impl<F: PrimeField> AHP<F> {
         let r_alpha_at_beta = domain_h.bivariate_eval(alpha, beta);
 
         let formatted_input = ProverConstraintSystem::format_public_input(public_input);
-        let domain_x = MixedRadixEvaluationDomain::<F>::new(formatted_input.len())
+        let domain_x = EvaluationDomain::<F>::new(formatted_input.len())
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let v_x_at_beta = domain_x.evaluate_vanishing_polynomial(beta);
-        let x_poly = &Evaluations::from_vec_and_domain(formatted_input, domain_x).interpolate();
-        let x_at_beta = x_poly.evaluate(&beta);
+        let x_poly =
+            &EvaluationsOnDomain::from_vec_and_domain(formatted_input, domain_x).interpolate();
+        let x_at_beta = x_poly.evaluate(beta);
 
         // outer sumcheck
         let mask_at_beta = Self::get_eval(&evaluations, "mask", beta)?;

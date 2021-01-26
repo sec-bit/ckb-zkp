@@ -2,17 +2,20 @@ use ark_ec::{
     msm::{FixedBaseMSM, VariableBaseMSM},
     AffineCurve, PairingEngine, ProjectiveCurve,
 };
-use ark_ff::{One, PrimeField};
-use ark_poly::{polynomial::univariate::DensePolynomial, Polynomial, UVPolynomial};
-use ark_std::{cfg_iter, UniformRand};
+use ark_ff::{One, PrimeField, UniformRand};
+use ark_poly::{
+    polynomial::univariate::DensePolynomial as Polynomial, Polynomial as BasePoly, UVPolynomial,
+};
 use core::marker::PhantomData;
 use rand::RngCore;
+use ark_std::cfg_iter;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-use crate::pc::data_structures::*;
 use crate::Vec;
+
+use crate::pc::data_structures::*;
 
 /// KZG10 implements KZG10 polynomial commitment scheme,
 /// which optionally enables hiding following Marlin's specification
@@ -52,7 +55,7 @@ impl<E: PairingEngine> KZG10<E> {
         let powers_of_gamma_g =
             E::G1Projective::batch_normalization_into_affine(&powers_of_gamma_g);
 
-        let beta_h = h.mul(beta.into()).into_affine();
+        let beta_h = h.mul(beta).into_affine();
         let h = h.into_affine();
         let prepared_h = h.into();
         let prepared_beta_h = beta_h.into();
@@ -96,7 +99,7 @@ impl<E: PairingEngine> KZG10<E> {
 
     pub fn commit<R: RngCore>(
         ck: &Powers<'_, E>,
-        p: &DensePolynomial<E::Fr>,
+        p: &Polynomial<E::Fr>,
         hiding_bound: Option<usize>,
         rng: Option<&mut R>,
     ) -> Result<(Comm<E>, Rand<E::Fr>), Error> {
@@ -121,7 +124,7 @@ impl<E: PairingEngine> KZG10<E> {
 
     pub fn open(
         ck: &Powers<'_, E>,
-        p: &DensePolynomial<E::Fr>,
+        p: &Polynomial<E::Fr>,
         point: E::Fr,
         rand: &Rand<E::Fr>,
     ) -> Result<Proof<E>, Error> {
@@ -137,7 +140,7 @@ impl<E: PairingEngine> KZG10<E> {
         );
 
         let rand_v = if let Some(rand_poly) = rand_poly {
-            let blinding_evaluation = rand.blinding_polynomial.evaluate(&point);
+            let blinding_evaluation = rand.blinding_polynomial.evaluate(point);
             let blinding_witness_coeffs = Self::convert_to_bigints(&rand_poly.coeffs);
             w +=
                 &VariableBaseMSM::multi_scalar_mul(&ck.powers_of_gamma_g, &blinding_witness_coeffs);
@@ -180,7 +183,7 @@ impl<E: PairingEngine> KZG10<E> {
     }
 
     fn skip_leading_zeros_and_convert_to_bigints<F: PrimeField>(
-        p: &DensePolynomial<F>,
+        p: &Polynomial<F>,
     ) -> (usize, Vec<F::BigInt>) {
         let mut num_leading_zeros = 0;
         while p.coeffs[num_leading_zeros].is_zero() && num_leading_zeros < p.coeffs.len() {
@@ -206,11 +209,11 @@ impl<E: PairingEngine> KZG10<E> {
     }
 
     fn compute_witness_polynomial(
-        p: &DensePolynomial<E::Fr>,
+        p: &Polynomial<E::Fr>,
         point: E::Fr,
         rand: &Rand<E::Fr>,
-    ) -> (DensePolynomial<E::Fr>, Option<DensePolynomial<E::Fr>>) {
-        let divisor = DensePolynomial::from_coefficients_vec(vec![-point, E::Fr::one()]);
+    ) -> (Polynomial<E::Fr>, Option<Polynomial<E::Fr>>) {
+        let divisor = Polynomial::from_coefficients_vec(vec![-point, E::Fr::one()]);
         let witness_polynomial = p / &divisor;
 
         let hiding_witness_polynomial = if rand.is_hiding() {
@@ -242,7 +245,7 @@ mod tests {
         let pp = KZG10::<E>::setup(degree, rng)?;
         let (ck, vk) = KZG10::<E>::trim(&pp, degree / 2)?;
         let p = loop {
-            let p = DensePolynomial::rand(degree / 2, rng);
+            let p = Polynomial::rand(degree / 2, rng);
             if p.degree() > 0 {
                 break p;
             }
@@ -251,7 +254,7 @@ mod tests {
         let powers = ck.powers();
         let (c, r) = KZG10::<E>::commit(&powers, &p, hiding_bound, Some(rng))?;
         let point = E::Fr::rand(rng);
-        let value = p.evaluate(&point);
+        let value = p.evaluate(point);
         let proof = KZG10::<E>::open(&powers, &p, point, &r)?;
         assert!(KZG10::<E>::check(&vk, &c, point, value, &proof)?);
 

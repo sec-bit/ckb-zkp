@@ -13,6 +13,12 @@ pub struct IndexVerifierKey<E: PairingEngine> {
     pub verifier_key: VerifierKey<E>,
 }
 
+impl<E: PairingEngine> IndexVerifierKey<E> {
+    pub fn iter(&self) -> impl Iterator<Item = &Commitment<E>> {
+        self.index_comms.iter()
+    }
+}
+
 impl<E: PairingEngine> ToBytes for IndexVerifierKey<E> {
     #[inline]
     fn write<W: io::Write>(&self, mut w: W) -> io::Result<()> {
@@ -22,12 +28,6 @@ impl<E: PairingEngine> ToBytes for IndexVerifierKey<E> {
             i.write(&mut w)?;
         }
         self.verifier_key.write(&mut w)
-    }
-}
-
-impl<E: PairingEngine> IndexVerifierKey<E> {
-    pub fn iter(&self) -> impl Iterator<Item = &Commitment<E>> {
-        self.index_comms.iter()
     }
 }
 
