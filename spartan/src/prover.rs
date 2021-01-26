@@ -454,18 +454,18 @@ fn sum_check_proof_phase_one<G: Curve, R: Rng>(
         let eval_1 = claim - &eval_0;
 
         // g_i(2) = eval_2 = 2eval_1 + (1-2)eval_0;
-        let poly_a_tmp = combine_with_n::<G>(&poly_a.to_vec(), G::Fr::from(2u8));
-        let poly_b_tmp = combine_with_n::<G>(&poly_b.to_vec(), G::Fr::from(2u8));
-        let poly_c_tmp = combine_with_n::<G>(&poly_c.to_vec(), G::Fr::from(2u8));
-        let poly_eq_tmp = combine_with_n::<G>(&poly_eq.to_vec(), G::Fr::from(2u8));
+        let poly_a_tmp = combine_with_n::<G>(&poly_a.to_vec(), G::Fr::from(2u32));
+        let poly_b_tmp = combine_with_n::<G>(&poly_b.to_vec(), G::Fr::from(2u32));
+        let poly_c_tmp = combine_with_n::<G>(&poly_c.to_vec(), G::Fr::from(2u32));
+        let poly_eq_tmp = combine_with_n::<G>(&poly_eq.to_vec(), G::Fr::from(2u32));
         let eval_2: G::Fr = (0..size)
             .map(|j| poly_eq_tmp[j] * &(poly_a_tmp[j] * &poly_b_tmp[j] - &poly_c_tmp[j]))
             .sum();
         // g_i(3) = eval_3 = 3eval_1 + (1-3)eval_0;
-        let poly_a_tmp = combine_with_n::<G>(&poly_a.to_vec(), G::Fr::from(3u8));
-        let poly_b_tmp = combine_with_n::<G>(&poly_b.to_vec(), G::Fr::from(3u8));
-        let poly_c_tmp = combine_with_n::<G>(&poly_c.to_vec(), G::Fr::from(3u8));
-        let poly_eq_tmp = combine_with_n::<G>(&poly_eq.to_vec(), G::Fr::from(3u8));
+        let poly_a_tmp = combine_with_n::<G>(&poly_a.to_vec(), G::Fr::from(3u32));
+        let poly_b_tmp = combine_with_n::<G>(&poly_b.to_vec(), G::Fr::from(3u32));
+        let poly_c_tmp = combine_with_n::<G>(&poly_c.to_vec(), G::Fr::from(3u32));
+        let poly_eq_tmp = combine_with_n::<G>(&poly_eq.to_vec(), G::Fr::from(3u32));
         let eval_3: G::Fr = (0..size)
             .map(|j| poly_eq_tmp[j] * &(poly_a_tmp[j] * &poly_b_tmp[j] - &poly_c_tmp[j]))
             .sum();
@@ -475,12 +475,12 @@ fn sum_check_proof_phase_one<G: Curve, R: Rng>(
         // a = (-eval_0 + 3eval_1 - 3eval_2 + eval_3)/6
         let a_coeff = (eval_0.neg() + &eval_1.double() + &eval_1 - &eval_2.double() - &eval_2
             + &eval_3)
-            * &G::Fr::from(6u8).inverse().unwrap();
+            * &G::Fr::from(6u32).inverse().unwrap();
         // b = (2eval_0 - 5eval_1 + 4eval_2 - eval_3)/2
         let b_coeff = (eval_0.double() - &(eval_1.double().double()) - &eval_1
             + &eval_2.double().double()
             - &eval_3)
-            * &G::Fr::from(2u8).inverse().unwrap();
+            * &G::Fr::from(2u32).inverse().unwrap();
         // c = eval_1 - eval_0 - a - b
         let c_coeff = eval_1 - &eval_0 - &a_coeff - &b_coeff;
         // d = eval_0
@@ -611,14 +611,14 @@ fn sum_check_proof_phase_two<G: Curve, R: Rng>(
         let eval_1 = claim - &eval_0;
 
         // g_i(2) = eval_2 = 2eval_1 + (1-2)eval_0;
-        let poly_abc_tmp = combine_with_n::<G>(&poly_abc, G::Fr::from(2u8));
-        let poly_z_tmp = combine_with_n::<G>(&poly_z, G::Fr::from(2u8));
+        let poly_abc_tmp = combine_with_n::<G>(&poly_abc, G::Fr::from(2u32));
+        let poly_z_tmp = combine_with_n::<G>(&poly_z, G::Fr::from(2u32));
         let eval_2 = (0..size).map(|j| poly_abc_tmp[j] * &poly_z_tmp[j]).sum();
 
         // degree = 2
         // f(x) = ax^2 + bx + c
         // a = (eval_0 - 2eval_1 + eval_2)/2
-        let a_coeff = (eval_0 - &eval_1.double() + &eval_2) * &G::Fr::from(2u8).inverse().unwrap();
+        let a_coeff = (eval_0 - &eval_1.double() + &eval_2) * &G::Fr::from(2u32).inverse().unwrap();
         // c = eval_0
         let c_coeff = eval_0;
         // b = eval_1 - a - c
@@ -1509,12 +1509,12 @@ pub fn sum_check_cubic_prover<G: Curve>(
             - &evals_sum_2.double()
             - &evals_sum_2
             + &evals_sum_3)
-            * &G::Fr::from(6u8).inverse().unwrap();
+            * &G::Fr::from(6u32).inverse().unwrap();
         // b = (2eval_0 - 5eval_1 + 4eval_2 - eval_3)/2
         let b_coeff = (evals_sum_0.double() - &(evals_sum_1.double().double()) - &evals_sum_1
             + &evals_sum_2.double().double()
             - &evals_sum_3)
-            * &G::Fr::from(2u8).inverse().unwrap();
+            * &G::Fr::from(2u32).inverse().unwrap();
         // c = eval_1 - eval_0 - a - b
         let c_coeff = evals_sum_1 - &evals_sum_0 - &a_coeff - &b_coeff;
         // d = eval_0

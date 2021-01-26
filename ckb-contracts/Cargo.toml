@@ -4,9 +4,9 @@ members = [
     "contracts/mini_bulletproofs_verifier",
     "contracts/mini_clinkv2_kzg10_verifier",
     "contracts/mini_clinkv2_ipa_verifier",
+    "contracts/universal_spartan_nizk_verifier",
+    "contracts/universal_spartan_snark_verifier",
     #"contracts/universal_marlin_verifier",
-    # "contracts/universal_spartan_nizk_verifier",
-    # "contracts/universal_spartan_snark_verifier",
 ]
 exclude = [
     "bench-tests",
