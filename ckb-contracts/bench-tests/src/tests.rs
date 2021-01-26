@@ -297,65 +297,70 @@ fn test_clinkv2_kzg10() {
     );
 }
 
-// #[test]
-// fn test_clinkv2_ipa() {
-//     use blake2::Blake2s;
-//     use zkp_toolkit::clinkv2::ipa::{create_random_proof, InnerProductArgPC, ProveAssignment};
-//     use zkp_toolkit::clinkv2::r1cs::ConstraintSynthesizer;
+#[test]
+fn test_clinkv2_ipa() {
+    use blake2::Blake2s;
+    use zkp_clinkv2::ipa::{create_random_proof, InnerProductArgPC, ProveAssignment};
+    use zkp_clinkv2::r1cs::ConstraintSynthesizer;
 
-//     let n: usize = 100;
+    let n: usize = 100;
 
-//     let num = 10;
-//     let rng = &mut test_rng(); // Only in test code.
+    let num = 10;
+    let rng = &mut test_rng(); // Only in test code.
 
-//     println!("Clinkv2 ipa setup...");
-//     let degree: usize = n.next_power_of_two();
+    println!("Clinkv2 ipa setup...");
+    let degree: usize = n.next_power_of_two();
 
-//     let ipa_pp = InnerProductArgPC::<E, Blake2s>::setup(degree, rng).unwrap();
-//     let (ipa_ck, ipa_vk) = InnerProductArgPC::<E, Blake2s>::trim(&ipa_pp, degree).unwrap();
+    let ipa_pp = InnerProductArgPC::<E, Blake2s>::setup(degree, rng).unwrap();
+    let (ipa_ck, ipa_vk) = InnerProductArgPC::<E, Blake2s>::trim(&ipa_pp, degree).unwrap();
 
-//     let vk_bytes = postcard::to_allocvec(&ipa_vk).unwrap();
+    let mut vk_bytes = Vec::new();
+    ipa_vk.serialize(&mut vk_bytes).unwrap();
 
-//     println!("Clinkv2 ipa proving...");
+    println!("Clinkv2 ipa proving...");
 
-//     let mut prover_pa = ProveAssignment::<E, Blake2s>::default();
+    let mut prover_pa = ProveAssignment::<E, Blake2s>::default();
 
-//     let mut io: Vec<Vec<Fr>> = vec![];
-//     let mut output: Vec<Fr> = vec![];
+    let mut io: Vec<Vec<Fr>> = vec![];
+    let mut output: Vec<Fr> = vec![];
 
-//     for i in 0..n {
-//         // Generate a random preimage and compute the image
-//         {
-//             // Create an instance of our circuit (with the witness)
-//             let c = Clinkv2Mini::<Fr> {
-//                 x: Some(Fr::from(2u32)),
-//                 y: Some(Fr::from(3u32)),
-//                 z: Some(Fr::from(10u32)),
-//                 num: num,
-//             };
+    for i in 0..n {
+        // Generate a random preimage and compute the image
+        {
+            // Create an instance of our circuit (with the witness)
+            let c = Clinkv2Mini::<Fr> {
+                x: Some(Fr::from(2u32)),
+                y: Some(Fr::from(3u32)),
+                z: Some(Fr::from(10u32)),
+                num: num,
+            };
 
-//             output.push(Fr::from(10u32));
-//             c.generate_constraints(&mut prover_pa, i).unwrap();
-//         }
-//     }
-//     let one = vec![Fr::one(); n];
-//     io.push(one);
-//     io.push(output);
+            output.push(Fr::from(10u32));
+            c.generate_constraints(&mut prover_pa, i).unwrap();
+        }
+    }
+    let one = vec![Fr::one(); n];
+    io.push(one);
+    io.push(output);
 
-//     let proof = create_random_proof(&prover_pa, &ipa_ck, rng).unwrap();
-//     let proof_bytes = postcard::to_allocvec(&proof).unwrap();
-//     let public_bytes = postcard::to_allocvec(&io).unwrap();
+    let proof = create_random_proof(&prover_pa, &ipa_ck, rng).unwrap();
 
-//     println!("Clinkv2 ipa verifying on CKB...");
+    let mut proof_bytes = Vec::new();
+    proof.serialize(&mut proof_bytes).unwrap();
 
-//     proving_test(
-//         vk_bytes.into(),
-//         proof_bytes.into(),
-//         public_bytes.into(),
-//         "mini_clinkv2_ipa_verifier",
-//         "clinkv2 ipa verify",
-//     );
-// }
+    let mut public_bytes = Vec::new();
+    io.serialize(&mut public_bytes).unwrap();
+
+    println!("Clinkv2 ipa verifying on CKB...");
+
+    proving_test(
+        vk_bytes.into(),
+        proof_bytes.into(),
+        public_bytes.into(),
+        "mini_clinkv2_ipa_verifier",
+        "clinkv2 ipa verify",
+    );
+}
 
 // #[test]
 // fn test_spartan_snark() {

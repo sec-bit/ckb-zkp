@@ -17,9 +17,9 @@ template_type = "Rust"
 name = "mini_clinkv2_kzg10_verifier"
 template_type = "Rust"
 
-# [[contracts]]
-# name = "mini_clinkv2_ipa_verifier"
-# template_type = "Rust"
+[[contracts]]
+name = "mini_clinkv2_ipa_verifier"
+template_type = "Rust"
 
 # [[contracts]]
 # name = "universal_spartan_nizk_verifier"
