@@ -1,12 +1,13 @@
 use ark_ec::PairingEngine;
 use ark_ff::ToBytes;
+use ark_serialize::*;
 use ark_std::io;
 
 use crate::ahp::indexer::{Index, IndexInfo};
 use crate::pc::{Commitment, CommitterKey, Proof as PCProof, Randomness, VerifierKey};
 use crate::Vec;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct IndexVerifierKey<E: PairingEngine> {
     pub index_info: IndexInfo,
     pub index_comms: Vec<Commitment<E>>,
@@ -39,7 +40,7 @@ pub struct IndexProverKey<'a, E: PairingEngine> {
     pub committer_key: CommitterKey<E>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Proof<E: PairingEngine> {
     pub commitments: Vec<Vec<Commitment<E>>>,
     pub evaluations: Vec<E::Fr>,

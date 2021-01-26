@@ -1,5 +1,5 @@
-use ark_ff::{fields, PrimeField, ToBytes, FromBytes};
-use ark_poly::{EvaluationDomain, GeneralEvaluationDomain, Evaluations as EvaluationsOnDomain};
+use ark_ff::{fields, FromBytes, PrimeField, ToBytes};
+use ark_poly::{EvaluationDomain, Evaluations as EvaluationsOnDomain, GeneralEvaluationDomain};
 use ark_std::{cfg_iter, cfg_iter_mut};
 
 #[cfg(feature = "parallel")]

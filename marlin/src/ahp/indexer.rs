@@ -1,14 +1,15 @@
-use ark_ff::{ToBytes, PrimeField};
-use ark_poly::{GeneralEvaluationDomain, EvaluationDomain};
-use zkp_r1cs::{ConstraintSynthesizer, SynthesisError};
+use ark_ff::{PrimeField, ToBytes};
+use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
+use ark_serialize::*;
 use ark_std::io;
+use zkp_r1cs::{ConstraintSynthesizer, SynthesisError};
 
 use crate::ahp::arithmetic::{compose_matrix_polynomials, Matrix, MatrixPolynomials};
 use crate::ahp::constraint_systems::IndexerConstraintSystem;
 use crate::ahp::{Error, AHP};
 use crate::pc::LabeledPolynomial;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct IndexInfo {
     pub num_constraints: usize,
     pub num_variables: usize,

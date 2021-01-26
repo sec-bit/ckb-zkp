@@ -56,7 +56,7 @@ impl<'a, E: PairingEngine> Powers<'a, E> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CommitterKey<E: PairingEngine> {
     pub powers_of_g: Vec<E::G1Affine>,
     pub powers_of_gamma_g: Vec<E::G1Affine>,
@@ -99,7 +99,7 @@ impl<E: PairingEngine> CommitterKey<E> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct VerifierKey<E: PairingEngine> {
     pub g: E::G1Affine,
     pub gamma_g: E::G1Affine,
@@ -118,7 +118,7 @@ impl<E: PairingEngine> ToBytes for VerifierKey<E> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Comm<E: PairingEngine>(pub E::G1Affine);
 
 impl<E: PairingEngine> Comm<E> {
@@ -134,7 +134,7 @@ impl<E: PairingEngine> ToBytes for Comm<E> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Commitment<E: PairingEngine> {
     pub comm: Comm<E>,
     pub shifted_comm: Option<Comm<E>>,
@@ -215,7 +215,7 @@ impl<F: Field> ToBytes for Randomness<F> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct LabeledPolynomial<'a, F: Field> {
     label: String,
     polynomial: Cow<'a, DensePolynomial<F>>,
@@ -297,7 +297,7 @@ impl<E: PairingEngine> ToBytes for LabeledCommitment<E> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Proof<E: PairingEngine> {
     pub w: E::G1Affine,
     pub rand_v: Option<E::Fr>,
