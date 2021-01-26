@@ -1,0 +1,11 @@
+[package]
+name = "zkp-gadgets"
+version = "0.1.0"
+authors = ["SECBIT Labs"]
+description = "zero-konwledge proof gadgets."
+keywords = ["cryptography", "zkp", "zero-knowledge", "gadget", "circuit"]
+categories = ["cryptography"]
+license = "MIT/Apache-2.0"
+edition = "2018"
+
+[dependencies]
