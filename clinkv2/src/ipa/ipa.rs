@@ -1,5 +1,6 @@
 use ark_ff::{to_bytes, Field, One, ToBytes, UniformRand, Zero};
 use ark_poly::{polynomial::univariate::DensePolynomial, Polynomial, UVPolynomial};
+use ark_serialize::*;
 use ark_std::{cfg_into_iter, cfg_iter, cfg_iter_mut, io, log2};
 use core::marker::PhantomData;
 use digest::Digest;
@@ -32,7 +33,7 @@ impl<G: Curve> UniversalParams<G> {
 
 /// `CommitterKey` is used to commit to, and create evaluation proofs for, a given
 /// polynomial.
-#[derive(Derivative)]
+#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
 #[derivative(
     Default(bound = ""),
     Hash(bound = ""),
@@ -77,7 +78,7 @@ impl<G: Curve> Eq for CommitterKey<G> {}
 pub type VerifierKey<G> = CommitterKey<G>;
 
 /// Commitment to a polynomial that optionally enforces a degree bound.
-#[derive(Derivative)]
+#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
 #[derivative(
     Default(bound = ""),
     Hash(bound = ""),
@@ -143,7 +144,7 @@ impl<G: Curve> Randomness<G> {
 }
 
 /// `Proof` is an evaluation proof that is output by `InnerProductArg::open`.
-#[derive(Derivative)]
+#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
 #[derivative(
     Default(bound = ""),
     Hash(bound = ""),

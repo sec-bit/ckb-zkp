@@ -1,4 +1,5 @@
 use ark_ff::Field;
+use ark_serialize::*;
 use core::marker::PhantomData;
 use digest::Digest;
 use zkp_curve::Curve;
@@ -22,7 +23,7 @@ type IPAProof<G> = ipa::Proof<G>;
 type IPAComm<G> = ipa::Commitment<G>;
 
 /// The proof in Clinkv2.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Proof<G: Curve> {
     pub r_mid_comms: Vec<IPAComm<G>>,
     pub q_comm: IPAComm<G>,
