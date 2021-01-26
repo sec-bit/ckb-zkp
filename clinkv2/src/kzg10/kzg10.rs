@@ -52,7 +52,7 @@ impl<E: PairingEngine> UniversalParams<E> {
 
 /// `Powers` is used to commit to and create evaluation proofs for a given
 /// polynomial.
-#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Derivative)]
 #[derivative(
     Default(bound = ""),
     Hash(bound = ""),
@@ -64,6 +64,74 @@ pub struct Powers<'a, E: PairingEngine> {
     pub powers_of_g: Cow<'a, [E::G1Affine]>,
     /// Group elements of the form `β^i γG`, for different values of `i`.
     pub powers_of_gamma_g: Cow<'a, [E::G1Affine]>,
+}
+
+impl<'a, E: PairingEngine> CanonicalSerialize for Powers<'a, E> {
+    #[inline]
+    fn serialize<W: io::Write>(&self, mut writer: W) -> Result<(), SerializationError> {
+        self.powers_of_g.serialize(&mut writer)?;
+        self.powers_of_gamma_g.serialize(&mut writer)
+    }
+
+    #[inline]
+    fn serialized_size(&self) -> usize {
+        self.powers_of_g.serialized_size() + self.powers_of_gamma_g.serialized_size()
+    }
+
+    #[inline]
+    fn serialize_uncompressed<W: io::Write>(
+        &self,
+        mut writer: W,
+    ) -> Result<(), SerializationError> {
+        self.powers_of_g.serialize_uncompressed(&mut writer)?;
+        self.powers_of_gamma_g.serialize_uncompressed(&mut writer)
+    }
+
+    #[inline]
+    fn serialize_unchecked<W: io::Write>(&self, mut writer: W) -> Result<(), SerializationError> {
+        self.powers_of_g.serialize_unchecked(&mut writer)?;
+        self.powers_of_gamma_g.serialize_unchecked(&mut writer)
+    }
+
+    #[inline]
+    fn uncompressed_size(&self) -> usize {
+        self.powers_of_g.uncompressed_size() + self.powers_of_gamma_g.uncompressed_size()
+    }
+}
+
+impl<'a, E: PairingEngine> CanonicalDeserialize for Powers<'a, E> {
+    #[inline]
+    fn deserialize<R: io::Read>(mut reader: R) -> Result<Self, SerializationError> {
+        let powers_of_g = Vec::<E::G1Affine>::deserialize(&mut reader)?;
+        let powers_of_gamma_g = Vec::<E::G1Affine>::deserialize(&mut reader)?;
+
+        Ok(Powers {
+            powers_of_g: Cow::Owned(powers_of_g),
+            powers_of_gamma_g: Cow::Owned(powers_of_gamma_g),
+        })
+    }
+
+    #[inline]
+    fn deserialize_uncompressed<R: io::Read>(mut reader: R) -> Result<Self, SerializationError> {
+        let powers_of_g = Vec::<E::G1Affine>::deserialize_uncompressed(&mut reader)?;
+        let powers_of_gamma_g = Vec::<E::G1Affine>::deserialize_uncompressed(&mut reader)?;
+
+        Ok(Powers {
+            powers_of_g: Cow::Owned(powers_of_g),
+            powers_of_gamma_g: Cow::Owned(powers_of_gamma_g),
+        })
+    }
+
+    #[inline]
+    fn deserialize_unchecked<R: io::Read>(mut reader: R) -> Result<Self, SerializationError> {
+        let powers_of_g = Vec::<E::G1Affine>::deserialize_unchecked(&mut reader)?;
+        let powers_of_gamma_g = Vec::<E::G1Affine>::deserialize_unchecked(&mut reader)?;
+
+        Ok(Powers {
+            powers_of_g: Cow::Owned(powers_of_g),
+            powers_of_gamma_g: Cow::Owned(powers_of_gamma_g),
+        })
+    }
 }
 
 impl<E: PairingEngine> Powers<'_, E> {
@@ -93,6 +161,95 @@ pub struct VerifierKey<E: PairingEngine> {
     pub prepared_beta_h: E::G2Prepared,
 }
 
+impl<E: PairingEngine> CanonicalSerialize for VerifierKey<E> {
+    #[inline]
+    fn serialize<W: io::Write>(&self, mut writer: W) -> Result<(), SerializationError> {
+        self.g.serialize(&mut writer)?;
+        self.gamma_g.serialize(&mut writer)?;
+        self.h.serialize(&mut writer)?;
+        self.beta_h.serialize(&mut writer)
+    }
+
+    #[inline]
+    fn serialized_size(&self) -> usize {
+        self.g.serialized_size()
+            + self.gamma_g.serialized_size()
+            + self.h.serialized_size()
+            + self.beta_h.serialized_size()
+    }
+
+    #[inline]
+    fn serialize_uncompressed<W: io::Write>(
+        &self,
+        mut writer: W,
+    ) -> Result<(), SerializationError> {
+        self.g.serialize_uncompressed(&mut writer)?;
+        self.gamma_g.serialize_uncompressed(&mut writer)?;
+        self.h.serialize_uncompressed(&mut writer)?;
+        self.beta_h.serialize_uncompressed(&mut writer)
+    }
+
+    #[inline]
+    fn serialize_unchecked<W: io::Write>(&self, mut writer: W) -> Result<(), SerializationError> {
+        self.g.serialize_unchecked(&mut writer)?;
+        self.gamma_g.serialize_unchecked(&mut writer)?;
+        self.h.serialize_unchecked(&mut writer)?;
+        self.beta_h.serialize_unchecked(&mut writer)
+    }
+
+    #[inline]
+    fn uncompressed_size(&self) -> usize {
+        self.g.uncompressed_size()
+            + self.gamma_g.uncompressed_size()
+            + self.h.uncompressed_size()
+            + self.beta_h.uncompressed_size()
+    }
+}
+
+impl<E: PairingEngine> CanonicalDeserialize for VerifierKey<E> {
+    #[inline]
+    fn deserialize<R: io::Read>(mut reader: R) -> Result<Self, SerializationError> {
+        let g = E::G1Affine::deserialize(&mut reader)?;
+        let gamma_g =  E::G1Affine::deserialize(&mut reader)?;
+        let h = E::G2Affine::deserialize(&mut reader)?;
+        let beta_h = E::G2Affine::deserialize(&mut reader)?;
+
+        Ok(VerifierKey {
+            g, gamma_g, h, beta_h,
+            prepared_h: Default::default(),
+            prepared_beta_h: Default::default(),
+        })
+    }
+
+    #[inline]
+    fn deserialize_uncompressed<R: io::Read>(mut reader: R) -> Result<Self, SerializationError> {
+        let g = E::G1Affine::deserialize_uncompressed(&mut reader)?;
+        let gamma_g =  E::G1Affine::deserialize_uncompressed(&mut reader)?;
+        let h = E::G2Affine::deserialize_uncompressed(&mut reader)?;
+        let beta_h = E::G2Affine::deserialize_uncompressed(&mut reader)?;
+
+        Ok(VerifierKey {
+            g, gamma_g, h, beta_h,
+            prepared_h: Default::default(),
+            prepared_beta_h: Default::default(),
+        })
+    }
+
+    #[inline]
+    fn deserialize_unchecked<R: io::Read>(mut reader: R) -> Result<Self, SerializationError> {
+        let g = E::G1Affine::deserialize_unchecked(&mut reader)?;
+        let gamma_g =  E::G1Affine::deserialize_unchecked(&mut reader)?;
+        let h = E::G2Affine::deserialize_unchecked(&mut reader)?;
+        let beta_h = E::G2Affine::deserialize_unchecked(&mut reader)?;
+
+        Ok(VerifierKey {
+            g, gamma_g, h, beta_h,
+            prepared_h: Default::default(),
+            prepared_beta_h: Default::default(),
+        })
+    }
+}
+
 impl<E: PairingEngine> PartialEq for VerifierKey<E> {
     fn eq(&self, other: &Self) -> bool {
         self.g == other.g
@@ -104,7 +261,7 @@ impl<E: PairingEngine> PartialEq for VerifierKey<E> {
 impl<E: PairingEngine> Eq for VerifierKey<E> {}
 
 /// `Commitment` commits to a polynomial. It is output by `KZG10::commit`.
-#[derive(Derivative)]
+#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
 #[derivative(
     Default(bound = ""),
     Hash(bound = ""),
@@ -228,7 +385,7 @@ impl<'a, E: PairingEngine> AddAssign<(E::Fr, &'a Randomness<E>)> for Randomness<
 }
 
 /// `Proof` is an evaluation proof that is output by `KZG10::open`.
-#[derive(Derivative)]
+#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
 #[derivative(
     Default(bound = ""),
     Hash(bound = ""),

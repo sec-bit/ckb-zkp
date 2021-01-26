@@ -175,122 +175,127 @@ fn test_bulletproofs() {
 //     );
 // }
 
-// use zkp_toolkit::clinkv2::r1cs as clinkv2_r1cs;
+use zkp_clinkv2::r1cs as clinkv2_r1cs;
 
-// pub struct Clinkv2Mini<F: PrimeField> {
-//     pub x: Option<F>,
-//     pub y: Option<F>,
-//     pub z: Option<F>,
-//     pub num: u32,
-// }
+pub struct Clinkv2Mini<F: PrimeField> {
+    pub x: Option<F>,
+    pub y: Option<F>,
+    pub z: Option<F>,
+    pub num: u32,
+}
 
-// impl<F: PrimeField> clinkv2_r1cs::ConstraintSynthesizer<F> for Clinkv2Mini<F> {
-//     fn generate_constraints<CS: clinkv2_r1cs::ConstraintSystem<F>>(
-//         self,
-//         cs: &mut CS,
-//         index: usize,
-//     ) -> Result<(), clinkv2_r1cs::SynthesisError> {
-//         cs.alloc_input(|| "r1", || Ok(F::one()), index)?;
+impl<F: PrimeField> clinkv2_r1cs::ConstraintSynthesizer<F> for Clinkv2Mini<F> {
+    fn generate_constraints<CS: clinkv2_r1cs::ConstraintSystem<F>>(
+        self,
+        cs: &mut CS,
+        index: usize,
+    ) -> Result<(), clinkv2_r1cs::SynthesisError> {
+        cs.alloc_input(|| "r1", || Ok(F::one()), index)?;
 
-//         let var_x = cs.alloc(
-//             || "x",
-//             || {
-//                 self.x
-//                     .ok_or(clinkv2_r1cs::SynthesisError::AssignmentMissing)
-//             },
-//             index,
-//         )?;
+        let var_x = cs.alloc(
+            || "x",
+            || {
+                self.x
+                    .ok_or(clinkv2_r1cs::SynthesisError::AssignmentMissing)
+            },
+            index,
+        )?;
 
-//         let var_y = cs.alloc(
-//             || "y",
-//             || {
-//                 self.y
-//                     .ok_or(clinkv2_r1cs::SynthesisError::AssignmentMissing)
-//             },
-//             index,
-//         )?;
+        let var_y = cs.alloc(
+            || "y",
+            || {
+                self.y
+                    .ok_or(clinkv2_r1cs::SynthesisError::AssignmentMissing)
+            },
+            index,
+        )?;
 
-//         let var_z = cs.alloc_input(
-//             || "z(output)",
-//             || {
-//                 self.z
-//                     .ok_or(clinkv2_r1cs::SynthesisError::AssignmentMissing)
-//             },
-//             index,
-//         )?;
+        let var_z = cs.alloc_input(
+            || "z(output)",
+            || {
+                self.z
+                    .ok_or(clinkv2_r1cs::SynthesisError::AssignmentMissing)
+            },
+            index,
+        )?;
 
-//         if index == 0 {
-//             for _ in 0..self.num {
-//                 cs.enforce(
-//                     || "x * (y + 2) = z",
-//                     |lc| lc + var_x,
-//                     |lc| lc + var_y + (F::from(2u32), CS::one()),
-//                     |lc| lc + var_z,
-//                 );
-//             }
-//         }
+        if index == 0 {
+            for _ in 0..self.num {
+                cs.enforce(
+                    || "x * (y + 2) = z",
+                    |lc| lc + var_x,
+                    |lc| lc + var_y + (F::from(2u32), CS::one()),
+                    |lc| lc + var_z,
+                );
+            }
+        }
 
-//         Ok(())
-//     }
-// }
+        Ok(())
+    }
+}
 
-// #[test]
-// fn test_clinkv2_kzg10() {
-//     use zkp_toolkit::clinkv2::kzg10::{create_random_proof, ProveAssignment, KZG10};
-//     use zkp_toolkit::clinkv2::r1cs::ConstraintSynthesizer;
+#[test]
+fn test_clinkv2_kzg10() {
+    use zkp_clinkv2::kzg10::{create_random_proof, ProveAssignment, KZG10};
+    use zkp_clinkv2::r1cs::ConstraintSynthesizer;
 
-//     let n: usize = 100;
+    let n: usize = 100;
 
-//     let num = 10;
-//     let rng = &mut test_rng(); // Only in test code.
+    let num = 10;
+    let rng = &mut test_rng(); // Only in test code.
 
-//     println!("Clinkv2 kzg10 setup...");
-//     let degree: usize = n.next_power_of_two();
-//     let kzg10_pp = KZG10::<E>::setup(degree, false, rng).unwrap();
-//     let (kzg10_ck, kzg10_vk) = KZG10::<E>::trim(&kzg10_pp, degree).unwrap();
+    println!("Clinkv2 kzg10 setup...");
+    let degree: usize = n.next_power_of_two();
+    let kzg10_pp = KZG10::<E>::setup(degree, false, rng).unwrap();
+    let (kzg10_ck, kzg10_vk) = KZG10::<E>::trim(&kzg10_pp, degree).unwrap();
 
-//     let vk_bytes = postcard::to_allocvec(&kzg10_vk).unwrap();
+    let mut vk_bytes = Vec::new();
+    kzg10_vk.serialize(&mut vk_bytes).unwrap();
 
-//     println!("Clinkv2 kzg10 proving...");
+    println!("Clinkv2 kzg10 proving...");
 
-//     let mut prover_pa = ProveAssignment::<E>::default();
+    let mut prover_pa = ProveAssignment::<E>::default();
 
-//     let mut io: Vec<Vec<Fr>> = vec![];
-//     let mut output: Vec<Fr> = vec![];
+    let mut io: Vec<Vec<Fr>> = vec![];
+    let mut output: Vec<Fr> = vec![];
 
-//     for i in 0..n {
-//         // Generate a random preimage and compute the image
-//         {
-//             // Create an instance of our circuit (with the witness)
-//             let c = Clinkv2Mini::<Fr> {
-//                 x: Some(Fr::from(2u32)),
-//                 y: Some(Fr::from(3u32)),
-//                 z: Some(Fr::from(10u32)),
-//                 num: num,
-//             };
+    for i in 0..n {
+        // Generate a random preimage and compute the image
+        {
+            // Create an instance of our circuit (with the witness)
+            let c = Clinkv2Mini::<Fr> {
+                x: Some(Fr::from(2u32)),
+                y: Some(Fr::from(3u32)),
+                z: Some(Fr::from(10u32)),
+                num: num,
+            };
 
-//             output.push(Fr::from(10u32));
-//             c.generate_constraints(&mut prover_pa, i).unwrap();
-//         }
-//     }
-//     let one = vec![Fr::one(); n];
-//     io.push(one);
-//     io.push(output);
+            output.push(Fr::from(10u32));
+            c.generate_constraints(&mut prover_pa, i).unwrap();
+        }
+    }
+    let one = vec![Fr::one(); n];
+    io.push(one);
+    io.push(output);
 
-//     let proof = create_random_proof(&prover_pa, &kzg10_ck, rng).unwrap();
-//     let proof_bytes = postcard::to_allocvec(&proof).unwrap();
-//     let public_bytes = postcard::to_allocvec(&io).unwrap();
+    let proof = create_random_proof(&prover_pa, &kzg10_ck, rng).unwrap();
 
-//     println!("Clinkv2 kzg10 verifying on CKB...");
+    let mut proof_bytes = Vec::new();
+    proof.serialize(&mut proof_bytes).unwrap();
 
-//     proving_test(
-//         vk_bytes.into(),
-//         proof_bytes.into(),
-//         public_bytes.into(),
-//         "mini_clinkv2_kzg10_verifier",
-//         "clinkv2 kzg10 verify",
-//     );
-// }
+    let mut public_bytes = Vec::new();
+    io.serialize(&mut public_bytes).unwrap();
+
+    println!("Clinkv2 kzg10 verifying on CKB...");
+
+    proving_test(
+        vk_bytes.into(),
+        proof_bytes.into(),
+        public_bytes.into(),
+        "mini_clinkv2_kzg10_verifier",
+        "clinkv2 kzg10 verify",
+    );
+}
 
 // #[test]
 // fn test_clinkv2_ipa() {

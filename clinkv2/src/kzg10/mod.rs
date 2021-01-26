@@ -20,7 +20,7 @@ type Kzg10Proof<E> = kzg10::Proof<E>;
 type Kzg10Comm<E> = kzg10::Commitment<E>;
 
 /// The proof in Clinkv2.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Proof<E: PairingEngine> {
     pub r_mid_comms: Vec<Kzg10Comm<E>>,
     pub q_comm: Kzg10Comm<E>,

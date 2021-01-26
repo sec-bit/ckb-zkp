@@ -5,22 +5,20 @@ use ckb_std::{ckb_constants::Source, high_level::load_cell_data};
 
 use crate::error::Error;
 
-use zkp_toolkit::{
-    bn_256::{Bn_256 as E, Fr},
-    clinkv2::kzg10::{verify_proof, Proof, VerifyAssignment, VerifyKey},
-    clinkv2::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError},
-    math::PrimeField,
-};
+use ark_bls12_381::{Bls12_381 as E, Fr};
+use ark_serialize::*;
+use zkp_clinkv2::kzg10::{verify_proof, Proof, VerifyAssignment, VerifyKey},
+use zkp_clinkv2::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
-struct Mini<F: PrimeField> {
-    pub x: Option<F>,
-    pub y: Option<F>,
-    pub z: Option<F>,
+struct Mini {
+    pub x: Option<Fr>,
+    pub y: Option<Fr>,
+    pub z: Option<Fr>,
     pub num: u32,
 }
 
-impl<F: PrimeField> ConstraintSynthesizer<F> for Mini<F> {
-    fn generate_constraints<CS: ConstraintSystem<F>>(
+impl ConstraintSynthesizer<Fr> for Mini {
+    fn generate_constraints<CS: ConstraintSystem<Fr>>(
         self,
         cs: &mut CS,
         index: usize,
@@ -79,12 +77,12 @@ pub fn main() -> Result<(), Error> {
         Err(err) => return Err(err.into()),
     };
 
-    let proof: Proof<E> = postcard::from_bytes(&proof_data).map_err(|_e| Error::Encoding)?;
-    let vk: VerifyKey<E> = postcard::from_bytes(&vk_data).map_err(|_e| Error::Encoding)?;
-    let publics: Vec<Vec<Fr>> = postcard::from_bytes(&public_data).map_err(|_e| Error::Encoding)?;
+    let proof = Proof::<E>::serialize(&proof_data).map_err(|_e| Error::Encoding)?;
+    let vk = VerifyKey::<E>::serialize(&vk_data).map_err(|_e| Error::Encoding)?;
+    let publics = Vec<Vec<Fr>>::serialize(&public_data).map_err(|_e| Error::Encoding)?;
 
     // Demo circuit
-    let c = Mini::<Fr> {
+    let c = Mini {
         x: None,
         y: None,
         z: None,
