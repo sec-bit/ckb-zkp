@@ -30,6 +30,7 @@ pub mod test;
 pub mod verify;
 
 pub mod snark {
+    use ark_serialize::*;
     use rand::Rng;
     use zkp_curve::Curve;
     use zkp_r1cs::{ConstraintSynthesizer, SynthesisError};
@@ -46,12 +47,14 @@ pub mod snark {
         encode_comm: EncodeCommit<G>,
     }
 
+    #[derive(CanonicalSerialize, CanonicalDeserialize)]
     pub struct ProveKey<G: Curve> {
         params: SnarkParameters<G>,
         r1cs: R1CSInstance<G>,
         encode: EncodeMemory<G>,
     }
 
+    #[derive(CanonicalSerialize, CanonicalDeserialize)]
     pub struct VerifyKey<G: Curve> {
         params: SnarkParameters<G>,
         r1cs: R1CSInstance<G>,
@@ -122,6 +125,7 @@ pub mod snark {
 }
 
 pub mod nizk {
+    use ark_serialize::*;
     use rand::Rng;
     use zkp_curve::Curve;
     use zkp_r1cs::{ConstraintSynthesizer, SynthesisError};
@@ -136,11 +140,13 @@ pub mod nizk {
         r1cs: R1CSInstance<G>,
     }
 
+    #[derive(CanonicalSerialize, CanonicalDeserialize)]
     pub struct ProveKey<G: Curve> {
         params: NizkParameters<G>,
         r1cs: R1CSInstance<G>,
     }
 
+    #[derive(CanonicalSerialize, CanonicalDeserialize)]
     pub struct VerifyKey<G: Curve> {
         params: NizkParameters<G>,
         r1cs: R1CSInstance<G>,

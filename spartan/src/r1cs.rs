@@ -1,4 +1,5 @@
 use ark_ff::{Field, One, Zero};
+use ark_serialize::*;
 use ark_std::log2;
 use zkp_curve::Curve;
 use zkp_r1cs::{
@@ -7,7 +8,7 @@ use zkp_r1cs::{
 
 use crate::{BTreeMap, String, Vec};
 
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct R1CSInstance<G: Curve> {
     pub num_inputs: usize,
     pub num_aux: usize,

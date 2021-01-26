@@ -28,6 +28,8 @@ use std::{
 };
 
 use ark_ff::Field;
+use ark_serialize::*;
+use ark_std::io;
 use core::cmp::Ordering;
 use smallvec::SmallVec as StackVec;
 
@@ -66,6 +68,98 @@ pub enum Index {
     Input(usize),
     /// Index of an auxiliary (or private) variable.
     Aux(usize),
+}
+
+impl CanonicalSerialize for Index {
+    #[inline]
+    fn serialize<W: io::Write>(&self, mut writer: W) -> Result<(), SerializationError> {
+        match self {
+            Index::Input(u) => {
+                0u8.serialize(&mut writer)?;
+                u.serialize(&mut writer)?;
+            }
+            Index::Aux(u) => {
+                1u8.serialize(&mut writer)?;
+                u.serialize(&mut writer)?;
+            }
+        }
+        Ok(())
+    }
+
+    #[inline]
+    fn serialized_size(&self) -> usize {
+        1 + 0usize.serialized_size()
+    }
+
+    #[inline]
+    fn serialize_uncompressed<W: io::Write>(
+        &self,
+        mut writer: W,
+    ) -> Result<(), SerializationError> {
+        match self {
+            Index::Input(u) => {
+                0u8.serialize(&mut writer)?;
+                u.serialize(&mut writer)?;
+            }
+            Index::Aux(u) => {
+                1u8.serialize(&mut writer)?;
+                u.serialize(&mut writer)?;
+            }
+        }
+        Ok(())
+    }
+
+    #[inline]
+    fn serialize_unchecked<W: io::Write>(&self, mut writer: W) -> Result<(), SerializationError> {
+        match self {
+            Index::Input(u) => {
+                0u8.serialize(&mut writer)?;
+                u.serialize(&mut writer)?;
+            }
+            Index::Aux(u) => {
+                1u8.serialize(&mut writer)?;
+                u.serialize(&mut writer)?;
+            }
+        }
+        Ok(())
+    }
+
+    #[inline]
+    fn uncompressed_size(&self) -> usize {
+        1 + 0usize.serialized_size()
+    }
+}
+
+impl CanonicalDeserialize for Index {
+    #[inline]
+    fn deserialize<R: io::Read>(mut reader: R) -> Result<Self, SerializationError> {
+        let t = u8::deserialize(&mut reader)?;
+        let u = usize::deserialize(&mut reader)?;
+        match t {
+            0u8 => Ok(Index::Input(u)),
+            _ => Ok(Index::Aux(u)),
+        }
+    }
+
+    #[inline]
+    fn deserialize_uncompressed<R: io::Read>(mut reader: R) -> Result<Self, SerializationError> {
+        let t = u8::deserialize(&mut reader)?;
+        let u = usize::deserialize(&mut reader)?;
+        match t {
+            0u8 => Ok(Index::Input(u)),
+            _ => Ok(Index::Aux(u)),
+        }
+    }
+
+    #[inline]
+    fn deserialize_unchecked<R: io::Read>(mut reader: R) -> Result<Self, SerializationError> {
+        let t = u8::deserialize(&mut reader)?;
+        let u = usize::deserialize(&mut reader)?;
+        match t {
+            0u8 => Ok(Index::Input(u)),
+            _ => Ok(Index::Aux(u)),
+        }
+    }
 }
 
 impl PartialOrd for Index {
