@@ -21,7 +21,7 @@ impl<F: PrimeField> BivariatePoly<F> for GeneralEvaluationDomain<F> {
             (self.evaluate_vanishing_polynomial(x) - self.evaluate_vanishing_polynomial(y))
                 / (x - y)
         } else {
-            self.size_as_field_element * x.pow(&[(self.size() as u64) - 1])
+            self.size_as_field_element() * x.pow(&[(self.size() as u64) - 1])
         }
     }
 
@@ -36,7 +36,7 @@ impl<F: PrimeField> BivariatePoly<F> for GeneralEvaluationDomain<F> {
     fn diagonal_evals(&self) -> Vec<F> {
         let mut elements: Vec<_> = self
             .elements()
-            .map(|u| self.size_as_field_element * u)
+            .map(|u| self.size_as_field_element() * u)
             .collect();
         elements[1..].reverse();
         elements

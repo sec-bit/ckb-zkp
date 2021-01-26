@@ -1,4 +1,5 @@
 use ark_ff::{fields, PrimeField, Zero};
+use ark_poly::{polynomial::univariate::DensePolynomial, UVPolynomial};
 use ark_poly::{EvaluationDomain, Evaluations as EvaluationsOnDomain, GeneralEvaluationDomain};
 use ark_std::{cfg_into_iter, cfg_iter, cfg_iter_mut};
 use rand::RngCore;
@@ -14,7 +15,7 @@ use crate::ahp::constraint_systems::ProverConstraintSystem;
 use crate::ahp::indexer::{Index, IndexInfo};
 use crate::ahp::verifier::{VerifierFirstMsg, VerifierSecondMsg};
 use crate::ahp::{Error, AHP};
-use crate::pc::{LabeledPolynomial, Polynomial, UVPolynomial};
+use crate::pc::LabeledPolynomial;
 
 pub struct ProverState<'a, 'b, F: PrimeField> {
     index: &'a Index<'a, F>,
@@ -186,20 +187,20 @@ impl<F: PrimeField> AHP<F> {
 
         let w_poly = &EvaluationsOnDomain::from_vec_and_domain(w_evals_on_h, domain_h)
             .interpolate()
-            + &(&Polynomial::<F>::rand(zk_bound - 1, rng) * &v_h);
+            + &(&DensePolynomial::<F>::rand(zk_bound - 1, rng) * &v_h);
         let (w_poly, remainder) = w_poly.divide_by_vanishing_poly(domain_x).unwrap();
         assert!(remainder.is_zero());
 
         let z_a_poly = &EvaluationsOnDomain::from_vec_and_domain(state.z_a.clone(), domain_h)
             .interpolate()
-            + &(&Polynomial::<F>::rand(zk_bound - 1, rng) * &v_h);
+            + &(&DensePolynomial::<F>::rand(zk_bound - 1, rng) * &v_h);
 
         let z_b_poly = &EvaluationsOnDomain::from_vec_and_domain(state.z_b.clone(), domain_h)
             .interpolate()
-            + &(&Polynomial::<F>::rand(zk_bound - 1, rng) * &v_h);
+            + &(&DensePolynomial::<F>::rand(zk_bound - 1, rng) * &v_h);
 
         let mask_degree = 3 * domain_h.size() + 2 * zk_bound - 3;
-        let mut mask_poly = Polynomial::<F>::rand(mask_degree, rng);
+        let mut mask_poly = DensePolynomial::<F>::rand(mask_degree, rng);
         let sigma = (mask_poly.divide_by_vanishing_poly(domain_h).unwrap().1)[0]; // r_0
         mask_poly[0] -= sigma; // forcing r_0 = 0, sum_over_h(mask_poly) = 0
 
@@ -249,10 +250,11 @@ impl<F: PrimeField> AHP<F> {
             .zip(&z_a.polynomial().coeffs)
             .zip(&z_b.polynomial().coeffs)
             .for_each(|((c, a), b)| *c += (eta_a * a) + &(eta_b * b));
-        let m_poly = Polynomial::from_coefficients_vec(m_coeffs);
+        let m_poly = DensePolynomial::from_coefficients_vec(m_coeffs);
         // r_alpha
         let r_alpha_evals_on_h = domain_h.batch_evals(alpha);
-        let r_alpha_poly = Polynomial::from_coefficients_vec(domain_h.ifft(&r_alpha_evals_on_h));
+        let r_alpha_poly =
+            DensePolynomial::from_coefficients_vec(domain_h.ifft(&r_alpha_evals_on_h));
         // t
         let mut t_evals_on_h = vec![F::zero(); domain_h.size()];
         let matrices = vec![&state.index.a, &state.index.b, &state.index.c];
@@ -303,7 +305,7 @@ impl<F: PrimeField> AHP<F> {
             });
         let q_1_poly = mask_poly + &r_alpha_evals.interpolate();
         let (h_1_poly, x_g_1_poly) = q_1_poly.divide_by_vanishing_poly(domain_h).unwrap();
-        let g_1_poly = Polynomial::from_coefficients_slice(&x_g_1_poly.coeffs[1..]);
+        let g_1_poly = DensePolynomial::from_coefficients_slice(&x_g_1_poly.coeffs[1..]);
         let oracles = ProverSecondOracles {
             t: LabeledPolynomial::new_owned("t".to_string(), t_poly, None, None),
             h_1: LabeledPolynomial::new_owned("h_1".to_string(), h_1_poly, None, None),
@@ -373,7 +375,7 @@ impl<F: PrimeField> AHP<F> {
         }
 
         let t_poly = EvaluationsOnDomain::from_vec_and_domain(t_evals_on_k, domain_k).interpolate();
-        let g_2_poly = Polynomial::from_coefficients_slice(&t_poly.coeffs[1..]);
+        let g_2_poly = DensePolynomial::from_coefficients_slice(&t_poly.coeffs[1..]);
 
         let denom_a: Vec<_> = cfg_iter!(a_star.row_evals_on_b.evals)
             .zip(&a_star.col_evals_on_b.evals)
@@ -432,10 +434,10 @@ impl<F: PrimeField> AHP<F> {
         vec![Some(domain_k_size - 2), None].into_iter()
     }
 
-    fn vanishing_polynomial(domain_size: usize) -> Polynomial<F> {
+    fn vanishing_polynomial(domain_size: usize) -> DensePolynomial<F> {
         let mut coeffs = vec![F::zero(); domain_size + 1];
         coeffs[0] = -F::one();
         coeffs[domain_size] = F::one();
-        Polynomial::from_coefficients_vec(coeffs)
+        DensePolynomial::from_coefficients_vec(coeffs)
     }
 }

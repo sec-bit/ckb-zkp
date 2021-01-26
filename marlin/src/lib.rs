@@ -30,7 +30,7 @@ use std::{
 
 use ark_ec::PairingEngine;
 use ark_ff::to_bytes;
-use ark_poly::{EvaluationDomain, MixedRadixEvaluationDomain, Polynomial};
+use ark_poly::{EvaluationDomain, GeneralEvaluationDomain, Polynomial};
 use ark_std::UniformRand;
 use rand::Rng;
 use zkp_r1cs::{ConstraintSynthesizer, SynthesisError};
@@ -58,10 +58,9 @@ pub fn universal_setup<E: PairingEngine, R: Rng>(
     max_degree: usize,
     rng: &mut R,
 ) -> Result<UniversalParams<E>, SynthesisError> {
-    let max_degree = MixedRadixEvaluationDomain::<E::Fr>::compute_size_of_domain(max_degree)
+    let max_degree = GeneralEvaluationDomain::<E::Fr>::compute_size_of_domain(max_degree)
         .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-    //let srs = PC::setup(max_degree, rng)?;
-    let srs = PC::setup(max_degree, rng).unwrap();
+    let srs = PC::setup(max_degree, rng)?;
     Ok(srs)
 }
 

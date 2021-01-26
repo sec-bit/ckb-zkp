@@ -1,5 +1,5 @@
 use ark_ff::{ToBytes, PrimeField};
-use ark_poly::EvaluationDomain;
+use ark_poly::{GeneralEvaluationDomain, EvaluationDomain};
 use zkp_r1cs::{ConstraintSynthesizer, SynthesisError};
 use ark_std::io;
 
@@ -82,7 +82,7 @@ impl<F: PrimeField> AHP<F> {
             EvaluationDomain::new(num_inputs).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let domain_h =
             EvaluationDomain::new(num_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let domain_k =
+        let domain_k: GeneralEvaluationDomain<F> =
             EvaluationDomain::new(num_non_zeros).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let domain_b = EvaluationDomain::new(3 * domain_k.size() - 3)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;

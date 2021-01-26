@@ -171,7 +171,7 @@ impl<F: PrimeField> AHP<F> {
         // inner sumcheck
         let domain_k = state.domain_k;
         let v_k_at_gamma = domain_k.evaluate_vanishing_polynomial(gamma);
-        let k_size = domain_k.size_as_field_element;
+        let k_size = domain_k.size_as_field_element();
 
         let h_2_at_gamma = Self::get_eval(&evaluations, "h_2", gamma)?;
         let g_2_at_gamma = Self::get_eval(&evaluations, "g_2", gamma)?;

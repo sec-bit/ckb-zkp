@@ -1,11 +1,8 @@
 use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
 use ark_ff::{Field, One, Zero};
+use ark_poly::{polynomial::univariate::DensePolynomial, UVPolynomial};
 use core::marker::PhantomData;
 use rand::RngCore;
-
-pub use ark_poly::{
-    polynomial::univariate::DensePolynomial as Polynomial, Polynomial as BasePoly, UVPolynomial,
-};
 
 use crate::{BTreeMap, BTreeSet, ToString, Vec};
 
@@ -81,7 +78,7 @@ impl<E: PairingEngine> PC<E> {
         randomnesses: impl IntoIterator<Item = &'a Randomness<E::Fr>>,
     ) -> Result<Proof<E>, Error> {
         let supported_degree = ck.supported_degree();
-        let mut p = Polynomial::zero();
+        let mut p = DensePolynomial::zero();
         let mut r = Rand::empty();
         let mut challenge = E::Fr::one();
 
@@ -242,13 +239,13 @@ impl<E: PairingEngine> PC<E> {
         Ok((combined_comm, combined_value))
     }
 
-    fn shift_polynomial(p: &Polynomial<E::Fr>, shift: usize) -> Polynomial<E::Fr> {
+    fn shift_polynomial(p: &DensePolynomial<E::Fr>, shift: usize) -> DensePolynomial<E::Fr> {
         if p.is_zero() {
-            Polynomial::zero()
+            DensePolynomial::zero()
         } else {
             let mut shifted_coeffs = vec![E::Fr::zero(); shift];
             shifted_coeffs.extend(&p.coeffs);
-            Polynomial::from_coefficients_vec(shifted_coeffs)
+            DensePolynomial::from_coefficients_vec(shifted_coeffs)
         }
     }
 }
@@ -257,6 +254,7 @@ impl<E: PairingEngine> PC<E> {
 mod tests {
     use super::*;
     use ark_ff::UniformRand;
+    use ark_poly::Polynomial;
 
     use ark_std::test_rng;
     use rand::distributions::Distribution;
@@ -291,7 +289,7 @@ mod tests {
             let mut values = Vec::new();
             for i in 0..num_polynomials {
                 let degree = rand::distributions::Uniform::from(1..=supported_degree).sample(rng);
-                let polynomial = Polynomial::rand(degree, rng);
+                let polynomial = DensePolynomial::rand(degree, rng);
                 let label = format!("{}", i);
                 let degree_bound = if enforcing_degree_bounds {
                     Some(degree)
@@ -299,7 +297,7 @@ mod tests {
                     None
                 };
                 let hiding_bound = Some(1);
-                let value = polynomial.evaluate(point);
+                let value = polynomial.evaluate(&point);
 
                 polynomials.push(LabeledPolynomial::new_owned(
                     label,
@@ -343,7 +341,7 @@ mod tests {
             let mut polynomials = Vec::new();
             for i in 0..num_polynomials {
                 let degree = rand::distributions::Uniform::from(1..=supported_degree).sample(rng);
-                let polynomial = Polynomial::rand(degree, rng);
+                let polynomial = DensePolynomial::rand(degree, rng);
                 let label = format!("{}", i);
                 let degree_bound = if enforcing_degree_bounds {
                     Some(degree)

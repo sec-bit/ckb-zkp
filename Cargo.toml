@@ -5,7 +5,7 @@ members = [
     "r1cs",
     "groth16",
     "bulletproofs",
-    #"marlin",
+    "marlin",
     "clinkv2",
     "asvc",
     "spartan",

@@ -22,6 +22,7 @@ zkp-r1cs = { version = "0.1", path = "../r1cs", default-features = false }
 ark-ff = { git = "https://github.com/arkworks-rs/algebra", default-features = false }
 ark-poly = { git = "https://github.com/arkworks-rs/algebra", default-features = false }
 ark-ec = { git = "https://github.com/arkworks-rs/algebra", default-features = false }
+ark-serialize = { git = "https://github.com/arkworks-rs/algebra", default-features = false, features = ["derive"] }
 ark-std = { git = "https://github.com/arkworks-rs/utils", default-features = false }
 
 [dev-dependencies]

@@ -1,8 +1,7 @@
 use ark_ec::PairingEngine;
 use ark_ff::{Field, ToBytes, Zero};
-use ark_poly::{
-    polynomial::univariate::DensePolynomial as Polynomial, Polynomial as BasePoly, UVPolynomial,
-};
+use ark_poly::{polynomial::univariate::DensePolynomial, Polynomial, UVPolynomial};
+use ark_serialize::*;
 use ark_std::io;
 use core::ops::AddAssign;
 use rand::RngCore;
@@ -156,29 +155,27 @@ impl<E: PairingEngine> ToBytes for Commitment<E> {
 
 #[derive(Clone, Debug)]
 pub struct Rand<F: Field> {
-    pub blinding_polynomial: Polynomial<F>,
+    pub blinding_polynomial: DensePolynomial<F>,
 }
 
 impl<F: Field> ToBytes for Rand<F> {
     #[inline]
     fn write<W: io::Write>(&self, mut w: W) -> io::Result<()> {
-        todo!()
-            //Ok(())
-        //self.serialize(&mut w)
-        //self.blinding_polynomial.write(&mut w)
+        self.blinding_polynomial.serialize(&mut w).unwrap();
+        Ok(())
     }
 }
 
 impl<F: Field> Rand<F> {
     pub fn empty() -> Self {
         Self {
-            blinding_polynomial: Polynomial::zero(),
+            blinding_polynomial: DensePolynomial::zero(),
         }
     }
 
     pub fn rand<R: RngCore>(hiding_bound: usize, rng: &mut R) -> Self {
         let mut randomness = Self::empty();
-        randomness.blinding_polynomial = Polynomial::rand(hiding_bound, rng);
+        randomness.blinding_polynomial = DensePolynomial::rand(hiding_bound, rng);
         randomness
     }
 
@@ -221,7 +218,7 @@ impl<F: Field> ToBytes for Randomness<F> {
 #[derive(Clone, Debug)]
 pub struct LabeledPolynomial<'a, F: Field> {
     label: String,
-    polynomial: Cow<'a, Polynomial<F>>,
+    polynomial: Cow<'a, DensePolynomial<F>>,
     degree_bound: Option<usize>,
     hiding_bound: Option<usize>,
 }
@@ -229,7 +226,7 @@ pub struct LabeledPolynomial<'a, F: Field> {
 impl<'a, F: Field> LabeledPolynomial<'a, F> {
     pub fn new_owned(
         label: String,
-        polynomial: Polynomial<F>,
+        polynomial: DensePolynomial<F>,
         degree_bound: Option<usize>,
         hiding_bound: Option<usize>,
     ) -> Self {
@@ -244,7 +241,7 @@ impl<'a, F: Field> LabeledPolynomial<'a, F> {
         &self.label
     }
 
-    pub fn polynomial(&self) -> &Polynomial<F> {
+    pub fn polynomial(&self) -> &DensePolynomial<F> {
         &self.polynomial
     }
 
