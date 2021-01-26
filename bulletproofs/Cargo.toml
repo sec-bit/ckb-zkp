@@ -10,8 +10,8 @@ edition = "2018"
 
 [features]
 default = ["std"]
-std = ["zkp-curve/std", "zkp-r1cs/std", "ark-ff/std", "ark-std/std"]
-parallel = ["std", "rayon", "zkp-curve/parallel", "zkp-r1cs/parallel", "ark-ff/parallel", "ark-std/parallel"]
+std = ["zkp-curve/std", "zkp-r1cs/std", "ark-ff/std"]
+parallel = ["std", "rayon", "zkp-curve/parallel", "zkp-r1cs/parallel", "ark-ff/parallel"]
 
 [dependencies]
 smallvec = "1.6"

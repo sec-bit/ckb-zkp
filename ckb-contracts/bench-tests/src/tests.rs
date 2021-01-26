@@ -81,8 +81,11 @@ fn test_groth16() {
 
     let mut proof_bytes = Vec::new();
     proof.serialize(&mut proof_bytes).unwrap();
+
     let mut public_bytes = Vec::new();
     Fr::from(10u32).serialize(&mut public_bytes).unwrap();
+
+    println!("Groth16 verifying on CKB...");
 
     proving_test(
         vk_bytes.into(),
@@ -90,6 +93,44 @@ fn test_groth16() {
         public_bytes.into(),
         "universal_groth16_verifier",
         "groth16 verify",
+    );
+}
+
+#[test]
+fn test_bulletproofs() {
+    use zkp_bulletproofs::create_random_proof;
+
+    let num = 10;
+    let rng = &mut test_rng(); // Only in test code.
+
+    println!("Bulletproofs proving...");
+
+    let c = Mini::<Fr> {
+        x: Some(Fr::from(2u32)),
+        y: Some(Fr::from(3u32)),
+        z: Some(Fr::from(10u32)),
+        num: num,
+    };
+
+    let (gens, r1cs, proof) = create_random_proof::<E, _, _>(c, rng).unwrap();
+
+    let mut proof_bytes = Vec::new();
+    gens.serialize(&mut proof_bytes).unwrap();
+    r1cs.serialize(&mut proof_bytes).unwrap();
+    proof.serialize(&mut proof_bytes).unwrap();
+    //let proof_bytes = postcard::to_allocvec(&(gens, r1cs, proof)).unwrap();
+
+    let mut public_bytes = Vec::new();
+    Fr::from(10u32).serialize(&mut public_bytes).unwrap();
+
+    println!("Bulletproofs verifying on CKB...");
+
+    proving_test(
+        Default::default(),
+        proof_bytes.into(),
+        public_bytes.into(),
+        "mini_bulletproofs_verifier",
+        "bulletproofs verify",
     );
 }
 
@@ -131,42 +172,6 @@ fn test_groth16() {
 //         public_bytes.into(),
 //         "universal_marlin_verifier",
 //         "marlin verify",
-//     );
-// }
-
-// #[test]
-// fn test_bulletproofs() {
-//     use zkp_toolkit::bulletproofs::create_random_proof;
-
-//     let num = 10;
-//     let rng = &mut test_rng(); // Only in test code.
-
-//     println!("Bulletproofs proving...");
-
-//     let c = Mini::<Fr> {
-//         x: Some(Fr::from(2u32)),
-//         y: Some(Fr::from(3u32)),
-//         z: Some(Fr::from(10u32)),
-//         num: num,
-//     };
-
-//     let (gens, r1cs, proof) = create_random_proof::<E, _, _>(c, rng).unwrap();
-//     // let gens_bytes = postcard::to_allocvec(&gens).unwrap();
-//     // let r1cs_bytes = postcard::to_allocvec(&r1cs).unwrap();
-//     // let proof_bytes = postcard::to_allocvec(&proof).unwrap();
-//     let proof_bytes = postcard::to_allocvec(&(gens, r1cs, proof)).unwrap();
-//     let public_bytes = postcard::to_allocvec(&vec![Fr::from(10u32)]).unwrap();
-
-//     println!("Bulletproofs verifying...");
-
-//     println!("Bulletproofs verifying on CKB...");
-
-//     proving_test(
-//         Default::default(),
-//         proof_bytes.into(),
-//         public_bytes.into(),
-//         "mini_bulletproofs_verifier",
-//         "bulletproofs verify",
 //     );
 // }
 

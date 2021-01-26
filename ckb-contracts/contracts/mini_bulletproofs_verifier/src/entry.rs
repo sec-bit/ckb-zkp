@@ -63,9 +63,9 @@ pub fn main() -> Result<(), Error> {
         Err(err) => return Err(err.into()),
     };
 
-    let gens = Generators::<E>::deserialize(&proof_data[..]).map_err(|_e| Error::Encoding)?;
-    let r1cs = R1csCircuit::<E>::deserialize(&proof_data[..]).map_err(|_e| Error::Encoding)?;
-    let proof = Proof::<E>::deserialize(&proof_data[..]).map_err(|_e| Error::Encoding)?;
+    let (gens, r1cs, proof) = <(Generators::<E>, R1csCircuit::<E>, Proof::<E>)>::deserialize(
+        &proof_data[..]
+    ).map_err(|_e| Error::Encoding)?;
 
     let mut publics = Vec::new();
     publics.push(Fr::deserialize(&public_data[..]).map_err(|_e| Error::Encoding)?);
