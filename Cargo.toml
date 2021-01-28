@@ -13,6 +13,7 @@ members = [
     "hyrax",
     "gadgets",
     "examples",
+    "cli",
 ]
 exclude = [
     "ckb-contracts/bench-tests",

@@ -40,6 +40,7 @@ pub mod snark {
 
     pub type Proof<G> = super::data_structure::SNARKProof<G>;
 
+    #[derive(CanonicalSerialize, CanonicalDeserialize)]
     pub struct Parameters<G: Curve> {
         params: SnarkParameters<G>,
         r1cs: R1CSInstance<G>,
@@ -135,6 +136,7 @@ pub mod nizk {
 
     pub type Proof<G> = super::data_structure::NIZKProof<G>;
 
+    #[derive(CanonicalSerialize, CanonicalDeserialize)]
     pub struct Parameters<G: Curve> {
         params: NizkParameters<G>,
         r1cs: R1CSInstance<G>,
