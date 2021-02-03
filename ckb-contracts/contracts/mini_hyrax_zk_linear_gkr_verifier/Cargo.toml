@@ -1,0 +1,21 @@
+[package]
+name = "mini_hyrax_zk_linear_gkr_verifier"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+ckb-std = "0.7.2"
+
+[dependencies.zkp-hyrax]
+git = "https://github.com/sunhuachuang/ckb-zkp"
+branch = "dev"
+default-features = false
+
+[dependencies.ark-bls12-381]
+git = "https://github.com/arkworks-rs/curves"
+default-features = false
+features = ["curve"]
+
+[dependencies.ark-serialize]
+git = "https://github.com/arkworks-rs/algebra"
+default-features = false

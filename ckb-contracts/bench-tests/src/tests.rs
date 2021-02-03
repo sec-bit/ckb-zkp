@@ -539,6 +539,57 @@ fn test_libra_zk_linear_gkr() {
     );
 }
 
+#[test]
+fn test_hyrax_zk_linear_gkr() {
+    use zkp_hyrax::{circuit::Circuit, hyrax_proof::HyraxProof, params::Parameters};
+
+    let rng = &mut test_rng(); // Only in test code.
+
+    // 2 * (3 + 2) = 10
+    let mut inputs = vec![];
+    let mut witnesses = vec![];
+    let input = vec![Fr::from(2u32), -Fr::from(10u32), Fr::one(), Fr::zero()];
+    let witness = vec![Fr::from(2u32), Fr::from(3u32), Fr::zero(), Fr::zero()];
+    inputs.push(input.clone());
+    inputs.push(witness.clone());
+    witnesses.push(witness);
+    witnesses.push(input);
+
+    let layers = layers();
+    println!("Hyrax: prepare for constructing circuit...ok");
+
+    let params = Parameters::<E>::new(rng, 8);
+    let mut vk_bytes = Vec::new();
+    params.serialize(&mut vk_bytes).unwrap();
+
+    let circuit = Circuit::new(4, 4, &layers); // input & witness length is 4.
+    println!("Hyrax: construct circuit...ok");
+
+    let (proof, output) =
+        HyraxProof::prover::<_>(&params, &witnesses, &inputs, &circuit, witnesses.len(), rng);
+    println!("Hyrax: generate proof...ok");
+
+    let result = proof.verify(&params, &output, &inputs, &circuit);
+    println!("Hyrax: verifier...{}", result);
+
+    let mut proof_bytes = Vec::new();
+    proof.serialize(&mut proof_bytes).unwrap();
+
+    let mut public_bytes = Vec::new();
+    inputs.serialize(&mut public_bytes).unwrap();
+    output.serialize(&mut public_bytes).unwrap();
+
+    println!("Hyrax: verifying on CKB...");
+
+    proving_test(
+        vk_bytes.into(),
+        proof_bytes.into(),
+        public_bytes.into(),
+        "mini_hyrax_zk_linear_gkr_verifier",
+        "hyrax_zk_linear_gkr verify",
+    );
+}
+
 fn build_test_context(
     vk: Bytes,
     proof_file: Bytes,
