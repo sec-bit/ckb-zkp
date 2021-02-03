@@ -12,6 +12,12 @@
 #[macro_use]
 extern crate alloc;
 
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
+#[cfg(feature = "std")]
+use std::vec::Vec;
+
 pub mod circuit;
 pub mod commitment;
 pub mod evaluate;

@@ -1,4 +1,5 @@
 use ark_ff::{to_bytes, Field, One, UniformRand, Zero};
+use ark_serialize::*;
 use ark_std::log2;
 use merlin::Transcript;
 use rand::Rng;
@@ -6,7 +7,9 @@ use zkp_curve::{AffineCurve, Curve, ProjectiveCurve};
 
 use crate::evaluate::{eval_eq, poly_commit_vec, random_bytes_to_fr};
 use crate::params::{MultiCommitmentSetupParameters, PolyCommitmentSetupParameters};
+use crate::Vec;
 
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct EqProof<G: Curve> {
     pub alpha: G::Affine,
     pub z: G::Fr,
@@ -56,6 +59,7 @@ impl<G: Curve> EqProof<G> {
     }
 }
 
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct KnowledgeProof<G: Curve> {
     pub t_comm: G::Affine,
     pub z1: G::Fr,
@@ -106,6 +110,7 @@ impl<G: Curve> KnowledgeProof<G> {
     }
 }
 
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct ProductProof<G: Curve> {
     pub comm_alpha: G::Affine,
     pub comm_beta: G::Affine,
@@ -205,6 +210,7 @@ impl<G: Curve> ProductProof<G> {
     }
 }
 
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct DotProductProof<G: Curve> {
     pub z_vec: Vec<G::Fr>,
     pub delta: G::Affine,
@@ -317,6 +323,7 @@ impl<G: Curve> DotProductProof<G> {
     }
 }
 
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct LogDotProductProof<G: Curve> {
     pub bullet_reduce_proof: BulletReduceProof<G>,
     pub delta: G::Affine,
@@ -474,6 +481,7 @@ impl<G: Curve> LogDotProductProof<G> {
     }
 }
 
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct BulletReduceProof<G: Curve> {
     pub l_vec: Vec<G::Affine>,
     pub r_vec: Vec<G::Affine>,

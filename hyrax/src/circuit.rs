@@ -3,6 +3,8 @@ use ark_std::log2;
 use core::cmp;
 use zkp_curve::Curve;
 
+use crate::Vec;
+
 ///operation
 /// 0. add
 /// 1. multiple

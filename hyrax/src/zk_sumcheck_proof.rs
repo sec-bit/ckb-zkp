@@ -1,5 +1,6 @@
 use ark_ff::{to_bytes, Field, UniformRand, Zero};
 use ark_poly::{polynomial::univariate::DensePolynomial, Polynomial, UVPolynomial};
+use ark_serialize::*;
 use ark_std::log2;
 use core::ops::{Deref, Neg};
 use merlin::Transcript;
@@ -12,7 +13,9 @@ use crate::evaluate::{
     combine_with_r, construct_matrix, convert_to_bit, eval_eq, poly_commit_vec, random_bytes_to_fr,
 };
 use crate::params::SumCheckCommitmentSetupParameters;
+use crate::Vec;
 
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct ZkSumcheckProof<G: Curve> {
     pub prod_proof: ProductProof<G>,
     pub comm_a0: G::Affine,
@@ -58,6 +61,9 @@ impl<G: Curve> ZkSumcheckProof<G> {
         let log_g = ql_vec.len();
         let log_ng: usize = log2(ng) as usize;
         let log_n: usize = log2(n) as usize;
+        let fr_two: G::Fr = 2u32.into();
+        let fr_three: G::Fr = 3u32.into();
+        let fr_six: G::Fr = 6u32.into();
 
         let mut circuit_evals = circuit_evals.clone();
 
@@ -106,19 +112,19 @@ impl<G: Curve> ZkSumcheckProof<G> {
                                     + &circuit_evals[gate.right_node][t])
                         })
                         .sum();
-                    let temp_p_vec_tmp = combine_with_r::<G>(&temp_p_vec, G::Fr::from(2u32));
+                    let temp_p_vec_tmp = combine_with_r::<G>(&temp_p_vec, fr_two);
                     let temp_l_vec_tmp =
-                        combine_with_r::<G>(&circuit_evals[gate.left_node], G::Fr::from(2u32));
+                        combine_with_r::<G>(&circuit_evals[gate.left_node], fr_two);
                     let temp_r_vec_tmp =
-                        combine_with_r::<G>(&circuit_evals[gate.right_node], G::Fr::from(2u32));
+                        combine_with_r::<G>(&circuit_evals[gate.right_node], fr_two);
                     eval_2 += &(0..size)
                         .map(|t| temp_p_vec_tmp[t] * &(temp_l_vec_tmp[t] + &temp_r_vec_tmp[t]))
                         .sum();
-                    let temp_p_vec_tmp = combine_with_r::<G>(&temp_p_vec, G::Fr::from(3u32));
+                    let temp_p_vec_tmp = combine_with_r::<G>(&temp_p_vec, fr_three);
                     let temp_l_vec_tmp =
-                        combine_with_r::<G>(&circuit_evals[gate.left_node], G::Fr::from(3u32));
+                        combine_with_r::<G>(&circuit_evals[gate.left_node], fr_three);
                     let temp_r_vec_tmp =
-                        combine_with_r::<G>(&circuit_evals[gate.right_node], G::Fr::from(3u32));
+                        combine_with_r::<G>(&circuit_evals[gate.right_node], fr_three);
                     eval_3 += &(0..size)
                         .map(|t| temp_p_vec_tmp[t] * &(temp_l_vec_tmp[t] + &temp_r_vec_tmp[t]))
                         .sum();
@@ -130,19 +136,19 @@ impl<G: Curve> ZkSumcheckProof<G> {
                                     * &circuit_evals[gate.right_node][t])
                         })
                         .sum();
-                    let temp_p_vec_tmp = combine_with_r::<G>(&temp_p_vec, G::Fr::from(2u32));
+                    let temp_p_vec_tmp = combine_with_r::<G>(&temp_p_vec, fr_two);
                     let temp_l_vec_tmp =
-                        combine_with_r::<G>(&circuit_evals[gate.left_node], G::Fr::from(2u32));
+                        combine_with_r::<G>(&circuit_evals[gate.left_node], fr_two);
                     let temp_r_vec_tmp =
-                        combine_with_r::<G>(&circuit_evals[gate.right_node], G::Fr::from(2u32));
+                        combine_with_r::<G>(&circuit_evals[gate.right_node], fr_two);
                     eval_2 += &(0..size)
                         .map(|t| temp_p_vec_tmp[t] * &(temp_l_vec_tmp[t] * &temp_r_vec_tmp[t]))
                         .sum();
-                    let temp_p_vec_tmp = combine_with_r::<G>(&temp_p_vec, G::Fr::from(3u32));
+                    let temp_p_vec_tmp = combine_with_r::<G>(&temp_p_vec, fr_three);
                     let temp_l_vec_tmp =
-                        combine_with_r::<G>(&circuit_evals[gate.left_node], G::Fr::from(3u32));
+                        combine_with_r::<G>(&circuit_evals[gate.left_node], fr_three);
                     let temp_r_vec_tmp =
-                        combine_with_r::<G>(&circuit_evals[gate.right_node], G::Fr::from(3u32));
+                        combine_with_r::<G>(&circuit_evals[gate.right_node], fr_three);
                     eval_3 += &(0..size)
                         .map(|t| temp_p_vec_tmp[t] * &(temp_l_vec_tmp[t] * &temp_r_vec_tmp[t]))
                         .sum();
@@ -155,12 +161,12 @@ impl<G: Curve> ZkSumcheckProof<G> {
             // a = (-eval_0 + 3eval_1 - 3eval_2 + eval_3)/6
             let a_coeff = (eval_0.neg() + &eval_1.double() + &eval_1 - &eval_2.double() - &eval_2
                 + &eval_3)
-                * &G::Fr::from(6u32).inverse().unwrap();
+                * &fr_six.inverse().unwrap();
             // b = (2eval_0 - 5eval_1 + 4eval_2 - eval_3)/2
             let b_coeff = (eval_0.double() - &(eval_1.double().double()) - &eval_1
                 + &eval_2.double().double()
                 - &eval_3)
-                * &G::Fr::from(2u32).inverse().unwrap();
+                * &fr_two.inverse().unwrap();
             // c = eval_1 - eval_0 - a - b
             let c_coeff = eval_1 - &eval_0 - &a_coeff - &b_coeff;
             // d = eval_0
@@ -250,8 +256,8 @@ impl<G: Curve> ZkSumcheckProof<G> {
                             (left_eq[i] * temp_p_xg) * &(v_vec_left[i] + &v_vec[gate.right_node])
                         })
                         .sum());
-                    let left_eq_tmp = combine_with_r::<G>(&left_eq, G::Fr::from(2u32));
-                    let v_vec_left_tmp = combine_with_r::<G>(&v_vec_left, G::Fr::from(2u32));
+                    let left_eq_tmp = combine_with_r::<G>(&left_eq, fr_two);
+                    let v_vec_left_tmp = combine_with_r::<G>(&v_vec_left, fr_two);
                     eval_2 += &((0..size)
                         .map(|i| {
                             (left_eq_tmp[i] * temp_p_xg)
@@ -264,8 +270,8 @@ impl<G: Curve> ZkSumcheckProof<G> {
                             (left_eq[i] * temp_p_xg) * &(v_vec_left[i] * &v_vec[gate.right_node])
                         })
                         .sum());
-                    let left_eq_tmp = combine_with_r::<G>(&left_eq, G::Fr::from(2u32));
-                    let v_vec_left_tmp = combine_with_r::<G>(&v_vec_left, G::Fr::from(2u32));
+                    let left_eq_tmp = combine_with_r::<G>(&left_eq, fr_two);
+                    let v_vec_left_tmp = combine_with_r::<G>(&v_vec_left, fr_two);
                     eval_2 += &((0..size)
                         .map(|i| {
                             (left_eq_tmp[i] * temp_p_xg)
@@ -279,8 +285,7 @@ impl<G: Curve> ZkSumcheckProof<G> {
             // degree = 2
             // f(x) = ax^2 + bx + c
             // a = (eval_0 - 2eval_1 + eval_2)/2
-            let a_coeff =
-                (eval_0 - &eval_1.double() + &eval_2) * &G::Fr::from(2u32).inverse().unwrap();
+            let a_coeff = (eval_0 - &eval_1.double() + &eval_2) * &fr_two.inverse().unwrap();
             // c = eval_0
             let c_coeff = eval_0;
             // b = eval_1 - a - c
@@ -356,8 +361,8 @@ impl<G: Curve> ZkSumcheckProof<G> {
                     eval_1 += &((size..size * 2)
                         .map(|i| (right_eq[i] * temp_p_xg) * &(x + &v_vec_right[i]))
                         .sum());
-                    let right_eq_tmp = combine_with_r::<G>(&right_eq, G::Fr::from(2u32));
-                    let v_vec_right_tmp = combine_with_r::<G>(&v_vec_right, G::Fr::from(2u32));
+                    let right_eq_tmp = combine_with_r::<G>(&right_eq, fr_two);
+                    let v_vec_right_tmp = combine_with_r::<G>(&v_vec_right, fr_two);
                     eval_2 += &((0..size)
                         .map(|i| (right_eq_tmp[i] * temp_p_xg) * &(x + &v_vec_right_tmp[i]))
                         .sum());
@@ -368,8 +373,8 @@ impl<G: Curve> ZkSumcheckProof<G> {
                     eval_1 += &((size..size * 2)
                         .map(|i| (right_eq[i] * temp_p_xg) * &(x * &v_vec_right[i]))
                         .sum());
-                    let right_eq_tmp = combine_with_r::<G>(&right_eq, G::Fr::from(2u32));
-                    let v_vec_right_tmp = combine_with_r::<G>(&v_vec_right, G::Fr::from(2u32));
+                    let right_eq_tmp = combine_with_r::<G>(&right_eq, fr_two);
+                    let v_vec_right_tmp = combine_with_r::<G>(&v_vec_right, fr_two);
                     eval_2 += &((0..size)
                         .map(|i| (right_eq_tmp[i] * temp_p_xg) * &(x * &v_vec_right_tmp[i]))
                         .sum());
@@ -380,8 +385,7 @@ impl<G: Curve> ZkSumcheckProof<G> {
             // degree = 2
             // f(x) = ax^2 + bx + c
             // a = (eval_0 - 2eval_1 + eval_2)/2
-            let a_coeff =
-                (eval_0 - &eval_1.double() + &eval_2) * &G::Fr::from(2u32).inverse().unwrap();
+            let a_coeff = (eval_0 - &eval_1.double() + &eval_2) * &fr_two.inverse().unwrap();
             // c = eval_0
             let c_coeff = eval_0;
             // b = eval_1 - a - c

@@ -1,4 +1,5 @@
 use ark_ff::{to_bytes, One, UniformRand, Zero};
+use ark_serialize::*;
 use merlin::Transcript;
 use rand::Rng;
 use zkp_curve::{AffineCurve, Curve, ProjectiveCurve};
@@ -10,7 +11,9 @@ use crate::evaluate::{
 };
 use crate::params::Parameters;
 use crate::zk_sumcheck_proof::ZkSumcheckProof;
+use crate::Vec;
 
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct HyraxProof<G: Curve> {
     pub comm_witness: Vec<G::Affine>,
     pub proofs: Vec<ZkSumcheckProof<G>>,

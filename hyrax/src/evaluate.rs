@@ -6,6 +6,7 @@ use rand::Rng;
 use zkp_curve::{AffineCurve, Curve, ProjectiveCurve};
 
 use crate::circuit::Gate;
+use crate::Vec;
 
 pub fn eval_outputs<G: Curve>(
     outputs: &Vec<Vec<G::Fr>>,
