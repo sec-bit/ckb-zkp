@@ -5,27 +5,26 @@ use core::result::Result;
 
 use crate::error::Error;
 
-use zkp_toolkit::{
-    bn_256::{Bn_256 as E, Fr},
-    clinkv2::ipa::{verify_proof, Proof, VerifyAssignment, VerifyKey},
-    clinkv2::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError},
-    math::PrimeField,
-};
+use ark_ff::One;
+use ark_bls12_381::{Bls12_381 as E, Fr};
+use ark_serialize::*;
+use zkp_clinkv2::ipa::{verify_proof, Proof, VerifyAssignment, VerifyKey};
+use zkp_clinkv2::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
-struct Mini<F: PrimeField> {
-    pub x: Option<F>,
-    pub y: Option<F>,
-    pub z: Option<F>,
+struct Mini {
+    pub x: Option<Fr>,
+    pub y: Option<Fr>,
+    pub z: Option<Fr>,
     pub num: u32,
 }
 
-impl<F: PrimeField> ConstraintSynthesizer<F> for Mini<F> {
-    fn generate_constraints<CS: ConstraintSystem<F>>(
+impl ConstraintSynthesizer<Fr> for Mini {
+    fn generate_constraints<CS: ConstraintSystem<Fr>>(
         self,
         cs: &mut CS,
         index: usize,
     ) -> Result<(), SynthesisError> {
-        cs.alloc_input(|| "r1", || Ok(F::one()), index)?;
+        cs.alloc_input(|| "r1", || Ok(Fr::one()), index)?;
 
         let var_x = cs.alloc(
             || "x",
@@ -50,7 +49,7 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for Mini<F> {
                 cs.enforce(
                     || "x * (y + 2) = z",
                     |lc| lc + var_x,
-                    |lc| lc + var_y + (F::from(2u32), CS::one()),
+                    |lc| lc + var_y + (Fr::from(2u32), CS::one()),
                     |lc| lc + var_z,
                 );
             }
@@ -79,12 +78,12 @@ pub fn main() -> Result<(), Error> {
         Err(err) => return Err(err.into()),
     };
 
-    let proof: Proof<E> = postcard::from_bytes(&proof_data).map_err(|_e| Error::Encoding)?;
-    let vk: VerifyKey<E> = postcard::from_bytes(&vk_data).map_err(|_e| Error::Encoding)?;
-    let publics: Vec<Vec<Fr>> = postcard::from_bytes(&public_data).map_err(|_e| Error::Encoding)?;
+    let proof = Proof::<E>::deserialize(&proof_data[..]).map_err(|_e| Error::Encoding)?;
+    let vk = VerifyKey::<E>::deserialize(&vk_data[..]).map_err(|_e| Error::Encoding)?;
+    let publics = Vec::<Vec::<Fr>>::deserialize(&public_data[..]).map_err(|_e| Error::Encoding)?;
 
     // Demo circuit
-    let c = Mini::<Fr> {
+    let c = Mini {
         x: None,
         y: None,
         z: None,

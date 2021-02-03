@@ -13,11 +13,11 @@ Zero-knowledge proofs toolkit for CKB, empowering the community with the cutting
 
 The project is going to bridge the gap of cryptographic engineering between thriving academic research and aspiring dAPPs developers, by providing multiple zkp schemes and curve options, a more user-friendly interface, many useful gadget libraries, and many more tutorials and examples.
 
-Besides, it provides smart contracts that run as zero-knowledge proof verifiers on the Nervos CKB chain. CKB developers and users can implement various complex zero-knowledge verification processes through the simplest contract invocation. Cooperate with the core [zkp-toolkit](./zkp-toolkit) to complete off-chain prove and on-chain verify.
+Besides, it provides smart contracts that run as zero-knowledge proof verifiers on the Nervos CKB chain. CKB developers and users can implement various complex zero-knowledge verification processes through the simplest contract invocation. Cooperate with the core [zkp-toolkit](./zkp-toolkit.md) to complete off-chain prove and on-chain verify.
 
 This project is also known as _zkp-toolkit-ckb_ and is supported by the Nervos Foundation. Check out the [original proposal](https://talk.nervos.org/t/secbit-labs-zkp-toolkit-ckb-a-zero-knowledge-proof-toolkit-for-ckb/4254) and [grant announcement](https://medium.com/nervosnetwork/three-new-ecosystem-grants-awarded-892b97e8bc06).
 
-The following document is more focused on CKB smart contracts. [Check this doc](./zkp-toolkit) for more details on zkp-toolkit usage and features.
+The following document is more focused on CKB smart contracts. [Check this doc](./zkp-toolkit.md) for more details on zkp-toolkit usage and features.
 
 ## What's new?
 
@@ -119,23 +119,23 @@ capsule build --release
 
 A simplified, one-time blockchain context is used in the test environment using [ckb-tool](https://github.com/jjyr/ckb-tool) crate. Needless to setup an authentic blockchain and run a ckb node, one can simply send a transaction to invoke the contract and checkout if the contract works as expected.
 
-### Run zkp-toolkit cli tests
+### Run cli tests
 
-1. Go to _./zkp-toolkit/cli_ and generate a vk file and a proof file using ckb-zkp's command line utility.
+1. Go to _./cli_ and generate a vk file and a proof file using ckb-zkp's command line utility.
 
    Use groth16 scheme & bls12_381 curve:
 
    1. Complete trusted-setup:
 
       ```sh
-      # ./zkp-toolkit/cli
+      # ./cli
       cargo run --bin setup groth16 bls12_381 hash
       ```
 
    2. Prove the secret string.
 
       ```sh
-      # ./zkp-toolkit/cli
+      # ./cli
       cargo run --bin zkp-prove groth16 bls12_381 hash iamsecret
       ```
 
@@ -144,20 +144,20 @@ A simplified, one-time blockchain context is used in the test environment using 
    3. (Optional) Do the verification.
 
       ```sh
-      # ./zkp-toolkit/cli
+      # ./cli
       cargo run --bin zkp-verify proof_files/groth16-bls12_381-hash.proof.json
       ```
 
    Check supported schemes and curves:
 
    ```sh
-   # ./zkp-toolkit/cli
+   # ./cli
    cargo run --bin setup
    cargo run --bin zkp-prove
    cargo run --bin zkp-verify
    ```
 
-   See [cli document](./zkp-toolkit/cli) for further help.
+   See [cli document](./cli) for further help.
 
 ### Run CKB contacts tests
 

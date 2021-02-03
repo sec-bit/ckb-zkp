@@ -1,0 +1,20 @@
+[package]
+name = "zkp-r1cs"
+version = "0.1.0"
+authors = ["SECBIT Labs"]
+description = "A library for rank-one constraint systems."
+keywords = ["cryptography", "zkp", "zero-knowledge", "r1cs"]
+categories = ["cryptography"]
+license = "MIT/Apache-2.0"
+edition = "2018"
+
+[features]
+default = ["std"]
+std = ["ark-ff/std", "ark-std/std"]
+parallel = ["std", "ark-ff/parallel", "ark-std/parallel"]
+
+[dependencies]
+smallvec = "1.6"
+ark-ff = { git = "https://github.com/arkworks-rs/algebra", default-features = false }
+ark-serialize = { git = "https://github.com/arkworks-rs/algebra", default-features = false, features = ["derive"] }
+ark-std = { git = "https://github.com/arkworks-rs/utils", default-features = false }

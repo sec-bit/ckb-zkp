@@ -1,0 +1,25 @@
+[package]
+name = "zkp-curve25519"
+version = "0.1.0"
+authors = ["SECBIT Labs"]
+description = "a zkp-friendly wrap curve25519 with ark-ff and curve25519-dalek."
+keywords = ["cryptography", "zkp", "zero-knowledge", "curve25519"]
+categories = ["cryptography"]
+license = "MIT/Apache-2.0"
+edition = "2018"
+
+[features]
+default = ["std"]
+std = ["zkp-curve/std", "ark-ff/std", "zkp-curve/std"]
+parallel = ["std", "zkp-curve/parallel", "ark-ff/parallel", "zkp-curve/parallel"]
+
+[dependencies]
+curve25519-dalek = { version = "3", features = ["u64_backend"] }
+rand = { version = "0.7", default-features = false }
+sha2 = { version = "0.9", default-features = false }
+zeroize = { version = "1", default-features = false, features = ["zeroize_derive"] }
+zkp-curve = { version = "0.1", path = "../curve", default-features = false }
+ark-ff = { git = "https://github.com/arkworks-rs/algebra", default-features = false }
+ark-serialize = { git = "https://github.com/arkworks-rs/algebra", default-features = false }
+ark-std = { git = "https://github.com/arkworks-rs/utils", default-features = false }
+

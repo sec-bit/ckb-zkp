@@ -5,9 +5,19 @@ edition = "2018"
 
 [dependencies]
 rand = "0.7"
-postcard = { version = "0.5", default-features = false, features = ["alloc"] }
-blake2 = { version = "0.8", default-features = false }
-zkp-toolkit = { git = "https://github.com/sec-bit/ckb-zkp" }
+blake2 = { version = "0.9", default-features = false }
 ckb-tool = "0.2.2"
 ckb-testtool = "0.2.2"
+ark-ff = { git = "https://github.com/arkworks-rs/algebra" }
+ark-serialize = { git = "https://github.com/arkworks-rs/algebra" }
+ark-std = { git = "https://github.com/arkworks-rs/utils" }
+ark-bls12-381 = { git = "https://github.com/arkworks-rs/curves" }
+zkp-r1cs = { version = "0.1", path = "../../r1cs"}
+zkp-groth16 = { version = "0.1", path = "../../groth16" }
+zkp-bulletproofs = { version = "0.1", path = "../../bulletproofs" }
+zkp-clinkv2 = { version = "0.1", path = "../../clinkv2" }
+zkp-spartan = { version = "0.1", path = "../../spartan" }
+zkp-marlin = { version = "0.1", path = "../../marlin" }
+zkp-libra = { version = "0.1", path = "../../libra" }
+zkp-hyrax = { version = "0.1", path = "../../hyrax" }
 

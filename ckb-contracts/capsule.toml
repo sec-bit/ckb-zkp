@@ -6,10 +6,6 @@ name = "universal_groth16_verifier"
 template_type = "Rust"
 
 [[contracts]]
-name = "universal_marlin_verifier"
-template_type = "Rust"
-
-[[contracts]]
 name = "mini_bulletproofs_verifier"
 template_type = "Rust"
 
@@ -27,4 +23,16 @@ template_type = "Rust"
 
 [[contracts]]
 name = "universal_spartan_snark_verifier"
+template_type = "Rust"
+
+[[contracts]]
+name = "universal_marlin_verifier"
+template_type = "Rust"
+
+[[contracts]]
+name = "mini_libra_zk_linear_gkr_verifier"
+template_type = "Rust"
+
+[[contracts]]
+name = "mini_hyrax_zk_linear_gkr_verifier"
 template_type = "Rust"
