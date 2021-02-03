@@ -55,15 +55,13 @@ pub fn main() -> Result<(), Error> {
     let params = Parameters::<E>::deserialize(&vk_data[..]).map_err(|_e| Error::Encoding)?;
     let proof =
         ZKLinearGKRProof::<E>::deserialize(&proof_data[..]).map_err(|_e| Error::Encoding)?;
-    let publics = Vec::<Fr>::deserialize(&public_data[..]).map_err(|_e| Error::Encoding)?;
-
-    let mut outputs: Vec<Fr> = Vec::new();
-    outputs.push(Fr::zero());
+    let (inputs, outputs) =
+        <(Vec<Fr>, Vec<Fr>)>::deserialize(&public_data[..]).map_err(|_e| Error::Encoding)?;
 
     // inputs length is 4, witness length is 4.
     let circuit = Circuit::new(4, 4, &layers());
 
-    match proof.verify(&params, &circuit, &outputs, &publics) {
+    match proof.verify(&params, &circuit, &outputs, &inputs) {
         true => Ok(()),
         false => Err(Error::Verify),
     }

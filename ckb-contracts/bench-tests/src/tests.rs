@@ -504,28 +504,29 @@ fn test_libra_zk_linear_gkr() {
     let inputs = vec![Fr::from(2u32), -Fr::from(10u32), Fr::one(), Fr::zero()];
     let witnesses = vec![Fr::from(2u32), Fr::from(3u32), Fr::zero(), Fr::zero()];
     let layers = layers();
-    println!("prepare for constructing circuit...ok");
+    println!("Libra: prepare for constructing circuit...ok");
 
     let params = Parameters::<E>::new(rng, 8);
-    println!("prepare for constructing circuit...ok");
+    println!("Libra: prepare for constructing circuit...ok");
     let mut vk_bytes = Vec::new();
     params.serialize(&mut vk_bytes).unwrap();
 
     let circuit = Circuit::new(inputs.len(), witnesses.len(), &layers);
-    println!("construct circuit...ok");
+    println!("Libra: construct circuit...ok");
 
     let (proof, output) =
         ZKLinearGKRProof::prover::<_>(&params, &circuit, &inputs, &witnesses, rng);
-    println!("generate proof...ok");
+    println!("Libra: generate proof...ok");
 
     let result = proof.verify(&params, &circuit, &output, &inputs);
-    println!("verifier...{}", result);
+    println!("Libra: verifier...{}", result);
 
     let mut proof_bytes = Vec::new();
     proof.serialize(&mut proof_bytes).unwrap();
 
     let mut public_bytes = Vec::new();
     inputs.serialize(&mut public_bytes).unwrap();
+    output.serialize(&mut public_bytes).unwrap();
 
     println!("Libra verifying on CKB...");
 
