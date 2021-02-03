@@ -33,6 +33,7 @@ impl<G: Curve> SumCheckProof<G> {
         assert_eq!(size, g_vec.1.len());
         assert_eq!(size, g_vec.2.len());
         assert_eq!(size, (2usize).pow(bit_size as u32));
+        let fr_two: G::Fr = 2u32.into();
 
         let mut claim = claim;
         let mut ru = Vec::new();
@@ -47,10 +48,10 @@ impl<G: Curve> SumCheckProof<G> {
                 .sum();
             let eval_1 = claim - &eval_0;
 
-            let f_vec_tmp = combine_with_r::<G>(&f_vec, G::Fr::from(2u32));
-            let mul_hg_vec_tmp = combine_with_r::<G>(&mul_hg_vec, G::Fr::from(2u32));
-            let add_hg_vec1_tmp = combine_with_r::<G>(&add_hg_vec1, G::Fr::from(2u32));
-            let add_hg_vec2_tmp = combine_with_r::<G>(&add_hg_vec2, G::Fr::from(2u32));
+            let f_vec_tmp = combine_with_r::<G>(&f_vec, fr_two);
+            let mul_hg_vec_tmp = combine_with_r::<G>(&mul_hg_vec, fr_two);
+            let add_hg_vec1_tmp = combine_with_r::<G>(&add_hg_vec1, fr_two);
+            let add_hg_vec2_tmp = combine_with_r::<G>(&add_hg_vec2, fr_two);
             let eval_2: G::Fr = (0..size)
                 .map(|j| {
                     f_vec_tmp[j] * &mul_hg_vec_tmp[j]
@@ -62,8 +63,7 @@ impl<G: Curve> SumCheckProof<G> {
             // degree = 2
             // f(x) = ax^2 + bx + c
             // a = (eval_0 - 2eval_1 + eval_2)/2
-            let a_coeff =
-                (eval_0 - &eval_1.double() + &eval_2) * &G::Fr::from(2u32).inverse().unwrap();
+            let a_coeff = (eval_0 - &eval_1.double() + &eval_2) * &fr_two.inverse().unwrap();
             // c = eval_0
             let c_coeff = eval_0;
             // b = eval_1 - a - c
@@ -108,6 +108,7 @@ impl<G: Curve> SumCheckProof<G> {
         assert_eq!(size, g_vec.0.len());
         assert_eq!(size, g_vec.1.len());
         assert_eq!(size, (2usize).pow(bit_size as u32));
+        let fr_two: G::Fr = 2u32.into();
 
         let mut claim = claim;
         let mut rv = Vec::new();
@@ -124,10 +125,10 @@ impl<G: Curve> SumCheckProof<G> {
                 .sum();
             let eval_1 = claim - &eval_0;
 
-            let f_vec_tmp = combine_with_r::<G>(&f_vec, G::Fr::from(2u32));
-            let mul_hg_vec_tmp = combine_with_r::<G>(&mul_hg_vec, G::Fr::from(2u32));
-            let add_hg_vec_tmp = combine_with_r::<G>(&add_hg_vec, G::Fr::from(2u32));
-            // let add_hg_vec2_tmp = combine_with_r::<G>(&add_hg_vec2, G::Fr::from(2u32));
+            let f_vec_tmp = combine_with_r::<G>(&f_vec, fr_two);
+            let mul_hg_vec_tmp = combine_with_r::<G>(&mul_hg_vec, fr_two);
+            let add_hg_vec_tmp = combine_with_r::<G>(&add_hg_vec, fr_two);
+            // let add_hg_vec2_tmp = combine_with_r::<G>(&add_hg_vec2, fr_two);
             let eval_2: G::Fr = (0..size)
                 .map(|j| {
                     mul_hg_vec_tmp[j] * &f_vec_tmp[j] * &fu
@@ -139,8 +140,7 @@ impl<G: Curve> SumCheckProof<G> {
             // degree = 2
             // f(x) = ax^2 + bx + c
             // a = (eval_0 - 2eval_1 + eval_2)/2
-            let a_coeff =
-                (eval_0 - &eval_1.double() + &eval_2) * &G::Fr::from(2u32).inverse().unwrap();
+            let a_coeff = (eval_0 - &eval_1.double() + &eval_2) * &fr_two.inverse().unwrap();
             // c = eval_0
             let c_coeff = eval_0;
             // b = eval_1 - a - c
@@ -200,6 +200,8 @@ impl<G: Curve> ZKSumCheckProof<G> {
         assert_eq!(size, g_vec.1.len());
         assert_eq!(size, g_vec.2.len());
         assert_eq!(size, (2usize).pow(bit_size as u32));
+        let fr_two: G::Fr = 2u32.into();
+
         let mut blind_polys = Vec::new();
         let mut blind_evals = Vec::new();
         for _ in 0..bit_size {
@@ -225,10 +227,10 @@ impl<G: Curve> ZKSumCheckProof<G> {
                 })
                 .sum();
             let eval_1 = claim - &eval_0;
-            let f_vec_tmp = combine_with_r::<G>(&f_vec, G::Fr::from(2u32));
-            let mul_hg_vec_tmp = combine_with_r::<G>(&mul_hg_vec, G::Fr::from(2u32));
-            let add_hg_vec1_tmp = combine_with_r::<G>(&add_hg_vec1, G::Fr::from(2u32));
-            let add_hg_vec2_tmp = combine_with_r::<G>(&add_hg_vec2, G::Fr::from(2u32));
+            let f_vec_tmp = combine_with_r::<G>(&f_vec, fr_two);
+            let mul_hg_vec_tmp = combine_with_r::<G>(&mul_hg_vec, fr_two);
+            let add_hg_vec1_tmp = combine_with_r::<G>(&add_hg_vec1, fr_two);
+            let add_hg_vec2_tmp = combine_with_r::<G>(&add_hg_vec2, fr_two);
             let eval_2: G::Fr = (0..size)
                 .map(|j| {
                     f_vec_tmp[j] * &mul_hg_vec_tmp[j]
@@ -239,8 +241,7 @@ impl<G: Curve> ZKSumCheckProof<G> {
             // degree = 2
             // f(x) = ax^2 + bx + c
             // a = (eval_0 - 2eval_1 + eval_2)/2
-            let a_coeff =
-                (eval_0 - &eval_1.double() + &eval_2) * &G::Fr::from(2u32).inverse().unwrap();
+            let a_coeff = (eval_0 - &eval_1.double() + &eval_2) * &fr_two.inverse().unwrap();
             // c = eval_0
             let c_coeff = eval_0;
             // b = eval_1 - a - c
@@ -319,6 +320,8 @@ impl<G: Curve> ZKSumCheckProof<G> {
         assert_eq!(size, g_vec.0.len());
         assert_eq!(size, g_vec.1.len());
         assert_eq!(size, (2usize).pow(bit_size as u32));
+        let fr_two: G::Fr = 2u32.into();
+
         let mut blind_polys = Vec::new();
         let mut blind_evals = Vec::new();
         for _ in 0..bit_size {
@@ -346,9 +349,9 @@ impl<G: Curve> ZKSumCheckProof<G> {
                 })
                 .sum();
             let eval_1 = claim - &eval_0;
-            let f_vec_tmp = combine_with_r::<G>(&f_vec, G::Fr::from(2u32));
-            let mul_hg_vec_tmp = combine_with_r::<G>(&mul_hg_vec, G::Fr::from(2u32));
-            let add_hg_vec_tmp = combine_with_r::<G>(&add_hg_vec, G::Fr::from(2u32));
+            let f_vec_tmp = combine_with_r::<G>(&f_vec, fr_two);
+            let mul_hg_vec_tmp = combine_with_r::<G>(&mul_hg_vec, fr_two);
+            let add_hg_vec_tmp = combine_with_r::<G>(&add_hg_vec, fr_two);
             let eval_2: G::Fr = (0..size)
                 .map(|j| {
                     mul_hg_vec_tmp[j] * &f_vec_tmp[j] * &fu
@@ -359,8 +362,7 @@ impl<G: Curve> ZKSumCheckProof<G> {
             // degree = 2
             // f(x) = ax^2 + bx + c
             // a = (eval_0 - 2eval_1 + eval_2)/2
-            let a_coeff =
-                (eval_0 - &eval_1.double() + &eval_2) * &G::Fr::from(2u32).inverse().unwrap();
+            let a_coeff = (eval_0 - &eval_1.double() + &eval_2) * &fr_two.inverse().unwrap();
             // c = eval_0
             let c_coeff = eval_0;
             // b = eval_1 - a - c
