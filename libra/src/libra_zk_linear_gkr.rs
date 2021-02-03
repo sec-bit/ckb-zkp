@@ -1,4 +1,5 @@
 use ark_ff::{to_bytes, One, UniformRand, Zero};
+use ark_serialize::*;
 use merlin::Transcript;
 use rand::Rng;
 use zkp_curve::{AffineCurve, Curve, ProjectiveCurve};
@@ -12,6 +13,7 @@ use crate::libra_linear_gkr::{initialize_phase_one, initialize_phase_two};
 use crate::params::Parameters;
 use crate::sumcheck::ZKSumCheckProof;
 
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct ZKLayerProof<G: Curve> {
     pub proof_phase_one: ZKSumCheckProof<G>,
     pub proof_phase_two: ZKSumCheckProof<G>,
@@ -22,6 +24,7 @@ pub struct ZKLayerProof<G: Curve> {
     pub eq_proof: EqProof<G>,
 }
 
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct ZKLinearGKRProof<G: Curve> {
     pub comm_witness: Vec<G::Affine>,
     pub proofs: Vec<ZKLayerProof<G>>,

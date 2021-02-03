@@ -1,7 +1,9 @@
 use ark_ff::UniformRand;
+use ark_serialize::*;
 use rand::Rng;
 use zkp_curve::{Curve, ProjectiveCurve};
 
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct Parameters<G: Curve> {
     pub sc_params: SumCheckCommitmentSetupParameters<G>,
     pub pc_params: PolyCommitmentSetupParameters<G>,
@@ -19,7 +21,7 @@ impl<G: Curve> Parameters<G> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct PolyCommitmentSetupParameters<G: Curve> {
     pub n: usize,
     pub gen_n: MultiCommitmentSetupParameters<G>,
@@ -41,7 +43,7 @@ impl<G: Curve> PolyCommitmentSetupParameters<G> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct SumCheckCommitmentSetupParameters<G: Curve> {
     pub gen_1: MultiCommitmentSetupParameters<G>,
     pub gen_3: MultiCommitmentSetupParameters<G>,
@@ -66,7 +68,7 @@ impl<G: Curve> SumCheckCommitmentSetupParameters<G> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct MultiCommitmentSetupParameters<G: Curve> {
     pub n: usize,
     pub generators: Vec<G::Affine>,

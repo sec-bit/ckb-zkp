@@ -8,7 +8,7 @@ use ckb_tool::ckb_types::{
 use std::time::Instant;
 
 use ark_bls12_381::{Bls12_381 as E, Fr};
-use ark_ff::{One, PrimeField};
+use ark_ff::{One, PrimeField, Zero};
 use ark_serialize::*;
 use ark_std::test_rng;
 use zkp_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
@@ -468,6 +468,73 @@ fn test_spartan_nizk() {
         public_bytes.into(),
         "universal_spartan_nizk_verifier",
         "spartan nizk verify",
+    );
+}
+
+// x * (y + 2) = z
+fn layers() -> Vec<Vec<(u8, usize, usize)>> {
+    let mut layers = Vec::new();
+
+    let mut layer1 = Vec::new();
+    layer1.push((0, 1, 2));
+    layer1.push((1, 0, 4));
+    layer1.push((1, 3, 4));
+    layer1.push((1, 4, 4));
+    layers.push(layer1);
+
+    let mut layer2 = Vec::new();
+    layer2.push((1, 0, 1));
+    layer2.push((1, 2, 3));
+    layers.push(layer2);
+
+    let mut layer3 = Vec::new();
+    layer3.push((0, 0, 1));
+    layers.push(layer3);
+
+    layers
+}
+
+#[test]
+fn test_libra_zk_linear_gkr() {
+    use zkp_libra::{circuit::Circuit, libra_zk_linear_gkr::ZKLinearGKRProof, params::Parameters};
+
+    let rng = &mut test_rng(); // Only in test code.
+
+    // 2 * (3 + 2) = 10
+    let inputs = vec![Fr::from(2u32), -Fr::from(10u32), Fr::one(), Fr::zero()];
+    let witnesses = vec![Fr::from(2u32), Fr::from(3u32), Fr::zero(), Fr::zero()];
+    let layers = layers();
+    println!("prepare for constructing circuit...ok");
+
+    let params = Parameters::<E>::new(rng, 8);
+    println!("prepare for constructing circuit...ok");
+    let mut vk_bytes = Vec::new();
+    params.serialize(&mut vk_bytes).unwrap();
+
+    let circuit = Circuit::new(inputs.len(), witnesses.len(), &layers);
+    println!("construct circuit...ok");
+
+    let (proof, output) =
+        ZKLinearGKRProof::prover::<_>(&params, &circuit, &inputs, &witnesses, rng);
+    println!("generate proof...ok");
+
+    let result = proof.verify(&params, &circuit, &output, &inputs);
+    println!("verifier...{}", result);
+
+    let mut proof_bytes = Vec::new();
+    proof.serialize(&mut proof_bytes).unwrap();
+
+    let mut public_bytes = Vec::new();
+    inputs.serialize(&mut public_bytes).unwrap();
+
+    println!("Libra verifying on CKB...");
+
+    proving_test(
+        vk_bytes.into(),
+        proof_bytes.into(),
+        public_bytes.into(),
+        "mini_libra_zk_linear_gkr_verifier",
+        "libra_zk_linear_gkr verify",
     );
 }
 

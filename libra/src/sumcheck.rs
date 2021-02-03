@@ -1,5 +1,6 @@
 use ark_ff::{to_bytes, Field, One, UniformRand, Zero};
 use ark_poly::{polynomial::univariate::DensePolynomial, Polynomial, UVPolynomial};
+use ark_serialize::*;
 use core::ops::{Add, Deref};
 use merlin::Transcript;
 use rand::Rng;
@@ -9,6 +10,7 @@ use crate::evaluate::{combine_with_r, poly_commit_vec, random_bytes_to_fr};
 use crate::params::SumCheckCommitmentSetupParameters;
 use crate::polynomial_to_bytes;
 
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct SumCheckProof<G: Curve> {
     pub polys: Vec<DensePolynomial<G::Fr>>,
     pub poly_value_at_r: Vec<G::Fr>,
@@ -169,6 +171,7 @@ impl<G: Curve> SumCheckProof<G> {
     }
 }
 
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct ZKSumCheckProof<G: Curve> {
     pub comm_polys: Vec<G::Affine>,
     pub comm_evals: Vec<G::Affine>,
@@ -419,6 +422,7 @@ impl<G: Curve> ZKSumCheckProof<G> {
     }
 }
 
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct SumCheckEvalProof<G: Curve> {
     pub d_commit: G::Affine,
     pub dot_cd_commit: G::Affine,

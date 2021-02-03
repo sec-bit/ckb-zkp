@@ -18,4 +18,6 @@ zkp-bulletproofs = { version = "0.1", path = "../../bulletproofs" }
 zkp-clinkv2 = { version = "0.1", path = "../../clinkv2" }
 zkp-spartan = { version = "0.1", path = "../../spartan" }
 zkp-marlin = { version = "0.1", path = "../../marlin" }
+zkp-libra = { version = "0.1", path = "../../libra" }
+zkp-hyrax = { version = "0.1", path = "../../hyrax" }
 
