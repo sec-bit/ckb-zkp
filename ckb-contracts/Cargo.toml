@@ -7,6 +7,7 @@ members = [
     "contracts/universal_spartan_nizk_verifier",
     "contracts/universal_spartan_snark_verifier",
     "contracts/universal_marlin_verifier",
+    "contracts/mini_libra_zk_linear_gkr_verifier",
 ]
 exclude = [
     "bench-tests",

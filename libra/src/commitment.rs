@@ -7,6 +7,7 @@ use zkp_curve::{AffineCurve, Curve, ProjectiveCurve};
 
 use crate::evaluate::{eval_eq, poly_commit_vec, random_bytes_to_fr};
 use crate::params::{MultiCommitmentSetupParameters, PolyCommitmentSetupParameters};
+use crate::Vec;
 
 #[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct EqProof<G: Curve> {

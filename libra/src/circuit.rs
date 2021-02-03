@@ -4,6 +4,7 @@ use core::cmp;
 use zkp_curve::Curve;
 
 use crate::evaluate::eval_eq;
+use crate::Vec;
 
 ///operation
 /// 0. add

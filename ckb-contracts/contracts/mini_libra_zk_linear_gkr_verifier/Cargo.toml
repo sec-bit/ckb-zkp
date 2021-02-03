@@ -6,7 +6,7 @@ edition = "2018"
 [dependencies]
 ckb-std = "0.7.2"
 
-[dependencies.zkp_libra]
+[dependencies.zkp-libra]
 git = "https://github.com/sunhuachuang/ckb-zkp"
 branch = "dev"
 default-features = false

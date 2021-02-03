@@ -7,6 +7,7 @@ use crate::circuit::{Circuit, Gate};
 use crate::evaluate::{eval_eq, eval_fgu, eval_hg, eval_output, eval_value, random_bytes_to_fr};
 use crate::polynomial_to_bytes;
 use crate::sumcheck::SumCheckProof;
+use crate::Vec;
 
 pub struct LayerProof<G: Curve> {
     pub proof_phase_one: SumCheckProof<G>,

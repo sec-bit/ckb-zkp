@@ -9,6 +9,7 @@ use zkp_curve::{AffineCurve, Curve, ProjectiveCurve};
 use crate::evaluate::{combine_with_r, poly_commit_vec, random_bytes_to_fr};
 use crate::params::SumCheckCommitmentSetupParameters;
 use crate::polynomial_to_bytes;
+use crate::Vec;
 
 #[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct SumCheckProof<G: Curve> {

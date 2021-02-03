@@ -12,6 +12,7 @@ use crate::evaluate::{
 use crate::libra_linear_gkr::{initialize_phase_one, initialize_phase_two};
 use crate::params::Parameters;
 use crate::sumcheck::ZKSumCheckProof;
+use crate::Vec;
 
 #[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct ZKLayerProof<G: Curve> {

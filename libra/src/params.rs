@@ -3,6 +3,8 @@ use ark_serialize::*;
 use rand::Rng;
 use zkp_curve::{Curve, ProjectiveCurve};
 
+use crate::Vec;
+
 #[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct Parameters<G: Curve> {
     pub sc_params: SumCheckCommitmentSetupParameters<G>,
