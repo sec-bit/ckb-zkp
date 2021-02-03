@@ -5,9 +5,9 @@ name: CI
 
 on:
   push:
-    branches: [master, ci-amend]
+    branches: [master, ci-amend, dev]
   pull_request:
-    branches: [master]
+    branches: [master, dev]
 
 jobs:
   test_ckb-zkp:
