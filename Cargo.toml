@@ -11,6 +11,7 @@ members = [
     "spartan",
     "libra",
     "hyrax",
+    "plonk",
     "gadgets",
     "examples",
     "cli",

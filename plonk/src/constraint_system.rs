@@ -1,9 +1,10 @@
-use crate::{HashMap, Vec};
 use ark_ff::Field;
+
+use crate::{BTreeMap, Vec};
 
 mod arithmetic;
 
-#[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Variable(usize);
 
 #[derive(Debug)]
@@ -21,13 +22,13 @@ pub enum Wire {
 
 #[derive(Debug)]
 pub struct Permutation {
-    variables: HashMap<Variable, Vec<Wire>>,
+    variables: BTreeMap<Variable, Vec<Wire>>,
 }
 
 impl Permutation {
     pub fn new() -> Self {
         Permutation {
-            variables: HashMap::new(),
+            variables: BTreeMap::new(),
         }
     }
 
@@ -60,7 +61,7 @@ pub struct Composer<F: Field> {
 
     null_var: Variable,
     permutation: Permutation,
-    assignments: HashMap<Variable, F>,
+    assignments: BTreeMap<Variable, F>,
 }
 
 impl<F: Field> Composer<F> {
@@ -80,7 +81,7 @@ impl<F: Field> Composer<F> {
 
             null_var: Variable(0),
             permutation: Permutation::new(),
-            assignments: HashMap::new(),
+            assignments: BTreeMap::new(),
         };
         cs.null_var = cs.add_variable(F::zero());
 
