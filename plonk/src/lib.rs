@@ -18,4 +18,4 @@ use alloc::{collections::HashMap, vec::Vec};
 #[cfg(feature = "std")]
 use std::{collections::HashMap, vec::Vec};
 
-mod constraint_system;
+mod composer;
