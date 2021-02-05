@@ -1,8 +1,8 @@
-use crate::{HashMap, Vec};
+use crate::{Map, Vec};
 use ark_ff::Field;
 
 mod permutation;
-use permutation::{Permutation, Wire};
+use permutation::Permutation;
 
 mod arithmetic;
 
@@ -25,7 +25,7 @@ pub struct Composer<F: Field> {
 
     null_var: Variable,
     permutation: Permutation,
-    assignments: HashMap<Variable, F>,
+    assignments: Map<Variable, F>,
 }
 
 impl<F: Field> Composer<F> {
@@ -45,7 +45,7 @@ impl<F: Field> Composer<F> {
 
             null_var: Variable(0),
             permutation: Permutation::new(),
-            assignments: HashMap::new(),
+            assignments: Map::new(),
         };
         cs.null_var = cs.alloc_and_assign(F::zero());
 

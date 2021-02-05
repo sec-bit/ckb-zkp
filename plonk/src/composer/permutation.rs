@@ -1,5 +1,5 @@
 use crate::composer::Variable;
-use crate::HashMap;
+use crate::Map;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub(crate) enum Wire {
@@ -11,13 +11,13 @@ pub(crate) enum Wire {
 
 #[derive(Debug)]
 pub(crate) struct Permutation {
-    variable_map: HashMap<Variable, Vec<Wire>>,
+    variable_map: Map<Variable, Vec<Wire>>,
 }
 
 impl Permutation {
     pub fn new() -> Self {
         Permutation {
-            variable_map: HashMap::new(),
+            variable_map: Map::new(),
         }
     }
 
