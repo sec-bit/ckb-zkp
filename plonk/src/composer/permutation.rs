@@ -1,4 +1,6 @@
-use crate::composer::Variable;
+use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
+
+use crate::composer::{Error, Field, Variable};
 use crate::Map;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -49,11 +51,33 @@ impl Permutation {
 }
 
 impl Permutation {
-    fn compute_sigmas(&self, n: usize) -> [Vec<Wire>; 4] {
-        let mut sigma_0: Vec<_> = (0..n).map(|i| Wire::W0(i)).collect();
-        let mut sigma_1: Vec<_> = (0..n).map(|i| Wire::W1(i)).collect();
-        let mut sigma_2: Vec<_> = (0..n).map(|i| Wire::W2(i)).collect();
-        let mut sigma_3: Vec<_> = (0..n).map(|i| Wire::W3(i)).collect();
+    pub fn compute_sigmas<F: Field>(
+        &self,
+        n: usize,
+    ) -> Result<(Vec<F>, Vec<F>, Vec<F>, Vec<F>), Error> {
+        let domain = GeneralEvaluationDomain::<F>::new(4 * n)
+            .ok_or(Error::PolynomialDegreeTooLarge)?;
+
+        let perms = self.compute_wire_permutation(n);
+        let to = |&x| match x {
+            Wire::W0(i) => domain.element(i),
+            Wire::W1(i) => domain.element(i + n),
+            Wire::W2(i) => domain.element(i + 2 * n),
+            Wire::W3(i) => domain.element(i + 3 * n),
+        };
+        Ok((
+            perms[0].iter().map(to).collect(),
+            perms[1].iter().map(to).collect(),
+            perms[2].iter().map(to).collect(),
+            perms[3].iter().map(to).collect(),
+        ))
+    }
+
+    fn compute_wire_permutation(&self, n: usize) -> [Vec<Wire>; 4] {
+        let mut perm_0: Vec<_> = (0..n).map(|i| Wire::W0(i)).collect();
+        let mut perm_1: Vec<_> = (0..n).map(|i| Wire::W1(i)).collect();
+        let mut perm_2: Vec<_> = (0..n).map(|i| Wire::W2(i)).collect();
+        let mut perm_3: Vec<_> = (0..n).map(|i| Wire::W3(i)).collect();
 
         for (_, wires) in self.variable_map.iter() {
             if wires.len() <= 1 {
@@ -68,14 +92,14 @@ impl Permutation {
                 let next_wire = &wires[next];
 
                 match curr_wire {
-                    Wire::W0(i) => sigma_0[*i] = *next_wire,
-                    Wire::W1(i) => sigma_1[*i] = *next_wire,
-                    Wire::W2(i) => sigma_2[*i] = *next_wire,
-                    Wire::W3(i) => sigma_3[*i] = *next_wire,
+                    Wire::W0(i) => perm_0[*i] = *next_wire,
+                    Wire::W1(i) => perm_1[*i] = *next_wire,
+                    Wire::W2(i) => perm_2[*i] = *next_wire,
+                    Wire::W3(i) => perm_3[*i] = *next_wire,
                 }
             }
         }
 
-        [sigma_0, sigma_1, sigma_2, sigma_3]
+        [perm_0, perm_1, perm_2, perm_3]
     }
 }

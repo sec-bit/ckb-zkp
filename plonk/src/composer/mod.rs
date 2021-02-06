@@ -1,10 +1,18 @@
+use ark_ff::FftField as Field;
+
 use crate::{Map, Vec};
-use ark_ff::Field;
 
 mod permutation;
 use permutation::Permutation;
 
+mod selectors;
+
 mod arithmetic;
+
+#[derive(Debug)]
+pub enum Error {
+    PolynomialDegreeTooLarge,
+}
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
 pub struct Variable(usize);
@@ -17,6 +25,7 @@ pub struct Composer<F: Field> {
     q_1: Vec<F>,
     q_2: Vec<F>,
     q_3: Vec<F>,
+
     q_m: Vec<F>,
     q_c: Vec<F>,
     pi: Vec<F>,

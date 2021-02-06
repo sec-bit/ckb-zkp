@@ -4,9 +4,9 @@ impl<F: Field> Composer<F> {
     /// q_m * l * r + q_l * l + q_r * r + q_o * o (+ q_aux * aux) + q_c + pi == 0
     fn create_poly_gate(
         &mut self,
-        l: (Variable, F),
-        r: (Variable, F),
-        o: (Variable, F),
+        l: (Variable, F), // w_l, q_l
+        r: (Variable, F), // w_r, q_r
+        o: (Variable, F), // w_o, q_o
         aux: Option<(Variable, F)>,
         q_m: F,
         q_c: F,
