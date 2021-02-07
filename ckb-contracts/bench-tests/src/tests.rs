@@ -507,7 +507,6 @@ fn test_libra_zk_linear_gkr() {
     println!("Libra: prepare for constructing circuit...ok");
 
     let params = Parameters::<E>::new(rng, 8);
-    println!("Libra: prepare for constructing circuit...ok");
     let mut vk_bytes = Vec::new();
     params.serialize(&mut vk_bytes).unwrap();
 
