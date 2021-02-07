@@ -3,6 +3,7 @@ use ark_ff::UniformRand;
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use ark_std::test_rng;
 use core::ops::Add;
+use std::time::Instant;
 use zkp_asvc::*;
 
 fn group_gen(domain: &GeneralEvaluationDomain<Fr>) -> Fr {
@@ -14,7 +15,6 @@ fn group_gen(domain: &GeneralEvaluationDomain<Fr>) -> Fr {
 
 #[test]
 fn test_aggregatable_svc() {
-    // let rng = &mut thread_rng();
     let rng = &mut test_rng();
     let size: usize = 8;
     let params = key_gen::<E, _>(size, rng).unwrap();
@@ -33,7 +33,7 @@ fn test_aggregatable_svc() {
 
     let c = commit(&params.proving_key, values.clone()).unwrap();
 
-    println!("--------verify position...");
+    let start = Instant::now();
     let mut points = Vec::<u32>::new();
     let mut point_values = Vec::<Fr>::new();
     points.push(0);
@@ -52,10 +52,11 @@ fn test_aggregatable_svc() {
         group_gen(&domain),
     )
     .unwrap();
-    println!("--------verify position...{}\n", rs);
+    let total_setup = start.elapsed();
+    println!("ASVC VERIFY POSITION TIME: {:?}", total_setup);
     assert!(rs);
 
-    println!("--------verify updating key...");
+    let start = Instant::now();
     let index: u32 = 2;
     let rs = verify_upk(
         &params.verification_key,
@@ -64,10 +65,11 @@ fn test_aggregatable_svc() {
         group_gen(&domain),
     )
     .unwrap();
-    println!("--------verify updating key...{}\n", rs);
+    let total_setup = start.elapsed();
+    println!("ASVC VERIFY UPK TIME: {:?}", total_setup);
     assert!(rs);
 
-    println!("--------verify update proof...");
+    let start = Instant::now();
     let index: u32 = 3;
     let delta = Fr::rand(rng);
     let points_i = vec![index];
@@ -102,10 +104,11 @@ fn test_aggregatable_svc() {
         group_gen(&domain),
     )
     .unwrap();
-    println!("--------verify update proof...{}\n", rs);
+    let total_setup = start.elapsed();
+    println!("ASVC UPDATE COMMIT AND PROOF TIME: {:?}", total_setup);
     assert!(rs);
 
-    println!("--------start verify update proof, different index...");
+    let start = Instant::now();
     let index_i: u32 = 4;
     let points_i = vec![index_i];
     let point_values_i = vec![values[index_i as usize]];
@@ -130,10 +133,14 @@ fn test_aggregatable_svc() {
         group_gen(&domain),
     )
     .unwrap();
-    println!("--------verify update proof, different index...{}\n", rs);
+    let total_setup = start.elapsed();
+    println!(
+        "ASVC VERIFY UPDATE PROOF, DIFFERENT INDEX TIME: {:?}",
+        total_setup
+    );
     assert!(rs);
 
-    println!("--------start verify aggregate proofs...");
+    let start = Instant::now();
     let mut points = Vec::new();
     let mut point_values = Vec::new();
     let mut point_proofs = Vec::new();
@@ -158,6 +165,7 @@ fn test_aggregatable_svc() {
         group_gen(&domain),
     )
     .unwrap();
-    println!("--------verify aggregate proofs...{}\n", rs);
+    let total_setup = start.elapsed();
+    println!("ASVC VERIFY AGGREGATE PROOFS TIME: {:?}", total_setup);
     assert!(rs);
 }

@@ -27,7 +27,6 @@ zkp-bulletproofs = { version = "0.1", path = "../bulletproofs" }
 zkp-clinkv2 = { version = "0.1", path = "../clinkv2" }
 zkp-spartan = { version = "0.1", path = "../spartan" }
 zkp-marlin = { version = "0.1", path = "../marlin" }
-zkp-asvc = { version = "0.1", path = "../asvc" }
 zkp-libra = { version = "0.1", path = "../libra" }
 zkp-hyrax = { version = "0.1", path = "../hyrax" }
 zkp-gadgets = { version = "0.1", path = "../gadgets" }
@@ -63,10 +62,6 @@ path = "src/circuit/rescue/rescue_spartan.rs"
 [[bin]]
 name = "rescue_clinkv2"
 path = "src/circuit/rescue/rescue_clinkv2.rs"
-
-[[bin]]
-name = "asvc"
-path = "src/scheme/asvc/asvc.rs"
 
 [[bin]]
 name = "spartan_nizk"
