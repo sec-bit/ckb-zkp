@@ -26,7 +26,6 @@ pub mod prover;
 pub mod r1cs;
 pub mod setup;
 pub mod spark;
-pub mod test;
 pub mod verify;
 
 pub mod snark {
