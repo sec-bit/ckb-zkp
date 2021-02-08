@@ -1,7 +1,7 @@
-use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
-
 use crate::composer::{Error, Field, Variable};
-use crate::Map;
+use crate::{Map, Vec};
+use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
+use core::marker::PhantomData;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub(crate) enum Wire {
@@ -12,14 +12,16 @@ pub(crate) enum Wire {
 }
 
 #[derive(Debug)]
-pub(crate) struct Permutation {
+pub(crate) struct Permutation<F: Field> {
     variable_map: Map<Variable, Vec<Wire>>,
+    _field: PhantomData<F>,
 }
 
-impl Permutation {
+impl<F: Field> Permutation<F> {
     pub fn new() -> Self {
         Permutation {
             variable_map: Map::new(),
+            _field: PhantomData,
         }
     }
 
@@ -50,8 +52,8 @@ impl Permutation {
     }
 }
 
-impl Permutation {
-    pub fn compute_sigmas<F: Field>(
+impl<F: Field> Permutation<F> {
+    pub fn compute_sigmas(
         &self,
         n: usize,
     ) -> Result<(Vec<F>, Vec<F>, Vec<F>, Vec<F>), Error> {

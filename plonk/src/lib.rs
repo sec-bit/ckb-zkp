@@ -17,4 +17,19 @@ use alloc::{collections::BTreeMap as Map, vec::Vec};
 #[cfg(feature = "std")]
 use std::{collections::HashMap as Map, vec::Vec};
 
-pub mod composer;
+mod composer;
+use composer::Error as ComposerError;
+
+mod keygen;
+
+#[derive(Debug)]
+pub enum Error {
+    ComposerError(ComposerError),
+    Other,
+}
+
+impl From<ComposerError> for Error {
+    fn from(err: ComposerError) -> Self {
+        Error::ComposerError(err)
+    }
+}

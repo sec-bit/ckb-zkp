@@ -5,7 +5,7 @@ use crate::{Map, Vec};
 mod permutation;
 use permutation::Permutation;
 
-mod selectors;
+mod selector;
 
 mod arithmetic;
 
@@ -33,7 +33,7 @@ pub struct Composer<F: Field> {
     q_arith: Vec<F>,
 
     null_var: Variable,
-    permutation: Permutation,
+    permutation: Permutation<F>,
     assignments: Map<Variable, F>,
 }
 
@@ -59,6 +59,10 @@ impl<F: Field> Composer<F> {
         cs.null_var = cs.alloc_and_assign(F::zero());
 
         cs
+    }
+
+    pub fn size(&self) -> usize {
+        self.n
     }
 
     pub fn alloc_and_assign(&mut self, value: F) -> Variable {
