@@ -1,8 +1,10 @@
+use ark_bls12_381::{Bls12_381 as E, Fr};
 use ark_ff::One;
-use rand::prelude::*;
-use zkp_curve::Curve;
-use zkp_curve25519::Curve25519 as E;
-use zkp_libra::{circuit::Circuit, libra_zk_linear_gkr::ZKLinearGKRProof, params::Parameters};
+use ark_std::test_rng;
+use zkp_libra::{
+    circuit::Circuit, libra_linear_gkr::LinearGKRProof, libra_zk_linear_gkr::ZKLinearGKRProof,
+    params::Parameters,
+};
 
 // input0 * witness0 + input1 * witness1 = 18
 /// circuit structure
@@ -14,15 +16,15 @@ use zkp_libra::{circuit::Circuit, libra_zk_linear_gkr::ZKLinearGKRProof, params:
 ///     gaten = (op, left, right) represents the nth gate, op represents the operator, add or multiple,
 ///     left represents the number of its left node, right  represents the number of its right node
 ///     e.g. layer2: gate0 = (mul, 0, 1) represents layer2-gate0 = layer1-gate0 * layer1-gate1
-fn prepare_construct_circuit<G: Curve>() -> (Vec<G::Fr>, Vec<G::Fr>, Vec<Vec<(u8, usize, usize)>>) {
+fn prepare_construct_circuit() -> (Vec<Fr>, Vec<Fr>, Vec<Vec<(u8, usize, usize)>>) {
     let inputs = vec![
-        G::Fr::one() + &G::Fr::one(),                 //2
-        G::Fr::one() + &G::Fr::one() + &G::Fr::one(), //3
+        Fr::one() + &Fr::one(),              //2
+        Fr::one() + &Fr::one() + &Fr::one(), //3
     ];
 
     let witnesses = vec![
-        G::Fr::one() + &G::Fr::one() + &G::Fr::one(), //3
-        G::Fr::one() + &G::Fr::one() + &G::Fr::one() + &G::Fr::one(), //4
+        Fr::one() + &Fr::one() + &Fr::one(),              //3
+        Fr::one() + &Fr::one() + &Fr::one() + &Fr::one(), //4
     ];
     let mut layers = Vec::new();
     let mut layer = Vec::new();
@@ -36,11 +38,30 @@ fn prepare_construct_circuit<G: Curve>() -> (Vec<G::Fr>, Vec<G::Fr>, Vec<Vec<(u8
     (inputs, witnesses, layers)
 }
 
-pub fn libra_zk_linear_gkr() {
-    let rng = &mut thread_rng();
+#[test]
+fn test_libra_linear_gkr_2() {
+    println!("start linear_gkr...");
+    let (inputs, witnesses, layers) = prepare_construct_circuit();
+    println!("prepare for constructing circuit...ok");
+
+    let circuit = Circuit::new(inputs.len(), witnesses.len(), &layers);
+    println!("construct circuit...ok");
+
+    let (proof, output) = LinearGKRProof::<E>::prover(&circuit, &inputs, &witnesses);
+    println!("generate proof...ok");
+
+    let mut inputs2 = witnesses.clone();
+    inputs2.extend(&inputs);
+    let result = proof.verify(&circuit, &output, &inputs2);
+    println!("verifier...{}", result);
+}
+
+#[test]
+fn test_libra_zk_linear_gkr_2() {
+    let rng = &mut test_rng();
     println!("start zk linear gkr...");
 
-    let (inputs, witnesses, layers) = prepare_construct_circuit::<E>();
+    let (inputs, witnesses, layers) = prepare_construct_circuit();
     println!("prepare for constructing circuit...ok");
 
     let params = Parameters::<E>::new(rng, 8);
@@ -55,8 +76,4 @@ pub fn libra_zk_linear_gkr() {
 
     let result = proof.verify(&params, &circuit, &output, &inputs);
     println!("verifier...{}", result);
-}
-
-pub fn main() {
-    libra_zk_linear_gkr();
 }

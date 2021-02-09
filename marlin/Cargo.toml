@@ -27,3 +27,4 @@ ark-std = { git = "https://github.com/arkworks-rs/utils", default-features = fal
 
 [dev-dependencies]
 ark-bls12-381 = { git = "https://github.com/arkworks-rs/curves", default-features = false, features = ["curve"] }
+rand = { version = "0.7" }
