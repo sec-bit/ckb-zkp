@@ -1,7 +1,13 @@
-use crate::composer::{Error, Field, Variable};
-use crate::{Map, Vec};
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
+use ark_std::cfg_iter;
+
 use core::marker::PhantomData;
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
+
+use crate::composer::{Field, Variable};
+use crate::{Error, Map, Vec};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub(crate) enum Wire {
@@ -32,7 +38,7 @@ impl<F: Field> Permutation<F> {
         var
     }
 
-    pub fn add_gate(
+    pub fn insert_gate(
         &mut self,
         w_0: Variable,
         w_1: Variable,
@@ -57,21 +63,24 @@ impl<F: Field> Permutation<F> {
         &self,
         n: usize,
     ) -> Result<(Vec<F>, Vec<F>, Vec<F>, Vec<F>), Error> {
-        let domain = GeneralEvaluationDomain::<F>::new(4 * n)
+        let domain_4n = GeneralEvaluationDomain::<F>::new(4 * n)
             .ok_or(Error::PolynomialDegreeTooLarge)?;
 
         let perms = self.compute_wire_permutation(n);
+
+        let roots: Vec<_> = domain_4n.elements().collect();
         let to = |&x| match x {
-            Wire::W0(i) => domain.element(i),
-            Wire::W1(i) => domain.element(i + n),
-            Wire::W2(i) => domain.element(i + 2 * n),
-            Wire::W3(i) => domain.element(i + 3 * n),
+            Wire::W0(i) => roots[i],
+            Wire::W1(i) => roots[i + n],
+            Wire::W2(i) => roots[i + 2 * n],
+            Wire::W3(i) => roots[i + 3 * n],
         };
+
         Ok((
-            perms[0].iter().map(to).collect(),
-            perms[1].iter().map(to).collect(),
-            perms[2].iter().map(to).collect(),
-            perms[3].iter().map(to).collect(),
+            cfg_iter!(perms[0]).map(to).collect(),
+            cfg_iter!(perms[1]).map(to).collect(),
+            cfg_iter!(perms[2]).map(to).collect(),
+            cfg_iter!(perms[3]).map(to).collect(),
         ))
     }
 

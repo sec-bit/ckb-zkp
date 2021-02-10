@@ -5,14 +5,9 @@ use crate::{Map, Vec};
 mod permutation;
 use permutation::Permutation;
 
-mod selector;
-
 mod arithmetic;
 
-#[derive(Debug)]
-pub enum Error {
-    PolynomialDegreeTooLarge,
-}
+mod synthesize;
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
 pub struct Variable(usize);
@@ -32,9 +27,14 @@ pub struct Composer<F: Field> {
 
     q_arith: Vec<F>,
 
+    w_0: Vec<Variable>,
+    w_1: Vec<Variable>,
+    w_2: Vec<Variable>,
+    w_3: Vec<Variable>,
+
     null_var: Variable,
     permutation: Permutation<F>,
-    assignments: Map<Variable, F>,
+    assignment: Map<Variable, F>,
 }
 
 impl<F: Field> Composer<F> {
@@ -52,9 +52,14 @@ impl<F: Field> Composer<F> {
 
             q_arith: Vec::new(),
 
+            w_0: Vec::new(),
+            w_1: Vec::new(),
+            w_2: Vec::new(),
+            w_3: Vec::new(),
+
             null_var: Variable(0),
             permutation: Permutation::new(),
-            assignments: Map::new(),
+            assignment: Map::new(),
         };
         cs.null_var = cs.alloc_and_assign(F::zero());
 
@@ -67,7 +72,7 @@ impl<F: Field> Composer<F> {
 
     pub fn alloc_and_assign(&mut self, value: F) -> Variable {
         let var = self.permutation.alloc();
-        self.assignments.insert(var, value);
+        self.assignment.insert(var, value);
 
         var
     }

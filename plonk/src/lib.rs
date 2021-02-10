@@ -12,24 +12,20 @@
 extern crate alloc;
 
 #[cfg(not(feature = "std"))]
-use alloc::{collections::BTreeMap as Map, vec::Vec};
+use alloc::{borrow::Cow, collections::BTreeMap as Map, vec::Vec};
 
 #[cfg(feature = "std")]
-use std::{collections::HashMap as Map, vec::Vec};
+use std::{borrow::Cow, collections::HashMap as Map, vec::Vec};
+
+mod data_structures;
+use data_structures::*;
 
 mod composer;
-use composer::Error as ComposerError;
-
-mod keygen;
+mod poly_protocol;
 
 #[derive(Debug)]
 pub enum Error {
-    ComposerError(ComposerError),
+    PolynomialDegreeTooLarge,
+    AlreadyPreprocessed,
     Other,
-}
-
-impl From<ComposerError> for Error {
-    fn from(err: ComposerError) -> Self {
-        Error::ComposerError(err)
-    }
 }
