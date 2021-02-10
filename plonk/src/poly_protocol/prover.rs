@@ -12,10 +12,10 @@ use crate::{Error, LabeledPolynomial};
 pub struct Prover<F: Field> {
     pk: ProverKey<F>,
 
-    w_0: Option<(Polynomial<F>, Evaluations<F>)>,
-    w_1: Option<(Polynomial<F>, Evaluations<F>)>,
-    w_2: Option<(Polynomial<F>, Evaluations<F>)>,
-    w_3: Option<(Polynomial<F>, Evaluations<F>)>,
+    w_0: Option<(Polynomial<F>, Vec<F>, Vec<F>)>,
+    w_1: Option<(Polynomial<F>, Vec<F>, Vec<F>)>,
+    w_2: Option<(Polynomial<F>, Vec<F>, Vec<F>)>,
+    w_3: Option<(Polynomial<F>, Vec<F>, Vec<F>)>,
 
     z: Option<(Polynomial<F>, Evaluations<F>)>,
 
@@ -63,25 +63,27 @@ impl<F: Field> Prover<F> {
         mut prover: Prover<F>,
         cs: &Composer<F>,
     ) -> Result<(Self, FirstOracles<'a, F>), Error> {
-        let (w_0_poly, w_1_poly, w_2_poly, w_3_poly) = cs.synthesize()?;
+        let (w_0, w_1, w_2, w_3) = cs.synthesize()?;
+
+        let domain_n = prover.domain_n;
+        let w_0_poly =
+            Evaluations::from_vec_and_domain(w_0.clone(), domain_n)
+                .interpolate();
+        let w_1_poly =
+            Evaluations::from_vec_and_domain(w_1.clone(), domain_n)
+                .interpolate();
+        let w_2_poly =
+            Evaluations::from_vec_and_domain(w_2.clone(), domain_n)
+                .interpolate();
+        let w_3_poly =
+            Evaluations::from_vec_and_domain(w_3.clone(), domain_n)
+                .interpolate();
 
         let domain_4n = prover.domain_4n;
-        let w_0_evals = Evaluations::from_vec_and_domain(
-            prover.domain_4n.fft(&w_0_poly),
-            domain_4n,
-        );
-        let w_1_evals = Evaluations::from_vec_and_domain(
-            domain_4n.fft(&w_1_poly),
-            domain_4n,
-        );
-        let w_2_evals = Evaluations::from_vec_and_domain(
-            domain_4n.fft(&w_2_poly),
-            domain_4n,
-        );
-        let w_3_evals = Evaluations::from_vec_and_domain(
-            domain_4n.fft(&w_3_poly),
-            domain_4n,
-        );
+        let w_0_evals_ext = domain_4n.fft(&w_0_poly);
+        let w_1_evals_ext = domain_4n.fft(&w_1_poly);
+        let w_2_evals_ext = domain_4n.fft(&w_2_poly);
+        let w_3_evals_ext = domain_4n.fft(&w_3_poly);
 
         let first_oracles = FirstOracles {
             w_0: LabeledPolynomial::new_owned(
@@ -102,10 +104,10 @@ impl<F: Field> Prover<F> {
             ),
         };
 
-        prover.w_0 = Some((w_0_poly, w_0_evals));
-        prover.w_1 = Some((w_1_poly, w_1_evals));
-        prover.w_2 = Some((w_2_poly, w_2_evals));
-        prover.w_3 = Some((w_3_poly, w_3_evals));
+        prover.w_0 = Some((w_0_poly, w_0, w_0_evals_ext));
+        prover.w_1 = Some((w_1_poly, w_1, w_1_evals_ext));
+        prover.w_2 = Some((w_2_poly, w_2, w_2_evals_ext));
+        prover.w_3 = Some((w_3_poly, w_3, w_3_evals_ext));
 
         Ok((prover, first_oracles))
     }

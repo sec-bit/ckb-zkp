@@ -1,16 +1,24 @@
 use ark_ff::FftField as Field;
-use ark_poly::{univariate::DensePolynomial as Polynomial, Evaluations};
+use ark_poly::{
+    univariate::DensePolynomial as Polynomial, Evaluations,
+    GeneralEvaluationDomain,
+};
+
+use crate::Vec;
 
 pub struct ProverKey<F: Field> {
-    pub q_0: (Polynomial<F>, Evaluations<F>),
-    pub q_1: (Polynomial<F>, Evaluations<F>),
-    pub q_2: (Polynomial<F>, Evaluations<F>),
-    pub q_3: (Polynomial<F>, Evaluations<F>),
+    pub q_0: (Polynomial<F>, Vec<F>, Vec<F>),
+    pub q_1: (Polynomial<F>, Vec<F>, Vec<F>),
+    pub q_2: (Polynomial<F>, Vec<F>, Vec<F>),
+    pub q_3: (Polynomial<F>, Vec<F>, Vec<F>),
 
-    pub q_m: (Polynomial<F>, Evaluations<F>),
-    pub q_c: (Polynomial<F>, Evaluations<F>),
+    pub q_m: (Polynomial<F>, Vec<F>, Vec<F>),
+    pub q_c: (Polynomial<F>, Vec<F>, Vec<F>),
 
-    pub q_arith: (Polynomial<F>, Evaluations<F>),
+    pub q_arith: (Polynomial<F>, Vec<F>, Vec<F>),
+
+    pub domain_n: GeneralEvaluationDomain<F>,
+    pub domain_4n: GeneralEvaluationDomain<F>,
 }
 
 impl<F: Field> ProverKey<F> {

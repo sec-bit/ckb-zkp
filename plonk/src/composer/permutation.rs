@@ -1,10 +1,10 @@
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use ark_std::cfg_iter;
 
-use core::marker::PhantomData;
-
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
+
+use core::marker::PhantomData;
 
 use crate::composer::{Field, Variable};
 use crate::{Error, Map, Vec};
