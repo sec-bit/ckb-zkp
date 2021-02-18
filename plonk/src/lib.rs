@@ -21,7 +21,7 @@ mod data_structures;
 use data_structures::*;
 
 mod composer;
-mod poly_protocol;
+mod protocol;
 
 #[derive(Debug)]
 pub enum Error {

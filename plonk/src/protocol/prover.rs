@@ -5,9 +5,9 @@ use ark_poly::{
 };
 
 use crate::composer::Composer;
-use crate::poly_protocol::keygen::ProverKey;
-use crate::poly_protocol::verifier::FirstMsg;
-use crate::{Error, LabeledPolynomial};
+use crate::protocol::keygen::ProverKey;
+use crate::protocol::verifier::FirstMsg;
+use crate::{Error, LabeledPolynomial, Vec};
 
 pub struct Prover<F: Field> {
     pk: ProverKey<F>,
@@ -17,8 +17,9 @@ pub struct Prover<F: Field> {
     w_2: Option<(Polynomial<F>, Vec<F>, Vec<F>)>,
     w_3: Option<(Polynomial<F>, Vec<F>, Vec<F>)>,
 
-    z: Option<(Polynomial<F>, Evaluations<F>)>,
+    z: Option<(Polynomial<F>, Vec<F>, Vec<F>)>,
 
+    ks: [F; 4],
     domain_n: GeneralEvaluationDomain<F>,
     domain_4n: GeneralEvaluationDomain<F>,
 }
@@ -35,7 +36,7 @@ pub struct SecondOracles<'a, F: Field> {
 }
 
 impl<F: Field> Prover<F> {
-    pub fn init(cs: &Composer<F>) -> Result<Prover<F>, Error> {
+    pub fn init(cs: &Composer<F>, ks: [F; 4]) -> Result<Prover<F>, Error> {
         let n = cs.size();
         let domain_n = GeneralEvaluationDomain::<F>::new(n)
             .ok_or(Error::PolynomialDegreeTooLarge)?;
@@ -54,6 +55,7 @@ impl<F: Field> Prover<F> {
 
             z: None,
 
+            ks,
             domain_n,
             domain_4n,
         })
@@ -116,48 +118,29 @@ impl<F: Field> Prover<F> {
         mut prover: Prover<F>,
         msg: &FirstMsg<F>,
     ) -> Result<(Self, SecondOracles<'a, F>), Error> {
-        let arithmetic_key = prover.pk.get_arithmetic_key();
-        let domain_n = prover.domain_n;
+        let permutation_key = prover.pk.get_permutation_key();
+        let w_0 = &prover.w_0.as_ref().unwrap().1;
+        let w_1 = &prover.w_1.as_ref().unwrap().1;
+        let w_2 = &prover.w_2.as_ref().unwrap().1;
+        let w_3 = &prover.w_3.as_ref().unwrap().1;
 
-        Err(Error::Other)
-    }
-
-    fn compute_z_poly(
-        &self,
-        w_0: &Evaluations<F>,
-        w_1: &Evaluations<F>,
-        w_2: &Evaluations<F>,
-        w_3: &Evaluations<F>,
-    ) -> Polynomial<F> {
-        let permutation_key = self.pk.get_permutation_key();
-        let sigma_0_poly = permutation_key.sigma_0.0.clone();
-        let sigma_1_poly = permutation_key.sigma_1.0.clone();
-        let sigma_2_poly = permutation_key.sigma_2.0.clone();
-        let sigma_3_poly = permutation_key.sigma_3.0.clone();
-
-        let domain_n = self.domain_n;
-        let roots: Vec<_> = domain_n.elements().collect();
-
-        let sigma_0_evals = Evaluations::from_vec_and_domain(
-            domain_n.fft(&sigma_0_poly),
-            domain_n,
-        );
-        let sigma_1_evals = Evaluations::from_vec_and_domain(
-            domain_n.fft(&sigma_1_poly),
-            domain_n,
-        );
-        let sigma_2_evals = Evaluations::from_vec_and_domain(
-            domain_n.fft(&sigma_2_poly),
-            domain_n,
-        );
-        let sigma_3_evals = Evaluations::from_vec_and_domain(
-            domain_n.fft(&sigma_3_poly),
-            domain_n,
+        let z = permutation_key.compute_z_poly(
+            prover.domain_n,
+            prover.domain_4n,
+            w_0,
+            w_1,
+            w_2,
+            w_3,
+            &msg.beta,
+            &msg.gamma,
+            &prover.ks,
         );
 
-        let mut z_evals = Vec::<F>::with_capacity(domain_n.size());
-        let mut acc = F::one();
+        let second_oracles = SecondOracles {
+            z: LabeledPolynomial::new_owned("z".to_string(), z.0.clone()),
+        };
+        prover.z = Some(z);
 
-        Evaluations::from_vec_and_domain(z_evals, domain_n).interpolate()
+        Ok((prover, second_oracles))
     }
 }

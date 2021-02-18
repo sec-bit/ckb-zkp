@@ -1,7 +1,6 @@
 use ark_ff::FftField as Field;
 use ark_poly::{
-    univariate::DensePolynomial as Polynomial, Evaluations,
-    GeneralEvaluationDomain,
+    univariate::DensePolynomial as Polynomial, GeneralEvaluationDomain,
 };
 
 use crate::Vec;
