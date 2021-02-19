@@ -9,8 +9,12 @@ mod permutation;
 
 pub struct ProverKey<F: Field> {
     n: usize,
+
     arithmetic: arithmetic::ProverKey<F>,
     permutation: permutation::ProverKey<F>,
+
+    domain_n: GeneralEvaluationDomain<F>,
+    domain_4n: GeneralEvaluationDomain<F>,
 }
 
 impl<F: Field> Composer<F> {
@@ -111,8 +115,6 @@ impl<F: Field> Composer<F> {
                     selectors.q_arith,
                     q_arith_evals_ext,
                 ),
-                domain_n,
-                domain_4n,
             },
             permutation: permutation::ProverKey {
                 sigma_0: (
@@ -135,10 +137,9 @@ impl<F: Field> Composer<F> {
                     selectors.sigma_3,
                     sigma_3_evals_ext,
                 ),
-
-                domain_n,
-                domain_4n,
             },
+            domain_n,
+            domain_4n,
         })
     }
 }

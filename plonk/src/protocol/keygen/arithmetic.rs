@@ -1,7 +1,11 @@
 use ark_ff::FftField as Field;
 use ark_poly::{
-    univariate::DensePolynomial as Polynomial, GeneralEvaluationDomain,
+    univariate::DensePolynomial as Polynomial, EvaluationDomain,
 };
+use ark_std::cfg_into_iter;
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 use crate::Vec;
 
@@ -15,34 +19,62 @@ pub struct ProverKey<F: Field> {
     pub q_c: (Polynomial<F>, Vec<F>, Vec<F>),
 
     pub q_arith: (Polynomial<F>, Vec<F>, Vec<F>),
-
-    pub domain_n: GeneralEvaluationDomain<F>,
-    pub domain_4n: GeneralEvaluationDomain<F>,
 }
 
 impl<F: Field> ProverKey<F> {
-    pub fn compute_eval_i(
+    pub(crate) fn compute_quotient(
         &self,
-        index: usize,
-        w_0_i: &F,
-        w_1_i: &F,
-        w_2_i: &F,
-        w_3_i: &F,
-    ) -> F {
-        let q_0_i = &self.q_0.1[index];
-        let q_1_i = &self.q_1.1[index];
-        let q_2_i = &self.q_2.1[index];
-        let q_3_i = &self.q_3.1[index];
-        let q_m_i = &self.q_m.1[index];
-        let q_c_i = &self.q_c.1[index];
-        let q_arith_i = &self.q_arith.1[index];
+        domain_4n: impl EvaluationDomain<F>,
+        w_0: &[F],
+        w_1: &[F],
+        w_2: &[F],
+        w_3: &[F],
+        factor: &F,
+    ) -> Vec<F> {
+        let size = domain_4n.size();
+        cfg_into_iter!((0..size))
+            .map(|i| {
+                *factor
+                    * Self::evaluate(
+                        &w_0[i],
+                        &w_1[i],
+                        &w_2[i],
+                        &w_3[i],
+                        &self.q_0.2[i],
+                        &self.q_1.2[i],
+                        &self.q_2.2[i],
+                        &self.q_3.2[i],
+                        &self.q_m.2[i],
+                        &self.q_c.2[i],
+                        &self.q_arith.2[i],
+                    )
+            })
+            .collect()
+    }
 
-        (*q_arith_i)
-            * ((*q_0_i) * w_0_i
-                + (*q_1_i) * w_1_i
-                + (*q_2_i) * w_2_i
-                + (*q_3_i) * w_3_i
-                + (*q_m_i) * w_1_i * w_2_i
-                + (*q_c_i))
+    fn evaluate(
+        w_0: &F,
+        w_1: &F,
+        w_2: &F,
+        w_3: &F,
+        q_0: &F,
+        q_1: &F,
+        q_2: &F,
+        q_3: &F,
+        q_m: &F,
+        q_c: &F,
+        q_arith: &F,
+    ) -> F {
+        let zero = F::zero();
+        if q_arith.is_zero() {
+            F::zero()
+        } else {
+            (*q_0) * w_0
+                + (*q_1) * w_1
+                + (*q_2) * w_2
+                + (*q_3) * w_3
+                + (*q_m) * w_1 * w_2
+                + (*q_c)
+        }
     }
 }
