@@ -1,7 +1,11 @@
 use ark_ff::FftField as Field;
 use ark_poly::{univariate::DensePolynomial, Polynomial};
 
-use crate::Cow;
+use crate::{Cow, Map, Set};
+
+pub type Evaluations<F> = Map<(String, F), F>;
+
+pub type QuerySet<F> = Set<(String, F)>;
 
 pub struct LabeledPolynomial<'a, F: Field> {
     polynomial: Cow<'a, DensePolynomial<F>>,
