@@ -1,8 +1,12 @@
 use ark_ff::FftField as Field;
 use ark_poly::{
     univariate::DensePolynomial as Polynomial, EvaluationDomain,
-    Evaluations, GeneralEvaluationDomain,
+    Evaluations, GeneralEvaluationDomain, UVPolynomial,
 };
+use ark_std::cfg_iter;
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 use crate::composer::Composer;
 use crate::protocol::keygen::ProverKey;
@@ -97,10 +101,10 @@ impl<F: Field> Prover<F> {
                 .interpolate();
 
         let domain_4n = prover.domain_4n;
-        let w_0_evals_ext = domain_4n.fft(&w_0_poly);
-        let w_1_evals_ext = domain_4n.fft(&w_1_poly);
-        let w_2_evals_ext = domain_4n.fft(&w_2_poly);
-        let w_3_evals_ext = domain_4n.fft(&w_3_poly);
+        let w_0_evals_ext = domain_4n.coset_fft(&w_0_poly);
+        let w_1_evals_ext = domain_4n.coset_fft(&w_1_poly);
+        let w_2_evals_ext = domain_4n.coset_fft(&w_2_poly);
+        let w_3_evals_ext = domain_4n.coset_fft(&w_3_poly);
 
         let first_oracles = FirstOracles {
             w_0: LabeledPolynomial::new_owned(
@@ -175,7 +179,7 @@ impl<F: Field> Prover<F> {
         let alpha_2 = alpha.square();
 
         let arithmetic_key = prover.pk.get_arithmetic_key();
-        let t_0 = arithmetic_key.compute_quotient(
+        let q_0 = arithmetic_key.compute_quotient(
             prover.domain_4n,
             w_0,
             w_1,
@@ -185,7 +189,7 @@ impl<F: Field> Prover<F> {
         );
 
         let permutation_key = prover.pk.get_permutation_key();
-        let t_1 = permutation_key.compute_quotient_identity(
+        let q_1 = permutation_key.compute_quotient_identity(
             prover.domain_4n,
             w_0,
             w_1,
@@ -197,7 +201,7 @@ impl<F: Field> Prover<F> {
             &prover.ks,
             &alpha_2,
         );
-        let t_2 = permutation_key.compute_quotient_copy(
+        let q_2 = permutation_key.compute_quotient_copy(
             prover.domain_4n,
             w_0,
             w_1,
@@ -209,7 +213,38 @@ impl<F: Field> Prover<F> {
             &alpha_2,
         );
 
+        let t: Vec<_> = cfg_iter!(q_0)
+            .zip(&q_1)
+            .zip(&q_2)
+            .zip(prover.pk.get_vanishing_inverse())
+            .map(|(((t_0, t_1), t_2), v)| (*t_0 + t_1 + t_2) * v)
+            .collect();
+        let t_poly = Polynomial::from_coefficients_vec(
+            prover.domain_4n.coset_ifft(&t),
+        );
+        let (t_0_poly, t_1_poly, t_2_poly, t_3_poly) =
+            Self::quad_split(prover.domain_n.size(), t_poly);
+
+        let third_oracles = ThirdOracles {
+            t_0: LabeledPolynomial::new_owned("t_0".to_string(), t_0_poly),
+            t_1: LabeledPolynomial::new_owned("t_1".to_string(), t_1_poly),
+            t_2: LabeledPolynomial::new_owned("t_2".to_string(), t_2_poly),
+            t_3: LabeledPolynomial::new_owned("t_3".to_string(), t_3_poly),
+        };
+
         prover.alpha = Some(*alpha);
-        Err(Error::Other)
+        Ok((prover, third_oracles))
+    }
+
+    fn quad_split(
+        n: usize,
+        poly: Polynomial<F>,
+    ) -> (Polynomial<F>, Polynomial<F>, Polynomial<F>, Polynomial<F>) {
+        (
+            Polynomial::from_coefficients_vec(poly[0..n].to_vec()),
+            Polynomial::from_coefficients_vec(poly[n..2 * n].to_vec()),
+            Polynomial::from_coefficients_vec(poly[2 * n..3 * n].to_vec()),
+            Polynomial::from_coefficients_vec(poly[3 * n..].to_vec()),
+        )
     }
 }

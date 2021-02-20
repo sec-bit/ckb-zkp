@@ -1,5 +1,12 @@
 use ark_ff::FftField as Field;
-use ark_poly::{EvaluationDomain, Evaluations, GeneralEvaluationDomain};
+use ark_poly::{
+    univariate::DensePolynomial as Polynomial, EvaluationDomain,
+    Evaluations, GeneralEvaluationDomain, UVPolynomial,
+};
+use ark_std::cfg_into_iter;
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 use crate::composer::Composer;
 use crate::Error;
@@ -12,6 +19,8 @@ pub struct ProverKey<F: Field> {
 
     arithmetic: arithmetic::ProverKey<F>,
     permutation: permutation::ProverKey<F>,
+
+    vanishing_inverse: Vec<F>,
 
     domain_n: GeneralEvaluationDomain<F>,
     domain_4n: GeneralEvaluationDomain<F>,
@@ -84,20 +93,26 @@ impl<F: Field> Composer<F> {
         )
         .interpolate();
 
-        let q_0_evals_ext = domain_4n.fft(&q_0_poly);
-        let q_1_evals_ext = domain_4n.fft(&q_1_poly);
-        let q_2_evals_ext = domain_4n.fft(&q_2_poly);
-        let q_3_evals_ext = domain_4n.fft(&q_3_poly);
+        let q_0_evals_ext = domain_4n.coset_fft(&q_0_poly);
+        let q_1_evals_ext = domain_4n.coset_fft(&q_1_poly);
+        let q_2_evals_ext = domain_4n.coset_fft(&q_2_poly);
+        let q_3_evals_ext = domain_4n.coset_fft(&q_3_poly);
 
-        let q_m_evals_ext = domain_4n.fft(&q_m_poly);
-        let q_c_evals_ext = domain_4n.fft(&q_c_poly);
+        let q_m_evals_ext = domain_4n.coset_fft(&q_m_poly);
+        let q_c_evals_ext = domain_4n.coset_fft(&q_c_poly);
 
-        let q_arith_evals_ext = domain_4n.fft(&q_arith_poly);
+        let q_arith_evals_ext = domain_4n.coset_fft(&q_arith_poly);
 
-        let sigma_0_evals_ext = domain_4n.fft(&sigma_0_poly);
-        let sigma_1_evals_ext = domain_4n.fft(&sigma_1_poly);
-        let sigma_2_evals_ext = domain_4n.fft(&sigma_2_poly);
-        let sigma_3_evals_ext = domain_4n.fft(&sigma_3_poly);
+        let sigma_0_evals_ext = domain_4n.coset_fft(&sigma_0_poly);
+        let sigma_1_evals_ext = domain_4n.coset_fft(&sigma_1_poly);
+        let sigma_2_evals_ext = domain_4n.coset_fft(&sigma_2_poly);
+        let sigma_3_evals_ext = domain_4n.coset_fft(&sigma_3_poly);
+
+        let vanishing_poly = Self::vanishing_poly(domain_n.size());
+        let vanishing = domain_4n.coset_fft(&vanishing_poly);
+        let vanishing_inverse: Vec<_> = cfg_into_iter!(vanishing)
+            .map(|v| v.inverse().unwrap())
+            .collect();
 
         Ok(ProverKey {
             n,
@@ -138,9 +153,17 @@ impl<F: Field> Composer<F> {
                     sigma_3_evals_ext,
                 ),
             },
+            vanishing_inverse,
             domain_n,
             domain_4n,
         })
+    }
+
+    fn vanishing_poly(domain_size: usize) -> Polynomial<F> {
+        let mut coeffs = vec![F::zero(); domain_size + 1];
+        coeffs[0] = -F::one();
+        coeffs[domain_size] = F::one();
+        Polynomial::from_coefficients_vec(coeffs)
     }
 }
 
@@ -155,5 +178,9 @@ impl<F: Field> ProverKey<F> {
 
     pub fn get_permutation_key(&self) -> &permutation::ProverKey<F> {
         &self.permutation
+    }
+
+    pub fn get_vanishing_inverse(&self) -> &[F] {
+        &self.vanishing_inverse
     }
 }
