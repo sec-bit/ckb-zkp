@@ -5,7 +5,7 @@ use zkp_r1cs::{ConstraintSystem, SynthesisError, Variable};
 
 use crate::Vec;
 
-use crate::commitment::abstract_hash::{AbstractHash, AbstractHashOutput};
+use crate::hashes::abstract_hash::{AbstractHash, AbstractHashOutput};
 use crate::merkletree::cbmt::TreeIndex;
 
 pub struct MerkleProofGadget<I: TreeIndex, F: PrimeField, H: AbstractHash<F>> {
@@ -123,8 +123,8 @@ mod tests {
 
     use super::super::cbmt::*;
     use super::*;
-    use crate::commitment::mimc::{hash, AbstractHashMimc, AbstractHashMimcOutput};
-    use crate::commitment::sha256::{AbstractHashSha256, AbstractHashSha256Output};
+    use crate::hashes::mimc::{hash, AbstractHashMimc, AbstractHashMimcOutput};
+    use crate::hashes::sha256::{AbstractHashSha256, AbstractHashSha256Output};
     use crate::test_constraint_system::TestConstraintSystem;
 
     struct MergeSha256;
