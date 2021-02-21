@@ -1,8 +1,11 @@
+use ark_bls12_381::Bls12_381 as E;
 use ark_ff::{One, Zero};
-use rand::prelude::*;
+use ark_std::test_rng;
 use zkp_curve::Curve;
-use zkp_curve25519::Curve25519 as E;
-use zkp_libra::{circuit::Circuit, libra_zk_linear_gkr::ZKLinearGKRProof, params::Parameters};
+use zkp_libra::{
+    circuit::Circuit, libra_linear_gkr::LinearGKRProof, libra_zk_linear_gkr::ZKLinearGKRProof,
+    params::Parameters,
+};
 
 /// circuit structure
 ///layer3: gate0 = (add, 0, 1), gate1 = (add, 1, 2), gate2 = (mul, 2, 3), gate3 = (mul, 1, 3)
@@ -53,8 +56,28 @@ fn prepare_construct_circuit<G: Curve>() -> (Vec<G::Fr>, Vec<G::Fr>, Vec<Vec<(u8
     (inputs, witnesses, layers)
 }
 
-pub fn libra_zk_linear_gkr() {
-    let rng = &mut thread_rng();
+#[test]
+fn test_libra_linear_gkr() {
+    println!("start linear_gkr...");
+    let (inputs, witnesses, layers) = prepare_construct_circuit::<E>();
+    println!("prepare for constructing circuit...ok");
+
+    let circuit = Circuit::new(inputs.len(), witnesses.len(), &layers);
+    println!("construct circuit...ok");
+
+    let (proof, output) = LinearGKRProof::<E>::prover(&circuit, &inputs, &witnesses);
+    println!("generate proof...ok");
+
+    let mut inputs2 = witnesses.clone();
+    inputs2.extend(&inputs);
+    let result = proof.verify(&circuit, &output, &inputs2);
+    println!("verifier...{}", result);
+    assert!(result);
+}
+
+#[test]
+fn test_libra_zk_linear_gkr() {
+    let rng = &mut test_rng();
     println!("start zk linear gkr...");
 
     let (inputs, witnesses, layers) = prepare_construct_circuit::<E>();
@@ -67,13 +90,10 @@ pub fn libra_zk_linear_gkr() {
     println!("construct circuit...ok");
 
     let (proof, output) =
-        ZKLinearGKRProof::prover::<_>(&params, &circuit, &inputs, &witnesses, rng);
+        ZKLinearGKRProof::<E>::prover::<_>(&params, &circuit, &inputs, &witnesses, rng);
     println!("generate proof...ok");
 
     let result = proof.verify(&params, &circuit, &output, &inputs);
     println!("verifier...{}", result);
-}
-
-pub fn main() {
-    libra_zk_linear_gkr();
+    assert!(result);
 }

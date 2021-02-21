@@ -1,10 +1,15 @@
 use ark_bls12_381::{Bls12_381 as E, Fr};
-use ark_ff::{One, PrimeField};
-use rand::prelude::*;
-use std::time::Instant;
+//use zkp_curve25519::{Curve25519 as E, Fr};
+use ark_ff::One;
+use ark_ff::PrimeField;
+use ark_std::test_rng;
 use zkp_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 use zkp_spartan::{
-    prover::create_nizk_proof, r1cs::generate_r1cs, setup::*, verify::verify_nizk_proof,
+    prover::{create_nizk_proof, create_snark_proof},
+    r1cs::generate_r1cs,
+    setup::*,
+    spark::encode,
+    verify::{verify_nizk_proof, verify_snark_proof},
 };
 
 struct TestDemo<F: PrimeField> {
@@ -110,8 +115,9 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for TestDemo<F> {
     }
 }
 
-pub fn spartan_nizk() {
-    let rng = &mut thread_rng();
+#[test]
+fn test_nizk_spartan_bls12_381() {
+    let rng = &mut test_rng();
     let c = TestDemo::<Fr> {
         lhs: None,
         rhs: None,
@@ -120,7 +126,6 @@ pub fn spartan_nizk() {
     };
 
     println!("Generate parameters...");
-    let start = Instant::now();
     let r1cs = generate_r1cs::<E, _>(c).unwrap();
     let params =
         generate_setup_nizk_parameters::<E, _>(rng, r1cs.num_aux, r1cs.num_inputs).unwrap();
@@ -130,28 +135,62 @@ pub fn spartan_nizk() {
         ohs: Some(Fr::one()),
         phs: Some(Fr::one()),
     };
-    let total_setup = start.elapsed();
-    println!("SPARTAN NIZK SETUP TIME: {:?}", total_setup);
 
     // let mut transcript = Transcript::new(b"spartan nizk");
     println!("Creating proof...");
-    let start = Instant::now();
     let proof = create_nizk_proof(&params, &r1cs, c1, rng).unwrap();
-    let total_setup = start.elapsed();
-    println!("SPARTAN NIZK CREATE PROOF TIME: {:?}", total_setup);
 
     println!("Verify proof...");
-    let start = Instant::now();
     // let mut transcript = Transcript::new(b"spartan nizk");
     let result = verify_nizk_proof::<E>(&params, &r1cs, &vec![Fr::one()], &proof).unwrap();
 
     assert!(result);
-    let total_setup = start.elapsed();
-    println!("SPARTAN NIZK VERIFY PROOF TIME: {:?}", total_setup);
 }
 
-fn main() {
-    println!("begin spartan nizk bls12_381...");
-    spartan_nizk();
-    println!("end spartan nizk bls12_381...");
+#[test]
+fn test_snark_spartan_bls12_381() {
+    println!("\n spartan snark...");
+    let rng = &mut test_rng();
+    let c = TestDemo::<Fr> {
+        lhs: None,
+        rhs: None,
+        ohs: None,
+        phs: None,
+    };
+
+    println!("[snark_spartan]Generate parameters...");
+    let r1cs = generate_r1cs::<E, _>(c).unwrap();
+
+    let params = generate_setup_snark_parameters::<E, _>(
+        rng,
+        r1cs.num_aux,
+        r1cs.num_inputs,
+        r1cs.num_constraints,
+    )
+    .unwrap();
+
+    let c1 = TestDemo::<Fr> {
+        lhs: Some(Fr::one()),
+        rhs: Some(Fr::one() + &Fr::one()),
+        ohs: Some(Fr::one()),
+        phs: Some(Fr::one()),
+    };
+    println!("[snark_spartan]Generate parameters...ok");
+
+    println!("[snark_spartan]Encode...");
+    let (encode, encode_commit) = encode::<E, _>(&params, &r1cs, rng).unwrap();
+    println!("[snark_spartan]Encode...ok");
+
+    // let mut transcript = Transcript::new(b"spartan snark");
+    println!("[snark_spartan]Creating proof...");
+    let proof = create_snark_proof(&params, &r1cs, c1, &encode, rng).unwrap();
+    println!("[snark_spartan]Creating proof...ok");
+
+    println!("[snark_spartan]Verify proof...");
+    // let mut transcript = Transcript::new(b"spartan snark");
+    let result =
+        verify_snark_proof::<E>(&params, &r1cs, &vec![Fr::one()], &proof, &encode_commit).is_ok();
+    println!("[snark_spartan]Verify proof...ok");
+
+    assert!(result);
 }
