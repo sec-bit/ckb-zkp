@@ -1,16 +1,12 @@
 use ark_bls12_381::{Bls12_381 as E, Fr};
-use ark_ff::{BitIteratorBE, PrimeField};
+use ark_ff::{BitIteratorBE, One, PrimeField};
 use rand::prelude::*;
-use std::time::{Duration, Instant};
-use zkp_gadgets::commitment::rescue::RescueConstant;
-use zkp_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, Variable};
-use zkp_spartan::{
-    prover::{create_nizk_proof, create_snark_proof},
-    r1cs::generate_r1cs,
-    setup::*,
-    spark::encode,
-    verify::{verify_nizk_proof, verify_snark_proof},
+use std::time::Instant;
+use zkp_clinkv2::kzg10::{
+    create_random_proof, verify_proof, ProveAssignment, VerifyAssignment, KZG10,
 };
+use zkp_clinkv2::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, Variable};
+use zkp_gadgets::hashes::rescue::RescueConstant;
 
 // Hash Rescue utilizes Sponge Construction
 // r, bitrate; c, capacity; M, state value, equal to r + c;
@@ -48,7 +44,7 @@ where
             state[j] = state[j].pow(af);
         }
         // matrix multiplication
-        let mut tmp2 = [F::zero(); M];
+        let mut tmp2 = [F::one(); M];
         for j in 0..M {
             for k in 0..M {
                 let mut t2 = rc.mds[j][k];
@@ -63,7 +59,7 @@ where
 }
 
 pub fn rescue_hash<F: PrimeField>(xl: F, xr: F, constants: &RescueConstant<F>) -> F {
-    let mut state = [xl, xr, F::zero()];
+    let mut state = [xl, xr, F::one()];
     block_cipher(&mut state, &constants);
 
     // c == 1
@@ -86,23 +82,29 @@ impl<'a, F: PrimeField> ConstraintSynthesizer<F> for RescueDemo<'a, F> {
     fn generate_constraints<CS: ConstraintSystem<F>>(
         self,
         cs: &mut CS,
+        index: usize,
     ) -> Result<(), SynthesisError> {
+        cs.alloc_input(|| "", || Ok(F::one()), index)?;
+
         let xl_value = self.xl;
         let xl = cs.alloc(
             || "preimage xl",
             || xl_value.ok_or(SynthesisError::AssignmentMissing),
+            index,
         )?;
 
         let xr_value = self.xr;
         let xr = cs.alloc(
             || "preimage xl",
             || xr_value.ok_or(SynthesisError::AssignmentMissing),
+            index,
         )?;
 
-        let three_value: Option<F> = Some(F::zero());
+        let three_value: Option<F> = Some(F::one());
         let three = cs.alloc(
             || "preimage tmpf",
             || three_value.ok_or(SynthesisError::AssignmentMissing),
+            index,
         )?;
 
         let mut state_value = [xl_value, xr_value, three_value];
@@ -118,14 +120,17 @@ impl<'a, F: PrimeField> ConstraintSynthesizer<F> for RescueDemo<'a, F> {
             let tmp = cs.alloc(
                 || "tmp",
                 || tmp_value.ok_or(SynthesisError::AssignmentMissing),
+                index,
             )?;
 
-            cs.enforce(
-                || "tmp = (state[i] + Ci) * 1",
-                |lc| lc + state[i] + (self.constants.constants[0][i], CS::one()),
-                |lc| lc + (F::one(), CS::one()),
-                |lc| lc + tmp,
-            );
+            if index == 0 {
+                cs.enforce(
+                    || "tmp = (state[i] + Ci) * 1",
+                    |lc| lc + state[i] + (self.constants.constants[0][i], CS::one()),
+                    |lc| lc + (F::one(), CS::one()),
+                    |lc| lc + tmp,
+                );
+            }
 
             state_value[i] = tmp_value;
             state[i] = tmp;
@@ -140,17 +145,18 @@ impl<'a, F: PrimeField> ConstraintSynthesizer<F> for RescueDemo<'a, F> {
             }
 
             for j in 0..M {
-                let tuple = pow_with_constraint(&state_value[j], &state[j], af, cs)?;
+                let tuple = pow_with_constraint(&state_value[j], &state[j], af, cs, index)?;
                 state_value[j] = tuple.0;
                 state[j] = tuple.1;
             }
 
-            let mut tmp2_value = [Some(F::zero()); M];
+            let mut tmp2_value = [Some(F::one()); M];
             let mut tmp2 = Vec::with_capacity(3);
             for j in 0..M {
                 tmp2.push(cs.alloc(
                     || "tmp2[j]",
                     || tmp2_value[j].ok_or(SynthesisError::AssignmentMissing),
+                    index,
                 )?);
             }
 
@@ -160,6 +166,7 @@ impl<'a, F: PrimeField> ConstraintSynthesizer<F> for RescueDemo<'a, F> {
                     let tmp3 = cs.alloc(
                         || "tmp3",
                         || tmp3_value.ok_or(SynthesisError::AssignmentMissing),
+                        index,
                     )?;
 
                     let new_tmp_value = tmp3_value.map(|mut e| {
@@ -171,14 +178,17 @@ impl<'a, F: PrimeField> ConstraintSynthesizer<F> for RescueDemo<'a, F> {
                     let new_tmp = cs.alloc(
                         || "new tmp",
                         || new_tmp_value.ok_or(SynthesisError::AssignmentMissing),
+                        index,
                     )?;
 
-                    cs.enforce(
-                        || "new_tmp - tmp2[j] = tmp3_value * state_value[k]",
-                        |lc| lc + tmp3,
-                        |lc| lc + state[k],
-                        |lc| lc + new_tmp - tmp2[j],
-                    );
+                    if index == 0 {
+                        cs.enforce(
+                            || "new_tmp - tmp2[j] = tmp3_value * state_value[k]",
+                            |lc| lc + tmp3,
+                            |lc| lc + state[k],
+                            |lc| lc + new_tmp - tmp2[j],
+                        );
+                    }
 
                     tmp2_value[j] = new_tmp_value;
                     tmp2[j] = new_tmp;
@@ -193,14 +203,17 @@ impl<'a, F: PrimeField> ConstraintSynthesizer<F> for RescueDemo<'a, F> {
                 let tmp = cs.alloc(
                     || "tmp",
                     || tmp_value.ok_or(SynthesisError::AssignmentMissing),
+                    index,
                 )?;
 
-                cs.enforce(
-                    || "tmp = tmp2[j] + constants[i+1][j]",
-                    |lc| lc + tmp2[j] + (self.constants.constants[i + 1][j], CS::one()),
-                    |lc| lc + (F::one(), CS::one()),
-                    |lc| lc + tmp,
-                );
+                if index == 0 {
+                    cs.enforce(
+                        || "tmp = tmp2[j] + constants[i+1][j]",
+                        |lc| lc + tmp2[j] + (self.constants.constants[i + 1][j], CS::one()),
+                        |lc| lc + (F::one(), CS::one()),
+                        |lc| lc + tmp,
+                    );
+                }
 
                 state[j] = tmp;
                 state_value[j] = tmp_value;
@@ -210,14 +223,17 @@ impl<'a, F: PrimeField> ConstraintSynthesizer<F> for RescueDemo<'a, F> {
         let tmp = cs.alloc_input(
             || "input ",
             || state_value[0].ok_or(SynthesisError::AssignmentMissing),
+            index,
         )?;
 
-        cs.enforce(
-            || "tmp = tmp2[j] + constants[i+1][j]",
-            |lc| lc + (F::one(), CS::one()),
-            |lc| lc + state[0],
-            |lc| lc + tmp,
-        );
+        if index == 0 {
+            cs.enforce(
+                || "tmp = tmp2[j] + constants[i+1][j]",
+                |lc| lc + (F::one(), CS::one()),
+                |lc| lc + state[0],
+                |lc| lc + tmp,
+            );
+        }
         Ok(())
     }
 }
@@ -227,11 +243,13 @@ fn pow_with_constraint<F: PrimeField, CS: ConstraintSystem<F>, S: AsRef<[u64]>>(
     state: &Variable,
     exp: S,
     cs: &mut CS,
+    index: usize,
 ) -> Result<(Option<F>, Variable), SynthesisError> {
     let mut res_value: Option<F> = Some(F::one());
     let mut res = cs.alloc(
         || "res",
         || res_value.ok_or(SynthesisError::AssignmentMissing),
+        index,
     )?;
 
     let mut found_one = false;
@@ -252,14 +270,17 @@ fn pow_with_constraint<F: PrimeField, CS: ConstraintSystem<F>, S: AsRef<[u64]>>(
         let tmp = cs.alloc(
             || "tmp",
             || tmp_value.ok_or(SynthesisError::AssignmentMissing),
+            index,
         )?;
 
-        cs.enforce(
-            || "tmp = res * res",
-            |lc| lc + res,
-            |lc| lc + res,
-            |lc| lc + tmp,
-        );
+        if index == 0 {
+            cs.enforce(
+                || "tmp = res * res",
+                |lc| lc + res,
+                |lc| lc + res,
+                |lc| lc + tmp,
+            );
+        }
 
         res_value = tmp_value;
         res = tmp;
@@ -271,14 +292,17 @@ fn pow_with_constraint<F: PrimeField, CS: ConstraintSystem<F>, S: AsRef<[u64]>>(
             let tmp = cs.alloc(
                 || "tmp",
                 || tmp_value.ok_or(SynthesisError::AssignmentMissing),
+                index,
             )?;
 
-            cs.enforce(
-                || "tmp = res * state",
-                |lc| lc + res,
-                |lc| lc + *state,
-                |lc| lc + tmp,
-            );
+            if index == 0 {
+                cs.enforce(
+                    || "tmp = res * state",
+                    |lc| lc + res,
+                    |lc| lc + *state,
+                    |lc| lc + tmp,
+                );
+            }
             res_value = tmp_value;
             res = tmp;
         }
@@ -287,159 +311,72 @@ fn pow_with_constraint<F: PrimeField, CS: ConstraintSystem<F>, S: AsRef<[u64]>>(
     Ok((res_value, res))
 }
 
-fn rescue_snark_spartan() {
-    println!("\n spartan snark...");
-    // This may not be cryptographically safe, use
-    // `OsRng` (for example) in production software.
-    let rng = &mut thread_rng();
-
-    let constants = RescueConstant::<Fr>::new_fp255();
-
-    println!("Creating parameters...");
-    let xl: Fr = rng.gen();
-    let xr: Fr = rng.gen();
-
-    let c = RescueDemo::<Fr> {
-        xl: Some(xl),
-        xr: Some(xr),
-        constants: &constants,
-    };
-
-    println!("[snark_spartan]Generate parameters...");
-    let r1cs = generate_r1cs::<E, _>(c).unwrap();
-
-    let params = generate_setup_snark_parameters::<E, _>(
-        rng,
-        r1cs.num_aux,
-        r1cs.num_inputs,
-        r1cs.num_constraints,
-    )
-    .unwrap();
-    println!("[snark_spartan]Generate parameters...ok");
-
-    println!("[snark_spartan]Encode...");
-    let (encode, encode_commit) = encode::<E, _>(&params, &r1cs, rng).unwrap();
-    println!("[snark_spartan]Encode...ok");
-
-    println!("Creating proofs...");
-
-    // let's benchmark stuff!
-    const SAMPLES: u32 = 3;
-    let mut total_proving = Duration::new(0, 0);
-    let mut total_verifying = Duration::new(0, 0);
-
-    for _ in 0..SAMPLES {
-        let xl: Fr = rng.gen();
-        let xr: Fr = rng.gen();
-        let image = rescue_hash(xl, xr, &constants);
-        println!("xl {} xr {} \n hash: {}", xl, xr, image);
-        {
-            let start = Instant::now();
-            let c = RescueDemo {
-                xl: Some(xl),
-                xr: Some(xr),
-                constants: &constants,
-            };
-
-            let proof = create_snark_proof(&params, &r1cs, c, &encode, rng).unwrap();
-            println!("[snark_spartan]Creating proof...ok");
-            total_proving += start.elapsed();
-
-            let start = Instant::now();
-            println!("[snark_spartan]Verify proof...");
-            let result = verify_snark_proof::<E>(
-                &params,
-                &r1cs,
-                &vec![image].to_vec(),
-                &proof,
-                &encode_commit,
-            )
-            .is_ok();
-            assert!(result);
-            total_verifying += start.elapsed();
-        }
-    }
-    let proving_avg = total_proving / SAMPLES;
-    let proving_avg =
-        proving_avg.subsec_nanos() as f64 / 1_000_000_000f64 + (proving_avg.as_secs() as f64);
-
-    let verifying_avg = total_verifying / SAMPLES;
-    let verifying_avg =
-        verifying_avg.subsec_nanos() as f64 / 1_000_000_000f64 + (verifying_avg.as_secs() as f64);
-
-    println!("Average proving time: {:?} seconds", proving_avg);
-    println!("Average verifying time: {:?} seconds", verifying_avg)
-}
-
-fn rescue_nizk_spartan() {
-    println!("\n spartan snark...");
-    // This may not be cryptographically safe, use
-    // `OsRng` (for example) in production software.
-    let rng = &mut thread_rng();
-
-    let constants = RescueConstant::<Fr>::new_fp255();
-
-    println!("Creating parameters...");
-    let xl: Fr = rng.gen();
-    let xr: Fr = rng.gen();
-
-    let c = RescueDemo::<Fr> {
-        xl: Some(xl),
-        xr: Some(xr),
-        constants: &constants,
-    };
-
-    let r1cs = generate_r1cs::<E, _>(c).unwrap();
-
-    let params =
-        generate_setup_nizk_parameters::<E, _>(rng, r1cs.num_aux, r1cs.num_inputs).unwrap();
-    println!("[nizk_spartan]Generate parameters...ok");
-
-    println!("Creating proofs...");
-
-    // let's benchmark stuff!
-    const SAMPLES: u32 = 3;
-    let mut total_proving = Duration::new(0, 0);
-    let mut total_verifying = Duration::new(0, 0);
-
-    for _ in 0..SAMPLES {
-        let xl: Fr = rng.gen();
-        let xr: Fr = rng.gen();
-        let image = rescue_hash(xl, xr, &constants);
-        println!("xl {} xr {} \n hash: {}", xl, xr, image);
-        {
-            let start = Instant::now();
-            let c = RescueDemo {
-                xl: Some(xl),
-                xr: Some(xr),
-                constants: &constants,
-            };
-
-            let proof = create_nizk_proof(&params, &r1cs, c, rng).unwrap();
-            println!("[nizk_spartan]Creating proof...ok");
-            total_proving += start.elapsed();
-
-            let start = Instant::now();
-            println!("[nizk_spartan]Verify proof...");
-            let result =
-                verify_nizk_proof::<E>(&params, &r1cs, &vec![image].to_vec(), &proof).is_ok();
-            assert!(result);
-            total_verifying += start.elapsed();
-        }
-    }
-    let proving_avg = total_proving / SAMPLES;
-    let proving_avg =
-        proving_avg.subsec_nanos() as f64 / 1_000_000_000f64 + (proving_avg.as_secs() as f64);
-
-    let verifying_avg = total_verifying / SAMPLES;
-    let verifying_avg =
-        verifying_avg.subsec_nanos() as f64 / 1_000_000_000f64 + (verifying_avg.as_secs() as f64);
-
-    println!("Average proving time: {:?} seconds", proving_avg);
-    println!("Average verifying time: {:?} seconds", verifying_avg)
-}
-
 fn main() {
-    rescue_snark_spartan();
-    rescue_nizk_spartan();
+    println!("Creating parameters...");
+    let mut rng = &mut thread_rng();
+    const SAMPLES: usize = 8;
+    let constants = RescueConstant::<Fr>::new_fp255();
+
+    // Create parameters for our circuit
+    println!("rescue_clinkv2 setup:");
+    let start = Instant::now();
+    let degree: usize = SAMPLES.next_power_of_two();
+    let kzg10_pp = KZG10::<E>::setup(degree, false, &mut rng).unwrap();
+    let (kzg10_ck, kzg10_vk) = KZG10::<E>::trim(&kzg10_pp, degree).unwrap();
+    let setup_time = start.elapsed();
+
+    println!("rescue_clinkv2 prepare proof.");
+    let mut prover_pa = ProveAssignment::<E>::default();
+    let mut io: Vec<Vec<Fr>> = vec![];
+    let mut output: Vec<Fr> = vec![];
+    for i in 0..SAMPLES {
+        let xl: Fr = rng.gen();
+        let xr: Fr = rng.gen();
+        let image = rescue_hash(xl, xr, &constants);
+        output.push(image);
+        println!("xl {} xr {} \n hash: {}", xl, xr, image);
+        {
+            // Create an instance of our circuit (with the witness)
+            let c = RescueDemo {
+                xl: Some(xl),
+                xr: Some(xr),
+                constants: &constants,
+            };
+            c.generate_constraints(&mut prover_pa, i).unwrap();
+        }
+    }
+
+    let one = vec![Fr::one(); SAMPLES];
+    io.push(one);
+    io.push(output);
+
+    // Create a clinkv2 proof with our parameters.
+    println!("Create prove...");
+    let start = Instant::now();
+    let proof = create_random_proof(&prover_pa, &kzg10_ck, rng).unwrap();
+    let prove_time = start.elapsed();
+
+    // verify proof
+    println!("Start verify prepare...");
+    let start = Instant::now();
+    let mut verifier_pa = VerifyAssignment::<E>::default();
+
+    // Create an instance of our circuit (with the witness)
+    let xl: Fr = rng.gen();
+    let xr: Fr = rng.gen();
+    let verify_c = RescueDemo {
+        xl: Some(xl),
+        xr: Some(xr),
+        constants: &constants,
+    };
+    verify_c
+        .generate_constraints(&mut verifier_pa, 0usize)
+        .unwrap();
+
+    // Check the proof
+    assert!(verify_proof(&verifier_pa, &kzg10_vk, &proof, &io).unwrap());
+    let verify_time = start.elapsed();
+    println!("rescue_clinkv2 setup_time: {:?}", setup_time);
+    println!("rescue_clinkv2 create proof: {:?}", prove_time);
+    println!("rescue_clinkv2 verify proof: {:?}", verify_time);
 }

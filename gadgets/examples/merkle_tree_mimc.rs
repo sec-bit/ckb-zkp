@@ -2,7 +2,7 @@ use ark_bls12_381::{Bls12_381 as E, Fr};
 use ark_ff::{ToBytes, Zero};
 use rand::prelude::*;
 use std::time::Instant;
-use zkp_gadgets::commitment::mimc::{hash, AbstractHashMimc, AbstractHashMimcOutput};
+use zkp_gadgets::hashes::mimc::{hash, AbstractHashMimc, AbstractHashMimcOutput};
 use zkp_gadgets::merkletree::cbmt::{Merge, MerkleProof, CBMT};
 use zkp_gadgets::merkletree::cbmt_constraints::MerkleProofGadget;
 use zkp_groth16::{

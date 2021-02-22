@@ -26,3 +26,6 @@ blake2s_simd = "0.5"
 hex-literal = "0.3"
 ark-std = { git = "https://github.com/arkworks-rs/utils", default-features = false }
 ark-bls12-381 = { git = "https://github.com/arkworks-rs/curves", default-features = false, features = ["curve"] }
+zkp-groth16 = { path = "../groth16" }
+zkp-spartan = { path = "../spartan" }
+zkp-clinkv2 = { path = "../clinkv2" }

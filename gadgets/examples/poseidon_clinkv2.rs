@@ -6,7 +6,7 @@ use zkp_clinkv2::kzg10::{
     create_random_proof, verify_proof, ProveAssignment, VerifyAssignment, KZG10,
 };
 use zkp_clinkv2::r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, Variable};
-use zkp_gadgets::commitment::poseidon::PoseidonConstant;
+use zkp_gadgets::hashes::poseidon::PoseidonConstant;
 
 // Hash Poseidon utilizes Sponge Construction
 // r, bitrate; c, capacity; M, state value, equal to r + c;
