@@ -1,5 +1,5 @@
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
-use ark_std::cfg_iter;
+use ark_std::{cfg_iter, vec::Vec};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -7,7 +7,7 @@ use rayon::prelude::*;
 use core::marker::PhantomData;
 
 use crate::composer::{Field, Variable};
-use crate::{Error, Map, Vec};
+use crate::{Error, Map};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub(crate) enum Wire {

@@ -1,27 +1,57 @@
 use ark_ff::FftField as Field;
 use ark_poly::{
-    univariate::DensePolynomial as Polynomial, EvaluationDomain,
+    univariate::DensePolynomial, EvaluationDomain, Polynomial,
+    UVPolynomial,
 };
-use ark_std::cfg_into_iter;
+use ark_std::{cfg_into_iter, vec::Vec};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-use crate::Vec;
+use crate::scalar_mul;
 
 pub struct ProverKey<F: Field> {
-    pub q_0: (Polynomial<F>, Vec<F>, Vec<F>),
-    pub q_1: (Polynomial<F>, Vec<F>, Vec<F>),
-    pub q_2: (Polynomial<F>, Vec<F>, Vec<F>),
-    pub q_3: (Polynomial<F>, Vec<F>, Vec<F>),
+    pub q_0: (DensePolynomial<F>, Vec<F>, Vec<F>),
+    pub q_1: (DensePolynomial<F>, Vec<F>, Vec<F>),
+    pub q_2: (DensePolynomial<F>, Vec<F>, Vec<F>),
+    pub q_3: (DensePolynomial<F>, Vec<F>, Vec<F>),
 
-    pub q_m: (Polynomial<F>, Vec<F>, Vec<F>),
-    pub q_c: (Polynomial<F>, Vec<F>, Vec<F>),
+    pub q_m: (DensePolynomial<F>, Vec<F>, Vec<F>),
+    pub q_c: (DensePolynomial<F>, Vec<F>, Vec<F>),
 
-    pub q_arith: (Polynomial<F>, Vec<F>, Vec<F>),
+    pub q_arith: (DensePolynomial<F>, Vec<F>, Vec<F>),
 }
 
 impl<F: Field> ProverKey<F> {
+    pub(crate) fn compute_linearisation(
+        &self,
+        w_0_eval: &F,
+        w_1_eval: &F,
+        w_2_eval: &F,
+        w_3_eval: &F,
+        zeta: &F,
+        alpha: &F,
+    ) -> DensePolynomial<F> {
+        let q_0 = &self.q_0.0;
+        let q_1 = &self.q_1.0;
+        let q_2 = &self.q_2.0;
+        let q_3 = &self.q_3.0;
+        let q_m = &self.q_m.0;
+        let q_c = &self.q_c.0;
+        let q_arith = &self.q_arith.0;
+
+        let q_arith_eval = q_arith.evaluate(zeta);
+
+        let poly = scalar_mul(q_0, w_0_eval)
+            + scalar_mul(q_1, w_1_eval)
+            + scalar_mul(q_2, w_2_eval)
+            + scalar_mul(q_3, w_3_eval)
+            + scalar_mul(q_m, &(*w_1_eval * w_2_eval));
+        let poly = &poly + q_c;
+
+        scalar_mul(&poly, &(q_arith_eval * alpha))
+    }
+
     pub(crate) fn compute_quotient(
         &self,
         domain_4n: impl EvaluationDomain<F>,
@@ -29,12 +59,12 @@ impl<F: Field> ProverKey<F> {
         w_1: &[F],
         w_2: &[F],
         w_3: &[F],
-        factor: &F,
+        alpha: &F,
     ) -> Vec<F> {
         let size = domain_4n.size();
         cfg_into_iter!((0..size))
             .map(|i| {
-                *factor
+                *alpha
                     * Self::evaluate(
                         &w_0[i],
                         &w_1[i],

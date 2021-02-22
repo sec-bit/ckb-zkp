@@ -2,13 +2,13 @@ use ark_poly::{
     univariate::DensePolynomial as Polynomial, EvaluationDomain,
     Evaluations, GeneralEvaluationDomain,
 };
-use ark_std::cfg_iter;
+use ark_std::{cfg_iter, vec::Vec};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 use crate::composer::{Composer, Field};
-use crate::{Error, Map, Vec};
+use crate::{Error, Map};
 
 pub struct Selectors<F: Field> {
     pub q_0: Vec<F>,

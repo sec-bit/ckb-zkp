@@ -1,6 +1,7 @@
 use ark_ff::FftField as Field;
+use ark_std::vec::Vec;
 
-use crate::{Map, Vec};
+use crate::Map;
 
 mod permutation;
 use permutation::Permutation;

@@ -35,17 +35,18 @@ mod test {
             Fr::zero(),
             Fr::zero(),
         );
+
         // init
-        let p = Prover::init(&c, [Fr::one(), K1, K2, K3])?;
+        let mut p = Prover::init(&c, [Fr::one(), K1, K2, K3])?;
         let mut v = Verifier::init(&c)?;
         // first round
-        let (p, first_oracles) = Prover::first_round(p, &c)?;
+        let first_oracles = p.first_round(&c)?;
         let first_msg = v.first_round(rng)?;
         // second round
-        let (p, second_oracles) = Prover::second_round(p, &first_msg)?;
+        let second_oracles = p.second_round(&first_msg)?;
         let second_msg = v.second_round(rng)?;
         // third round
-        let (p, third_oracles) = Prover::third_round(p, &second_msg)?;
+        let third_oracles = p.third_round(&second_msg)?;
         let query_set = v.create_query_set(rng);
 
         Ok(true)

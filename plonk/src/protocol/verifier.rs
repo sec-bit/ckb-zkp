@@ -3,7 +3,7 @@ use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use rand::RngCore;
 
 use crate::composer::Composer;
-use crate::{Error, Evaluations, QuerySet, String};
+use crate::{Error, Evaluations, QuerySet};
 
 pub struct Verifier<F: Field> {
     domain_n: GeneralEvaluationDomain<F>,
@@ -80,7 +80,6 @@ impl<F: Field> Verifier<F> {
         query_set.insert(("z".into(), zeta));
         query_set.insert(("z_shifted".into(), zeta * g));
         query_set.insert(("t".into(), zeta));
-        query_set.insert(("r".into(), zeta));
 
         query_set
     }
@@ -111,7 +110,6 @@ impl<F: Field> Verifier<F> {
         let z = Self::get_eval(&evals, "z", &zeta)?;
         let z_shifted = Self::get_eval(&evals, "z_shifted", &(zeta * g))?;
 
-        let r = Self::get_eval(&evals, "r", &zeta)?;
         let t = Self::get_eval(&evals, "t", &zeta)?;
 
         Ok(false)
