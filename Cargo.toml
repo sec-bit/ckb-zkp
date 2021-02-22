@@ -12,7 +12,6 @@ members = [
     "libra",
     "hyrax",
     "gadgets",
-    "examples",
     "cli",
 ]
 exclude = [
