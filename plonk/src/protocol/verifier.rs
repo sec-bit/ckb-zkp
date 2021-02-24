@@ -3,7 +3,7 @@ use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use rand::RngCore;
 
 use crate::composer::Composer;
-use crate::{Error, Evaluations, QuerySet};
+use crate::{get_domain_generator, Error, Evals};
 
 pub struct Verifier<F: Field> {
     domain_n: GeneralEvaluationDomain<F>,
@@ -21,6 +21,10 @@ pub struct FirstMsg<F: Field> {
 
 pub struct SecondMsg<F: Field> {
     pub alpha: F,
+}
+
+pub struct ThirdMsg<F: Field> {
+    pub zeta: F,
 }
 
 impl<F: Field> Verifier<F> {
@@ -63,30 +67,16 @@ impl<F: Field> Verifier<F> {
     pub fn create_query_set<R: RngCore>(
         &mut self,
         rng: &mut R,
-    ) -> QuerySet<F> {
+    ) -> Result<ThirdMsg<F>, Error> {
         let zeta = F::rand(rng);
         self.zeta = Some(zeta);
-        let g = Self::get_domain_generator(self.domain_n);
 
-        let mut query_set = QuerySet::new();
-        query_set.insert(("w_0".into(), zeta));
-        query_set.insert(("w_1".into(), zeta));
-        query_set.insert(("w_2".into(), zeta));
-        query_set.insert(("w_3".into(), zeta));
-        query_set.insert(("sigma_0".into(), zeta));
-        query_set.insert(("sigma_1".into(), zeta));
-        query_set.insert(("sigma_2".into(), zeta));
-
-        query_set.insert(("z".into(), zeta));
-        query_set.insert(("z_shifted".into(), zeta * g));
-        query_set.insert(("t".into(), zeta));
-
-        query_set
+        Ok(ThirdMsg { zeta })
     }
 
     pub fn check_equality(
         verifier: Verifier<F>,
-        evals: &Evaluations<F>,
+        evals: &Evals<F>,
     ) -> Result<bool, Error> {
         let alpha = verifier.alpha.unwrap();
         let beta = verifier.beta.unwrap();
@@ -94,7 +84,7 @@ impl<F: Field> Verifier<F> {
         let zeta = verifier.zeta.unwrap();
 
         let domain_n = verifier.domain_n;
-        let g = Self::get_domain_generator(domain_n);
+        let g = get_domain_generator(domain_n);
 
         let v = domain_n.evaluate_vanishing_polynomial(zeta);
 
@@ -111,16 +101,21 @@ impl<F: Field> Verifier<F> {
         let z_shifted = Self::get_eval(&evals, "z_shifted", &(zeta * g))?;
 
         let t = Self::get_eval(&evals, "t", &zeta)?;
+        let r = Self::get_eval(&evals, "r", &zeta)?;
 
-        Ok(false)
-    }
+        let lhs = t * v;
+        let rhs = r
+            - (w_0 + beta * sigma_0 + gamma)
+                * (w_1 + beta * sigma_1 + gamma)
+                * (w_2 + beta * sigma_2 + gamma)
+                * (w_3 + gamma)
+                * z_shifted;
 
-    fn get_domain_generator(domain: GeneralEvaluationDomain<F>) -> F {
-        domain.element(1)
+        Ok(lhs == rhs)
     }
 
     fn get_eval(
-        evals: &Evaluations<F>,
+        evals: &Evals<F>,
         label: &str,
         point: &F,
     ) -> Result<F, Error> {

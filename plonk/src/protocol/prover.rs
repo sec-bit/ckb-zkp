@@ -1,7 +1,7 @@
 use ark_ff::FftField as Field;
 use ark_poly::{
-    univariate::DensePolynomial as Polynomial, EvaluationDomain,
-    Evaluations, GeneralEvaluationDomain, UVPolynomial,
+    univariate::DensePolynomial, EvaluationDomain, Evaluations,
+    GeneralEvaluationDomain, Polynomial, UVPolynomial,
 };
 use ark_std::{cfg_iter, vec::Vec};
 
@@ -10,18 +10,18 @@ use rayon::prelude::*;
 
 use crate::composer::Composer;
 use crate::protocol::keygen::ProverKey;
-use crate::protocol::verifier::{FirstMsg, SecondMsg};
-use crate::{Error, LabeledPolynomial};
+use crate::protocol::verifier::{FirstMsg, SecondMsg, ThirdMsg};
+use crate::{get_domain_generator, Error, Evals, LabeledPolynomial};
 
 pub struct Prover<F: Field> {
     pk: ProverKey<F>,
 
-    w_0: Option<(Polynomial<F>, Vec<F>, Vec<F>)>,
-    w_1: Option<(Polynomial<F>, Vec<F>, Vec<F>)>,
-    w_2: Option<(Polynomial<F>, Vec<F>, Vec<F>)>,
-    w_3: Option<(Polynomial<F>, Vec<F>, Vec<F>)>,
+    w_0_evals: Option<(Vec<F>, Vec<F>)>,
+    w_1_evals: Option<(Vec<F>, Vec<F>)>,
+    w_2_evals: Option<(Vec<F>, Vec<F>)>,
+    w_3_evals: Option<(Vec<F>, Vec<F>)>,
 
-    z: Option<(Polynomial<F>, Vec<F>, Vec<F>)>,
+    z_evals: Option<(Vec<F>, Vec<F>)>,
 
     ks: [F; 4],
     domain_n: GeneralEvaluationDomain<F>,
@@ -30,6 +30,7 @@ pub struct Prover<F: Field> {
     alpha: Option<F>,
     beta: Option<F>,
     gamma: Option<F>,
+    zeta: Option<F>,
 }
 
 pub struct FirstOracles<'a, F: Field> {
@@ -37,6 +38,12 @@ pub struct FirstOracles<'a, F: Field> {
     pub w_1: LabeledPolynomial<'a, F>,
     pub w_2: LabeledPolynomial<'a, F>,
     pub w_3: LabeledPolynomial<'a, F>,
+}
+
+impl<'a, F: Field> FirstOracles<'a, F> {
+    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<'a, F>> {
+        vec![&self.w_0, &self.w_1, &self.w_2, &self.w_3].into_iter()
+    }
 }
 
 pub struct SecondOracles<'a, F: Field> {
@@ -48,6 +55,18 @@ pub struct ThirdOracles<'a, F: Field> {
     pub t_1: LabeledPolynomial<'a, F>,
     pub t_2: LabeledPolynomial<'a, F>,
     pub t_3: LabeledPolynomial<'a, F>,
+}
+
+impl<'a, F: Field> ThirdOracles<'a, F> {
+    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<'a, F>> {
+        vec![&self.t_0, &self.t_1, &self.t_2, &self.t_3].into_iter()
+    }
+}
+
+impl<F: Field> Prover<F> {
+    pub fn size(&self) -> usize {
+        self.pk.size()
+    }
 }
 
 impl<F: Field> Prover<F> {
@@ -63,12 +82,12 @@ impl<F: Field> Prover<F> {
         Ok(Prover {
             pk,
 
-            w_0: None,
-            w_1: None,
-            w_2: None,
-            w_3: None,
+            w_0_evals: None,
+            w_1_evals: None,
+            w_2_evals: None,
+            w_3_evals: None,
 
-            z: None,
+            z_evals: None,
 
             ks,
             domain_n,
@@ -77,6 +96,7 @@ impl<F: Field> Prover<F> {
             alpha: None,
             beta: None,
             gamma: None,
+            zeta: None,
         })
     }
 
@@ -101,34 +121,22 @@ impl<F: Field> Prover<F> {
                 .interpolate();
 
         let domain_4n = self.domain_4n;
-        let w_0_evals_ext = domain_4n.coset_fft(&w_0_poly);
-        let w_1_evals_ext = domain_4n.coset_fft(&w_1_poly);
-        let w_2_evals_ext = domain_4n.coset_fft(&w_2_poly);
-        let w_3_evals_ext = domain_4n.coset_fft(&w_3_poly);
+        let w_0_ext = domain_4n.coset_fft(&w_0_poly);
+        let w_1_ext = domain_4n.coset_fft(&w_1_poly);
+        let w_2_ext = domain_4n.coset_fft(&w_2_poly);
+        let w_3_ext = domain_4n.coset_fft(&w_3_poly);
 
         let first_oracles = FirstOracles {
-            w_0: LabeledPolynomial::new_owned(
-                "w_0".to_string(),
-                w_0_poly.clone(),
-            ),
-            w_1: LabeledPolynomial::new_owned(
-                "w_1".to_string(),
-                w_1_poly.clone(),
-            ),
-            w_2: LabeledPolynomial::new_owned(
-                "w_2".to_string(),
-                w_2_poly.clone(),
-            ),
-            w_3: LabeledPolynomial::new_owned(
-                "w_3".to_string(),
-                w_3_poly.clone(),
-            ),
+            w_0: LabeledPolynomial::new_owned("w_0".to_string(), w_0_poly),
+            w_1: LabeledPolynomial::new_owned("w_1".to_string(), w_1_poly),
+            w_2: LabeledPolynomial::new_owned("w_2".to_string(), w_2_poly),
+            w_3: LabeledPolynomial::new_owned("w_3".to_string(), w_3_poly),
         };
 
-        self.w_0 = Some((w_0_poly, w_0, w_0_evals_ext));
-        self.w_1 = Some((w_1_poly, w_1, w_1_evals_ext));
-        self.w_2 = Some((w_2_poly, w_2, w_2_evals_ext));
-        self.w_3 = Some((w_3_poly, w_3, w_3_evals_ext));
+        self.w_0_evals = Some((w_0, w_0_ext));
+        self.w_1_evals = Some((w_1, w_1_ext));
+        self.w_2_evals = Some((w_2, w_2_ext));
+        self.w_3_evals = Some((w_3, w_3_ext));
 
         Ok(first_oracles)
     }
@@ -137,14 +145,14 @@ impl<F: Field> Prover<F> {
         &mut self,
         msg: &FirstMsg<F>,
     ) -> Result<SecondOracles<'a, F>, Error> {
-        let w_0 = &self.w_0.as_ref().unwrap().1;
-        let w_1 = &self.w_1.as_ref().unwrap().1;
-        let w_2 = &self.w_2.as_ref().unwrap().1;
-        let w_3 = &self.w_3.as_ref().unwrap().1;
+        let w_0 = &self.w_0_evals.as_ref().unwrap().0;
+        let w_1 = &self.w_1_evals.as_ref().unwrap().0;
+        let w_2 = &self.w_2_evals.as_ref().unwrap().0;
+        let w_3 = &self.w_3_evals.as_ref().unwrap().0;
         let FirstMsg { beta, gamma } = msg;
 
         let permutation_key = self.pk.get_permutation_key();
-        let z = permutation_key.compute_z(
+        let (z_poly, z, z_ext) = permutation_key.compute_z(
             self.domain_n,
             self.domain_4n,
             w_0,
@@ -157,9 +165,10 @@ impl<F: Field> Prover<F> {
         );
 
         let second_oracles = SecondOracles {
-            z: LabeledPolynomial::new_owned("z".to_string(), z.0.clone()),
+            z: LabeledPolynomial::new_owned("z".to_string(), z_poly),
         };
-        self.z = Some(z);
+
+        self.z_evals = Some((z, z_ext));
         self.beta = Some(*beta);
         self.gamma = Some(*gamma);
 
@@ -170,32 +179,31 @@ impl<F: Field> Prover<F> {
         &mut self,
         msg: &SecondMsg<F>,
     ) -> Result<ThirdOracles<'a, F>, Error> {
-        let w_0 = &self.w_0.as_ref().unwrap().2;
-        let w_1 = &self.w_1.as_ref().unwrap().2;
-        let w_2 = &self.w_2.as_ref().unwrap().2;
-        let w_3 = &self.w_3.as_ref().unwrap().2;
-        let z = &self.z.as_ref().unwrap().2;
+        let w_0_ext = &self.w_0_evals.as_ref().unwrap().1;
+        let w_1_ext = &self.w_1_evals.as_ref().unwrap().1;
+        let w_2_ext = &self.w_2_evals.as_ref().unwrap().1;
+        let w_3_ext = &self.w_3_evals.as_ref().unwrap().1;
+        let z_ext = &self.z_evals.as_ref().unwrap().1;
         let SecondMsg { alpha } = msg;
-        let alpha_2 = alpha.square();
 
         let arithmetic_key = self.pk.get_arithmetic_key();
         let q_0 = arithmetic_key.compute_quotient(
             self.domain_4n,
-            w_0,
-            w_1,
-            w_2,
-            w_3,
+            w_0_ext,
+            w_1_ext,
+            w_2_ext,
+            w_3_ext,
             alpha,
         );
 
         let permutation_key = self.pk.get_permutation_key();
         let q_1 = permutation_key.compute_quotient(
             self.domain_4n,
-            w_0,
-            w_1,
-            w_2,
-            w_3,
-            z,
+            w_0_ext,
+            w_1_ext,
+            w_2_ext,
+            w_3_ext,
+            z_ext,
             &self.beta.unwrap(),
             &self.gamma.unwrap(),
             &alpha,
@@ -207,7 +215,7 @@ impl<F: Field> Prover<F> {
             .zip(self.pk.get_vanishing_inverse())
             .map(|((q_0, q_1), v)| (*q_0 + q_1) * v)
             .collect();
-        let t_poly = Polynomial::from_coefficients_vec(
+        let t_poly = DensePolynomial::from_coefficients_vec(
             self.domain_4n.coset_ifft(&t),
         );
         let (t_0_poly, t_1_poly, t_2_poly, t_3_poly) =
@@ -221,18 +229,109 @@ impl<F: Field> Prover<F> {
         };
 
         self.alpha = Some(*alpha);
+
         Ok(third_oracles)
+    }
+
+    pub fn fourth_round<'a>(
+        &mut self,
+        third_msg: &ThirdMsg<F>,
+        first_oracles: &FirstOracles<'a, F>,
+        second_oracles: &SecondOracles<'a, F>,
+        third_oracles: &ThirdOracles<'a, F>,
+    ) -> Evals<F> {
+        let ThirdMsg { zeta } = third_msg;
+        self.zeta = Some(*zeta);
+
+        let mut evals = Evals::new();
+        // evaluation of [w_0, ..., w_3]
+        let w_zeta: Vec<_> =
+            first_oracles.iter().map(|w| w.evaluate(zeta)).collect();
+
+        // evaluation of z_shifted
+        let z_shifted_zeta = second_oracles
+            .z
+            .evaluate(&(get_domain_generator(self.domain_n) * zeta));
+        // evaluation of t
+        let t_zeta: F = {
+            let zeta_n = zeta.pow(&[self.size() as u64]);
+            let zeta_2n = zeta_n.square();
+            let zeta_pows =
+                vec![F::one(), zeta_n, zeta_2n, zeta_n * zeta_2n];
+
+            third_oracles
+                .iter()
+                .zip(zeta_pows)
+                .map(|(p, z)| p.evaluate(zeta) * z)
+                .sum()
+        };
+
+        let (sigma_0_zeta, sigma_1_zeta, sigma_2_zeta, r_zeta) = {
+            let arithmetic_key = self.pk.get_arithmetic_key();
+            let arith_lin = arithmetic_key.compute_linearisation(
+                &w_zeta[0],
+                &w_zeta[1],
+                &w_zeta[2],
+                &w_zeta[3],
+                zeta,
+                &self.alpha.unwrap(),
+            );
+            let permutation_key = self.pk.get_permutation_key();
+            let (sigma_0_zeta, sigma_1_zeta, sigma_2_zeta, perm_lin) =
+                permutation_key.compute_linearisation(
+                    &w_zeta[0],
+                    &w_zeta[1],
+                    &w_zeta[2],
+                    &w_zeta[3],
+                    &z_shifted_zeta,
+                    &second_oracles.z.polynomial(),
+                    &self.beta.unwrap(),
+                    &self.gamma.unwrap(),
+                    zeta,
+                    &self.alpha.unwrap().square(),
+                    &self.ks,
+                );
+
+            (
+                sigma_0_zeta,
+                sigma_1_zeta,
+                sigma_2_zeta,
+                (arith_lin + perm_lin).evaluate(zeta),
+            )
+        };
+
+        evals.insert(("w_0".into(), *zeta), w_zeta[0]);
+        evals.insert(("w_1".into(), *zeta), w_zeta[1]);
+        evals.insert(("w_2".into(), *zeta), w_zeta[2]);
+        evals.insert(("w_3".into(), *zeta), w_zeta[3]);
+        evals.insert(("z_shifted".into(), *zeta), z_shifted_zeta);
+        evals.insert(("sigma_0".into(), *zeta), sigma_0_zeta);
+        evals.insert(("sigma_1".into(), *zeta), sigma_1_zeta);
+        evals.insert(("sigma_2".into(), *zeta), sigma_2_zeta);
+        evals.insert(("t".into(), *zeta), t_zeta);
+        evals.insert(("r".into(), *zeta), r_zeta);
+
+        evals
     }
 
     fn quad_split(
         n: usize,
-        poly: Polynomial<F>,
-    ) -> (Polynomial<F>, Polynomial<F>, Polynomial<F>, Polynomial<F>) {
+        poly: DensePolynomial<F>,
+    ) -> (
+        DensePolynomial<F>,
+        DensePolynomial<F>,
+        DensePolynomial<F>,
+        DensePolynomial<F>,
+    ) {
         (
-            Polynomial::from_coefficients_vec(poly[0..n].to_vec()),
-            Polynomial::from_coefficients_vec(poly[n..2 * n].to_vec()),
-            Polynomial::from_coefficients_vec(poly[2 * n..3 * n].to_vec()),
-            Polynomial::from_coefficients_vec(poly[3 * n..].to_vec()),
+            DensePolynomial::from_coefficients_vec(poly[0..n].to_vec()),
+            DensePolynomial::from_coefficients_vec(
+                poly[n..2 * n].to_vec(),
+            ),
+            DensePolynomial::from_coefficients_vec(
+                poly[2 * n..3 * n].to_vec(),
+            ),
+            DensePolynomial::from_coefficients_vec(poly[3 * n..].to_vec()),
         )
     }
 }

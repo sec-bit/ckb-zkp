@@ -98,27 +98,33 @@ impl<F: Field> ProverKey<F> {
         beta: &F,
         gamma: &F,
         zeta: &F,
-        alpha: &F,
+        factor: &F,
         ks: &[F; 4],
-    ) -> DensePolynomial<F> {
-        let alpha_squared = alpha.square();
-        let sigma_0_eval = self.sigma_0.0.evaluate(zeta);
-        let sigma_1_eval = self.sigma_1.0.evaluate(zeta);
-        let sigma_2_eval = self.sigma_2.0.evaluate(zeta);
+    ) -> (F, F, F, DensePolynomial<F>) {
+        let sigma_0_zeta = self.sigma_0.0.evaluate(zeta);
+        let sigma_1_zeta = self.sigma_1.0.evaluate(zeta);
+        let sigma_2_zeta = self.sigma_2.0.evaluate(zeta);
 
         let numerator = (ks[0] * beta * zeta + gamma + w_0_eval)
             * (ks[1] * beta * zeta + gamma + w_1_eval)
             * (ks[2] * beta * zeta + gamma + w_2_eval)
-            * (ks[3] * beta * zeta + gamma + w_3_eval);
+            * (ks[3] * beta * zeta + gamma + w_3_eval)
+            * factor;
 
-        let denumerator = (sigma_0_eval * beta + gamma + w_0_eval)
-            * (sigma_1_eval * beta + gamma + w_1_eval)
-            * (sigma_2_eval * beta + gamma + w_2_eval)
+        let denumerator = (sigma_0_zeta * beta + gamma + w_0_eval)
+            * (sigma_1_zeta * beta + gamma + w_1_eval)
+            * (sigma_2_zeta * beta + gamma + w_2_eval)
             * beta
-            * z_shifted_eval;
+            * z_shifted_eval
+            * factor;
 
-        scalar_mul(z_poly, &(alpha_squared * numerator))
-            + scalar_mul(&self.sigma_3.0, &(-alpha_squared * denumerator))
+        (
+            sigma_0_zeta,
+            sigma_1_zeta,
+            sigma_2_zeta,
+            scalar_mul(z_poly, &numerator)
+                + scalar_mul(&self.sigma_3.0, &(-denumerator)),
+        )
     }
 
     pub(crate) fn compute_quotient(
@@ -131,47 +137,46 @@ impl<F: Field> ProverKey<F> {
         z: &[F],
         beta: &F,
         gamma: &F,
-        alpha: &F,
+        factor: &F,
         ks: &[F; 4],
     ) -> Vec<F> {
         let size = domain_4n.size();
         let roots: Vec<_> = domain_4n.elements().collect();
-        let alpha_squared = alpha.square();
 
         cfg_into_iter!((0..size))
             .map(|i| {
                 let next = if i == size { 0 } else { i + 1 };
-                alpha_squared
-                    * (Self::numerator_factor(
-                        &w_0[i], &roots[i], &ks[0], beta, gamma,
-                    ) * Self::numerator_factor(
-                        &w_1[i], &roots[i], &ks[1], beta, gamma,
-                    ) * Self::numerator_factor(
-                        &w_2[i], &roots[i], &ks[2], beta, gamma,
-                    ) * Self::numerator_factor(
-                        &w_3[i], &roots[i], &ks[3], beta, gamma,
-                    ) * z[i]
-                        - Self::denumerator_factor(
-                            &w_0[i],
-                            &self.sigma_0.2[i],
-                            beta,
-                            gamma,
-                        ) * Self::denumerator_factor(
-                            &w_1[i],
-                            &self.sigma_1.2[i],
-                            beta,
-                            gamma,
-                        ) * Self::denumerator_factor(
-                            &w_2[i],
-                            &self.sigma_2.2[i],
-                            beta,
-                            gamma,
-                        ) * Self::denumerator_factor(
-                            &w_3[i],
-                            &self.sigma_3.2[i],
-                            beta,
-                            gamma,
-                        ) * z[next])
+                (Self::numerator_factor(
+                    &w_0[i], &roots[i], &ks[0], beta, gamma,
+                ) * Self::numerator_factor(
+                    &w_1[i], &roots[i], &ks[1], beta, gamma,
+                ) * Self::numerator_factor(
+                    &w_2[i], &roots[i], &ks[2], beta, gamma,
+                ) * Self::numerator_factor(
+                    &w_3[i], &roots[i], &ks[3], beta, gamma,
+                ) * z[i]
+                    - Self::denumerator_factor(
+                        &w_0[i],
+                        &self.sigma_0.2[i],
+                        beta,
+                        gamma,
+                    ) * Self::denumerator_factor(
+                        &w_1[i],
+                        &self.sigma_1.2[i],
+                        beta,
+                        gamma,
+                    ) * Self::denumerator_factor(
+                        &w_2[i],
+                        &self.sigma_2.2[i],
+                        beta,
+                        gamma,
+                    ) * Self::denumerator_factor(
+                        &w_3[i],
+                        &self.sigma_3.2[i],
+                        beta,
+                        gamma,
+                    ) * z[next])
+                    * factor
             })
             .collect()
     }

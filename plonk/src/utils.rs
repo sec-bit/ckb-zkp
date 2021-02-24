@@ -1,5 +1,8 @@
 use ark_ff::{FftField as Field, Zero};
-use ark_poly::{univariate::DensePolynomial, UVPolynomial};
+use ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain,
+    GeneralEvaluationDomain, UVPolynomial,
+};
 use ark_std::cfg_iter;
 
 #[cfg(feature = "parallel")]
@@ -16,4 +19,10 @@ pub fn scalar_mul<F: Field>(
         .map(|coeff| *scalar * coeff)
         .collect();
     DensePolynomial::from_coefficients_vec(coeffs)
+}
+
+pub fn get_domain_generator<F: Field>(
+    domain: GeneralEvaluationDomain<F>,
+) -> F {
+    domain.element(1)
 }

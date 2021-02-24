@@ -3,10 +3,11 @@ use ark_poly::{univariate::DensePolynomial, Polynomial};
 
 use crate::{Cow, Map, Set};
 
-pub type Evaluations<F> = Map<(String, F), F>;
+pub type Evals<F> = Map<(String, F), F>;
 
-pub type QuerySet<F> = Set<(String, F)>;
+pub type Queries<F> = Set<(String, F)>;
 
+#[derive(Clone, Debug)]
 pub struct LabeledPolynomial<'a, F: Field> {
     polynomial: Cow<'a, DensePolynomial<F>>,
     label: String,
