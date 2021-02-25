@@ -21,35 +21,91 @@ mod test {
         let rng = &mut test_rng();
 
         // compose
-        let mut c = Composer::new();
-        let lvalue = Fr::rand(rng);
-        let rvalue = Fr::rand(rng);
-        let lvar = c.alloc_and_assign(lvalue);
-        let rvar = c.alloc_and_assign(rvalue);
-        let ovar = c.alloc_and_assign(lvalue + rvalue);
-        c.create_add_gate(
-            (lvar, Fr::one()),
-            (rvar, Fr::one()),
-            ovar,
+        let mut cs = Composer::new();
+        let one = Fr::one();
+        let two = one + one;
+        let three = two + one;
+        let four = two + two;
+        let var_one = cs.alloc_and_assign(one);
+        let var_two = cs.alloc_and_assign(two);
+        let var_three = cs.alloc_and_assign(three);
+        let var_four = cs.alloc_and_assign(four);
+        cs.create_add_gate(
+            (var_one, one),
+            (var_two, one),
+            var_three,
             None,
             Fr::zero(),
             Fr::zero(),
         );
+        cs.create_add_gate(
+            (var_two, one),
+            (var_two, one),
+            var_four,
+            None,
+            Fr::zero(),
+            Fr::zero(),
+        );
+        cs.create_mul_gate(
+            var_one,
+            var_two,
+            var_two,
+            None,
+            Fr::one(),
+            Fr::zero(),
+            Fr::zero(),
+        );
+
+        println!("size of the circuit: {}", cs.size());
 
         // init
-        let mut p = Prover::init(&c, [Fr::one(), K1, K2, K3])?;
-        let mut v = Verifier::init(&c)?;
-        // first round
-        let first_oracles = p.first_round(&c)?;
-        let first_msg = v.first_round(rng)?;
-        // second round
-        let second_oracles = p.second_round(&first_msg)?;
-        let second_msg = v.second_round(rng)?;
-        // third round
-        let third_oracles = p.third_round(&second_msg)?;
-        let query_set = v.create_query_set(rng);
+        print!("initializing prover...");
+        let mut p = Prover::init(&cs, [Fr::one(), K1, K2, K3])?;
+        println!("done");
 
-        Ok(true)
+        print!("initializing verifier...");
+        let mut v = Verifier::init(&cs)?;
+        println!("done");
+        // first round
+        print!("prover: first round...");
+        let first_oracles = p.first_round(&cs)?;
+        println!("done");
+
+        print!("verifier: first round...");
+        let first_msg = v.first_round(rng)?;
+        println!("done");
+
+        // second round
+        print!("prover: second round...");
+        let second_oracles = p.second_round(&first_msg)?;
+        println!("done");
+
+        print!("verifier: second round...");
+        let second_msg = v.second_round(rng)?;
+        println!("done");
+        // third round
+        print!("prover: third round...");
+        let third_oracles = p.third_round(&second_msg)?;
+        println!("done");
+
+        print!("verifier: third round...");
+        let third_msg = v.third_round(rng)?;
+        println!("done");
+        // finalize
+        print!("prover: evaluating...");
+        let evals = p.evaluate(
+            &third_msg,
+            &first_oracles,
+            &second_oracles,
+            &third_oracles,
+        );
+        println!("done");
+
+        print!("verifier: equality checking...");
+        let is_equal = v.check_equality(&evals);
+        println!("done");
+
+        is_equal
     }
 
     #[test]

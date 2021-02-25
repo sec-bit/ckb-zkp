@@ -1,12 +1,14 @@
 use ark_ff::FftField as Field;
-use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
+use ark_poly::EvaluationDomain;
 use rand::RngCore;
 
 use crate::composer::Composer;
-use crate::{get_domain_generator, Error, Evals};
+use crate::protocol::keygen;
+use crate::protocol::keygen::VerifierKey;
+use crate::{get_generator, Error, Evals};
 
 pub struct Verifier<F: Field> {
-    domain_n: GeneralEvaluationDomain<F>,
+    vk: VerifierKey<F>,
 
     alpha: Option<F>,
     beta: Option<F>,
@@ -29,12 +31,10 @@ pub struct ThirdMsg<F: Field> {
 
 impl<F: Field> Verifier<F> {
     pub fn init(cs: &Composer<F>) -> Result<Verifier<F>, Error> {
-        let n = cs.size();
-        let domain_n = GeneralEvaluationDomain::<F>::new(n)
-            .ok_or(Error::PolynomialDegreeTooLarge)?;
+        let vk = keygen::generate_verifier_key(cs)?;
 
         Ok(Verifier {
-            domain_n,
+            vk,
             alpha: None,
             beta: None,
             gamma: None,
@@ -64,7 +64,7 @@ impl<F: Field> Verifier<F> {
         Ok(SecondMsg { alpha })
     }
 
-    pub fn create_query_set<R: RngCore>(
+    pub fn third_round<R: RngCore>(
         &mut self,
         rng: &mut R,
     ) -> Result<ThirdMsg<F>, Error> {
@@ -74,17 +74,14 @@ impl<F: Field> Verifier<F> {
         Ok(ThirdMsg { zeta })
     }
 
-    pub fn check_equality(
-        verifier: Verifier<F>,
-        evals: &Evals<F>,
-    ) -> Result<bool, Error> {
-        let alpha = verifier.alpha.unwrap();
-        let beta = verifier.beta.unwrap();
-        let gamma = verifier.gamma.unwrap();
-        let zeta = verifier.zeta.unwrap();
+    pub fn check_equality(&self, evals: &Evals<F>) -> Result<bool, Error> {
+        let alpha = self.alpha.unwrap();
+        let beta = self.beta.unwrap();
+        let gamma = self.gamma.unwrap();
+        let zeta = self.zeta.unwrap();
 
-        let domain_n = verifier.domain_n;
-        let g = get_domain_generator(domain_n);
+        let domain_n = self.vk.domain_n();
+        let g = get_generator(domain_n);
 
         let v = domain_n.evaluate_vanishing_polynomial(zeta);
 
@@ -97,19 +94,17 @@ impl<F: Field> Verifier<F> {
         let sigma_1 = Self::get_eval(&evals, "sigma_1", &zeta)?;
         let sigma_2 = Self::get_eval(&evals, "sigma_2", &zeta)?;
 
-        let z = Self::get_eval(&evals, "z", &zeta)?;
         let z_shifted = Self::get_eval(&evals, "z_shifted", &(zeta * g))?;
 
         let t = Self::get_eval(&evals, "t", &zeta)?;
         let r = Self::get_eval(&evals, "r", &zeta)?;
 
         let lhs = t * v;
-        let rhs = r
-            - (w_0 + beta * sigma_0 + gamma)
-                * (w_1 + beta * sigma_1 + gamma)
-                * (w_2 + beta * sigma_2 + gamma)
-                * (w_3 + gamma)
-                * z_shifted;
+        let rhs = r - z_shifted
+            * (w_0 + beta * sigma_0 + gamma)
+            * (w_1 + beta * sigma_1 + gamma)
+            * (w_2 + beta * sigma_2 + gamma)
+            * (w_3 + gamma);
 
         Ok(lhs == rhs)
     }

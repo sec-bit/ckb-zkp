@@ -1,16 +1,14 @@
-use ark_poly::{
-    univariate::DensePolynomial as Polynomial, EvaluationDomain,
-    Evaluations, GeneralEvaluationDomain,
-};
+use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
 use ark_std::{cfg_iter, vec::Vec};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 use crate::composer::{Composer, Field};
-use crate::{Error, Map};
+use crate::Error;
 
 pub struct Selectors<F: Field> {
+    pub n: usize,
     pub q_0: Vec<F>,
     pub q_1: Vec<F>,
     pub q_2: Vec<F>,
@@ -27,61 +25,71 @@ pub struct Selectors<F: Field> {
     pub sigma_3: Vec<F>,
 }
 
+impl<F: Field> Selectors<F> {
+    pub fn iter(&self) -> impl Iterator<Item = &Vec<F>> {
+        vec![
+            &self.q_0,
+            &self.q_1,
+            &self.q_2,
+            &self.q_3,
+            &self.q_m,
+            &self.q_c,
+            &self.q_arith,
+            &self.sigma_0,
+            &self.sigma_1,
+            &self.sigma_2,
+            &self.sigma_3,
+        ]
+        .into_iter()
+    }
+}
+
 impl<F: Field> Composer<F> {
     // selectors
-    pub fn preprocess(&self) -> Result<(usize, Selectors<F>), Error> {
-        let domain = GeneralEvaluationDomain::<F>::new(self.size())
+    pub fn preprocess(&self, ks: &[F; 4]) -> Result<Selectors<F>, Error> {
+        let domain_n = GeneralEvaluationDomain::<F>::new(self.n)
             .ok_or(Error::PolynomialDegreeTooLarge)?;
-
-        let diff = domain.size() - self.size();
-        let zeros = vec![F::zero(); diff];
-
-        let mut q_0 = self.q_0.clone();
-        q_0.extend(zeros.iter());
-        let mut q_1 = self.q_1.clone();
-        q_1.extend(zeros.iter());
-        let mut q_2 = self.q_2.clone();
-        q_2.extend(zeros.iter());
-        let mut q_3 = self.q_3.clone();
-        q_3.extend(zeros.iter());
-
-        let mut q_m = self.q_m.clone();
-        q_m.extend(zeros.iter());
-        let mut q_c = self.q_c.clone();
-        q_c.extend(zeros.iter());
-
-        let mut q_arith = self.q_arith.clone();
-        q_arith.extend(zeros.iter());
+        let n = domain_n.size();
 
         let (sigma_0, sigma_1, sigma_2, sigma_3) =
-            self.permutation.compute_sigmas(domain.size())?;
+            self.permutation.compute_sigmas(domain_n, &ks)?;
 
-        Ok((
-            self.size(),
-            Selectors {
-                q_0,
-                q_1,
-                q_2,
-                q_3,
+        assert_eq!(sigma_0.len(), n);
+        assert_eq!(sigma_1.len(), n);
+        assert_eq!(sigma_2.len(), n);
+        assert_eq!(sigma_3.len(), n);
 
-                q_m,
-                q_c,
+        let diff = n - self.n;
+        let zeros = vec![F::zero(); diff];
+        let pad = |mut v: Vec<F>| {
+            v.extend(zeros.iter());
+            v
+        };
 
-                q_arith,
+        Ok(Selectors {
+            n,
+            q_0: pad(self.q_0.clone()),
+            q_1: pad(self.q_1.clone()),
+            q_2: pad(self.q_2.clone()),
+            q_3: pad(self.q_3.clone()),
 
-                sigma_0,
-                sigma_1,
-                sigma_2,
-                sigma_3,
-            },
-        ))
+            q_m: pad(self.q_m.clone()),
+            q_c: pad(self.q_c.clone()),
+
+            q_arith: pad(self.q_arith.clone()),
+
+            sigma_0,
+            sigma_1,
+            sigma_2,
+            sigma_3,
+        })
     }
 
     // witness vectors
     pub fn synthesize(
         &self,
     ) -> Result<(Vec<F>, Vec<F>, Vec<F>, Vec<F>), Error> {
-        let domain = GeneralEvaluationDomain::<F>::new(self.size())
+        let domain_n = GeneralEvaluationDomain::<F>::new(self.n)
             .ok_or(Error::PolynomialDegreeTooLarge)?;
 
         let assign = |&v| self.assignment[&v];
@@ -90,7 +98,7 @@ impl<F: Field> Composer<F> {
         let mut w_2: Vec<_> = cfg_iter!(self.w_2).map(assign).collect();
         let mut w_3: Vec<_> = cfg_iter!(self.w_3).map(assign).collect();
 
-        let diff = domain.size() - self.size();
+        let diff = domain_n.size() - self.n;
         let zeros = vec![F::zero(); diff];
         w_0.extend(zeros.iter());
         w_1.extend(zeros.iter());

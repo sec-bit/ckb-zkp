@@ -9,6 +9,7 @@ use permutation::Permutation;
 mod arithmetic;
 
 mod synthesize;
+pub use synthesize::Selectors;
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
 pub struct Variable(usize);
@@ -76,5 +77,58 @@ impl<F: Field> Composer<F> {
         self.assignment.insert(var, value);
 
         var
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use ark_bls12_381::Fr;
+    use ark_ff::{One, Zero};
+
+    use super::*;
+
+    #[test]
+    fn preprocess() {
+        let ks = [
+            Fr::one(),
+            Fr::from(7_u64),
+            Fr::from(13_u64),
+            Fr::from(17_u64),
+        ];
+        let mut cs = Composer::new();
+        let one = Fr::one();
+        let two = one + one;
+        let three = two + one;
+        let four = two + two;
+        let var_one = cs.alloc_and_assign(one);
+        let var_two = cs.alloc_and_assign(two);
+        let var_three = cs.alloc_and_assign(three);
+        let var_four = cs.alloc_and_assign(four);
+        cs.create_add_gate(
+            (var_one, one),
+            (var_two, one),
+            var_three,
+            None,
+            Fr::zero(),
+            Fr::zero(),
+        );
+        cs.create_add_gate(
+            (var_two, one),
+            (var_two, one),
+            var_four,
+            None,
+            Fr::zero(),
+            Fr::zero(),
+        );
+        cs.create_mul_gate(
+            var_one,
+            var_two,
+            var_two,
+            None,
+            Fr::one(),
+            Fr::zero(),
+            Fr::zero(),
+        );
+        cs.preprocess(&ks).unwrap();
     }
 }

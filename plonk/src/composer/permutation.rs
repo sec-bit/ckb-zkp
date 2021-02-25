@@ -1,4 +1,4 @@
-use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
+use ark_poly::EvaluationDomain;
 use ark_std::{cfg_iter, vec::Vec};
 
 #[cfg(feature = "parallel")]
@@ -61,19 +61,17 @@ impl<F: Field> Permutation<F> {
 impl<F: Field> Permutation<F> {
     pub fn compute_sigmas(
         &self,
-        n: usize,
+        domain_n: impl EvaluationDomain<F>,
+        ks: &[F; 4],
     ) -> Result<(Vec<F>, Vec<F>, Vec<F>, Vec<F>), Error> {
-        let domain_4n = GeneralEvaluationDomain::<F>::new(4 * n)
-            .ok_or(Error::PolynomialDegreeTooLarge)?;
+        let perms = self.compute_wire_permutation(domain_n.size());
 
-        let perms = self.compute_wire_permutation(n);
-
-        let roots: Vec<_> = domain_4n.elements().collect();
+        let roots: Vec<_> = domain_n.elements().collect();
         let to = |&x| match x {
-            Wire::W0(i) => roots[i],
-            Wire::W1(i) => roots[i + n],
-            Wire::W2(i) => roots[i + 2 * n],
-            Wire::W3(i) => roots[i + 3 * n],
+            Wire::W0(i) => roots[i] * ks[0],
+            Wire::W1(i) => roots[i] * ks[1],
+            Wire::W2(i) => roots[i] * ks[2],
+            Wire::W3(i) => roots[i] * ks[3],
         };
 
         Ok((
@@ -112,5 +110,96 @@ impl<F: Field> Permutation<F> {
         }
 
         [perm_0, perm_1, perm_2, perm_3]
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use ark_bls12_381::Fr;
+    use ark_ff::{One, Zero};
+    use ark_poly::GeneralEvaluationDomain;
+
+    use crate::composer::Composer;
+
+    use super::*;
+
+    fn circuit() -> Composer<Fr> {
+        let mut cs = Composer::new();
+        let one = Fr::one();
+        let two = one + one;
+        let three = two + one;
+        let four = two + two;
+        let var_one = cs.alloc_and_assign(one);
+        let var_two = cs.alloc_and_assign(two);
+        let var_three = cs.alloc_and_assign(three);
+        let var_four = cs.alloc_and_assign(four);
+        cs.create_add_gate(
+            (var_one, one),
+            (var_two, one),
+            var_three,
+            None,
+            Fr::zero(),
+            Fr::zero(),
+        );
+        cs.create_add_gate(
+            (var_two, one),
+            (var_two, one),
+            var_four,
+            None,
+            Fr::zero(),
+            Fr::zero(),
+        );
+        cs.create_mul_gate(
+            var_two,
+            var_two,
+            var_four,
+            None,
+            Fr::one(),
+            Fr::zero(),
+            Fr::zero(),
+        );
+
+        cs
+    }
+
+    #[test]
+    fn sigmas() {
+        let cs = circuit();
+        let ks = [
+            Fr::one(),
+            Fr::from(7_u64),
+            Fr::from(13_u64),
+            Fr::from(17_u64),
+        ];
+        let domain_n =
+            GeneralEvaluationDomain::<Fr>::new(cs.size()).unwrap();
+        let roots: Vec<_> = domain_n.elements().collect();
+
+        let (sigma_0, sigma_1, sigma_2, sigma_3) =
+            cs.permutation.compute_sigmas(domain_n, &ks).unwrap();
+
+        let (id_0, id_1, id_2, id_3) = {
+            let id_0: Vec<_> =
+                cfg_iter!(roots).map(|r| ks[0] * r).collect();
+            let id_1: Vec<_> =
+                cfg_iter!(roots).map(|r| ks[1] * r).collect();
+            let id_2: Vec<_> =
+                cfg_iter!(roots).map(|r| ks[2] * r).collect();
+            let id_3: Vec<_> =
+                cfg_iter!(roots).map(|r| ks[3] * r).collect();
+            (id_0, id_1, id_2, id_3)
+        };
+
+        let sigma: Vec<_> = [sigma_0, sigma_1, sigma_2, sigma_3]
+            .iter()
+            .map(|sigma| sigma.iter().product())
+            .collect();
+        let sigma_prod: Fr = sigma.iter().product();
+        let id: Vec<_> = [id_0, id_1, id_2, id_3]
+            .iter()
+            .map(|id| id.iter().product())
+            .collect();
+        let id_prod: Fr = id.iter().product();
+        assert_eq!(sigma_prod, id_prod);
     }
 }
