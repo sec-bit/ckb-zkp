@@ -5,7 +5,7 @@ mod verifier;
 #[cfg(test)]
 mod test {
     use ark_bls12_381::Fr;
-    use ark_ff::{One, UniformRand, Zero};
+    use ark_ff::{One, Zero};
     use ark_std::test_rng;
 
     use crate::composer::Composer;
@@ -42,6 +42,15 @@ mod test {
             Fr::zero(),
         );
 
+        cs.create_add_gate(
+            (var_one, one),
+            (var_two, one),
+            var_three,
+            None,
+            Fr::zero(),
+            Fr::zero(),
+        );
+
         cs.create_mul_gate(
             var_one,
             var_three,
@@ -51,6 +60,8 @@ mod test {
             Fr::zero(),
             Fr::zero(),
         );
+
+        // cs.constrain_to_constant(var_four, four, Fr::zero());
 
         println!("size of the circuit: {}", cs.size());
 
@@ -106,8 +117,7 @@ mod test {
 
     #[test]
     fn test() {
-        let e = run().unwrap();
-        println!("result: {:?}", e);
-        assert!(e);
+        let result = run().unwrap();
+        assert!(result);
     }
 }

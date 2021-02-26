@@ -9,7 +9,7 @@ use permutation::Permutation;
 mod arithmetic;
 
 mod synthesize;
-pub use synthesize::Selectors;
+pub use synthesize::{Assigments, Selectors};
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
 pub struct Variable(usize);
@@ -22,12 +22,12 @@ pub struct Composer<F: Field> {
     q_1: Vec<F>,
     q_2: Vec<F>,
     q_3: Vec<F>,
-
     q_m: Vec<F>,
     q_c: Vec<F>,
-    pi: Vec<F>,
 
     q_arith: Vec<F>,
+
+    pi: Vec<F>,
 
     w_0: Vec<Variable>,
     w_1: Vec<Variable>,
@@ -130,9 +130,17 @@ mod test {
             Fr::zero(),
         );
         let s = cs.preprocess(&ks).unwrap();
-        let (w_0, w_1, w_2, w_3) = cs.synthesize().unwrap();
+        let assignment = cs.synthesize().unwrap();
+        let Assigments {
+            w_0,
+            w_1,
+            w_2,
+            w_3,
+            pi,
+            ..
+        } = assignment;
         assert_eq!(w_0.len(), s.q_0.len());
-        (0..s.n).into_iter().for_each(|i| {
+        (0..s.size()).into_iter().for_each(|i| {
             assert_eq!(
                 Fr::zero(),
                 w_0[i] * s.q_0[i]
@@ -141,6 +149,7 @@ mod test {
                     + w_3[i] * s.q_3[i]
                     + w_1[i] * w_2[i] * s.q_m[i]
                     + s.q_c[i]
+                    + pi[i]
             )
         });
     }

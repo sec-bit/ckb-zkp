@@ -25,6 +25,7 @@ impl<F: Field> Composer<F> {
         self.w_1.push(l.0);
         self.w_2.push(r.0);
         self.w_3.push(o.0);
+        self.pi.push(pi);
 
         self.q_0.push(aux.1);
         self.q_1.push(l.1);
@@ -32,15 +33,18 @@ impl<F: Field> Composer<F> {
         self.q_3.push(o.1);
         self.q_m.push(q_m);
         self.q_c.push(q_c);
-        self.pi.push(pi);
-
         self.q_arith.push(F::one());
 
         self.n += 1;
     }
 
     /// var == q_c
-    pub fn constrain_to_constant(&mut self, var: Variable, value: F) {
+    pub fn constrain_to_constant(
+        &mut self,
+        var: Variable,
+        value: F,
+        pi: F,
+    ) {
         self.create_poly_gate(
             (var, F::one()),
             (var, F::zero()),
@@ -48,7 +52,7 @@ impl<F: Field> Composer<F> {
             None,
             F::zero(),
             -value,
-            F::zero(),
+            pi,
         );
     }
 

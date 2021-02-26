@@ -12,22 +12,15 @@
 extern crate alloc;
 
 #[cfg(not(feature = "std"))]
-use alloc::{
-    borrow::Cow,
-    collections::{BTreeMap as Map, BTreeSet as Set},
-};
+use alloc::collections::BTreeMap as Map;
 
 #[cfg(feature = "std")]
-use std::{
-    borrow::Cow,
-    collections::{HashMap as Map, HashSet as Set},
-};
+use std::collections::HashMap as Map;
 
 mod data_structures;
 use data_structures::*;
 
 mod utils;
-use utils::*;
 
 mod composer;
 mod protocol;

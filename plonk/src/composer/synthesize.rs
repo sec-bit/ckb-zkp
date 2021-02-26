@@ -8,15 +8,13 @@ use crate::composer::{Composer, Field};
 use crate::Error;
 
 pub struct Selectors<F: Field> {
-    pub n: usize,
+    n: usize,
     pub q_0: Vec<F>,
     pub q_1: Vec<F>,
     pub q_2: Vec<F>,
     pub q_3: Vec<F>,
-
     pub q_m: Vec<F>,
     pub q_c: Vec<F>,
-
     pub q_arith: Vec<F>,
 
     pub sigma_0: Vec<F>,
@@ -26,6 +24,10 @@ pub struct Selectors<F: Field> {
 }
 
 impl<F: Field> Selectors<F> {
+    pub fn size(&self) -> usize {
+        self.n
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &Vec<F>> {
         vec![
             &self.q_0,
@@ -42,6 +44,15 @@ impl<F: Field> Selectors<F> {
         ]
         .into_iter()
     }
+}
+
+pub struct Assigments<F: Field> {
+    pub n: usize,
+    pub w_0: Vec<F>,
+    pub w_1: Vec<F>,
+    pub w_2: Vec<F>,
+    pub w_3: Vec<F>,
+    pub pi: Vec<F>,
 }
 
 impl<F: Field> Composer<F> {
@@ -72,10 +83,8 @@ impl<F: Field> Composer<F> {
             q_1: pad(self.q_1.clone()),
             q_2: pad(self.q_2.clone()),
             q_3: pad(self.q_3.clone()),
-
             q_m: pad(self.q_m.clone()),
             q_c: pad(self.q_c.clone()),
-
             q_arith: pad(self.q_arith.clone()),
 
             sigma_0,
@@ -86,11 +95,10 @@ impl<F: Field> Composer<F> {
     }
 
     // witness vectors
-    pub fn synthesize(
-        &self,
-    ) -> Result<(Vec<F>, Vec<F>, Vec<F>, Vec<F>), Error> {
+    pub fn synthesize(&self) -> Result<Assigments<F>, Error> {
         let domain_n = GeneralEvaluationDomain::<F>::new(self.n)
             .ok_or(Error::PolynomialDegreeTooLarge)?;
+        let n = domain_n.size();
 
         let assign = |&v| self.assignment[&v];
         let mut w_0: Vec<_> = cfg_iter!(self.w_0).map(assign).collect();
@@ -98,13 +106,23 @@ impl<F: Field> Composer<F> {
         let mut w_2: Vec<_> = cfg_iter!(self.w_2).map(assign).collect();
         let mut w_3: Vec<_> = cfg_iter!(self.w_3).map(assign).collect();
 
-        let diff = domain_n.size() - self.n;
+        let diff = n - self.n;
         let zeros = vec![F::zero(); diff];
         w_0.extend(zeros.iter());
         w_1.extend(zeros.iter());
         w_2.extend(zeros.iter());
         w_3.extend(zeros.iter());
 
-        Ok((w_0, w_1, w_2, w_3))
+        let mut pi = self.pi.clone();
+        pi.extend(zeros.iter());
+
+        Ok(Assigments {
+            n,
+            w_0,
+            w_1,
+            w_2,
+            w_3,
+            pi,
+        })
     }
 }

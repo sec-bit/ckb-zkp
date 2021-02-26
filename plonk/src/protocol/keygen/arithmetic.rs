@@ -7,17 +7,15 @@ use ark_std::{cfg_into_iter, vec::Vec};
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-use crate::scalar_mul;
+use crate::utils::scalar_mul;
 
 pub struct ProverKey<F: Field> {
     pub q_0: (DensePolynomial<F>, Vec<F>, Vec<F>),
     pub q_1: (DensePolynomial<F>, Vec<F>, Vec<F>),
     pub q_2: (DensePolynomial<F>, Vec<F>, Vec<F>),
     pub q_3: (DensePolynomial<F>, Vec<F>, Vec<F>),
-
     pub q_m: (DensePolynomial<F>, Vec<F>, Vec<F>),
     pub q_c: (DensePolynomial<F>, Vec<F>, Vec<F>),
-
     pub q_arith: (DensePolynomial<F>, Vec<F>, Vec<F>),
 }
 
@@ -37,7 +35,7 @@ impl<F: Field> ProverKey<F> {
         let q_3_poly = &self.q_3.0;
         let q_m_poly = &self.q_m.0;
         let q_c_poly = &self.q_c.0;
-        let q_arith_poly = &self.q_arith.0;
+        let q_arith_eval = self.q_arith.0.evaluate(point);
 
         let poly = &(scalar_mul(q_0_poly, w_0_eval)
             + scalar_mul(q_1_poly, w_1_eval)
@@ -46,7 +44,7 @@ impl<F: Field> ProverKey<F> {
             + scalar_mul(q_m_poly, &(*w_1_eval * w_2_eval)))
             + q_c_poly;
 
-        scalar_mul(&poly, &(q_arith_poly.evaluate(point) * factor))
+        scalar_mul(&poly, &(q_arith_eval * factor))
     }
 
     pub(crate) fn compute_quotient(
@@ -56,6 +54,7 @@ impl<F: Field> ProverKey<F> {
         w_1: &[F],
         w_2: &[F],
         w_3: &[F],
+        pi: &[F],
         factor: &F,
     ) -> Vec<F> {
         let size = domain_4n.size();
@@ -74,6 +73,7 @@ impl<F: Field> ProverKey<F> {
                         &self.q_m.2[i],
                         &self.q_c.2[i],
                         &self.q_arith.2[i],
+                        &pi[i],
                     )
             })
             .collect()
@@ -91,16 +91,19 @@ impl<F: Field> ProverKey<F> {
         q_m: &F,
         q_c: &F,
         q_arith: &F,
+        pi: &F,
     ) -> F {
         if q_arith.is_zero() {
             F::zero()
         } else {
-            (*q_0) * w_0
+            (*q_0 * w_0
                 + (*q_1) * w_1
                 + (*q_2) * w_2
                 + (*q_3) * w_3
                 + (*q_m) * w_1 * w_2
-                + (*q_c)
+                + q_c
+                + pi)
+                * q_arith
         }
     }
 }

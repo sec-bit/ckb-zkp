@@ -3,9 +3,8 @@ use ark_poly::EvaluationDomain;
 use rand::RngCore;
 
 use crate::composer::Composer;
-use crate::protocol::keygen;
-use crate::protocol::keygen::VerifierKey;
-use crate::{get_generator, Error, Evals};
+use crate::protocol::keygen::{generate_verifier_key, VerifierKey};
+use crate::{utils::get_generator, Error, Evals};
 
 pub struct Verifier<F: Field> {
     vk: VerifierKey<F>,
@@ -31,7 +30,7 @@ pub struct ThirdMsg<F: Field> {
 
 impl<F: Field> Verifier<F> {
     pub fn init(cs: &Composer<F>) -> Result<Verifier<F>, Error> {
-        let vk = keygen::generate_verifier_key(cs)?;
+        let vk = generate_verifier_key(cs)?;
 
         Ok(Verifier {
             vk,

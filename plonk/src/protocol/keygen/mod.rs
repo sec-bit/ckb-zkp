@@ -31,20 +31,25 @@ pub fn generate_prover_key<F: Field>(
     ks: [F; 4],
 ) -> Result<ProverKey<F>, Error> {
     let selectors = cs.preprocess(&ks)?;
+    let n = selectors.size();
+    selectors.iter().for_each(|s| assert_eq!(s.len(), n));
+    println!("selector size: {}", n);
+
     let Selectors {
-        n,
         q_0,
         q_1,
         q_2,
         q_3,
-        q_c,
         q_m,
+        q_c,
         q_arith,
         sigma_0,
         sigma_1,
         sigma_2,
         sigma_3,
+        ..
     } = selectors;
+
     let domain_n = GeneralEvaluationDomain::<F>::new(n)
         .ok_or(Error::PolynomialDegreeTooLarge)?;
     let domain_4n = GeneralEvaluationDomain::<F>::new(4 * n)
@@ -58,12 +63,10 @@ pub fn generate_prover_key<F: Field>(
         .interpolate();
     let q_3_poly = Evaluations::from_vec_and_domain(q_3.clone(), domain_n)
         .interpolate();
-
     let q_m_poly = Evaluations::from_vec_and_domain(q_m.clone(), domain_n)
         .interpolate();
     let q_c_poly = Evaluations::from_vec_and_domain(q_c.clone(), domain_n)
         .interpolate();
-
     let q_arith_poly =
         Evaluations::from_vec_and_domain(q_arith.clone(), domain_n)
             .interpolate();
@@ -85,10 +88,8 @@ pub fn generate_prover_key<F: Field>(
     let q_1_4n = domain_4n.coset_fft(&q_1_poly);
     let q_2_4n = domain_4n.coset_fft(&q_2_poly);
     let q_3_4n = domain_4n.coset_fft(&q_3_poly);
-
     let q_m_4n = domain_4n.coset_fft(&q_m_poly);
     let q_c_4n = domain_4n.coset_fft(&q_c_poly);
-
     let q_arith_4n = domain_4n.coset_fft(&q_arith_poly);
 
     let sigma_0_4n = domain_4n.coset_fft(&sigma_0_poly);

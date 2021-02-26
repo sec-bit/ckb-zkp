@@ -1,7 +1,8 @@
 use ark_ff::FftField as Field;
 use ark_poly::{univariate::DensePolynomial, Polynomial};
+use ark_std::borrow::Cow;
 
-use crate::{Cow, Map};
+use crate::Map;
 
 pub type Evals<F> = Map<String, F>;
 

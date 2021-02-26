@@ -7,7 +7,7 @@ use ark_std::{cfg_into_iter, vec::Vec};
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-use crate::scalar_mul;
+use crate::utils::scalar_mul;
 
 pub struct ProverKey<F: Field> {
     pub ks: [F; 4],

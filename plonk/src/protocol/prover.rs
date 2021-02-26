@@ -8,11 +8,10 @@ use ark_std::{cfg_iter, vec::Vec};
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-use crate::composer::Composer;
-use crate::protocol::keygen;
-use crate::protocol::keygen::ProverKey;
+use crate::composer::{Assigments, Composer};
+use crate::protocol::keygen::{generate_prover_key, ProverKey};
 use crate::protocol::verifier::{FirstMsg, SecondMsg, ThirdMsg};
-use crate::{get_generator, Error, Evals, LabeledPolynomial};
+use crate::{utils::get_generator, Error, Evals, LabeledPolynomial};
 
 pub struct Prover<F: Field> {
     pk: ProverKey<F>,
@@ -21,6 +20,8 @@ pub struct Prover<F: Field> {
     w_1: Option<(Vec<F>, Vec<F>)>,
     w_2: Option<(Vec<F>, Vec<F>)>,
     w_3: Option<(Vec<F>, Vec<F>)>,
+
+    pi: Option<(Vec<F>, Vec<F>)>,
 
     z: Option<(Vec<F>, Vec<F>)>,
 
@@ -73,7 +74,7 @@ impl<F: Field> Prover<F> {
         GeneralEvaluationDomain::<F>::new(n)
             .ok_or(Error::PolynomialDegreeTooLarge)?;
 
-        let pk = keygen::generate_prover_key(cs, ks)?;
+        let pk = generate_prover_key(cs, ks)?;
 
         Ok(Prover {
             pk,
@@ -82,6 +83,8 @@ impl<F: Field> Prover<F> {
             w_1: None,
             w_2: None,
             w_3: None,
+
+            pi: None,
 
             z: None,
 
@@ -95,7 +98,15 @@ impl<F: Field> Prover<F> {
         &mut self,
         cs: &Composer<F>,
     ) -> Result<FirstOracles<'a, F>, Error> {
-        let (w_0, w_1, w_2, w_3) = cs.synthesize()?;
+        let assignments = cs.synthesize()?;
+        let Assigments {
+            w_0,
+            w_1,
+            w_2,
+            w_3,
+            pi,
+            ..
+        } = assignments;
 
         let domain = self.pk.domain_n();
         let w_0_poly =
@@ -110,12 +121,15 @@ impl<F: Field> Prover<F> {
         let w_3_poly =
             Evaluations::from_vec_and_domain(w_3.clone(), domain)
                 .interpolate();
+        let pi_poly = Evaluations::from_vec_and_domain(pi.clone(), domain)
+            .interpolate();
 
-        let coset = self.pk.domain_4n();
-        let w_0_4n = coset.coset_fft(&w_0_poly);
-        let w_1_4n = coset.coset_fft(&w_1_poly);
-        let w_2_4n = coset.coset_fft(&w_2_poly);
-        let w_3_4n = coset.coset_fft(&w_3_poly);
+        let domain_4n = self.pk.domain_4n();
+        let w_0_4n = domain_4n.coset_fft(&w_0_poly);
+        let w_1_4n = domain_4n.coset_fft(&w_1_poly);
+        let w_2_4n = domain_4n.coset_fft(&w_2_poly);
+        let w_3_4n = domain_4n.coset_fft(&w_3_poly);
+        let pi_4n = domain_4n.coset_fft(&pi_poly);
 
         let first_oracles = FirstOracles {
             w_0: LabeledPolynomial::new_owned("w_0".to_string(), w_0_poly),
@@ -128,6 +142,7 @@ impl<F: Field> Prover<F> {
         self.w_1 = Some((w_1, w_1_4n));
         self.w_2 = Some((w_2, w_2_4n));
         self.w_3 = Some((w_3, w_3_4n));
+        self.pi = Some((pi, pi_4n));
 
         Ok(first_oracles)
     }
@@ -173,6 +188,7 @@ impl<F: Field> Prover<F> {
         let w_1_4n = &self.w_1.as_ref().unwrap().1;
         let w_2_4n = &self.w_2.as_ref().unwrap().1;
         let w_3_4n = &self.w_3.as_ref().unwrap().1;
+        let pi_4n = &self.pi.as_ref().unwrap().1;
         let z_4n = &self.z.as_ref().unwrap().1;
 
         let SecondMsg { alpha } = msg;
@@ -180,7 +196,7 @@ impl<F: Field> Prover<F> {
 
         let arithmetic_key = self.pk.arithmetic_key();
         let p_arith = arithmetic_key.compute_quotient(
-            domain_4n, w_0_4n, w_1_4n, w_2_4n, w_3_4n, alpha,
+            domain_4n, w_0_4n, w_1_4n, w_2_4n, w_3_4n, pi_4n, alpha,
         );
 
         let permutation_key = self.pk.permutation_key();
@@ -203,28 +219,120 @@ impl<F: Field> Prover<F> {
             domain_4n.coset_ifft(&t),
         );
 
+        // TODO: checks, remove these
+        {
+            print!("\n");
+            let roots: Vec<_> = domain_n.elements().collect();
+            let p_arith_poly = DensePolynomial::from_coefficients_vec(
+                domain_4n.coset_ifft(&p_arith),
+            );
+            print!("- checking p_arith_poly...");
+            roots.iter().for_each(|r| {
+                assert_eq!(p_arith_poly.evaluate(r), F::zero())
+            });
+            println!("done");
+            let p_arith_alpha = p_arith_poly.evaluate(alpha);
+
+            let p_perm_poly = DensePolynomial::from_coefficients_vec(
+                domain_4n.coset_ifft(&p_perm),
+            );
+            print!("- checking p_perm_poly...");
+            roots.iter().for_each(|r| {
+                assert_eq!(p_perm_poly.evaluate(r), F::zero())
+            });
+            println!("done");
+            let p_perm_alpha = p_perm_poly.evaluate(alpha);
+
+            let t_alpha = t_poly.evaluate(alpha);
+            let v_alpha = domain_n.evaluate_vanishing_polynomial(*alpha);
+
+            print!("- checking t_poly...");
+            assert_eq!(t_alpha * v_alpha, p_arith_alpha + p_perm_alpha);
+            println!("done");
+        }
+
         let t_polys = Self::quad_split(domain_n.size(), t_poly);
 
         let third_oracles = ThirdOracles {
-            t_0: LabeledPolynomial::new_owned(
-                "t_0".to_string(),
-                t_polys.0,
-            ),
-            t_1: LabeledPolynomial::new_owned(
-                "t_1".to_string(),
-                t_polys.1,
-            ),
-            t_2: LabeledPolynomial::new_owned(
-                "t_2".to_string(),
-                t_polys.2,
-            ),
-            t_3: LabeledPolynomial::new_owned(
-                "t_3".to_string(),
-                t_polys.3,
-            ),
+            t_0: LabeledPolynomial::new_owned("t_0".into(), t_polys.0),
+            t_1: LabeledPolynomial::new_owned("t_1".into(), t_polys.1),
+            t_2: LabeledPolynomial::new_owned("t_2".into(), t_polys.2),
+            t_3: LabeledPolynomial::new_owned("t_3".into(), t_polys.3),
         };
 
         Ok(third_oracles)
+    }
+
+    fn check_evaluation<'a>(
+        &self,
+        point: &F,
+        first_oracles: &FirstOracles<'a, F>,
+        second_oracles: &SecondOracles<'a, F>,
+        third_oracles: &ThirdOracles<'a, F>,
+    ) {
+        let gen = get_generator(self.pk.domain_n());
+        let alpha = self.alpha.unwrap();
+        let beta = self.beta.unwrap();
+        let gamma = self.gamma.unwrap();
+
+        let w_evals: Vec<_> =
+            first_oracles.iter().map(|w| w.evaluate(point)).collect();
+        let z_eval = second_oracles.z.evaluate(point);
+        let z_shifted_eval = second_oracles.z.evaluate(&(gen * point));
+
+        let t_eval: F = {
+            let point_n = point.pow(&[self.size() as u64]);
+            let point_2n = point_n.square();
+
+            third_oracles
+                .iter()
+                .zip(vec![F::one(), point_n, point_2n, point_n * point_2n])
+                .map(|(p, z)| p.evaluate(point) * z)
+                .sum()
+        };
+        let v_eval =
+            self.pk.domain_n().evaluate_vanishing_polynomial(*point);
+
+        let arithmetic_key = self.pk.arithmetic_key();
+        let q_0_eval = arithmetic_key.q_0.0.evaluate(point);
+        let q_1_eval = arithmetic_key.q_1.0.evaluate(point);
+        let q_2_eval = arithmetic_key.q_2.0.evaluate(point);
+        let q_3_eval = arithmetic_key.q_3.0.evaluate(point);
+        let q_m_eval = arithmetic_key.q_m.0.evaluate(point);
+        let q_c_eval = arithmetic_key.q_c.0.evaluate(point);
+        let q_arith_eval = arithmetic_key.q_arith.0.evaluate(point);
+
+        let permutation_key = self.pk.permutation_key();
+        let ks = permutation_key.ks;
+        let sigma_0_eval = permutation_key.sigma_0.0.evaluate(point);
+        let sigma_1_eval = permutation_key.sigma_1.0.evaluate(point);
+        let sigma_2_eval = permutation_key.sigma_2.0.evaluate(point);
+        let sigma_3_eval = permutation_key.sigma_3.0.evaluate(point);
+
+        let lhs = t_eval * v_eval;
+        let rhs = alpha
+            * q_arith_eval
+            * (q_0_eval * w_evals[0]
+                + q_1_eval * w_evals[1]
+                + q_2_eval * w_evals[2]
+                + q_3_eval * w_evals[3]
+                + q_m_eval * w_evals[1] * w_evals[2]
+                + q_c_eval)
+            + alpha.square()
+                * (z_eval
+                    * (w_evals[0] + ks[0] * beta * point + gamma)
+                    * (w_evals[1] + ks[1] * beta * point + gamma)
+                    * (w_evals[2] + ks[2] * beta * point + gamma)
+                    * (w_evals[3] + ks[3] * beta * point + gamma)
+                    - z_shifted_eval
+                        * (w_evals[0] + beta * sigma_0_eval + gamma)
+                        * (w_evals[1] + beta * sigma_1_eval + gamma)
+                        * (w_evals[2] + beta * sigma_2_eval + gamma)
+                        * (w_evals[3] + beta * sigma_3_eval + gamma));
+        print!("\n");
+        print!("- checking evaluations...");
+        assert_eq!(lhs, rhs);
+        println!("done");
     }
 
     pub fn evaluate<'a>(
@@ -235,6 +343,14 @@ impl<F: Field> Prover<F> {
         third_oracles: &ThirdOracles<'a, F>,
     ) -> Evals<F> {
         let ThirdMsg { zeta } = third_msg;
+
+        // TODO: checks, remove these
+        self.check_evaluation(
+            zeta,
+            first_oracles,
+            second_oracles,
+            third_oracles,
+        );
 
         let mut evals = Evals::new();
         // evaluation of [w_0, ..., w_3]
@@ -316,7 +432,6 @@ impl<F: Field> Prover<F> {
         let mut poly_3 = DensePolynomial::zero();
 
         let mut coeffs = poly.coeffs.into_iter().peekable();
-
         if coeffs.peek().is_some() {
             let chunk: Vec<_> = coeffs.by_ref().take(n).collect();
             poly_0 =
@@ -337,6 +452,7 @@ impl<F: Field> Prover<F> {
             poly_3 =
                 DensePolynomial::from_coefficients_vec(chunk.to_vec());
         }
+
         (poly_0, poly_1, poly_2, poly_3)
     }
 }
