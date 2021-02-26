@@ -46,15 +46,6 @@ impl<F: Field> Selectors<F> {
     }
 }
 
-pub struct Assigments<F: Field> {
-    pub n: usize,
-    pub w_0: Vec<F>,
-    pub w_1: Vec<F>,
-    pub w_2: Vec<F>,
-    pub w_3: Vec<F>,
-    pub pi: Vec<F>,
-}
-
 impl<F: Field> Composer<F> {
     // selectors
     pub fn preprocess(&self, ks: &[F; 4]) -> Result<Selectors<F>, Error> {
@@ -94,8 +85,21 @@ impl<F: Field> Composer<F> {
         })
     }
 
+    pub fn public_inputs_with_padding(
+        &self,
+        expected_size: usize,
+    ) -> Vec<F> {
+        let mut pi = self.pi.clone();
+        let diff = expected_size - self.n;
+        let zeros = vec![F::zero(); diff];
+        pi.extend(zeros.iter());
+        pi
+    }
+
     // witness vectors
-    pub fn synthesize(&self) -> Result<Assigments<F>, Error> {
+    pub fn synthesize(
+        &self,
+    ) -> Result<(Vec<F>, Vec<F>, Vec<F>, Vec<F>), Error> {
         let domain_n = GeneralEvaluationDomain::<F>::new(self.n)
             .ok_or(Error::PolynomialDegreeTooLarge)?;
         let n = domain_n.size();
@@ -116,13 +120,6 @@ impl<F: Field> Composer<F> {
         let mut pi = self.pi.clone();
         pi.extend(zeros.iter());
 
-        Ok(Assigments {
-            n,
-            w_0,
-            w_1,
-            w_2,
-            w_3,
-            pi,
-        })
+        Ok((w_0, w_1, w_2, w_3))
     }
 }

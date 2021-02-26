@@ -27,8 +27,7 @@ impl<F: Field> ProverKey<F> {
         w_2_eval: &F,
         w_3_eval: &F,
         point: &F,
-        factor: &F,
-    ) -> DensePolynomial<F> {
+    ) -> (F, DensePolynomial<F>) {
         let q_0_poly = &self.q_0.0;
         let q_1_poly = &self.q_1.0;
         let q_2_poly = &self.q_2.0;
@@ -44,7 +43,7 @@ impl<F: Field> ProverKey<F> {
             + scalar_mul(q_m_poly, &(*w_1_eval * w_2_eval)))
             + q_c_poly;
 
-        scalar_mul(&poly, &(q_arith_eval * factor))
+        (q_arith_eval, scalar_mul(&poly, &(q_arith_eval)))
     }
 
     pub(crate) fn compute_quotient(
@@ -55,30 +54,29 @@ impl<F: Field> ProverKey<F> {
         w_2: &[F],
         w_3: &[F],
         pi: &[F],
-        factor: &F,
     ) -> Vec<F> {
         let size = domain_4n.size();
         cfg_into_iter!((0..size))
             .map(|i| {
-                *factor
-                    * Self::evaluate(
-                        &w_0[i],
-                        &w_1[i],
-                        &w_2[i],
-                        &w_3[i],
-                        &self.q_0.2[i],
-                        &self.q_1.2[i],
-                        &self.q_2.2[i],
-                        &self.q_3.2[i],
-                        &self.q_m.2[i],
-                        &self.q_c.2[i],
-                        &self.q_arith.2[i],
-                        &pi[i],
-                    )
+                Self::evaluate(
+                    &w_0[i],
+                    &w_1[i],
+                    &w_2[i],
+                    &w_3[i],
+                    &self.q_0.2[i],
+                    &self.q_1.2[i],
+                    &self.q_2.2[i],
+                    &self.q_3.2[i],
+                    &self.q_m.2[i],
+                    &self.q_c.2[i],
+                    &self.q_arith.2[i],
+                    &pi[i],
+                )
             })
             .collect()
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn evaluate(
         w_0: &F,
         w_1: &F,

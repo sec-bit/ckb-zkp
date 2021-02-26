@@ -1,27 +1,26 @@
 use ark_ff::{FftField as Field, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations,
-    GeneralEvaluationDomain, Polynomial, UVPolynomial,
+    Polynomial, UVPolynomial,
 };
 use ark_std::{cfg_iter, vec::Vec};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-use crate::composer::{Assigments, Composer};
+use crate::composer::Composer;
 use crate::protocol::keygen::{generate_prover_key, ProverKey};
 use crate::protocol::verifier::{FirstMsg, SecondMsg, ThirdMsg};
 use crate::{utils::get_generator, Error, Evals, LabeledPolynomial};
 
 pub struct Prover<F: Field> {
     pk: ProverKey<F>,
+    pi: (DensePolynomial<F>, Vec<F>),
 
     w_0: Option<(Vec<F>, Vec<F>)>,
     w_1: Option<(Vec<F>, Vec<F>)>,
     w_2: Option<(Vec<F>, Vec<F>)>,
     w_3: Option<(Vec<F>, Vec<F>)>,
-
-    pi: Option<(Vec<F>, Vec<F>)>,
 
     z: Option<(Vec<F>, Vec<F>)>,
 
@@ -68,23 +67,23 @@ impl<F: Field> Prover<F> {
 
 impl<F: Field> Prover<F> {
     pub fn init(cs: &Composer<F>, ks: [F; 4]) -> Result<Prover<F>, Error> {
-        let n = cs.size();
-        GeneralEvaluationDomain::<F>::new(4 * n)
-            .ok_or(Error::PolynomialDegreeTooLarge)?;
-        GeneralEvaluationDomain::<F>::new(n)
-            .ok_or(Error::PolynomialDegreeTooLarge)?;
-
         let pk = generate_prover_key(cs, ks)?;
+        let domain_n = pk.domain_n();
+        let domain_4n = pk.domain_4n();
+
+        let pi = cs.public_inputs_with_padding(domain_n.size());
+        let pi_poly =
+            Evaluations::from_vec_and_domain(pi, domain_n).interpolate();
+        let pi_4n = domain_4n.coset_fft(&pi_poly);
 
         Ok(Prover {
             pk,
+            pi: (pi_poly, pi_4n),
 
             w_0: None,
             w_1: None,
             w_2: None,
             w_3: None,
-
-            pi: None,
 
             z: None,
 
@@ -98,38 +97,31 @@ impl<F: Field> Prover<F> {
         &mut self,
         cs: &Composer<F>,
     ) -> Result<FirstOracles<'a, F>, Error> {
-        let assignments = cs.synthesize()?;
-        let Assigments {
-            w_0,
-            w_1,
-            w_2,
-            w_3,
-            pi,
-            ..
-        } = assignments;
+        let (w_0, w_1, w_2, w_3) = cs.synthesize()?;
 
-        let domain = self.pk.domain_n();
+        let domain_n = self.pk.domain_n();
         let w_0_poly =
-            Evaluations::from_vec_and_domain(w_0.clone(), domain)
+            Evaluations::from_vec_and_domain(w_0.clone(), domain_n)
                 .interpolate();
         let w_1_poly =
-            Evaluations::from_vec_and_domain(w_1.clone(), domain)
+            Evaluations::from_vec_and_domain(w_1.clone(), domain_n)
                 .interpolate();
         let w_2_poly =
-            Evaluations::from_vec_and_domain(w_2.clone(), domain)
+            Evaluations::from_vec_and_domain(w_2.clone(), domain_n)
                 .interpolate();
         let w_3_poly =
-            Evaluations::from_vec_and_domain(w_3.clone(), domain)
+            Evaluations::from_vec_and_domain(w_3.clone(), domain_n)
                 .interpolate();
-        let pi_poly = Evaluations::from_vec_and_domain(pi.clone(), domain)
-            .interpolate();
+        let pi = cs.public_inputs_with_padding(domain_n.size());
+        let pi_poly =
+            Evaluations::from_vec_and_domain(pi.clone(), domain_n)
+                .interpolate();
 
         let domain_4n = self.pk.domain_4n();
         let w_0_4n = domain_4n.coset_fft(&w_0_poly);
         let w_1_4n = domain_4n.coset_fft(&w_1_poly);
         let w_2_4n = domain_4n.coset_fft(&w_2_poly);
         let w_3_4n = domain_4n.coset_fft(&w_3_poly);
-        let pi_4n = domain_4n.coset_fft(&pi_poly);
 
         let first_oracles = FirstOracles {
             w_0: LabeledPolynomial::new_owned("w_0".to_string(), w_0_poly),
@@ -142,7 +134,6 @@ impl<F: Field> Prover<F> {
         self.w_1 = Some((w_1, w_1_4n));
         self.w_2 = Some((w_2, w_2_4n));
         self.w_3 = Some((w_3, w_3_4n));
-        self.pi = Some((pi, pi_4n));
 
         Ok(first_oracles)
     }
@@ -188,7 +179,7 @@ impl<F: Field> Prover<F> {
         let w_1_4n = &self.w_1.as_ref().unwrap().1;
         let w_2_4n = &self.w_2.as_ref().unwrap().1;
         let w_3_4n = &self.w_3.as_ref().unwrap().1;
-        let pi_4n = &self.pi.as_ref().unwrap().1;
+        let pi_4n = &self.pi.1;
         let z_4n = &self.z.as_ref().unwrap().1;
 
         let SecondMsg { alpha } = msg;
@@ -196,7 +187,7 @@ impl<F: Field> Prover<F> {
 
         let arithmetic_key = self.pk.arithmetic_key();
         let p_arith = arithmetic_key.compute_quotient(
-            domain_4n, w_0_4n, w_1_4n, w_2_4n, w_3_4n, pi_4n, alpha,
+            domain_4n, w_0_4n, w_1_4n, w_2_4n, w_3_4n, pi_4n,
         );
 
         let permutation_key = self.pk.permutation_key();
@@ -206,7 +197,7 @@ impl<F: Field> Prover<F> {
             z_4n,
             &self.beta.unwrap(),
             &self.gamma.unwrap(),
-            &alpha.square(),
+            alpha,
         );
 
         let t: Vec<_> = cfg_iter!(p_arith)
@@ -263,6 +254,7 @@ impl<F: Field> Prover<F> {
         Ok(third_oracles)
     }
 
+    // for redundant checks
     fn check_evaluation<'a>(
         &self,
         point: &F,
@@ -292,6 +284,7 @@ impl<F: Field> Prover<F> {
         };
         let v_eval =
             self.pk.domain_n().evaluate_vanishing_polynomial(*point);
+        let pi_eval = self.pi.0.evaluate(point);
 
         let arithmetic_key = self.pk.arithmetic_key();
         let q_0_eval = arithmetic_key.q_0.0.evaluate(point);
@@ -310,15 +303,15 @@ impl<F: Field> Prover<F> {
         let sigma_3_eval = permutation_key.sigma_3.0.evaluate(point);
 
         let lhs = t_eval * v_eval;
-        let rhs = alpha
-            * q_arith_eval
+        let rhs = q_arith_eval
             * (q_0_eval * w_evals[0]
                 + q_1_eval * w_evals[1]
                 + q_2_eval * w_evals[2]
                 + q_3_eval * w_evals[3]
                 + q_m_eval * w_evals[1] * w_evals[2]
-                + q_c_eval)
-            + alpha.square()
+                + q_c_eval
+                + pi_eval)
+            + alpha
                 * (z_eval
                     * (w_evals[0] + ks[0] * beta * point + gamma)
                     * (w_evals[1] + ks[1] * beta * point + gamma)
@@ -373,16 +366,23 @@ impl<F: Field> Prover<F> {
                 .sum()
         };
 
-        let (sigma_0_zeta, sigma_1_zeta, sigma_2_zeta, r_zeta) = {
+        let (
+            q_arith_zeta,
+            sigma_0_zeta,
+            sigma_1_zeta,
+            sigma_2_zeta,
+            r_zeta,
+        ) = {
             let alpha = &self.alpha.unwrap();
             let beta = &self.beta.unwrap();
             let gamma = &self.gamma.unwrap();
 
             let arithmetic_key = self.pk.arithmetic_key();
-            let arith_lin = arithmetic_key.compute_linearisation(
-                &w_zeta[0], &w_zeta[1], &w_zeta[2], &w_zeta[3], zeta,
-                alpha,
-            );
+            let (q_arith_zeta, arith_lin) = arithmetic_key
+                .compute_linearisation(
+                    &w_zeta[0], &w_zeta[1], &w_zeta[2], &w_zeta[3], zeta,
+                );
+
             let permutation_key = self.pk.permutation_key();
             let (sigma_0_zeta, sigma_1_zeta, sigma_2_zeta, perm_lin) =
                 permutation_key.compute_linearisation(
@@ -392,10 +392,11 @@ impl<F: Field> Prover<F> {
                     beta,
                     gamma,
                     zeta,
-                    &alpha.square(),
+                    alpha,
                 );
 
             (
+                q_arith_zeta,
                 sigma_0_zeta,
                 sigma_1_zeta,
                 sigma_2_zeta,
@@ -408,6 +409,7 @@ impl<F: Field> Prover<F> {
         evals.insert("w_2".into(), w_zeta[2]);
         evals.insert("w_3".into(), w_zeta[3]);
         evals.insert("z_shifted".into(), z_shifted_zeta);
+        evals.insert("q_arith".into(), q_arith_zeta);
         evals.insert("sigma_0".into(), sigma_0_zeta);
         evals.insert("sigma_1".into(), sigma_1_zeta);
         evals.insert("sigma_2".into(), sigma_2_zeta);

@@ -177,6 +177,7 @@ impl<F: Field> ProverKey<F> {
             .collect()
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn compute_linearisation(
         &self,
         w_evals: (&F, &F, &F, &F),

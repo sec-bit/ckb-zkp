@@ -1,5 +1,9 @@
 use ark_ff::FftField as Field;
-use ark_poly::EvaluationDomain;
+use ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
+};
+use ark_std::vec::Vec;
+
 use rand::RngCore;
 
 use crate::composer::Composer;
@@ -8,6 +12,8 @@ use crate::{utils::get_generator, Error, Evals};
 
 pub struct Verifier<F: Field> {
     vk: VerifierKey<F>,
+
+    pi_poly: DensePolynomial<F>,
 
     alpha: Option<F>,
     beta: Option<F>,
@@ -32,8 +38,15 @@ impl<F: Field> Verifier<F> {
     pub fn init(cs: &Composer<F>) -> Result<Verifier<F>, Error> {
         let vk = generate_verifier_key(cs)?;
 
+        let domain_n = vk.domain_n();
+        let pi = cs.public_inputs_with_padding(domain_n.size());
+
+        let pi_poly =
+            Evaluations::from_vec_and_domain(pi, domain_n).interpolate();
+
         Ok(Verifier {
             vk,
+            pi_poly,
             alpha: None,
             beta: None,
             gamma: None,
@@ -89,22 +102,25 @@ impl<F: Field> Verifier<F> {
         let w_2 = Self::get_eval(&evals, "w_2", &zeta)?;
         let w_3 = Self::get_eval(&evals, "w_3", &zeta)?;
 
+        let z_shifted = Self::get_eval(&evals, "z_shifted", &(zeta * g))?;
+
         let sigma_0 = Self::get_eval(&evals, "sigma_0", &zeta)?;
         let sigma_1 = Self::get_eval(&evals, "sigma_1", &zeta)?;
         let sigma_2 = Self::get_eval(&evals, "sigma_2", &zeta)?;
-
-        let z_shifted = Self::get_eval(&evals, "z_shifted", &(zeta * g))?;
+        let q_airth = Self::get_eval(&evals, "q_arith", &zeta)?;
 
         let t = Self::get_eval(&evals, "t", &zeta)?;
         let r = Self::get_eval(&evals, "r", &zeta)?;
+        let pi = self.pi_poly.evaluate(&zeta);
 
         let lhs = t * v;
-        let rhs = r - z_shifted
-            * (w_0 + beta * sigma_0 + gamma)
-            * (w_1 + beta * sigma_1 + gamma)
-            * (w_2 + beta * sigma_2 + gamma)
-            * (w_3 + gamma)
-            * alpha.square();
+        let rhs = r + q_airth * pi
+            - z_shifted
+                * (w_0 + beta * sigma_0 + gamma)
+                * (w_1 + beta * sigma_1 + gamma)
+                * (w_2 + beta * sigma_2 + gamma)
+                * (w_3 + gamma)
+                * alpha;
 
         Ok(lhs == rhs)
     }

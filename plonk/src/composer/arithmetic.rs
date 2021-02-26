@@ -2,6 +2,7 @@ use crate::composer::{Composer, Field, Variable};
 
 impl<F: Field> Composer<F> {
     /// q_m * l * r + q_l * l + q_r * r + q_o * o (+ q_aux * aux) + q_c + pi == 0
+    #[allow(clippy::too_many_arguments)]
     fn create_poly_gate(
         &mut self,
         l: (Variable, F), // w_l, q_l
@@ -91,6 +92,7 @@ impl<F: Field> Composer<F> {
     }
 
     /// q_m * l * r - o (+ q_aux * aux) + q_c + pi == 0
+    #[allow(clippy::too_many_arguments)]
     pub fn create_mul_gate(
         &mut self,
         l: Variable,

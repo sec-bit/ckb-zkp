@@ -42,14 +42,14 @@ mod test {
             Fr::zero(),
         );
 
-        cs.create_add_gate(
-            (var_one, one),
-            (var_two, one),
-            var_three,
-            None,
-            Fr::zero(),
-            Fr::zero(),
-        );
+        // cs.create_add_gate(
+        //     (var_one, one),
+        //     (var_two, one),
+        //     var_three,
+        //     None,
+        //     Fr::zero(),
+        //     Fr::zero(),
+        // );
 
         cs.create_mul_gate(
             var_one,
@@ -61,7 +61,7 @@ mod test {
             Fr::zero(),
         );
 
-        // cs.constrain_to_constant(var_four, four, Fr::zero());
+        cs.constrain_to_constant(var_four, Fr::zero(), -four);
 
         println!("size of the circuit: {}", cs.size());
 
@@ -90,6 +90,7 @@ mod test {
         print!("verifier: second round...");
         let second_msg = v.second_round(rng)?;
         println!("done");
+
         // third round
         print!("prover: third round...");
         let third_oracles = p.third_round(&second_msg)?;
@@ -98,6 +99,7 @@ mod test {
         print!("verifier: third round...");
         let third_msg = v.third_round(rng)?;
         println!("done");
+
         // finalize
         print!("prover: evaluating...");
         let evals = p.evaluate(

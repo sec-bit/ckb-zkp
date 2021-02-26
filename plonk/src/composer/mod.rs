@@ -9,7 +9,7 @@ use permutation::Permutation;
 mod arithmetic;
 
 mod synthesize;
-pub use synthesize::{Assigments, Selectors};
+pub use synthesize::Selectors;
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
 pub struct Variable(usize);
@@ -130,15 +130,9 @@ mod test {
             Fr::zero(),
         );
         let s = cs.preprocess(&ks).unwrap();
-        let assignment = cs.synthesize().unwrap();
-        let Assigments {
-            w_0,
-            w_1,
-            w_2,
-            w_3,
-            pi,
-            ..
-        } = assignment;
+        let pi = cs.public_inputs_with_padding(s.size());
+
+        let (w_0, w_1, w_2, w_3) = cs.synthesize().unwrap();
         assert_eq!(w_0.len(), s.q_0.len());
         (0..s.size()).into_iter().for_each(|i| {
             assert_eq!(
