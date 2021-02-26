@@ -1,11 +1,9 @@
 use ark_ff::FftField as Field;
 use ark_poly::{univariate::DensePolynomial, Polynomial};
 
-use crate::{Cow, Map, Set};
+use crate::{Cow, Map};
 
-pub type Evals<F> = Map<(String, F), F>;
-
-pub type Queries<F> = Set<(String, F)>;
+pub type Evals<F> = Map<String, F>;
 
 #[derive(Clone, Debug)]
 pub struct LabeledPolynomial<'a, F: Field> {

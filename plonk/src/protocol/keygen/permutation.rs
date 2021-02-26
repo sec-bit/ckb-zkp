@@ -184,30 +184,30 @@ impl<F: Field> ProverKey<F> {
         z_poly: &DensePolynomial<F>,
         beta: &F,
         gamma: &F,
-        zeta: &F,
+        point: &F,
         factor: &F,
     ) -> (F, F, F, DensePolynomial<F>) {
-        let sigma_0_zeta = self.sigma_0.0.evaluate(zeta);
-        let sigma_1_zeta = self.sigma_1.0.evaluate(zeta);
-        let sigma_2_zeta = self.sigma_2.0.evaluate(zeta);
+        let sigma_0_eval = self.sigma_0.0.evaluate(point);
+        let sigma_1_eval = self.sigma_1.0.evaluate(point);
+        let sigma_2_eval = self.sigma_2.0.evaluate(point);
         let (w_0, w_1, w_2, w_3) = w_evals;
-        let numerator = (self.ks[0] * beta * zeta + gamma + w_0)
-            * (self.ks[1] * beta * zeta + gamma + w_1)
-            * (self.ks[2] * beta * zeta + gamma + w_2)
-            * (self.ks[3] * beta * zeta + gamma + w_3)
+        let numerator = (self.ks[0] * beta * point + gamma + w_0)
+            * (self.ks[1] * beta * point + gamma + w_1)
+            * (self.ks[2] * beta * point + gamma + w_2)
+            * (self.ks[3] * beta * point + gamma + w_3)
             * factor;
 
-        let denumerator = (sigma_0_zeta * beta + gamma + w_0)
-            * (sigma_1_zeta * beta + gamma + w_1)
-            * (sigma_2_zeta * beta + gamma + w_2)
+        let denumerator = (sigma_0_eval * beta + gamma + w_0)
+            * (sigma_1_eval * beta + gamma + w_1)
+            * (sigma_2_eval * beta + gamma + w_2)
             * beta
             * z_shifted_eval
             * factor;
 
         (
-            sigma_0_zeta,
-            sigma_1_zeta,
-            sigma_2_zeta,
+            sigma_0_eval,
+            sigma_1_eval,
+            sigma_2_eval,
             scalar_mul(z_poly, &numerator)
                 + scalar_mul(&self.sigma_3.0, &(-denumerator)),
         )

@@ -36,5 +36,6 @@ mod protocol;
 pub enum Error {
     PolynomialDegreeTooLarge,
     AlreadyPreprocessed,
+    MissingEvaluation(String),
     Other,
 }

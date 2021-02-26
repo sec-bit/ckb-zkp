@@ -15,9 +15,12 @@ mod test {
     use super::verifier::Verifier;
 
     fn run() -> Result<bool, Error> {
-        let K1: Fr = Fr::from(7 as u64);
-        let K2: Fr = Fr::from(13 as u64);
-        let K3: Fr = Fr::from(17 as u64);
+        let ks = [
+            Fr::one(),
+            Fr::from(7_u64),
+            Fr::from(13_u64),
+            Fr::from(17_u64),
+        ];
         let rng = &mut test_rng();
 
         // compose
@@ -31,14 +34,6 @@ mod test {
         let var_three = cs.alloc_and_assign(three);
         let var_four = cs.alloc_and_assign(four);
         cs.create_add_gate(
-            (var_one, one),
-            (var_two, one),
-            var_three,
-            None,
-            Fr::zero(),
-            Fr::zero(),
-        );
-        cs.create_add_gate(
             (var_two, one),
             (var_two, one),
             var_four,
@@ -46,10 +41,11 @@ mod test {
             Fr::zero(),
             Fr::zero(),
         );
+
         cs.create_mul_gate(
             var_one,
-            var_two,
-            var_two,
+            var_three,
+            var_three,
             None,
             Fr::one(),
             Fr::zero(),
@@ -60,7 +56,7 @@ mod test {
 
         // init
         print!("initializing prover...");
-        let mut p = Prover::init(&cs, [Fr::one(), K1, K2, K3])?;
+        let mut p = Prover::init(&cs, ks)?;
         println!("done");
 
         print!("initializing verifier...");
@@ -110,6 +106,8 @@ mod test {
 
     #[test]
     fn test() {
-        assert!(run().unwrap());
+        let e = run().unwrap();
+        println!("result: {:?}", e);
+        assert!(e);
     }
 }

@@ -105,9 +105,9 @@ mod test {
         let var_three = cs.alloc_and_assign(three);
         let var_four = cs.alloc_and_assign(four);
         cs.create_add_gate(
+            (var_three, one),
             (var_one, one),
-            (var_two, one),
-            var_three,
+            var_four,
             None,
             Fr::zero(),
             Fr::zero(),
@@ -129,6 +129,19 @@ mod test {
             Fr::zero(),
             Fr::zero(),
         );
-        cs.preprocess(&ks).unwrap();
+        let s = cs.preprocess(&ks).unwrap();
+        let (w_0, w_1, w_2, w_3) = cs.synthesize().unwrap();
+        assert_eq!(w_0.len(), s.q_0.len());
+        (0..s.n).into_iter().for_each(|i| {
+            assert_eq!(
+                Fr::zero(),
+                w_0[i] * s.q_0[i]
+                    + w_1[i] * s.q_1[i]
+                    + w_2[i] * s.q_2[i]
+                    + w_3[i] * s.q_3[i]
+                    + w_1[i] * w_2[i] * s.q_m[i]
+                    + s.q_c[i]
+            )
+        });
     }
 }

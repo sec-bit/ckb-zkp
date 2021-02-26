@@ -28,7 +28,7 @@ impl<F: Field> ProverKey<F> {
         w_1_eval: &F,
         w_2_eval: &F,
         w_3_eval: &F,
-        zeta: &F,
+        point: &F,
         factor: &F,
     ) -> DensePolynomial<F> {
         let q_0_poly = &self.q_0.0;
@@ -39,26 +39,26 @@ impl<F: Field> ProverKey<F> {
         let q_c_poly = &self.q_c.0;
         let q_arith_poly = &self.q_arith.0;
 
-        let poly = scalar_mul(q_0_poly, w_0_eval)
+        let poly = &(scalar_mul(q_0_poly, w_0_eval)
             + scalar_mul(q_1_poly, w_1_eval)
             + scalar_mul(q_2_poly, w_2_eval)
             + scalar_mul(q_3_poly, w_3_eval)
-            + scalar_mul(q_m_poly, &(*w_1_eval * w_2_eval));
-        let poly = &poly + q_c_poly;
+            + scalar_mul(q_m_poly, &(*w_1_eval * w_2_eval)))
+            + q_c_poly;
 
-        scalar_mul(&poly, &(q_arith_poly.evaluate(zeta) * factor))
+        scalar_mul(&poly, &(q_arith_poly.evaluate(point) * factor))
     }
 
     pub(crate) fn compute_quotient(
         &self,
-        extended_domain: impl EvaluationDomain<F>,
+        domain_4n: impl EvaluationDomain<F>,
         w_0: &[F],
         w_1: &[F],
         w_2: &[F],
         w_3: &[F],
         factor: &F,
     ) -> Vec<F> {
-        let size = extended_domain.size();
+        let size = domain_4n.size();
         cfg_into_iter!((0..size))
             .map(|i| {
                 *factor
@@ -92,7 +92,6 @@ impl<F: Field> ProverKey<F> {
         q_c: &F,
         q_arith: &F,
     ) -> F {
-        let zero = F::zero();
         if q_arith.is_zero() {
             F::zero()
         } else {

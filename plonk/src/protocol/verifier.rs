@@ -104,7 +104,8 @@ impl<F: Field> Verifier<F> {
             * (w_0 + beta * sigma_0 + gamma)
             * (w_1 + beta * sigma_1 + gamma)
             * (w_2 + beta * sigma_2 + gamma)
-            * (w_3 + gamma);
+            * (w_3 + gamma)
+            * alpha.square();
 
         Ok(lhs == rhs)
     }
@@ -114,7 +115,10 @@ impl<F: Field> Verifier<F> {
         label: &str,
         point: &F,
     ) -> Result<F, Error> {
-        let key = (label.to_string(), *point);
-        evals.get(&key).map(|v| *v).ok_or(Error::Other)
+        let key = label.to_string();
+        evals
+            .get(&key)
+            .map(|v| *v)
+            .ok_or(Error::MissingEvaluation(key))
     }
 }
