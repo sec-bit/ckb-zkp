@@ -1,8 +1,8 @@
 use ark_bls12_381::{Bls12_381 as E, Fr};
 use ark_ff::UniformRand;
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
+use ark_std::test_rng;
 use core::ops::Add;
-use rand::prelude::*;
 use std::time::Instant;
 use zkp_asvc::*;
 
@@ -13,13 +13,13 @@ fn group_gen(domain: &GeneralEvaluationDomain<Fr>) -> Fr {
     }
 }
 
-pub fn aggregatable_svc() {
-    // let rng = &mut thread_rng();
-    let rng = &mut thread_rng();
+#[test]
+fn test_aggregatable_svc() {
+    let rng = &mut test_rng();
     let size: usize = 8;
     let params = key_gen::<E, _>(size, rng).unwrap();
 
-    let domain = GeneralEvaluationDomain::<Fr>::new(size).unwrap();
+    let domain: GeneralEvaluationDomain<Fr> = EvaluationDomain::<Fr>::new(size).unwrap();
 
     let mut values = Vec::<Fr>::new();
     values.push(Fr::rand(rng));
@@ -95,8 +95,6 @@ pub fn aggregatable_svc() {
         size,
     )
     .unwrap();
-    let total_setup = start.elapsed();
-    println!("ASVC UPDATE COMMIT AND PROOF TIME: {:?}", total_setup);
     let rs = verify_pos(
         &params.verification_key,
         &uc,
@@ -106,6 +104,8 @@ pub fn aggregatable_svc() {
         group_gen(&domain),
     )
     .unwrap();
+    let total_setup = start.elapsed();
+    println!("ASVC UPDATE COMMIT AND PROOF TIME: {:?}", total_setup);
     assert!(rs);
 
     let start = Instant::now();
@@ -168,8 +168,4 @@ pub fn aggregatable_svc() {
     let total_setup = start.elapsed();
     println!("ASVC VERIFY AGGREGATE PROOFS TIME: {:?}", total_setup);
     assert!(rs);
-}
-
-fn main() {
-    aggregatable_svc();
 }

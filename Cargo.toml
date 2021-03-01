@@ -14,7 +14,6 @@ members = [
     "hyrax",
     "plonk",
     "gadgets",
-    "examples",
     "cli",
 ]
 exclude = [

@@ -16,7 +16,7 @@ use alloc::{string::String, vec::Vec};
 use std::{string::String, vec::Vec};
 
 pub mod algebra;
-pub mod commitment;
+pub mod hashes;
 pub mod lookup;
 pub mod merkletree;
 pub mod operator;

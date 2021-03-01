@@ -3,7 +3,7 @@ use ark_ff::{One, Zero};
 use rand::prelude::*;
 use sha2::{Digest, Sha256};
 use std::time::Instant;
-use zkp_gadgets::commitment::sha256::{AbstractHashSha256, AbstractHashSha256Output};
+use zkp_gadgets::hashes::sha256::{AbstractHashSha256, AbstractHashSha256Output};
 use zkp_gadgets::merkletree::cbmt::{Merge, MerkleProof, CBMT};
 use zkp_gadgets::merkletree::cbmt_constraints::MerkleProofGadget;
 use zkp_groth16::{

@@ -30,9 +30,6 @@ use core::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub, SubAssign};
 use rand::Rng;
 use zkp_r1cs::SynthesisError;
 
-#[cfg(test)]
-pub mod test;
-
 #[derive(Clone, Eq, PartialEq)]
 pub struct UpdateKey<E: PairingEngine> {
     pub ai: E::G1Affine,

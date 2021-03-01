@@ -1,10 +1,10 @@
 use ark_ff::PrimeField;
 use ark_std::test_rng;
-use zkp_bulletproofs::{create_random_proof, verify_proof};
+use zkp_bulletproofs::{create_random_proof, verify_proof, Proof};
 use zkp_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 // size: 71%, time: 13%, 14%
-use zkp_curve25519::{Curve25519 as G, Fr};
-//use ark_bls12_381::{Bls12_381 as G, Fr};
+//use zkp_curve25519::{Curve25519 as E, Fr};
+use ark_bls12_381::{Bls12_381 as E, Fr};
 use ark_serialize::*;
 use std::time::Instant;
 
@@ -44,11 +44,10 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for Mini<F> {
 
 #[test]
 fn mini_bulletproofs() {
+    // `OsRng` (for example) in production software.
     let rng = &mut test_rng();
     let num = 10;
 
-    // TRUSTED SETUP
-    println!("Bulletproofs prove...");
     let c = Mini::<Fr> {
         x: Some(Fr::from(2u32)),
         y: Some(Fr::from(3u32)),
@@ -56,15 +55,15 @@ fn mini_bulletproofs() {
         num: num,
     };
 
-    let start = Instant::now();
-    let (gens, r1cs, proof) = create_random_proof::<G, _, _>(c, rng).unwrap();
-    println!("prove time: {:?}", start.elapsed());
+    let p_start = Instant::now();
+    let (gens, r1cs, proof) = create_random_proof::<E, _, _>(c, rng).unwrap();
+    let p_time = p_start.elapsed();
+    println!("[Bulletproofs] Prove time   : {:?}", p_time);
 
     let mut proof_bytes = vec![];
     proof.serialize(&mut proof_bytes).unwrap();
-    println!("prove size: {}", proof_bytes.len());
+    println!("[Bulletproofs] Proof length : {}", proof_bytes.len());
 
-    println!("Bulletproof verify...");
     let _c = Mini::<Fr> {
         x: None,
         y: None,
@@ -72,7 +71,11 @@ fn mini_bulletproofs() {
         num: num,
     };
 
-    let start = Instant::now();
+    let v_start = Instant::now();
     assert!(verify_proof(&gens, &proof, &r1cs, &[Fr::from(10u32)]).unwrap());
-    println!("verify time: {:?}", start.elapsed());
+    let v_time = v_start.elapsed();
+    println!("[Bulletproofs] Verify time  : {:?}", v_time);
+
+    let proof2 = Proof::<E>::deserialize(&proof_bytes[..]).unwrap();
+    assert!(verify_proof(&gens, &proof2, &r1cs, &[Fr::from(10u32)]).unwrap());
 }

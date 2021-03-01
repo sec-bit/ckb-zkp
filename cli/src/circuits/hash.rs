@@ -1,5 +1,5 @@
 use ark_ff::PrimeField;
-use zkp_gadgets::commitment::mimc::{hash, mimc};
+use zkp_gadgets::hashes::mimc::{hash, mimc};
 use zkp_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
 use super::{CliCircuit, Publics};

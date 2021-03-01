@@ -1,7 +1,9 @@
 use ark_bls12_381::{Bls12_381 as E, Fr};
 use ark_ff::PrimeField;
+use ark_serialize::*;
 use ark_std::test_rng;
-use zkp_marlin::{create_random_proof, index, universal_setup, verify_proof};
+use std::time::Instant;
+use zkp_marlin::{create_random_proof, index, universal_setup, verify_proof, Proof, VerifyKey};
 use zkp_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
 struct Mini<F: PrimeField> {
@@ -40,11 +42,11 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for Mini<F> {
 
 #[test]
 fn mini_marlin() {
+    // `OsRng` (for example) in production software.
     let rng = &mut test_rng();
+
     let num = 10;
 
-    // TRUSTED SETUP
-    println!("Marlin setup...");
     let c = Mini::<Fr> {
         x: None,
         y: None,
@@ -53,8 +55,11 @@ fn mini_marlin() {
     };
 
     let srs = universal_setup::<E, _>(2usize.pow(10), rng).unwrap();
-    println!("marlin indexer...");
     let (ipk, ivk) = index(&srs, c).unwrap();
+
+    let mut vk_bytes = Vec::new();
+    ivk.serialize(&mut vk_bytes).unwrap();
+    println!("[Marlin] VerifyKey length : {}", vk_bytes.len());
 
     let circuit = Mini {
         x: Some(Fr::from(2u32)),
@@ -63,7 +68,21 @@ fn mini_marlin() {
         num: num,
     };
 
+    let p_start = Instant::now();
     let proof = create_random_proof(&ipk, circuit, rng).unwrap();
+    let p_time = p_start.elapsed();
+    println!("[Marlin] Prove time       : {:?}", p_time);
 
+    let mut proof_bytes = vec![];
+    proof.serialize(&mut proof_bytes).unwrap();
+    println!("[Marlin] Proof length     : {}", proof_bytes.len());
+
+    let v_start = Instant::now();
     assert!(verify_proof(&ivk, &proof, &[Fr::from(10u32)]).unwrap());
+    let v_time = v_start.elapsed();
+    println!("[Marlin] Verify time      : {:?}", v_time);
+
+    let vk2 = VerifyKey::<E>::deserialize(&vk_bytes[..]).unwrap();
+    let proof2 = Proof::<E>::deserialize(&proof_bytes[..]).unwrap();
+    assert!(verify_proof(&vk2, &proof2, &[Fr::from(10u32)]).unwrap());
 }
