@@ -33,36 +33,24 @@ mod test {
         let var_two = cs.alloc_and_assign(two);
         let var_three = cs.alloc_and_assign(three);
         let var_four = cs.alloc_and_assign(four);
+
         cs.create_add_gate(
-            (var_two, one),
-            (var_two, one),
+            (var_one, one),
+            (var_three, one),
             var_four,
             None,
             Fr::zero(),
             Fr::zero(),
         );
-
-        // cs.create_add_gate(
-        //     (var_one, one),
-        //     (var_two, one),
-        //     var_three,
-        //     None,
-        //     Fr::zero(),
-        //     Fr::zero(),
-        // );
-
-        cs.create_mul_gate(
-            var_one,
-            var_three,
+        cs.create_add_gate(
+            (var_one, one),
+            (var_two, one),
             var_three,
             None,
-            Fr::one(),
             Fr::zero(),
             Fr::zero(),
         );
-
         cs.constrain_to_constant(var_four, Fr::zero(), -four);
-
         println!("size of the circuit: {}", cs.size());
 
         // init

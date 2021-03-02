@@ -1,6 +1,6 @@
 use ark_ff::FftField as Field;
 use ark_poly::{univariate::DensePolynomial, Polynomial};
-use ark_std::borrow::Cow;
+use ark_std::{borrow::Cow, string::String};
 
 use crate::Map;
 

@@ -2,7 +2,6 @@ use ark_ff::FftField as Field;
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
 };
-use ark_std::vec::Vec;
 
 use rand::RngCore;
 
