@@ -25,7 +25,7 @@ impl<'a, F: Field> LabeledPolynomial<'a, F> {
         &self.label
     }
 
-    pub fn polynoimal(&self) -> &DensePolynomial<F> {
+    pub fn polynomial(&self) -> &DensePolynomial<F> {
         &self.poly
     }
 }
@@ -36,11 +36,13 @@ pub struct Commitment<E: PairingEngine>(pub E::G1Affine);
 #[derive(Clone, Debug)]
 pub struct LabeledCommitment<E: PairingEngine> {
     pub label: String,
-    pub commitment: Commitment<E>,
+    pub comm: Commitment<E>,
 }
 
 pub struct UniversalParams<E: PairingEngine> {
     pub powers_of_g: Vec<E::G1Affine>,
+    pub h: E::G2Affine,
+    pub beta_h: E::G2Affine,
 }
 
 impl<E: PairingEngine> UniversalParams<E> {
@@ -58,4 +60,18 @@ impl<E: PairingEngine> CommitterKey<E> {
     pub fn degree(&self) -> usize {
         self.powers_of_g.len() - 1
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct VerifierKey<E: PairingEngine> {
+    pub g: E::G1Affine,
+    pub h: E::G2Affine,
+    pub beta_h: E::G2Affine,
+
+    pub degree: usize,
+}
+
+#[derive(Clone, Debug)]
+pub struct Proof<E: PairingEngine> {
+    pub w: E::G1Affine,
 }
