@@ -3,8 +3,6 @@ use ark_ec::PairingEngine;
 pub enum Error {
     TrimmingDegreeTooLarge,
     PolynomialDegreeTooLarge,
-    DegreeIsZero,
-    Other,
 }
 
 #[derive(Clone, Debug)]
