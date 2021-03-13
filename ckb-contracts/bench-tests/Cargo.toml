@@ -6,8 +6,8 @@ edition = "2018"
 [dependencies]
 rand = "0.7"
 blake2 = { version = "0.9", default-features = false }
-ckb-tool = "0.2.2"
-ckb-testtool = "0.2.2"
+ckb-tool = "0.3"
+ckb-testtool = "0.3"
 ark-ff = { git = "https://github.com/arkworks-rs/algebra" }
 ark-serialize = { git = "https://github.com/arkworks-rs/algebra" }
 ark-std = { git = "https://github.com/arkworks-rs/utils" }

@@ -247,7 +247,7 @@ Test setup:
 
 - Release mode;
 - stripped;
-- using `jjy0/ckb-capsule-recipe-rust:2020-9-28` to build and test and measure running costs;
+- using `secbit/ckb-zkp-capsule:2021-02-17` to build and test and measure running costs;
 - using scheme groth16 and curve bn_256;
 - ckb-std version 0.7.2;
 - ckb-tool and ckb-testtool version 0.2.2;
@@ -275,7 +275,7 @@ Test setup:
 - Release mode;
 - stripped;
 - Profile: `LTO = true`, `codegen-units = 1`, `panic = "abort"`, `overflow-checks = true`, `opt-level = "z"`;
-- using `jjy0/ckb-capsule-recipe-rust:2020-9-28` to build and test and measure running costs;
+- using `secbit/ckb-zkp-capsule:2021-02-17` to build and test and measure running costs;
 - using scheme bulletproofs (it can use all curves);
 - ckb-std version 0.7.2;
 - ckb-tool and ckb-testtool version 0.2.2.
@@ -296,7 +296,7 @@ Test setup:
 - Release mode;
 - stripped;
 - Profile: `LTO = true`, `codegen-units = 1`, `panic = "abort"`, `overflow-checks = true`, `opt-level = "z"`;
-- using `jjy0/ckb-capsule-recipe-rust:2020-9-28` to build and test and measure running costs;
+- using `secbit/ckb-zkp-capsule:2021-02-17` to build and test and measure running costs;
 - using curve bn_256 (it can use all schemes);
 - ckb-std 0.7.2;
 - ckb-tool and ckb-testtool version 0.2.2.
