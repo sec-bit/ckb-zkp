@@ -1,5 +1,8 @@
-version = "0.4.4"
+version = "0.4.5 cdad051"
 deployment = "deployment.toml"
+
+[rust]
+docker_image = "secbit/ckb-zkp-capsule:2021-02-17"
 
 [[contracts]]
 name = "universal_groth16_verifier"
