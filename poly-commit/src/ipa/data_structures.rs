@@ -31,11 +31,12 @@ impl<C: Curve> CommitterKey<C> {
     }
 }
 
-pub type VerifierKey<C: Curve> = CommitterKey<C>;
+pub type VerifierKey<C> = CommitterKey<C>;
 
 #[derive(Clone, Debug)]
 pub struct Commitment<C: Curve>(pub C::Affine);
 
 pub struct Proof<C: Curve> {
-    _marker: C::Affine,
+    pub l: Vec<C::Affine>,
+    pub r: Vec<C::Affine>,
 }

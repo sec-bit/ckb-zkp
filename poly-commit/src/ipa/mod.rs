@@ -1,5 +1,5 @@
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, ProjectiveCurve};
-use ark_ff::{to_bytes, One, PrimeField, Zero};
+use ark_ff::{to_bytes, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, Polynomial};
 use ark_std::{cfg_into_iter, cfg_iter, cfg_iter_mut, log2, vec::Vec};
 use zkp_curve::Curve;
@@ -48,7 +48,6 @@ impl<C: Curve, D: Digest> IPA<C, D> {
             generators: pp.generators[0..=degree].to_vec(),
             u: pp.u,
         };
-        vk.degree();
         Ok((ck, vk))
     }
 
@@ -67,7 +66,7 @@ impl<C: Curve, D: Digest> IPA<C, D> {
         ck: &CommitterKey<C>,
         poly: &DensePolynomial<C::Fr>,
         point: &C::Fr,
-        rng: Option<&mut RngCore>,
+        rng: &mut dyn RngCore,
     ) -> Result<Proof<C>, Error> {
         if poly.degree() > ck.degree() {
             return Err(Error::PolynomialDegreeTooLarge);
@@ -92,19 +91,27 @@ impl<C: Curve, D: Digest> IPA<C, D> {
                 .collect()
         };
         let mut points = points.as_mut_slice();
-        let mut gens = ck.generators.clone();
-        let u = &ck.u;
 
+        let mut gens = ck.generators.clone();
+        let mut gens = gens.as_mut_slice();
+
+        let mut projects: Vec<C::Projective> =
+            cfg_iter!(gens).map(|g| (*g).into()).collect();
+        let mut projects = projects.as_mut_slice();
+
+        let u = &ck.u;
         let mut n = coeffs.len();
         let log_n = log2(n) as usize;
         let mut vec_l = Vec::with_capacity(log_n);
         let mut vec_r = Vec::with_capacity(log_n);
+        let mut tmp;
 
         while n > 1 {
             n /= 2;
             let (coeffs_l, coeffs_r) = coeffs.split_at_mut(n);
             let (points_l, points_r) = points.split_at_mut(n);
             let (gens_l, gens_r) = gens.split_at_mut(n);
+            let (projects_l, projects_r) = projects.split_at_mut(n);
             let l = Self::compute_commitment(gens_r, coeffs_l)
                 + u.mul(Self::compute_inner_product(points_r, coeffs_l))
                     .into();
@@ -114,20 +121,45 @@ impl<C: Curve, D: Digest> IPA<C, D> {
             vec_l.push(l);
             vec_r.push(r);
 
+            let mu = C::Fr::rand(rng);
+            let mu_inv = mu.inverse().unwrap();
+
             coeffs = {
                 cfg_iter_mut!(coeffs_l)
                     .zip(coeffs_r)
-                    .for_each(|(l, r)| *l += *r);
+                    .for_each(|(l, r)| *l += *r * mu_inv);
                 coeffs_l
             };
             points = {
                 cfg_iter_mut!(points_l)
                     .zip(points_r)
-                    .for_each(|(l, r)| *l += *r);
+                    .for_each(|(l, r)| *l += *r * mu);
                 points_l
-            }
+            };
+            projects = {
+                cfg_iter_mut!(projects_l)
+                    .zip(projects_r)
+                    .for_each(|(l, r)| *l += r.mul(mu.into_repr()));
+                projects_l
+            };
+            gens = {
+                tmp = C::Projective::batch_normalization_into_affine(
+                    projects,
+                );
+                tmp.as_mut_slice()
+            };
         }
-        Err(Error::Other)
+        Ok(Proof { l: vec_l, r: vec_r })
+    }
+
+    pub fn check(
+        vk: &VerifierKey<C>,
+        comm: &Commitment<C>,
+        value: &C::Fr,
+        point: &C::Fr,
+        proof: &Proof<C>,
+    ) -> Result<bool, Error> {
+        Ok(false)
     }
 
     fn compute_commitment(g: &[C::Affine], f: &[C::Fr]) -> C::Affine {
