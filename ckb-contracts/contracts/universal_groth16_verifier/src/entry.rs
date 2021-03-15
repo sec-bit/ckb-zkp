@@ -28,10 +28,10 @@ pub fn main() -> Result<(), Error> {
         Err(err) => return Err(err.into()),
     };
 
-    let vk = VerifyKey::<E>::deserialize(&vk_data[..]).map_err(|_e| Error::Encoding)?;
-    let proof = Proof::<E>::deserialize(&proof_data[..]).map_err(|_e| Error::Encoding)?;
+    let vk = VerifyKey::<E>::deserialize_unchecked(&vk_data[..]).map_err(|_e| Error::Encoding)?;
+    let proof = Proof::<E>::deserialize_unchecked(&proof_data[..]).map_err(|_e| Error::Encoding)?;
     let mut publics = Vec::new();
-    publics.push(Fr::deserialize(&public_data[..]).map_err(|_e| Error::Encoding)?);
+    publics.push(Fr::deserialize_unchecked(&public_data[..]).map_err(|_e| Error::Encoding)?);
 
     let pvk = prepare_verifying_key(&vk);
 

@@ -69,7 +69,8 @@ fn test_groth16() {
     let params = generate_random_parameters::<E, _, _>(c, rng).unwrap();
 
     let mut vk_bytes = Vec::new();
-    params.vk.serialize(&mut vk_bytes).unwrap();
+    params.vk.serialize_uncompressed(&mut vk_bytes).unwrap();
+    println!("VerifyKey bytes length: {}", vk_bytes.len());
 
     println!("Groth16 proving...");
 
@@ -83,10 +84,14 @@ fn test_groth16() {
     let proof = create_random_proof(&params, c, rng).unwrap();
 
     let mut proof_bytes = Vec::new();
-    proof.serialize(&mut proof_bytes).unwrap();
+    proof.serialize_uncompressed(&mut proof_bytes).unwrap();
+    println!("Proof bytes length: {}", proof_bytes.len());
 
     let mut public_bytes = Vec::new();
-    Fr::from(10u32).serialize(&mut public_bytes).unwrap();
+    Fr::from(10u32)
+        .serialize_uncompressed(&mut public_bytes)
+        .unwrap();
+    println!("Publics bytes length: {}", public_bytes.len());
 
     println!("Groth16 verifying on CKB...");
 
