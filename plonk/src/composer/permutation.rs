@@ -7,7 +7,7 @@ use rayon::prelude::*;
 use core::marker::PhantomData;
 
 use crate::composer::{Field, Variable};
-use crate::{Error, Map};
+use crate::Map;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub(crate) enum Wire {
@@ -63,7 +63,7 @@ impl<F: Field> Permutation<F> {
         &self,
         domain_n: impl EvaluationDomain<F>,
         ks: &[F; 4],
-    ) -> Result<(Vec<F>, Vec<F>, Vec<F>, Vec<F>), Error> {
+    ) -> (Vec<F>, Vec<F>, Vec<F>, Vec<F>) {
         let perms = self.compute_wire_permutation(domain_n.size());
 
         let roots: Vec<_> = domain_n.elements().collect();
@@ -74,12 +74,12 @@ impl<F: Field> Permutation<F> {
             Wire::W3(i) => roots[i] * ks[3],
         };
 
-        Ok((
+        (
             cfg_iter!(perms[0]).map(to).collect(),
             cfg_iter!(perms[1]).map(to).collect(),
             cfg_iter!(perms[2]).map(to).collect(),
             cfg_iter!(perms[3]).map(to).collect(),
-        ))
+        )
     }
 
     fn compute_wire_permutation(&self, n: usize) -> [Vec<Wire>; 4] {
@@ -176,7 +176,7 @@ mod test {
         let roots: Vec<_> = domain_n.elements().collect();
 
         let (sigma_0, sigma_1, sigma_2, sigma_3) =
-            cs.permutation.compute_sigmas(domain_n, &ks).unwrap();
+            cs.permutation.compute_sigmas(domain_n, &ks);
 
         let (id_0, id_1, id_2, id_3) = {
             let id_0: Vec<_> =

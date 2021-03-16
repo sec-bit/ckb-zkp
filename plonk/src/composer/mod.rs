@@ -9,7 +9,7 @@ use permutation::Permutation;
 mod arithmetic;
 
 mod synthesize;
-pub use synthesize::Selectors;
+pub use synthesize::{Error, Selectors};
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
 pub struct Variable(usize);

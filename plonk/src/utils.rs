@@ -20,6 +20,8 @@ pub fn scalar_mul<F: Field>(
     DensePolynomial::from_coefficients_vec(coeffs)
 }
 
-pub fn get_generator<F: Field>(domain: impl EvaluationDomain<F>) -> F {
+pub fn get_domain_generator<F: Field>(
+    domain: impl EvaluationDomain<F>,
+) -> F {
     domain.element(1)
 }

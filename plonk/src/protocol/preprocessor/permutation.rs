@@ -1,23 +1,34 @@
 use ark_ff::FftField as Field;
 use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
+    univariate::DensePolynomial, EvaluationDomain, Evaluations,
 };
 use ark_std::{cfg_into_iter, vec::Vec};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
+use crate::data_structures::LabeledPolynomial;
 use crate::utils::scalar_mul;
 
-pub struct ProverKey<F: Field> {
+pub struct Key<F: Field> {
     pub ks: [F; 4],
-    pub sigma_0: (DensePolynomial<F>, Vec<F>, Vec<F>),
-    pub sigma_1: (DensePolynomial<F>, Vec<F>, Vec<F>),
-    pub sigma_2: (DensePolynomial<F>, Vec<F>, Vec<F>),
-    pub sigma_3: (DensePolynomial<F>, Vec<F>, Vec<F>),
+    pub sigma_0: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
+    pub sigma_1: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
+    pub sigma_2: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
+    pub sigma_3: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
 }
 
-impl<F: Field> ProverKey<F> {
+impl<F: Field> Key<F> {
+    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
+        ark_std::vec![
+            &self.sigma_0.0,
+            &self.sigma_1.0,
+            &self.sigma_2.0,
+            &self.sigma_3.0
+        ]
+        .into_iter()
+    }
+
     pub(crate) fn compute_z(
         &self,
         domain_n: impl EvaluationDomain<F>,

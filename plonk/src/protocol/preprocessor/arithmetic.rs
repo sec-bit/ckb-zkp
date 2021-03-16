@@ -1,25 +1,37 @@
 use ark_ff::FftField as Field;
-use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Polynomial,
-};
+use ark_poly::{univariate::DensePolynomial, EvaluationDomain};
 use ark_std::{cfg_into_iter, vec::Vec};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
+use crate::data_structures::LabeledPolynomial;
 use crate::utils::scalar_mul;
 
-pub struct ProverKey<F: Field> {
-    pub q_0: (DensePolynomial<F>, Vec<F>, Vec<F>),
-    pub q_1: (DensePolynomial<F>, Vec<F>, Vec<F>),
-    pub q_2: (DensePolynomial<F>, Vec<F>, Vec<F>),
-    pub q_3: (DensePolynomial<F>, Vec<F>, Vec<F>),
-    pub q_m: (DensePolynomial<F>, Vec<F>, Vec<F>),
-    pub q_c: (DensePolynomial<F>, Vec<F>, Vec<F>),
-    pub q_arith: (DensePolynomial<F>, Vec<F>, Vec<F>),
+pub struct Key<F: Field> {
+    pub q_0: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
+    pub q_1: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
+    pub q_2: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
+    pub q_3: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
+    pub q_m: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
+    pub q_c: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
+    pub q_arith: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
 }
 
-impl<F: Field> ProverKey<F> {
+impl<F: Field> Key<F> {
+    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
+        ark_std::vec![
+            &self.q_0.0,
+            &self.q_1.0,
+            &self.q_2.0,
+            &self.q_3.0,
+            &self.q_m.0,
+            &self.q_c.0,
+            &self.q_arith.0
+        ]
+        .into_iter()
+    }
+
     pub(crate) fn compute_linearisation(
         &self,
         w_0_eval: &F,

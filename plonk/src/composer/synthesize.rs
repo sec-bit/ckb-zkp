@@ -5,7 +5,11 @@ use ark_std::{cfg_iter, vec::Vec};
 use rayon::prelude::*;
 
 use crate::composer::{Composer, Field};
-use crate::Error;
+
+#[derive(Debug)]
+pub enum Error {
+    PolynomialDegreeTooLarge,
+}
 
 pub struct Selectors<F: Field> {
     n: usize,
@@ -29,7 +33,7 @@ impl<F: Field> Selectors<F> {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Vec<F>> {
-        vec![
+        ark_std::vec![
             &self.q_0,
             &self.q_1,
             &self.q_2,
@@ -54,7 +58,7 @@ impl<F: Field> Composer<F> {
         let n = domain_n.size();
 
         let (sigma_0, sigma_1, sigma_2, sigma_3) =
-            self.permutation.compute_sigmas(domain_n, &ks)?;
+            self.permutation.compute_sigmas(domain_n, &ks);
 
         assert_eq!(sigma_0.len(), n);
         assert_eq!(sigma_1.len(), n);
@@ -83,6 +87,10 @@ impl<F: Field> Composer<F> {
             sigma_2,
             sigma_3,
         })
+    }
+
+    pub fn public_input(&self) -> Vec<F> {
+        self.pi
     }
 
     pub fn public_inputs_with_padding(
