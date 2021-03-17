@@ -1,12 +1,12 @@
 use ark_ff::FftField as Field;
-use ark_poly::{univariate::DensePolynomial, EvaluationDomain};
-use ark_std::{cfg_into_iter, vec::Vec};
+use ark_poly::EvaluationDomain;
+use ark_poly_commit::LinearCombination;
+use ark_std::{cfg_into_iter, vec, vec::Vec};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 use crate::data_structures::LabeledPolynomial;
-use crate::utils::scalar_mul;
 
 pub struct Key<F: Field> {
     pub q_0: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
@@ -20,42 +20,37 @@ pub struct Key<F: Field> {
 
 impl<F: Field> Key<F> {
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        ark_std::vec![
+        vec![
             &self.q_0.0,
             &self.q_1.0,
             &self.q_2.0,
             &self.q_3.0,
             &self.q_m.0,
             &self.q_c.0,
-            &self.q_arith.0
+            &self.q_arith.0,
         ]
         .into_iter()
     }
 
     pub(crate) fn compute_linearisation(
         &self,
-        w_0_eval: &F,
-        w_1_eval: &F,
-        w_2_eval: &F,
-        w_3_eval: &F,
-        point: &F,
-    ) -> (F, DensePolynomial<F>) {
-        let q_0_poly = &self.q_0.0;
-        let q_1_poly = &self.q_1.0;
-        let q_2_poly = &self.q_2.0;
-        let q_3_poly = &self.q_3.0;
-        let q_m_poly = &self.q_m.0;
-        let q_c_poly = &self.q_c.0;
-        let q_arith_eval = self.q_arith.0.evaluate(point);
-
-        let poly = &(scalar_mul(q_0_poly, w_0_eval)
-            + scalar_mul(q_1_poly, w_1_eval)
-            + scalar_mul(q_2_poly, w_2_eval)
-            + scalar_mul(q_3_poly, w_3_eval)
-            + scalar_mul(q_m_poly, &(*w_1_eval * w_2_eval)))
-            + q_c_poly;
-
-        (q_arith_eval, scalar_mul(&poly, &(q_arith_eval)))
+        w_evals: (F, F, F, F),
+        q_arith_eval: F,
+    ) -> LinearCombination<F> {
+        let (w_0_eval, w_1_eval, w_2_eval, w_3_eval) = w_evals;
+        let mut lc = LinearCombination::new(
+            "arithmetic",
+            vec![
+                (w_0_eval, "q_0"),
+                (w_1_eval, "q_1"),
+                (w_2_eval, "q_2"),
+                (w_3_eval, "q_q_3"),
+                (w_1_eval * w_2_eval, "q_m"),
+                (F::one(), "q_c"),
+            ],
+        );
+        lc *= q_arith_eval;
+        lc
     }
 
     pub(crate) fn compute_quotient(

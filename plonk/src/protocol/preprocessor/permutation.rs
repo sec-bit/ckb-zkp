@@ -2,13 +2,13 @@ use ark_ff::FftField as Field;
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations,
 };
-use ark_std::{cfg_into_iter, vec::Vec};
+use ark_poly_commit::LinearCombination;
+use ark_std::{cfg_into_iter, vec, vec::Vec};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 use crate::data_structures::LabeledPolynomial;
-use crate::utils::scalar_mul;
 
 pub struct Key<F: Field> {
     pub ks: [F; 4],
@@ -191,37 +191,30 @@ impl<F: Field> Key<F> {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn compute_linearisation(
         &self,
-        w_evals: (&F, &F, &F, &F),
-        z_shifted_eval: &F,
-        z_poly: &DensePolynomial<F>,
-        beta: &F,
-        gamma: &F,
-        point: &F,
-        factor: &F,
-    ) -> (F, F, F, DensePolynomial<F>) {
-        let sigma_0_eval = self.sigma_0.0.evaluate(point);
-        let sigma_1_eval = self.sigma_1.0.evaluate(point);
-        let sigma_2_eval = self.sigma_2.0.evaluate(point);
+        w_evals: (F, F, F, F),
+        z_shifted_eval: F,
+        sigma_0_eval: F,
+        sigma_1_eval: F,
+        sigma_2_eval: F,
+        beta: F,
+        gamma: F,
+        point: F,
+    ) -> LinearCombination<F> {
         let (w_0, w_1, w_2, w_3) = w_evals;
         let numerator = (self.ks[0] * beta * point + gamma + w_0)
             * (self.ks[1] * beta * point + gamma + w_1)
             * (self.ks[2] * beta * point + gamma + w_2)
-            * (self.ks[3] * beta * point + gamma + w_3)
-            * factor;
+            * (self.ks[3] * beta * point + gamma + w_3);
 
         let denumerator = (sigma_0_eval * beta + gamma + w_0)
             * (sigma_1_eval * beta + gamma + w_1)
             * (sigma_2_eval * beta + gamma + w_2)
             * beta
-            * z_shifted_eval
-            * factor;
+            * z_shifted_eval;
 
-        (
-            sigma_0_eval,
-            sigma_1_eval,
-            sigma_2_eval,
-            scalar_mul(z_poly, &numerator)
-                + scalar_mul(&self.sigma_3.0, &(-denumerator)),
+        LinearCombination::new(
+            "permutation",
+            vec![(numerator, "z"), (-denumerator, "sigma_3")],
         )
     }
 

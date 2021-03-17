@@ -1,17 +1,19 @@
 use ark_ff::FftField as Field;
+use ark_poly_commit::QuerySet;
 
 use rand_core::RngCore;
 
 use crate::protocol::preprocessor::PreprocessorInfo;
 use crate::protocol::Error;
+use crate::utils::get_domain_generator;
 
 pub struct Verifier<F: Field> {
     info: PreprocessorInfo<F>,
 
-    alpha: Option<F>,
-    beta: Option<F>,
-    gamma: Option<F>,
-    zeta: Option<F>,
+    alpha: Option<F>, // combination
+    beta: Option<F>,  // permutation
+    gamma: Option<F>, // permutation
+    zeta: Option<F>,  // evaluation
 }
 
 pub struct FirstMsg<F: Field> {
@@ -68,6 +70,31 @@ impl<F: Field> Verifier<F> {
         self.zeta = Some(zeta);
 
         Ok(ThirdMsg { zeta })
+    }
+
+    pub fn query_set(&self) -> QuerySet<F> {
+        let zeta = self.zeta.unwrap();
+        let g = get_domain_generator(self.info.domain_n);
+
+        let mut query_set = QuerySet::new();
+
+        query_set.insert(("w_0".into(), ("zeta".into(), zeta)));
+        query_set.insert(("w_1".into(), ("zeta".into(), zeta)));
+        query_set.insert(("w_2".into(), ("zeta".into(), zeta)));
+        query_set.insert(("w_3".into(), ("zeta".into(), zeta)));
+
+        query_set.insert(("z".into(), ("shifted_zeta".into(), zeta * g)));
+
+        query_set.insert(("sigma_0".into(), ("zeta".into(), zeta)));
+        query_set.insert(("sigma_1".into(), ("zeta".into(), zeta)));
+        query_set.insert(("sigma_2".into(), ("zeta".into(), zeta)));
+        query_set.insert(("q_arith".into(), ("zeta".into(), zeta)));
+
+        query_set.insert(("t".into(), ("zeta".into(), zeta)));
+        query_set.insert(("r".into(), ("zeta".into(), zeta)));
+        query_set.insert(("pi".into(), ("zeta".into(), zeta)));
+
+        query_set
     }
 
     // pub fn check_equality(

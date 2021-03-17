@@ -90,7 +90,7 @@ impl<F: Field> Composer<F> {
     }
 
     pub fn public_input(&self) -> Vec<F> {
-        self.pi
+        self.pi.clone()
     }
 
     pub fn public_inputs_with_padding(

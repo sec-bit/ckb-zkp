@@ -1,9 +1,10 @@
 use ark_ff::{FftField as Field, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain,
-    Evaluations as EvaluationsOnDomain, Polynomial, UVPolynomial,
+    Evaluations as EvaluationsOnDomain, UVPolynomial,
 };
-use ark_std::{cfg_iter, vec::Vec};
+use ark_poly_commit::LinearCombination;
+use ark_std::{cfg_iter, vec, vec::Vec};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -11,13 +12,13 @@ use rayon::prelude::*;
 use crate::composer::Composer;
 use crate::data_structures::LabeledPolynomial;
 use crate::protocol::preprocessor::PreprocessorKeys;
-use crate::protocol::verifier::{FirstMsg, SecondMsg};
-use crate::protocol::Error;
+use crate::protocol::verifier::{FirstMsg, SecondMsg, ThirdMsg};
+use crate::protocol::{Error, EvaluationsProvider};
 use crate::utils::get_domain_generator;
 
 pub struct Prover<'a, F: Field> {
     keys: &'a PreprocessorKeys<F>,
-    pi: (DensePolynomial<F>, Vec<F>, Vec<F>),
+    public_inputs: (DensePolynomial<F>, Vec<F>, Vec<F>),
 
     w_0: Option<(Vec<F>, Vec<F>)>,
     w_1: Option<(Vec<F>, Vec<F>)>,
@@ -40,8 +41,7 @@ pub struct FirstOracles<F: Field> {
 
 impl<F: Field> FirstOracles<F> {
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        ark_std::vec![&self.w_0, &self.w_1, &self.w_2, &self.w_3]
-            .into_iter()
+        vec![&self.w_0, &self.w_1, &self.w_2, &self.w_3].into_iter()
     }
 }
 
@@ -51,7 +51,7 @@ pub struct SecondOracles<F: Field> {
 
 impl<F: Field> SecondOracles<F> {
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        ark_std::vec![&self.z].into_iter()
+        vec![&self.z].into_iter()
     }
 }
 
@@ -64,14 +64,19 @@ pub struct ThirdOracles<F: Field> {
 
 impl<F: Field> ThirdOracles<F> {
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        ark_std::vec![&self.t_0, &self.t_1, &self.t_2, &self.t_3]
-            .into_iter()
+        vec![&self.t_0, &self.t_1, &self.t_2, &self.t_3].into_iter()
     }
 }
 
 impl<'a, F: Field> Prover<'a, F> {
-    pub fn size(&self) -> usize {
-        self.keys.size()
+    pub fn public_inputs(&self) -> &[F] {
+        &self.public_inputs.1
+    }
+
+    pub fn preprocessor_keys(
+        &self,
+    ) -> impl Iterator<Item = &LabeledPolynomial<F>> {
+        self.keys.iter()
     }
 }
 
@@ -85,14 +90,13 @@ impl<'a, F: Field> Prover<'a, F> {
 
         let pi = cs.public_input();
         let pi_n = cs.public_inputs_with_padding(domain_n.size());
-        let pi_poly =
-            EvaluationsOnDomain::from_vec_and_domain(pi_n, domain_n)
-                .interpolate();
+        let pi_poly = EvaluationsOnDomain::from_vec_and_domain(pi_n, domain_n)
+            .interpolate();
         let pi_4n = domain_4n.coset_fft(&pi_poly);
 
         Ok(Prover {
             keys,
-            pi: (pi_poly, pi, pi_4n),
+            public_inputs: (pi_poly, pi, pi_4n),
 
             w_0: None,
             w_1: None,
@@ -107,10 +111,6 @@ impl<'a, F: Field> Prover<'a, F> {
         })
     }
 
-    pub fn public_input(&self) -> Vec<F> {
-        self.pi.1
-    }
-
     pub fn first_round(
         &mut self,
         cs: &Composer<F>,
@@ -118,29 +118,17 @@ impl<'a, F: Field> Prover<'a, F> {
         let (w_0, w_1, w_2, w_3) = cs.synthesize()?;
 
         let domain_n = self.keys.domain_n();
-        let w_0_poly = EvaluationsOnDomain::from_vec_and_domain(
-            w_0.clone(),
-            domain_n,
-        )
-        .interpolate();
-        let w_1_poly = EvaluationsOnDomain::from_vec_and_domain(
-            w_1.clone(),
-            domain_n,
-        )
-        .interpolate();
-        let w_2_poly = EvaluationsOnDomain::from_vec_and_domain(
-            w_2.clone(),
-            domain_n,
-        )
-        .interpolate();
-        let w_3_poly = EvaluationsOnDomain::from_vec_and_domain(
-            w_3.clone(),
-            domain_n,
-        )
-        .interpolate();
-        let pi = cs.public_inputs_with_padding(domain_n.size());
-        let pi_poly =
-            EvaluationsOnDomain::from_vec_and_domain(pi.clone(), domain_n)
+        let w_0_poly =
+            EvaluationsOnDomain::from_vec_and_domain(w_0.clone(), domain_n)
+                .interpolate();
+        let w_1_poly =
+            EvaluationsOnDomain::from_vec_and_domain(w_1.clone(), domain_n)
+                .interpolate();
+        let w_2_poly =
+            EvaluationsOnDomain::from_vec_and_domain(w_2.clone(), domain_n)
+                .interpolate();
+        let w_3_poly =
+            EvaluationsOnDomain::from_vec_and_domain(w_3.clone(), domain_n)
                 .interpolate();
 
         let domain_4n = self.keys.domain_4n();
@@ -225,16 +213,15 @@ impl<'a, F: Field> Prover<'a, F> {
         let w_1_4n = &self.w_1.as_ref().unwrap().1;
         let w_2_4n = &self.w_2.as_ref().unwrap().1;
         let w_3_4n = &self.w_3.as_ref().unwrap().1;
-        let pi_4n = &self.pi.1;
+        let pi_4n = &self.public_inputs.1;
         let z_4n = &self.z.as_ref().unwrap().1;
 
         let SecondMsg { alpha } = msg;
         self.alpha = Some(*alpha);
 
         let arithmetic_key = self.keys.arithmetic_key();
-        let p_arith = arithmetic_key.compute_quotient(
-            domain_4n, w_0_4n, w_1_4n, w_2_4n, w_3_4n, pi_4n,
-        );
+        let p_arith = arithmetic_key
+            .compute_quotient(domain_4n, w_0_4n, w_1_4n, w_2_4n, w_3_4n, pi_4n);
 
         let permutation_key = self.keys.permutation_key();
         let p_perm = permutation_key.compute_quotient(
@@ -252,117 +239,202 @@ impl<'a, F: Field> Prover<'a, F> {
             .map(|((p_arith, p_perm), vi)| (*p_arith + p_perm) * vi)
             .collect();
 
-        let t_poly = DensePolynomial::from_coefficients_vec(
-            domain_4n.coset_ifft(&t),
-        );
+        let t_poly =
+            DensePolynomial::from_coefficients_vec(domain_4n.coset_ifft(&t));
 
         let t_polys = Self::quad_split(domain_n.size(), t_poly);
 
         let third_oracles = ThirdOracles {
-            t_0: LabeledPolynomial::new(
-                "t_0".into(),
-                t_polys.0,
-                None,
-                None,
-            ),
-            t_1: LabeledPolynomial::new(
-                "t_1".into(),
-                t_polys.1,
-                None,
-                None,
-            ),
-            t_2: LabeledPolynomial::new(
-                "t_2".into(),
-                t_polys.2,
-                None,
-                None,
-            ),
-            t_3: LabeledPolynomial::new(
-                "t_3".into(),
-                t_polys.3,
-                None,
-                None,
-            ),
+            t_0: LabeledPolynomial::new("t_0".into(), t_polys.0, None, None),
+            t_1: LabeledPolynomial::new("t_1".into(), t_polys.1, None, None),
+            t_2: LabeledPolynomial::new("t_2".into(), t_polys.2, None, None),
+            t_3: LabeledPolynomial::new("t_3".into(), t_polys.3, None, None),
         };
 
         Ok(third_oracles)
     }
 
-    // for redundant checks
-    fn check_evaluation(
+    pub fn construct_linear_combinations(
         &self,
-        point: &F,
-        first_oracles: &FirstOracles<F>,
-        second_oracles: &SecondOracles<F>,
-        third_oracles: &ThirdOracles<F>,
-    ) {
-        let gen = get_domain_generator(self.keys.domain_n());
+        msg: &ThirdMsg<F>,
+        evals: &impl EvaluationsProvider<F>,
+    ) -> Result<Vec<LinearCombination<F>>, Error> {
         let alpha = self.alpha.unwrap();
         let beta = self.beta.unwrap();
         let gamma = self.gamma.unwrap();
+        let zeta = msg.zeta;
 
-        let w_evals: Vec<_> =
-            first_oracles.iter().map(|w| w.evaluate(point)).collect();
-        let z_eval = second_oracles.z.evaluate(point);
-        let z_shifted_eval = second_oracles.z.evaluate(&(gen * point));
+        let zeta_n = zeta.pow(&[self.keys.size() as u64]);
+        let zeta_2n = zeta_n.square();
+        let shifted_zeta = zeta * get_domain_generator(self.keys.domain_n());
 
-        let t_eval: F = {
-            let point_n = point.pow(&[self.size() as u64]);
-            let point_2n = point_n.square();
+        let w_0 = LinearCombination::new("w_0", vec![(F::one(), "w_0")]);
+        let w_1 = LinearCombination::new("w_1", vec![(F::one(), "w_1")]);
+        let w_2 = LinearCombination::new("w_2", vec![(F::one(), "w_2")]);
+        let w_3 = LinearCombination::new("w_3", vec![(F::one(), "w_3")]);
 
-            third_oracles
-                .iter()
-                .zip(ark_std::vec![
-                    F::one(),
-                    point_n,
-                    point_2n,
-                    point_n * point_2n
-                ])
-                .map(|(p, z)| p.evaluate(point) * z)
-                .sum()
-        };
-        let v_eval =
-            self.keys.domain_n().evaluate_vanishing_polynomial(*point);
-        let pi_eval = self.pi.0.evaluate(point);
+        let w_0_zeta = evals.get_lc_eval(&w_0, zeta)?;
+        let w_1_zeta = evals.get_lc_eval(&w_1, zeta)?;
+        let w_2_zeta = evals.get_lc_eval(&w_2, zeta)?;
+        let w_3_zeta = evals.get_lc_eval(&w_3, zeta)?;
 
-        let arithmetic_key = self.keys.arithmetic_key();
-        let q_0_eval = arithmetic_key.q_0.0.evaluate(point);
-        let q_1_eval = arithmetic_key.q_1.0.evaluate(point);
-        let q_2_eval = arithmetic_key.q_2.0.evaluate(point);
-        let q_3_eval = arithmetic_key.q_3.0.evaluate(point);
-        let q_m_eval = arithmetic_key.q_m.0.evaluate(point);
-        let q_c_eval = arithmetic_key.q_c.0.evaluate(point);
-        let q_arith_eval = arithmetic_key.q_arith.0.evaluate(point);
+        let z = LinearCombination::new("z", vec![(F::one(), "z")]);
+        let z_shifted_zeta = evals.get_lc_eval(&z, shifted_zeta)?;
 
-        let permutation_key = self.keys.permutation_key();
-        let ks = permutation_key.ks;
-        let sigma_0_eval = permutation_key.sigma_0.0.evaluate(point);
-        let sigma_1_eval = permutation_key.sigma_1.0.evaluate(point);
-        let sigma_2_eval = permutation_key.sigma_2.0.evaluate(point);
-        let sigma_3_eval = permutation_key.sigma_3.0.evaluate(point);
+        let t = LinearCombination::new(
+            "t",
+            vec![
+                (F::one(), "t_0"),
+                (zeta, "t_1"),
+                (zeta_n, "t_2"),
+                (zeta_n * zeta_2n, "t_3"),
+            ],
+        );
 
-        let lhs = t_eval * v_eval;
-        let rhs = q_arith_eval
-            * (q_0_eval * w_evals[0]
-                + q_1_eval * w_evals[1]
-                + q_2_eval * w_evals[2]
-                + q_3_eval * w_evals[3]
-                + q_m_eval * w_evals[1] * w_evals[2]
-                + q_c_eval
-                + pi_eval)
-            + alpha
-                * (z_eval
-                    * (w_evals[0] + ks[0] * beta * point + gamma)
-                    * (w_evals[1] + ks[1] * beta * point + gamma)
-                    * (w_evals[2] + ks[2] * beta * point + gamma)
-                    * (w_evals[3] + ks[3] * beta * point + gamma)
-                    - z_shifted_eval
-                        * (w_evals[0] + beta * sigma_0_eval + gamma)
-                        * (w_evals[1] + beta * sigma_1_eval + gamma)
-                        * (w_evals[2] + beta * sigma_2_eval + gamma)
-                        * (w_evals[3] + beta * sigma_3_eval + gamma));
-        assert_eq!(lhs, rhs);
+        let sigma_0 =
+            LinearCombination::new("sigma_0", vec![(F::one(), "sigma_0")]);
+        let sigma_1 =
+            LinearCombination::new("sigma_1", vec![(F::one(), "sigma_1")]);
+        let sigma_2 =
+            LinearCombination::new("sigma_2", vec![(F::one(), "sigma_2")]);
+        let q_arith =
+            LinearCombination::new("q_arith", vec![(F::one(), "q_arith")]);
+
+        let sigma_0_zeta = evals.get_lc_eval(&sigma_0, zeta)?;
+        let sigma_1_zeta = evals.get_lc_eval(&sigma_1, zeta)?;
+        let sigma_2_zeta = evals.get_lc_eval(&sigma_2, zeta)?;
+        let q_arith_zeta = evals.get_lc_eval(&q_arith, zeta)?;
+
+        let mut r = self.keys.arithmetic_key().compute_linearisation(
+            (w_0_zeta, w_1_zeta, w_2_zeta, w_3_zeta),
+            q_arith_zeta,
+        );
+        r += (
+            alpha,
+            &self.keys.permutation_key().compute_linearisation(
+                (w_0_zeta, w_1_zeta, w_2_zeta, w_3_zeta),
+                z_shifted_zeta,
+                sigma_0_zeta,
+                sigma_1_zeta,
+                sigma_2_zeta,
+                beta,
+                gamma,
+                zeta,
+            ),
+        );
+
+        let mut lcs = vec![
+            w_0, w_1, w_2, w_3, z, sigma_0, sigma_1, sigma_2, q_arith, t, r,
+        ];
+        lcs.sort_by(|a, b| a.label.cmp(&b.label));
+
+        Ok(lcs)
     }
+    //     let (q_arith_zeta, sigma_0_zeta, sigma_1_zeta, sigma_2_zeta, r_zeta) = {
+    //         let alpha = &self.alpha.unwrap();
+    //         let beta = &self.beta.unwrap();
+    //         let gamma = &self.gamma.unwrap();
+
+    //         let arithmetic_key = self.pk.arithmetic_key();
+    //         let (q_arith_zeta, arith_lin) = arithmetic_key
+    //             .compute_linearisation(
+    //                 &w_zeta[0], &w_zeta[1], &w_zeta[2], &w_zeta[3], zeta,
+    //             );
+
+    //         let permutation_key = self.pk.permutation_key();
+    //         let (sigma_0_zeta, sigma_1_zeta, sigma_2_zeta, perm_lin) =
+    //             permutation_key.compute_linearisation(
+    //                 (&w_zeta[0], &w_zeta[1], &w_zeta[2], &w_zeta[3]),
+    //                 &z_shifted_zeta,
+    //                 &second_oracles.z.polynomial(),
+    //                 beta,
+    //                 gamma,
+    //                 zeta,
+    //                 alpha,
+    //             );
+
+    //         (
+    //             q_arith_zeta,
+    //             sigma_0_zeta,
+    //             sigma_1_zeta,
+    //             sigma_2_zeta,
+    //             (arith_lin + perm_lin).evaluate(zeta),
+
+    // for redundant checks
+    // fn check_evaluation(
+    //     &self,
+    //     point: &F,
+    //     first_oracles: &FirstOracles<F>,
+    //     second_oracles: &SecondOracles<F>,
+    //     third_oracles: &ThirdOracles<F>,
+    // ) {
+    //     let gen = get_domain_generator(self.keys.domain_n());
+    //     let alpha = self.alpha.unwrap();
+    //     let beta = self.beta.unwrap();
+    //     let gamma = self.gamma.unwrap();
+
+    //     let w_evals: Vec<_> =
+    //         first_oracles.iter().map(|w| w.evaluate(point)).collect();
+    //     let z_eval = second_oracles.z.evaluate(point);
+    //     let z_shifted_eval = second_oracles.z.evaluate(&(gen * point));
+
+    //     let t_eval: F = {
+    //         let point_n = point.pow(&[self.size() as u64]);
+    //         let point_2n = point_n.square();
+
+    //         third_oracles
+    //             .iter()
+    //             .zip(ark_std::vec![
+    //                 F::one(),
+    //                 point_n,
+    //                 point_2n,
+    //                 point_n * point_2n
+    //             ])
+    //             .map(|(p, z)| p.evaluate(point) * z)
+    //             .sum()
+    //     };
+    //     let v_eval =
+    //         self.keys.domain_n().evaluate_vanishing_polynomial(*point);
+    //     let pi_eval = self.pi.0.evaluate(point);
+
+    //     let arithmetic_key = self.keys.arithmetic_key();
+    //     let q_0_eval = arithmetic_key.q_0.0.evaluate(point);
+    //     let q_1_eval = arithmetic_key.q_1.0.evaluate(point);
+    //     let q_2_eval = arithmetic_key.q_2.0.evaluate(point);
+    //     let q_3_eval = arithmetic_key.q_3.0.evaluate(point);
+    //     let q_m_eval = arithmetic_key.q_m.0.evaluate(point);
+    //     let q_c_eval = arithmetic_key.q_c.0.evaluate(point);
+    //     let q_arith_eval = arithmetic_key.q_arith.0.evaluate(point);
+
+    //     let permutation_key = self.keys.permutation_key();
+    //     let ks = permutation_key.ks;
+    //     let sigma_0_eval = permutation_key.sigma_0.0.evaluate(point);
+    //     let sigma_1_eval = permutation_key.sigma_1.0.evaluate(point);
+    //     let sigma_2_eval = permutation_key.sigma_2.0.evaluate(point);
+    //     let sigma_3_eval = permutation_key.sigma_3.0.evaluate(point);
+
+    //     let lhs = t_eval * v_eval;
+    //     let rhs = q_arith_eval
+    //         * (q_0_eval * w_evals[0]
+    //             + q_1_eval * w_evals[1]
+    //             + q_2_eval * w_evals[2]
+    //             + q_3_eval * w_evals[3]
+    //             + q_m_eval * w_evals[1] * w_evals[2]
+    //             + q_c_eval
+    //             + pi_eval)
+    //         + alpha
+    //             * (z_eval
+    //                 * (w_evals[0] + ks[0] * beta * point + gamma)
+    //                 * (w_evals[1] + ks[1] * beta * point + gamma)
+    //                 * (w_evals[2] + ks[2] * beta * point + gamma)
+    //                 * (w_evals[3] + ks[3] * beta * point + gamma)
+    //                 - z_shifted_eval
+    //                     * (w_evals[0] + beta * sigma_0_eval + gamma)
+    //                     * (w_evals[1] + beta * sigma_1_eval + gamma)
+    //                     * (w_evals[2] + beta * sigma_2_eval + gamma)
+    //                     * (w_evals[3] + beta * sigma_3_eval + gamma));
+    //     assert_eq!(lhs, rhs);
+    // }
 
     fn quad_split(
         n: usize,
@@ -381,23 +453,19 @@ impl<'a, F: Field> Prover<'a, F> {
         let mut coeffs = poly.coeffs.into_iter().peekable();
         if coeffs.peek().is_some() {
             let chunk: Vec<_> = coeffs.by_ref().take(n).collect();
-            poly_0 =
-                DensePolynomial::from_coefficients_vec(chunk.to_vec());
+            poly_0 = DensePolynomial::from_coefficients_vec(chunk.to_vec());
         }
         if coeffs.peek().is_some() {
             let chunk: Vec<_> = coeffs.by_ref().take(n).collect();
-            poly_1 =
-                DensePolynomial::from_coefficients_vec(chunk.to_vec());
+            poly_1 = DensePolynomial::from_coefficients_vec(chunk.to_vec());
         }
         if coeffs.peek().is_some() {
             let chunk: Vec<_> = coeffs.by_ref().take(n).collect();
-            poly_2 =
-                DensePolynomial::from_coefficients_vec(chunk.to_vec());
+            poly_2 = DensePolynomial::from_coefficients_vec(chunk.to_vec());
         }
         if coeffs.peek().is_some() {
             let chunk: Vec<_> = coeffs.by_ref().take(n).collect();
-            poly_3 =
-                DensePolynomial::from_coefficients_vec(chunk.to_vec());
+            poly_3 = DensePolynomial::from_coefficients_vec(chunk.to_vec());
         }
 
         (poly_0, poly_1, poly_2, poly_3)
