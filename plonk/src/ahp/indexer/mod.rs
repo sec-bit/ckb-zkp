@@ -8,38 +8,35 @@ use ark_std::cfg_into_iter;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
+use crate::ahp::{AHPForPLONK, Error};
 use crate::composer::{Composer, Error as CSError, Selectors};
 use crate::data_structures::LabeledPolynomial;
-use crate::protocol::Error;
 
 mod arithmetic;
 pub use arithmetic::ArithmeticKey;
 mod permutation;
 pub use permutation::PermutationKey;
 
-pub struct PreprocessorKeys<F: Field> {
-    pub info: PreprocessorInfo<F>,
-
-    domain_4n: GeneralEvaluationDomain<F>,
-    v_4n_inversed: Vec<F>,
+pub struct Index<F: Field> {
+    pub info: IndexInfo<F>,
 
     arithmetic: ArithmeticKey<F>,
     permutation: PermutationKey<F>,
+
+    domain_4n: GeneralEvaluationDomain<F>,
+    v_4n_inversed: Vec<F>,
 }
 
 #[derive(Debug, Clone)]
-pub struct PreprocessorInfo<F: Field> {
+pub struct IndexInfo<F: Field> {
     pub n: usize,
-    pub k: [F; 4],
+    pub ks: [F; 4],
     pub domain_n: GeneralEvaluationDomain<F>,
 }
 
-impl<F: Field> PreprocessorKeys<F> {
-    pub fn generate(
-        cs: &Composer<F>,
-        k: [F; 4],
-    ) -> Result<PreprocessorKeys<F>, Error> {
-        let selectors = cs.process(&k)?;
+impl<F: Field> AHPForPLONK<F> {
+    pub fn index(cs: &Composer<F>, ks: [F; 4]) -> Result<Index<F>, Error> {
+        let selectors = cs.process(&ks)?;
         let n = selectors.size();
         selectors.iter().for_each(|s| assert_eq!(s.len(), n));
         println!("selector size: {}", n);
@@ -161,8 +158,8 @@ impl<F: Field> PreprocessorKeys<F> {
         let v_4n_inversed: Vec<_> =
             cfg_into_iter!(v_4n).map(|v| v.inverse().unwrap()).collect();
 
-        Ok(PreprocessorKeys {
-            info: PreprocessorInfo { n, k, domain_n },
+        Ok(Index {
+            info: IndexInfo { n, ks, domain_n },
 
             domain_4n,
             v_4n_inversed,
@@ -188,7 +185,7 @@ impl<F: Field> PreprocessorKeys<F> {
     }
 }
 
-impl<F: Field> PreprocessorKeys<F> {
+impl<F: Field> Index<F> {
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
         self.arithmetic.iter().chain(self.permutation.iter())
     }

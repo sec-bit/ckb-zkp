@@ -1,4 +1,4 @@
-use crate::protocol::Error as PError;
+use crate::ahp::Error as AHPError;
 
 #[derive(Debug)]
 pub enum Error<E> {
@@ -7,12 +7,12 @@ pub enum Error<E> {
     AlreadyPreprocessed,
     MissingEvaluation(String),
     PolynomialCommitmentError(E),
-    PolynomialProtocolError(PError),
+    PolynomialProtocolError(AHPError),
     Other,
 }
 
-impl<E> From<PError> for Error<E> {
-    fn from(err: PError) -> Self {
+impl<E> From<AHPError> for Error<E> {
+    fn from(err: AHPError) -> Self {
         Error::PolynomialProtocolError(err)
     }
 }

@@ -2,7 +2,7 @@ use ark_ff::FftField as Field;
 use ark_poly::univariate::DensePolynomial;
 use ark_poly_commit::{BatchLCProof, PolynomialCommitment};
 
-use crate::protocol::{PreprocessorInfo, PreprocessorKeys};
+use crate::ahp::{Index, IndexInfo};
 
 pub type UniversalParams<F, PC> =
     <PC as PolynomialCommitment<F, DensePolynomial<F>>>::UniversalParams;
@@ -14,19 +14,18 @@ pub struct ProverKey<F: Field, PC: PolynomialCommitment<F, DensePolynomial<F>>>
 {
     pub vk: VerifierKey<F, PC>,
     pub rands: Vec<PC::Randomness>,
-
+    pub index: Index<F>,
     pub ck: PC::CommitterKey,
-    pub keys: PreprocessorKeys<F>,
 }
 
 pub struct VerifierKey<
     F: Field,
     PC: PolynomialCommitment<F, DensePolynomial<F>>,
 > {
+    pub info: IndexInfo<F>,
     pub comms: Vec<PC::Commitment>,
     pub labels: Vec<String>,
     pub rk: PC::VerifierKey,
-    pub info: PreprocessorInfo<F>,
 }
 
 impl<F: Field, PC: PolynomialCommitment<F, DensePolynomial<F>>>
@@ -34,10 +33,10 @@ impl<F: Field, PC: PolynomialCommitment<F, DensePolynomial<F>>>
 {
     pub fn clone(&self) -> Self {
         Self {
+            info: self.info.clone(),
             comms: self.comms.clone(),
             labels: self.labels.clone(),
             rk: self.rk.clone(),
-            info: self.info.clone(),
         }
     }
 }

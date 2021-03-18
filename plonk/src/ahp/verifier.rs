@@ -3,12 +3,12 @@ use ark_poly_commit::QuerySet;
 
 use rand_core::RngCore;
 
-use crate::protocol::preprocessor::PreprocessorInfo;
-use crate::protocol::Error;
+use crate::ahp::indexer::IndexInfo;
+use crate::ahp::{AHPForPLONK, Error};
 use crate::utils::get_domain_generator;
 
-pub struct Verifier<F: Field> {
-    info: PreprocessorInfo<F>,
+pub struct VerifierState<'a, F: Field> {
+    info: &'a IndexInfo<F>,
 
     alpha: Option<F>, // combination
     beta: Option<F>,  // permutation
@@ -29,10 +29,12 @@ pub struct ThirdMsg<F: Field> {
     pub zeta: F,
 }
 
-impl<F: Field> Verifier<F> {
-    pub fn init(info: &PreprocessorInfo<F>) -> Result<Verifier<F>, Error> {
-        Ok(Verifier {
-            info: info.clone(),
+impl<F: Field> AHPForPLONK<F> {
+    pub fn verifier_init(
+        info: &IndexInfo<F>,
+    ) -> Result<VerifierState<'_, F>, Error> {
+        Ok(VerifierState {
+            info,
             alpha: None,
             beta: None,
             gamma: None,
@@ -40,41 +42,41 @@ impl<F: Field> Verifier<F> {
         })
     }
 
-    pub fn first_round<R: RngCore>(
-        &mut self,
+    pub fn verifier_first_round<'a, R: RngCore>(
+        mut vs: VerifierState<'a, F>,
         rng: &mut R,
-    ) -> Result<FirstMsg<F>, Error> {
+    ) -> Result<(VerifierState<'a, F>, FirstMsg<F>), Error> {
         let beta = F::rand(rng);
         let gamma = F::rand(rng);
-        self.beta = Some(beta);
-        self.gamma = Some(gamma);
+        vs.beta = Some(beta);
+        vs.gamma = Some(gamma);
 
-        Ok(FirstMsg { beta, gamma })
+        Ok((vs, FirstMsg { beta, gamma }))
     }
 
-    pub fn second_round<R: RngCore>(
-        &mut self,
+    pub fn verifier_second_round<'a, R: RngCore>(
+        mut vs: VerifierState<'a, F>,
         rng: &mut R,
-    ) -> Result<SecondMsg<F>, Error> {
+    ) -> Result<(VerifierState<'a, F>, SecondMsg<F>), Error> {
         let alpha = F::rand(rng);
-        self.alpha = Some(alpha);
+        vs.alpha = Some(alpha);
 
-        Ok(SecondMsg { alpha })
+        Ok((vs, SecondMsg { alpha }))
     }
 
-    pub fn third_round<R: RngCore>(
-        &mut self,
+    pub fn verifier_third_round<'a, R: RngCore>(
+        mut vs: VerifierState<'a, F>,
         rng: &mut R,
-    ) -> Result<ThirdMsg<F>, Error> {
+    ) -> Result<(VerifierState<'a, F>, ThirdMsg<F>), Error> {
         let zeta = F::rand(rng);
-        self.zeta = Some(zeta);
+        vs.zeta = Some(zeta);
 
-        Ok(ThirdMsg { zeta })
+        Ok((vs, ThirdMsg { zeta }))
     }
 
-    pub fn query_set(&self) -> QuerySet<F> {
-        let zeta = self.zeta.unwrap();
-        let g = get_domain_generator(self.info.domain_n);
+    pub fn verifier_query_set(vs: &VerifierState<'_, F>) -> QuerySet<F> {
+        let zeta = vs.zeta.unwrap();
+        let g = get_domain_generator(vs.info.domain_n);
 
         let mut query_set = QuerySet::new();
 

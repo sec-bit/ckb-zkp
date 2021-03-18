@@ -94,10 +94,11 @@ impl<F: Field> PermutationKey<F> {
         (z_poly, z, z_4n)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn compute_quotient(
         &self,
         domain_4n: impl EvaluationDomain<F>,
-        k: &[F; 4],
+        ks: &[F; 4],
         w: (&[F], &[F], &[F], &[F]),
         z: &[F],
         beta: &F,
@@ -123,25 +124,25 @@ impl<F: Field> PermutationKey<F> {
                 (Self::numerator_factor(
                     &w_0[i],
                     &linear_4n[i],
-                    &k[0],
+                    &ks[0],
                     beta,
                     gamma,
                 ) * Self::numerator_factor(
                     &w_1[i],
                     &linear_4n[i],
-                    &k[1],
+                    &ks[1],
                     beta,
                     gamma,
                 ) * Self::numerator_factor(
                     &w_2[i],
                     &linear_4n[i],
-                    &k[2],
+                    &ks[2],
                     beta,
                     gamma,
                 ) * Self::numerator_factor(
                     &w_3[i],
                     &linear_4n[i],
-                    &k[3],
+                    &ks[3],
                     beta,
                     gamma,
                 ) * z[i]
@@ -173,7 +174,7 @@ impl<F: Field> PermutationKey<F> {
 
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn construct_linear_combination(
-        k: [F; 4],
+        k: &[F; 4],
         w_evals: (F, F, F, F),
         z_shifted_eval: F,
         sigma_0_eval: F,

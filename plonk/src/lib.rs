@@ -27,25 +27,23 @@ use ark_std::{marker::PhantomData, vec, vec::Vec};
 use digest::Digest;
 use rand_core::RngCore;
 
-use crate::composer::Composer;
-use crate::data_structures::*;
-use crate::protocol::{
-    construct_linear_combinations, EvaluationsProvider, PreprocessorKeys,
-    Prover, Verifier,
-};
-use crate::rng::FiatShamirRng;
-use crate::utils::pad_to_size;
-
 mod errors;
 use errors::Error;
 
 mod data_structures;
+use crate::data_structures::*;
 
 mod composer;
-mod protocol;
+use crate::composer::Composer;
+
+mod ahp;
+use ahp::{AHPForPLONK, EvaluationsProvider};
 
 mod rng;
+use crate::rng::FiatShamirRng;
+
 mod utils;
+use crate::utils::pad_to_size;
 
 pub struct Plonk<
     F: Field,
@@ -62,9 +60,6 @@ impl<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>>
 {
     pub const PROTOCOL_NAME: &'static [u8] = b"PLONK";
 
-    pub const LABELS: [&'static str; 9] =
-        ["w_0", "w_1", "w_2", "w_3", "z", "t_0", "t_1", "t_2", "t_3"];
-
     pub fn setup<R: RngCore>(
         max_degree: usize,
         rng: &mut R,
@@ -72,20 +67,21 @@ impl<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>>
         PC::setup(max_degree, None, rng).map_err(Error::from_pc_err)
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn keygen(
         srs: &UniversalParams<F, PC>,
         cs: &Composer<F>,
         ks: [F; 4],
     ) -> Result<(ProverKey<F, PC>, VerifierKey<F, PC>), Error<PC::Error>> {
-        let keys = PreprocessorKeys::generate(cs, ks)?;
-        if srs.max_degree() < keys.size() {
+        let index = AHPForPLONK::index(cs, ks)?;
+        if srs.max_degree() < index.size() {
             return Err(Error::CircuitTooLarge);
         }
 
         let (ck, vk) =
-            PC::trim(srs, keys.size(), 0, None).map_err(Error::from_pc_err)?;
+            PC::trim(srs, index.size(), 0, None).map_err(Error::from_pc_err)?;
         let (comms, rands) =
-            PC::commit(&ck, keys.iter(), None).map_err(Error::from_pc_err)?;
+            PC::commit(&ck, index.iter(), None).map_err(Error::from_pc_err)?;
         let labels = comms.iter().map(|c| c.label().clone()).collect();
         let comms = comms.iter().map(|c| c.commitment().clone()).collect();
 
@@ -93,11 +89,11 @@ impl<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>>
             comms,
             labels,
             rk: vk,
-            info: keys.info.clone(),
+            info: index.info.clone(),
         };
         let pk = ProverKey {
             vk: vk.clone(),
-            keys,
+            index,
             rands,
             ck,
         };
@@ -110,37 +106,44 @@ impl<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>>
         cs: &Composer<F>,
         zk_rng: &mut dyn RngCore,
     ) -> Result<Proof<F, PC>, Error<PC::Error>> {
-        let mut p = Prover::init(cs, &pk.keys)?;
-        let mut v = Verifier::init(&pk.keys.info)?;
-        let pi = p.public_inputs();
+        let vk = &pk.vk;
+        let ps = AHPForPLONK::prover_init(cs, &pk.index)?;
+        let vs = AHPForPLONK::verifier_init(&vk.info)?;
+        let pi = ps.public_inputs();
 
         let mut fs_rng = FiatShamirRng::<D>::from_seed(
             &to_bytes![&Self::PROTOCOL_NAME, pi].unwrap(),
         );
 
-        let first_oracles = p.first_round(&cs)?;
+        let (ps, first_oracles) = AHPForPLONK::prover_first_round(ps, &cs)?;
         let (first_comms, first_rands) =
             PC::commit(&pk.ck, first_oracles.iter(), Some(zk_rng))
                 .map_err(Error::from_pc_err)?;
         fs_rng.absorb(&to_bytes![first_comms].unwrap());
-        let first_msg = v.first_round(&mut fs_rng)?;
+        let (vs, first_msg) =
+            AHPForPLONK::verifier_first_round(vs, &mut fs_rng)?;
 
-        let second_oracles = p.second_round(&first_msg)?;
+        let (ps, second_oracles) =
+            AHPForPLONK::prover_second_round(ps, &first_msg, &vk.info.ks)?;
         let (second_comms, second_rands) =
             PC::commit(&pk.ck, second_oracles.iter(), Some(zk_rng))
                 .map_err(Error::from_pc_err)?;
         fs_rng.absorb(&to_bytes![second_comms].unwrap());
-        let second_msg = v.second_round(&mut fs_rng)?;
+        let (vs, second_msg) =
+            AHPForPLONK::verifier_second_round(vs, &mut fs_rng)?;
 
-        let third_oracles = p.third_round(&second_msg)?;
+        let third_oracles =
+            AHPForPLONK::prover_third_round(ps, &second_msg, &vk.info.ks)?;
         let (third_comms, third_rands) =
             PC::commit(&pk.ck, third_oracles.iter(), Some(zk_rng))
                 .map_err(Error::from_pc_err)?;
         fs_rng.absorb(&to_bytes![third_comms].unwrap());
-        let third_msg = v.third_round(&mut fs_rng)?;
+        let (vs, third_msg) =
+            AHPForPLONK::verifier_third_round(vs, &mut fs_rng)?;
 
-        let polynomials: Vec<_> = p
-            .preprocessor_keys()
+        let polynomials: Vec<_> = pk
+            .index
+            .iter()
             .chain(first_oracles.iter())
             .chain(second_oracles.iter())
             .chain(third_oracles.iter())
@@ -175,9 +178,9 @@ impl<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>>
             .chain(third_rands.iter())
             .collect();
 
-        let qs = v.query_set();
-        let lcs = construct_linear_combinations(
-            &pk.keys.info,
+        let qs = AHPForPLONK::verifier_query_set(&vs);
+        let lcs = AHPForPLONK::construct_linear_combinations(
+            &vk.info,
             &first_msg,
             &second_msg,
             &third_msg,
@@ -227,28 +230,31 @@ impl<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>>
         let domain_n = vk.info.domain_n;
         let pi = pad_to_size(public_inputs, domain_n.size());
 
-        let mut v = Verifier::init(&vk.info)?;
+        let vs = AHPForPLONK::verifier_init(&vk.info)?;
         let mut fs_rng = FiatShamirRng::<D>::from_seed(
             &to_bytes![&Self::PROTOCOL_NAME, pi].unwrap(),
         );
 
         let first_comms = &proof.commitments[0];
         fs_rng.absorb(&to_bytes![first_comms].unwrap());
-        let first_msg = v.first_round(&mut fs_rng)?;
+        let (vs, first_msg) =
+            AHPForPLONK::verifier_first_round(vs, &mut fs_rng)?;
 
         let second_comms = &proof.commitments[1];
         fs_rng.absorb(&to_bytes![second_comms].unwrap());
-        let second_msg = v.second_round(&mut fs_rng)?;
+        let (vs, second_msg) =
+            AHPForPLONK::verifier_second_round(vs, &mut fs_rng)?;
 
         let third_comms = &proof.commitments[2];
         fs_rng.absorb(&to_bytes![third_comms].unwrap());
-        let third_msg = v.third_round(&mut fs_rng)?;
+        let (vs, third_msg) =
+            AHPForPLONK::verifier_third_round(vs, &mut fs_rng)?;
 
         let labels: Vec<_> = vk
             .labels
             .iter()
             .cloned()
-            .chain(Self::LABELS.iter().map(|l| l.to_string()))
+            .chain(AHPForPLONK::<F>::LABELS.iter().map(|l| l.to_string()))
             .collect();
 
         let labeled_commitments: Vec<_> = vk
@@ -262,7 +268,7 @@ impl<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>>
             .map(|(c, l)| LabeledCommitment::new(l.to_string(), c, None))
             .collect();
 
-        let query_set = v.query_set();
+        let query_set = AHPForPLONK::verifier_query_set(&vs);
         fs_rng.absorb(&proof.evaluations);
         let epsilon = F::rand(&mut fs_rng);
 
@@ -278,7 +284,7 @@ impl<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>>
             evaluations.insert(q, *eval);
         }
 
-        let lcs = construct_linear_combinations(
+        let lcs = AHPForPLONK::construct_linear_combinations(
             &vk.info,
             &first_msg,
             &second_msg,
