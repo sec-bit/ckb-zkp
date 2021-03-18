@@ -3,18 +3,18 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain,
     Evaluations as EvaluationsOnDomain, UVPolynomial,
 };
-use ark_poly_commit::LinearCombination;
+
 use ark_std::{cfg_iter, vec, vec::Vec};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-use crate::composer::Composer;
+use crate::composer::{Composer, Witnesses};
 use crate::data_structures::LabeledPolynomial;
 use crate::protocol::preprocessor::PreprocessorKeys;
-use crate::protocol::verifier::{FirstMsg, SecondMsg, ThirdMsg};
-use crate::protocol::{Error, EvaluationsProvider};
-use crate::utils::get_domain_generator;
+use crate::protocol::verifier::{FirstMsg, SecondMsg};
+use crate::protocol::Error;
+use crate::utils::pad_to_size;
 
 pub struct Prover<'a, F: Field> {
     keys: &'a PreprocessorKeys<F>,
@@ -88,15 +88,15 @@ impl<'a, F: Field> Prover<'a, F> {
         let domain_n = keys.domain_n();
         let domain_4n = keys.domain_4n();
 
-        let pi = cs.public_input();
-        let pi_n = cs.public_inputs_with_padding(domain_n.size());
+        let pi = cs.public_inputs();
+        let pi_n = pad_to_size(pi, domain_n.size());
         let pi_poly = EvaluationsOnDomain::from_vec_and_domain(pi_n, domain_n)
             .interpolate();
         let pi_4n = domain_4n.coset_fft(&pi_poly);
 
         Ok(Prover {
             keys,
-            public_inputs: (pi_poly, pi, pi_4n),
+            public_inputs: (pi_poly, pi.to_vec(), pi_4n),
 
             w_0: None,
             w_1: None,
@@ -115,7 +115,8 @@ impl<'a, F: Field> Prover<'a, F> {
         &mut self,
         cs: &Composer<F>,
     ) -> Result<FirstOracles<F>, Error> {
-        let (w_0, w_1, w_2, w_3) = cs.synthesize()?;
+        let witnesses = cs.synthesize()?;
+        let Witnesses { w_0, w_1, w_2, w_3 } = witnesses;
 
         let domain_n = self.keys.domain_n();
         let w_0_poly =
@@ -186,6 +187,7 @@ impl<'a, F: Field> Prover<'a, F> {
         let (z_poly, z, z_4n) = permutation_key.compute_z(
             self.keys.domain_n(),
             self.keys.domain_4n(),
+            &self.keys.info.k,
             (w_0, w_1, w_2, w_3),
             beta,
             gamma,
@@ -220,12 +222,16 @@ impl<'a, F: Field> Prover<'a, F> {
         self.alpha = Some(*alpha);
 
         let arithmetic_key = self.keys.arithmetic_key();
-        let p_arith = arithmetic_key
-            .compute_quotient(domain_4n, w_0_4n, w_1_4n, w_2_4n, w_3_4n, pi_4n);
+        let p_arith = arithmetic_key.compute_quotient(
+            domain_4n,
+            (w_0_4n, w_1_4n, w_2_4n, w_3_4n),
+            pi_4n,
+        );
 
         let permutation_key = self.keys.permutation_key();
         let p_perm = permutation_key.compute_quotient(
             domain_4n,
+            &self.keys.info.k,
             (w_0_4n, w_1_4n, w_2_4n, w_3_4n),
             z_4n,
             &self.beta.unwrap(),
@@ -254,82 +260,6 @@ impl<'a, F: Field> Prover<'a, F> {
         Ok(third_oracles)
     }
 
-    pub fn construct_linear_combinations(
-        &self,
-        msg: &ThirdMsg<F>,
-        evals: &impl EvaluationsProvider<F>,
-    ) -> Result<Vec<LinearCombination<F>>, Error> {
-        let alpha = self.alpha.unwrap();
-        let beta = self.beta.unwrap();
-        let gamma = self.gamma.unwrap();
-        let zeta = msg.zeta;
-
-        let zeta_n = zeta.pow(&[self.keys.size() as u64]);
-        let zeta_2n = zeta_n.square();
-        let shifted_zeta = zeta * get_domain_generator(self.keys.domain_n());
-
-        let w_0 = LinearCombination::new("w_0", vec![(F::one(), "w_0")]);
-        let w_1 = LinearCombination::new("w_1", vec![(F::one(), "w_1")]);
-        let w_2 = LinearCombination::new("w_2", vec![(F::one(), "w_2")]);
-        let w_3 = LinearCombination::new("w_3", vec![(F::one(), "w_3")]);
-
-        let w_0_zeta = evals.get_lc_eval(&w_0, zeta)?;
-        let w_1_zeta = evals.get_lc_eval(&w_1, zeta)?;
-        let w_2_zeta = evals.get_lc_eval(&w_2, zeta)?;
-        let w_3_zeta = evals.get_lc_eval(&w_3, zeta)?;
-
-        let z = LinearCombination::new("z", vec![(F::one(), "z")]);
-        let z_shifted_zeta = evals.get_lc_eval(&z, shifted_zeta)?;
-
-        let t = LinearCombination::new(
-            "t",
-            vec![
-                (F::one(), "t_0"),
-                (zeta, "t_1"),
-                (zeta_n, "t_2"),
-                (zeta_n * zeta_2n, "t_3"),
-            ],
-        );
-
-        let sigma_0 =
-            LinearCombination::new("sigma_0", vec![(F::one(), "sigma_0")]);
-        let sigma_1 =
-            LinearCombination::new("sigma_1", vec![(F::one(), "sigma_1")]);
-        let sigma_2 =
-            LinearCombination::new("sigma_2", vec![(F::one(), "sigma_2")]);
-        let q_arith =
-            LinearCombination::new("q_arith", vec![(F::one(), "q_arith")]);
-
-        let sigma_0_zeta = evals.get_lc_eval(&sigma_0, zeta)?;
-        let sigma_1_zeta = evals.get_lc_eval(&sigma_1, zeta)?;
-        let sigma_2_zeta = evals.get_lc_eval(&sigma_2, zeta)?;
-        let q_arith_zeta = evals.get_lc_eval(&q_arith, zeta)?;
-
-        let mut r = self.keys.arithmetic_key().compute_linearisation(
-            (w_0_zeta, w_1_zeta, w_2_zeta, w_3_zeta),
-            q_arith_zeta,
-        );
-        r += (
-            alpha,
-            &self.keys.permutation_key().compute_linearisation(
-                (w_0_zeta, w_1_zeta, w_2_zeta, w_3_zeta),
-                z_shifted_zeta,
-                sigma_0_zeta,
-                sigma_1_zeta,
-                sigma_2_zeta,
-                beta,
-                gamma,
-                zeta,
-            ),
-        );
-
-        let mut lcs = vec![
-            w_0, w_1, w_2, w_3, z, sigma_0, sigma_1, sigma_2, q_arith, t, r,
-        ];
-        lcs.sort_by(|a, b| a.label.cmp(&b.label));
-
-        Ok(lcs)
-    }
     //     let (q_arith_zeta, sigma_0_zeta, sigma_1_zeta, sigma_2_zeta, r_zeta) = {
     //         let alpha = &self.alpha.unwrap();
     //         let beta = &self.beta.unwrap();

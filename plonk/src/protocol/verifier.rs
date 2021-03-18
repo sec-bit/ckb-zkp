@@ -30,9 +30,9 @@ pub struct ThirdMsg<F: Field> {
 }
 
 impl<F: Field> Verifier<F> {
-    pub fn init(info: PreprocessorInfo<F>) -> Result<Verifier<F>, Error> {
+    pub fn init(info: &PreprocessorInfo<F>) -> Result<Verifier<F>, Error> {
         Ok(Verifier {
-            info,
+            info: info.clone(),
             alpha: None,
             beta: None,
             gamma: None,

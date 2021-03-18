@@ -1,5 +1,5 @@
 use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
-use ark_std::{cfg_iter, vec::Vec};
+use ark_std::{cfg_iter, vec, vec::Vec};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -27,13 +27,20 @@ pub struct Selectors<F: Field> {
     pub sigma_3: Vec<F>,
 }
 
+pub struct Witnesses<F: Field> {
+    pub w_0: Vec<F>,
+    pub w_1: Vec<F>,
+    pub w_2: Vec<F>,
+    pub w_3: Vec<F>,
+}
+
 impl<F: Field> Selectors<F> {
     pub fn size(&self) -> usize {
         self.n
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Vec<F>> {
-        ark_std::vec![
+        vec![
             &self.q_0,
             &self.q_1,
             &self.q_2,
@@ -52,7 +59,7 @@ impl<F: Field> Selectors<F> {
 
 impl<F: Field> Composer<F> {
     // selectors
-    pub fn preprocess(&self, ks: &[F; 4]) -> Result<Selectors<F>, Error> {
+    pub fn process(&self, ks: &[F; 4]) -> Result<Selectors<F>, Error> {
         let domain_n = GeneralEvaluationDomain::<F>::new(self.n)
             .ok_or(Error::PolynomialDegreeTooLarge)?;
         let n = domain_n.size();
@@ -89,25 +96,12 @@ impl<F: Field> Composer<F> {
         })
     }
 
-    pub fn public_input(&self) -> Vec<F> {
-        self.pi.clone()
+    pub fn public_inputs(&self) -> &[F] {
+        &self.pi
     }
 
-    pub fn public_inputs_with_padding(
-        &self,
-        expected_size: usize,
-    ) -> Vec<F> {
-        let mut pi = self.pi.clone();
-        let diff = expected_size - self.n;
-        let zeros = vec![F::zero(); diff];
-        pi.extend(zeros.iter());
-        pi
-    }
-
-    // witness vectors
-    pub fn synthesize(
-        &self,
-    ) -> Result<(Vec<F>, Vec<F>, Vec<F>, Vec<F>), Error> {
+    // synthesize witness vectors
+    pub fn synthesize(&self) -> Result<Witnesses<F>, Error> {
         let domain_n = GeneralEvaluationDomain::<F>::new(self.n)
             .ok_or(Error::PolynomialDegreeTooLarge)?;
         let n = domain_n.size();
@@ -128,6 +122,6 @@ impl<F: Field> Composer<F> {
         let mut pi = self.pi.clone();
         pi.extend(zeros.iter());
 
-        Ok((w_0, w_1, w_2, w_3))
+        Ok(Witnesses { w_0, w_1, w_2, w_3 })
     }
 }

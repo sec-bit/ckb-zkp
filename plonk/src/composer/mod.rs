@@ -9,7 +9,7 @@ use permutation::Permutation;
 mod arithmetic;
 
 mod synthesize;
-pub use synthesize::{Error, Selectors};
+pub use synthesize::{Error, Selectors, Witnesses};
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
 pub struct Variable(usize);
@@ -86,6 +86,7 @@ mod test {
     use ark_ff::{One, Zero};
 
     use super::*;
+    use crate::utils::pad_to_size;
 
     #[test]
     fn preprocess() {
@@ -129,10 +130,11 @@ mod test {
             Fr::zero(),
             Fr::zero(),
         );
-        let s = cs.preprocess(&ks).unwrap();
-        let pi = cs.public_inputs_with_padding(s.size());
+        let s = cs.process(&ks).unwrap();
+        let pi = pad_to_size(cs.public_inputs(), s.size());
 
-        let (w_0, w_1, w_2, w_3) = cs.synthesize().unwrap();
+        let witnesses = cs.synthesize().unwrap();
+        let Witnesses { w_0, w_1, w_2, w_3 } = witnesses;
         assert_eq!(w_0.len(), s.q_0.len());
         (0..s.size()).into_iter().for_each(|i| {
             assert_eq!(

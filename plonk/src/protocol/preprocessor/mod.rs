@@ -1,7 +1,7 @@
 use ark_ff::FftField as Field;
 use ark_poly::{
-    univariate::DensePolynomial as Polynomial, EvaluationDomain,
-    Evaluations, GeneralEvaluationDomain, UVPolynomial,
+    univariate::DensePolynomial as Polynomial, EvaluationDomain, Evaluations,
+    GeneralEvaluationDomain, UVPolynomial,
 };
 use ark_std::cfg_into_iter;
 
@@ -13,30 +13,33 @@ use crate::data_structures::LabeledPolynomial;
 use crate::protocol::Error;
 
 mod arithmetic;
+pub use arithmetic::ArithmeticKey;
 mod permutation;
+pub use permutation::PermutationKey;
 
 pub struct PreprocessorKeys<F: Field> {
-    info: PreprocessorInfo<F>,
+    pub info: PreprocessorInfo<F>,
 
     domain_4n: GeneralEvaluationDomain<F>,
     v_4n_inversed: Vec<F>,
 
-    arithmetic: arithmetic::Key<F>,
-    permutation: permutation::Key<F>,
+    arithmetic: ArithmeticKey<F>,
+    permutation: PermutationKey<F>,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct PreprocessorInfo<F: Field> {
     pub n: usize,
+    pub k: [F; 4],
     pub domain_n: GeneralEvaluationDomain<F>,
 }
 
 impl<F: Field> PreprocessorKeys<F> {
     pub fn generate(
         cs: &Composer<F>,
-        ks: [F; 4],
+        k: [F; 4],
     ) -> Result<PreprocessorKeys<F>, Error> {
-        let selectors = cs.preprocess(&ks)?;
+        let selectors = cs.process(&k)?;
         let n = selectors.size();
         selectors.iter().for_each(|s| assert_eq!(s.len(), n));
         println!("selector size: {}", n);
@@ -159,12 +162,12 @@ impl<F: Field> PreprocessorKeys<F> {
             cfg_into_iter!(v_4n).map(|v| v.inverse().unwrap()).collect();
 
         Ok(PreprocessorKeys {
-            info: PreprocessorInfo { n, domain_n },
+            info: PreprocessorInfo { n, k, domain_n },
 
             domain_4n,
             v_4n_inversed,
 
-            arithmetic: arithmetic::Key {
+            arithmetic: ArithmeticKey {
                 q_0: (q_0_poly, q_0, q_0_4n),
                 q_1: (q_1_poly, q_1, q_1_4n),
                 q_2: (q_2_poly, q_2, q_2_4n),
@@ -175,8 +178,7 @@ impl<F: Field> PreprocessorKeys<F> {
 
                 q_arith: (q_arith_poly, q_arith, q_arith_4n),
             },
-            permutation: permutation::Key {
-                ks,
+            permutation: PermutationKey {
                 sigma_0: (sigma_0_poly, sigma_0, sigma_0_4n),
                 sigma_1: (sigma_1_poly, sigma_1, sigma_1_4n),
                 sigma_2: (sigma_2_poly, sigma_2, sigma_2_4n),
@@ -184,17 +186,15 @@ impl<F: Field> PreprocessorKeys<F> {
             },
         })
     }
+}
 
+impl<F: Field> PreprocessorKeys<F> {
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
         self.arithmetic.iter().chain(self.permutation.iter())
     }
 
     pub fn size(&self) -> usize {
         self.info.n
-    }
-
-    pub fn info(&self) -> PreprocessorInfo<F> {
-        self.info
     }
 
     pub fn domain_n(&self) -> impl EvaluationDomain<F> {
@@ -209,18 +209,16 @@ impl<F: Field> PreprocessorKeys<F> {
         &self.v_4n_inversed
     }
 
-    pub fn arithmetic_key(&self) -> &arithmetic::Key<F> {
+    pub fn arithmetic_key(&self) -> &ArithmeticKey<F> {
         &self.arithmetic
     }
 
-    pub fn permutation_key(&self) -> &permutation::Key<F> {
+    pub fn permutation_key(&self) -> &PermutationKey<F> {
         &self.permutation
     }
 }
 
-fn vanishing_poly<F: Field>(
-    domain: impl EvaluationDomain<F>,
-) -> Polynomial<F> {
+fn vanishing_poly<F: Field>(domain: impl EvaluationDomain<F>) -> Polynomial<F> {
     let size = domain.size();
     let mut coeffs = vec![F::zero(); size + 1];
     coeffs[0] = -F::one();

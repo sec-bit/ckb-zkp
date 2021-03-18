@@ -18,21 +18,23 @@ use alloc::collections::BTreeMap as Map;
 use std::collections::HashMap as Map;
 
 use ark_ff::{to_bytes, FftField as Field};
-use ark_poly::univariate::DensePolynomial;
+use ark_poly::{univariate::DensePolynomial, EvaluationDomain};
 use ark_poly_commit::{
-    LabeledCommitment, PCUniversalParams, PolynomialCommitment,
+    Evaluations, LabeledCommitment, PCUniversalParams, PolynomialCommitment,
 };
 
-use ark_std::{marker::PhantomData, vec};
+use ark_std::{marker::PhantomData, vec, vec::Vec};
 use digest::Digest;
 use rand_core::RngCore;
 
 use crate::composer::Composer;
 use crate::data_structures::*;
 use crate::protocol::{
-    EvaluationsProvider, PreprocessorKeys, Prover, Verifier,
+    construct_linear_combinations, EvaluationsProvider, PreprocessorKeys,
+    Prover, Verifier,
 };
 use crate::rng::FiatShamirRng;
+use crate::utils::pad_to_size;
 
 mod errors;
 use errors::Error;
@@ -59,6 +61,9 @@ impl<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>>
     Plonk<F, D, PC>
 {
     pub const PROTOCOL_NAME: &'static [u8] = b"PLONK";
+
+    pub const LABELS: [&'static str; 9] =
+        ["w_0", "w_1", "w_2", "w_3", "z", "t_0", "t_1", "t_2", "t_3"];
 
     pub fn setup<R: RngCore>(
         max_degree: usize,
@@ -88,7 +93,7 @@ impl<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>>
             comms,
             labels,
             rk: vk,
-            info: keys.info(),
+            info: keys.info.clone(),
         };
         let pk = ProverKey {
             vk: vk.clone(),
@@ -106,7 +111,7 @@ impl<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>>
         zk_rng: &mut dyn RngCore,
     ) -> Result<Proof<F, PC>, Error<PC::Error>> {
         let mut p = Prover::init(cs, &pk.keys)?;
-        let mut v = Verifier::init(pk.keys.info())?;
+        let mut v = Verifier::init(&pk.keys.info)?;
         let pi = p.public_inputs();
 
         let mut fs_rng = FiatShamirRng::<D>::from_seed(
@@ -141,12 +146,14 @@ impl<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>>
             .chain(third_oracles.iter())
             .collect();
 
-        let commitments = first_comms
-            .iter()
-            .chain(second_comms.iter())
-            .chain(third_comms.iter())
-            .map(|c| c.commitment().clone())
-            .collect();
+        let commitments = vec![
+            first_comms.iter().map(|c| c.commitment().clone()).collect(),
+            second_comms
+                .iter()
+                .map(|c| c.commitment().clone())
+                .collect(),
+            third_comms.iter().map(|c| c.commitment().clone()).collect(),
+        ];
 
         let labeled_commitments: Vec<_> = pk
             .vk
@@ -169,7 +176,13 @@ impl<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>>
             .collect();
 
         let qs = v.query_set();
-        let lcs = p.construct_linear_combinations(&third_msg, &polynomials)?;
+        let lcs = construct_linear_combinations(
+            &pk.keys.info,
+            &first_msg,
+            &second_msg,
+            &third_msg,
+            &polynomials,
+        )?;
 
         let evaluations: Vec<_> = {
             let mut evals = Vec::new();
@@ -205,8 +218,87 @@ impl<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>>
         Ok(proof)
     }
 
-    pub fn verify(vk: &VerifierKey<F, PC>) -> Result<bool, Error<PC::Error>> {
-        Ok(false)
+    pub fn verify<R: RngCore>(
+        vk: &VerifierKey<F, PC>,
+        public_inputs: &[F],
+        proof: Proof<F, PC>,
+        rng: &mut R,
+    ) -> Result<bool, Error<PC::Error>> {
+        let domain_n = vk.info.domain_n;
+        let pi = pad_to_size(public_inputs, domain_n.size());
+
+        let mut v = Verifier::init(&vk.info)?;
+        let mut fs_rng = FiatShamirRng::<D>::from_seed(
+            &to_bytes![&Self::PROTOCOL_NAME, pi].unwrap(),
+        );
+
+        let first_comms = &proof.commitments[0];
+        fs_rng.absorb(&to_bytes![first_comms].unwrap());
+        let first_msg = v.first_round(&mut fs_rng)?;
+
+        let second_comms = &proof.commitments[1];
+        fs_rng.absorb(&to_bytes![second_comms].unwrap());
+        let second_msg = v.second_round(&mut fs_rng)?;
+
+        let third_comms = &proof.commitments[2];
+        fs_rng.absorb(&to_bytes![third_comms].unwrap());
+        let third_msg = v.third_round(&mut fs_rng)?;
+
+        let labels: Vec<_> = vk
+            .labels
+            .iter()
+            .cloned()
+            .chain(Self::LABELS.iter().map(|l| l.to_string()))
+            .collect();
+
+        let labeled_commitments: Vec<_> = vk
+            .comms
+            .iter()
+            .cloned()
+            .chain(first_comms.iter().cloned())
+            .chain(second_comms.iter().cloned())
+            .chain(third_comms.iter().cloned())
+            .zip(labels.iter())
+            .map(|(c, l)| LabeledCommitment::new(l.to_string(), c, None))
+            .collect();
+
+        let query_set = v.query_set();
+        fs_rng.absorb(&proof.evaluations);
+        let epsilon = F::rand(&mut fs_rng);
+
+        let mut evaluation_labels: Vec<_> = query_set
+            .iter()
+            .cloned()
+            .map(|(l, (_, p))| (l, p))
+            .collect();
+        evaluation_labels.sort_by(|a, b| a.0.cmp(&b.0));
+
+        let mut evaluations = Evaluations::new();
+        for (q, eval) in evaluation_labels.into_iter().zip(&proof.evaluations) {
+            evaluations.insert(q, *eval);
+        }
+
+        let lcs = construct_linear_combinations(
+            &vk.info,
+            &first_msg,
+            &second_msg,
+            &third_msg,
+            &evaluations,
+        )?;
+
+        let result = PC::check_combinations(
+            &vk.rk,
+            &lcs,
+            &labeled_commitments,
+            &query_set,
+            &evaluations,
+            &proof.pc_proof,
+            epsilon,
+            rng,
+        )
+        .map_err(Error::from_pc_err)?;
+
+        Ok(result)
     }
 }
 

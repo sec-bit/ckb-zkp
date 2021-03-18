@@ -1,7 +1,5 @@
 use ark_ff::FftField as Field;
-use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Evaluations,
-};
+use ark_poly::{univariate::DensePolynomial, EvaluationDomain, Evaluations};
 use ark_poly_commit::LinearCombination;
 use ark_std::{cfg_into_iter, vec, vec::Vec};
 
@@ -10,15 +8,14 @@ use rayon::prelude::*;
 
 use crate::data_structures::LabeledPolynomial;
 
-pub struct Key<F: Field> {
-    pub ks: [F; 4],
+pub struct PermutationKey<F: Field> {
     pub sigma_0: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
     pub sigma_1: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
     pub sigma_2: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
     pub sigma_3: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
 }
 
-impl<F: Field> Key<F> {
+impl<F: Field> PermutationKey<F> {
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
         ark_std::vec![
             &self.sigma_0.0,
@@ -33,6 +30,7 @@ impl<F: Field> Key<F> {
         &self,
         domain_n: impl EvaluationDomain<F>,
         domain_4n: impl EvaluationDomain<F>,
+        k: &[F; 4],
         w: (&[F], &[F], &[F], &[F]),
         beta: &F,
         gamma: &F,
@@ -44,29 +42,13 @@ impl<F: Field> Key<F> {
         let perms: Vec<_> = cfg_into_iter!(0..n)
             .map(|i| {
                 let numerator = Self::numerator_factor(
-                    &w_0[i],
-                    &roots[i],
-                    &self.ks[0],
-                    beta,
-                    gamma,
+                    &w_0[i], &roots[i], &k[0], beta, gamma,
                 ) * Self::numerator_factor(
-                    &w_1[i],
-                    &roots[i],
-                    &self.ks[1],
-                    beta,
-                    gamma,
+                    &w_1[i], &roots[i], &k[1], beta, gamma,
                 ) * Self::numerator_factor(
-                    &w_2[i],
-                    &roots[i],
-                    &self.ks[2],
-                    beta,
-                    gamma,
+                    &w_2[i], &roots[i], &k[2], beta, gamma,
                 ) * Self::numerator_factor(
-                    &w_3[i],
-                    &roots[i],
-                    &self.ks[3],
-                    beta,
-                    gamma,
+                    &w_3[i], &roots[i], &k[3], beta, gamma,
                 );
 
                 let denumerator = Self::denumerator_factor(
@@ -105,8 +87,8 @@ impl<F: Field> Key<F> {
         }
         assert_eq!(z[n - 1] * perms[n - 1], F::one());
 
-        let z_poly = Evaluations::from_vec_and_domain(z.clone(), domain_n)
-            .interpolate();
+        let z_poly =
+            Evaluations::from_vec_and_domain(z.clone(), domain_n).interpolate();
         let z_4n = domain_4n.coset_fft(&z_poly);
 
         (z_poly, z, z_4n)
@@ -115,6 +97,7 @@ impl<F: Field> Key<F> {
     pub(crate) fn compute_quotient(
         &self,
         domain_4n: impl EvaluationDomain<F>,
+        k: &[F; 4],
         w: (&[F], &[F], &[F], &[F]),
         z: &[F],
         beta: &F,
@@ -140,25 +123,25 @@ impl<F: Field> Key<F> {
                 (Self::numerator_factor(
                     &w_0[i],
                     &linear_4n[i],
-                    &self.ks[0],
+                    &k[0],
                     beta,
                     gamma,
                 ) * Self::numerator_factor(
                     &w_1[i],
                     &linear_4n[i],
-                    &self.ks[1],
+                    &k[1],
                     beta,
                     gamma,
                 ) * Self::numerator_factor(
                     &w_2[i],
                     &linear_4n[i],
-                    &self.ks[2],
+                    &k[2],
                     beta,
                     gamma,
                 ) * Self::numerator_factor(
                     &w_3[i],
                     &linear_4n[i],
-                    &self.ks[3],
+                    &k[3],
                     beta,
                     gamma,
                 ) * z[i]
@@ -189,8 +172,8 @@ impl<F: Field> Key<F> {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn compute_linearisation(
-        &self,
+    pub(crate) fn construct_linear_combination(
+        k: [F; 4],
         w_evals: (F, F, F, F),
         z_shifted_eval: F,
         sigma_0_eval: F,
@@ -201,10 +184,10 @@ impl<F: Field> Key<F> {
         point: F,
     ) -> LinearCombination<F> {
         let (w_0, w_1, w_2, w_3) = w_evals;
-        let numerator = (self.ks[0] * beta * point + gamma + w_0)
-            * (self.ks[1] * beta * point + gamma + w_1)
-            * (self.ks[2] * beta * point + gamma + w_2)
-            * (self.ks[3] * beta * point + gamma + w_3);
+        let numerator = (k[0] * beta * point + gamma + w_0)
+            * (k[1] * beta * point + gamma + w_1)
+            * (k[2] * beta * point + gamma + w_2)
+            * (k[3] * beta * point + gamma + w_3);
 
         let denumerator = (sigma_0_eval * beta + gamma + w_0)
             * (sigma_1_eval * beta + gamma + w_1)

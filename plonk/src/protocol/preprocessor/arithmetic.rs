@@ -8,7 +8,7 @@ use rayon::prelude::*;
 
 use crate::data_structures::LabeledPolynomial;
 
-pub struct Key<F: Field> {
+pub struct ArithmeticKey<F: Field> {
     pub q_0: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
     pub q_1: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
     pub q_2: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
@@ -18,22 +18,8 @@ pub struct Key<F: Field> {
     pub q_arith: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
 }
 
-impl<F: Field> Key<F> {
-    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        vec![
-            &self.q_0.0,
-            &self.q_1.0,
-            &self.q_2.0,
-            &self.q_3.0,
-            &self.q_m.0,
-            &self.q_c.0,
-            &self.q_arith.0,
-        ]
-        .into_iter()
-    }
-
-    pub(crate) fn compute_linearisation(
-        &self,
+impl<F: Field> ArithmeticKey<F> {
+    pub(crate) fn construct_linear_combination(
         w_evals: (F, F, F, F),
         q_arith_eval: F,
     ) -> LinearCombination<F> {
@@ -53,17 +39,27 @@ impl<F: Field> Key<F> {
         lc
     }
 
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
+        vec![
+            &self.q_0.0,
+            &self.q_1.0,
+            &self.q_2.0,
+            &self.q_3.0,
+            &self.q_m.0,
+            &self.q_c.0,
+            &self.q_arith.0,
+        ]
+        .into_iter()
+    }
+
     pub(crate) fn compute_quotient(
         &self,
         domain_4n: impl EvaluationDomain<F>,
-        w_0: &[F],
-        w_1: &[F],
-        w_2: &[F],
-        w_3: &[F],
+        w: (&[F], &[F], &[F], &[F]),
         pi: &[F],
     ) -> Vec<F> {
-        let size = domain_4n.size();
-        cfg_into_iter!((0..size))
+        let (w_0, w_1, w_2, w_3) = w;
+        cfg_into_iter!((0..domain_4n.size()))
             .map(|i| {
                 Self::evaluate(
                     &w_0[i],

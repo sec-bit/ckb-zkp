@@ -19,7 +19,6 @@ pub struct ProverKey<F: Field, PC: PolynomialCommitment<F, DensePolynomial<F>>>
     pub keys: PreprocessorKeys<F>,
 }
 
-#[derive(Clone)]
 pub struct VerifierKey<
     F: Field,
     PC: PolynomialCommitment<F, DensePolynomial<F>>,
@@ -38,13 +37,13 @@ impl<F: Field, PC: PolynomialCommitment<F, DensePolynomial<F>>>
             comms: self.comms.clone(),
             labels: self.labels.clone(),
             rk: self.rk.clone(),
-            info: self.info,
+            info: self.info.clone(),
         }
     }
 }
 
 pub struct Proof<F: Field, PC: PolynomialCommitment<F, DensePolynomial<F>>> {
-    pub commitments: Vec<PC::Commitment>,
+    pub commitments: Vec<Vec<PC::Commitment>>,
     pub evaluations: Vec<F>,
     pub pc_proof: BatchLCProof<F, DensePolynomial<F>, PC>,
 }
