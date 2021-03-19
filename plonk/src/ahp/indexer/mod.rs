@@ -36,7 +36,7 @@ pub struct IndexInfo<F: Field> {
 
 impl<F: Field> AHPForPLONK<F> {
     pub fn index(cs: &Composer<F>, ks: [F; 4]) -> Result<Index<F>, Error> {
-        let selectors = cs.process(&ks)?;
+        let selectors = cs.compose(&ks)?;
         let n = selectors.size();
         selectors.iter().for_each(|s| assert_eq!(s.len(), n));
         println!("selector size: {}", n);

@@ -81,10 +81,10 @@ impl<F: Field> PermutationKey<F> {
         let mut z = Vec::<F>::with_capacity(n);
         let mut acc = F::one();
         z.push(acc);
-        for i in 0..(n - 1) {
+        (0..(n - 1)).into_iter().for_each(|i| {
             acc *= perms[i];
             z.push(acc);
-        }
+        });
         assert_eq!(z[n - 1] * perms[n - 1], F::one());
 
         let z_poly =
@@ -103,7 +103,6 @@ impl<F: Field> PermutationKey<F> {
         z: &[F],
         beta: &F,
         gamma: &F,
-        factor: &F,
     ) -> Vec<F> {
         let (w_0, w_1, w_2, w_3) = w;
 
@@ -121,7 +120,7 @@ impl<F: Field> PermutationKey<F> {
                     i + 4
                 };
 
-                (Self::numerator_factor(
+                Self::numerator_factor(
                     &w_0[i],
                     &linear_4n[i],
                     &ks[0],
@@ -166,8 +165,7 @@ impl<F: Field> PermutationKey<F> {
                         &self.sigma_3.2[i],
                         beta,
                         gamma,
-                    ) * z[next])
-                    * factor
+                    ) * z[next]
             })
             .collect()
     }

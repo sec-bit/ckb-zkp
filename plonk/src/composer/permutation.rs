@@ -116,54 +116,15 @@ impl<F: Field> Permutation<F> {
 #[cfg(test)]
 mod test {
     use ark_bls12_381::Fr;
-    use ark_ff::{One, Zero};
+    use ark_ff::One;
     use ark_poly::GeneralEvaluationDomain;
-
-    use crate::composer::Composer;
 
     use super::*;
 
-    fn circuit() -> Composer<Fr> {
-        let mut cs = Composer::new();
-        let one = Fr::one();
-        let two = one + one;
-        let three = two + one;
-        let four = two + two;
-        let var_one = cs.alloc_and_assign(one);
-        let var_two = cs.alloc_and_assign(two);
-        let var_three = cs.alloc_and_assign(three);
-        let var_four = cs.alloc_and_assign(four);
-        cs.create_add_gate(
-            (var_one, one),
-            (var_two, one),
-            var_three,
-            None,
-            Fr::zero(),
-            Fr::zero(),
-        );
-        cs.create_add_gate(
-            (var_two, one),
-            (var_two, one),
-            var_four,
-            None,
-            Fr::zero(),
-            Fr::zero(),
-        );
-        cs.create_mul_gate(
-            var_two,
-            var_two,
-            var_four,
-            None,
-            Fr::one(),
-            Fr::zero(),
-            Fr::zero(),
-        );
-
-        cs
-    }
+    use crate::composer::test::circuit;
 
     #[test]
-    fn sigmas() {
+    fn permutation() {
         let cs = circuit();
         let ks = [
             Fr::one(),
@@ -171,22 +132,17 @@ mod test {
             Fr::from(13_u64),
             Fr::from(17_u64),
         ];
-        let domain_n =
-            GeneralEvaluationDomain::<Fr>::new(cs.size()).unwrap();
+        let domain_n = GeneralEvaluationDomain::<Fr>::new(cs.size()).unwrap();
         let roots: Vec<_> = domain_n.elements().collect();
 
         let (sigma_0, sigma_1, sigma_2, sigma_3) =
             cs.permutation.compute_sigmas(domain_n, &ks);
 
         let (id_0, id_1, id_2, id_3) = {
-            let id_0: Vec<_> =
-                cfg_iter!(roots).map(|r| ks[0] * r).collect();
-            let id_1: Vec<_> =
-                cfg_iter!(roots).map(|r| ks[1] * r).collect();
-            let id_2: Vec<_> =
-                cfg_iter!(roots).map(|r| ks[2] * r).collect();
-            let id_3: Vec<_> =
-                cfg_iter!(roots).map(|r| ks[3] * r).collect();
+            let id_0: Vec<_> = cfg_iter!(roots).map(|r| ks[0] * r).collect();
+            let id_1: Vec<_> = cfg_iter!(roots).map(|r| ks[1] * r).collect();
+            let id_2: Vec<_> = cfg_iter!(roots).map(|r| ks[2] * r).collect();
+            let id_3: Vec<_> = cfg_iter!(roots).map(|r| ks[3] * r).collect();
             (id_0, id_1, id_2, id_3)
         };
 

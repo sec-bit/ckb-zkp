@@ -18,7 +18,7 @@ use crate::utils::pad_to_size;
 
 pub struct ProverState<'a, F: Field> {
     index: &'a Index<F>,
-    public_inputs: (Vec<F>, Vec<F>),
+    pi_4n: Vec<F>,
 
     w_0: Option<(Vec<F>, Vec<F>)>,
     w_1: Option<(Vec<F>, Vec<F>)>,
@@ -27,7 +27,6 @@ pub struct ProverState<'a, F: Field> {
 
     z: Option<(Vec<F>, Vec<F>)>,
 
-    alpha: Option<F>,
     beta: Option<F>,
     gamma: Option<F>,
 }
@@ -68,12 +67,6 @@ impl<F: Field> ThirdOracles<F> {
     }
 }
 
-impl<'a, F: Field> ProverState<'a, F> {
-    pub fn public_inputs(&self) -> &[F] {
-        &self.public_inputs.1
-    }
-}
-
 impl<F: Field> AHPForPLONK<F> {
     pub fn prover_init<'a>(
         cs: &Composer<F>,
@@ -90,7 +83,7 @@ impl<F: Field> AHPForPLONK<F> {
 
         Ok(ProverState {
             index,
-            public_inputs: (pi.to_vec(), pi_4n),
+            pi_4n,
 
             w_0: None,
             w_1: None,
@@ -99,7 +92,6 @@ impl<F: Field> AHPForPLONK<F> {
 
             z: None,
 
-            alpha: None,
             beta: None,
             gamma: None,
         })
@@ -200,7 +192,7 @@ impl<F: Field> AHPForPLONK<F> {
     }
 
     pub fn prover_third_round<'a>(
-        mut ps: ProverState<'a, F>,
+        ps: ProverState<'a, F>,
         msg: &SecondMsg<F>,
         ks: &[F; 4],
     ) -> Result<ThirdOracles<F>, Error> {
@@ -212,16 +204,14 @@ impl<F: Field> AHPForPLONK<F> {
         let w_2_4n = &ps.w_2.as_ref().unwrap().1;
         let w_3_4n = &ps.w_3.as_ref().unwrap().1;
         let z_4n = &ps.z.as_ref().unwrap().1;
-        let pi_4n = &ps.public_inputs.1;
 
         let SecondMsg { alpha } = *msg;
-        ps.alpha = Some(alpha);
 
         let arithmetic_key = ps.index.arithmetic_key();
         let p_arith = arithmetic_key.compute_quotient(
             domain_4n,
             (w_0_4n, w_1_4n, w_2_4n, w_3_4n),
-            pi_4n,
+            &ps.pi_4n,
         );
 
         let permutation_key = ps.index.permutation_key();
@@ -232,13 +222,12 @@ impl<F: Field> AHPForPLONK<F> {
             z_4n,
             &ps.beta.unwrap(),
             &ps.gamma.unwrap(),
-            &alpha,
         );
 
         let t: Vec<_> = cfg_iter!(p_arith)
             .zip(&p_perm)
             .zip(ps.index.v_4n_inversed())
-            .map(|((p_arith, p_perm), vi)| (*p_arith + p_perm) * vi)
+            .map(|((p_arith, p_perm), vi)| (*p_arith + alpha * p_perm) * vi)
             .collect();
 
         let t_poly =

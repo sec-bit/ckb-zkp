@@ -83,19 +83,14 @@ impl<F: Field> Composer<F> {
 #[cfg(test)]
 mod test {
     use ark_bls12_381::Fr;
-    use ark_ff::{One, Zero};
+    use ark_ff::{One, UniformRand, Zero};
+    use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
+    use ark_std::test_rng;
 
     use super::*;
     use crate::utils::pad_to_size;
 
-    #[test]
-    fn preprocess() {
-        let ks = [
-            Fr::one(),
-            Fr::from(7_u64),
-            Fr::from(13_u64),
-            Fr::from(17_u64),
-        ];
+    pub fn circuit() -> Composer<Fr> {
         let mut cs = Composer::new();
         let one = Fr::one();
         let two = one + one;
@@ -106,9 +101,9 @@ mod test {
         let var_three = cs.alloc_and_assign(three);
         let var_four = cs.alloc_and_assign(four);
         cs.create_add_gate(
-            (var_three, one),
             (var_one, one),
-            var_four,
+            (var_two, one),
+            var_three,
             None,
             Fr::zero(),
             Fr::zero(),
@@ -122,20 +117,36 @@ mod test {
             Fr::zero(),
         );
         cs.create_mul_gate(
-            var_one,
             var_two,
             var_two,
+            var_four,
             None,
             Fr::one(),
             Fr::zero(),
             Fr::zero(),
         );
-        let s = cs.process(&ks).unwrap();
+
+        cs
+    }
+
+    #[test]
+    fn compose() {
+        let cs = circuit();
+        let ks = [
+            Fr::one(),
+            Fr::from(7_u64),
+            Fr::from(13_u64),
+            Fr::from(17_u64),
+        ];
+
+        let s = cs.compose(&ks).unwrap();
         let pi = pad_to_size(cs.public_inputs(), s.size());
 
         let witnesses = cs.synthesize().unwrap();
         let Witnesses { w_0, w_1, w_2, w_3 } = witnesses;
         assert_eq!(w_0.len(), s.q_0.len());
+
+        // arithmetic
         (0..s.size()).into_iter().for_each(|i| {
             assert_eq!(
                 Fr::zero(),
@@ -148,5 +159,39 @@ mod test {
                     + pi[i]
             )
         });
+
+        // permutation
+        let ks = [
+            Fr::one(),
+            Fr::from(7_u64),
+            Fr::from(13_u64),
+            Fr::from(17_u64),
+        ];
+        let domain_n = GeneralEvaluationDomain::<Fr>::new(cs.size()).unwrap();
+        let roots: Vec<_> = domain_n.elements().collect();
+        let rng = &mut test_rng();
+        let beta = Fr::rand(rng);
+        let gamma = Fr::rand(rng);
+
+        let numerator: Fr = (0..s.size())
+            .into_iter()
+            .map(|i| {
+                (w_0[i] + beta * roots[i] * ks[0] + gamma)
+                    * (w_1[i] + beta * roots[i] * ks[1] + gamma)
+                    * (w_2[i] + beta * roots[i] * ks[2] + gamma)
+                    * (w_3[i] + beta * roots[i] * ks[3] + gamma)
+            })
+            .product();
+
+        let denumerator: Fr = (0..s.size())
+            .into_iter()
+            .map(|i| {
+                (w_0[i] + beta * s.sigma_0[i] + gamma)
+                    * (w_1[i] + beta * s.sigma_1[i] + gamma)
+                    * (w_2[i] + beta * s.sigma_2[i] + gamma)
+                    * (w_3[i] + beta * s.sigma_3[i] + gamma)
+            })
+            .product();
+        assert_eq!(numerator, denumerator);
     }
 }

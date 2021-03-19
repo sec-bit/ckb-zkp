@@ -24,19 +24,17 @@ impl<F: Field> ArithmeticKey<F> {
         q_arith_eval: F,
     ) -> LinearCombination<F> {
         let (w_0_eval, w_1_eval, w_2_eval, w_3_eval) = w_evals;
-        let mut lc = LinearCombination::new(
+        LinearCombination::new(
             "arithmetic",
             vec![
-                (w_0_eval, "q_0"),
-                (w_1_eval, "q_1"),
-                (w_2_eval, "q_2"),
-                (w_3_eval, "q_q_3"),
-                (w_1_eval * w_2_eval, "q_m"),
-                (F::one(), "q_c"),
+                (q_arith_eval * w_0_eval, "q_0"),
+                (q_arith_eval * w_1_eval, "q_1"),
+                (q_arith_eval * w_2_eval, "q_2"),
+                (q_arith_eval * w_3_eval, "q_3"),
+                (q_arith_eval * w_1_eval * w_2_eval, "q_m"),
+                (q_arith_eval, "q_c"),
             ],
-        );
-        lc *= q_arith_eval;
-        lc
+        )
     }
 
     pub(crate) fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {

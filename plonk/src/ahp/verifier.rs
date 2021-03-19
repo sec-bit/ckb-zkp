@@ -1,11 +1,14 @@
 use ark_ff::FftField as Field;
-use ark_poly_commit::QuerySet;
+use ark_poly::{
+    EvaluationDomain, Evaluations as EvaluationsOnDomain, Polynomial,
+};
+use ark_poly_commit::{Evaluations, QuerySet};
 
 use rand_core::RngCore;
 
 use crate::ahp::indexer::IndexInfo;
 use crate::ahp::{AHPForPLONK, Error};
-use crate::utils::get_domain_generator;
+use crate::utils::{get_domain_generator, pad_to_size};
 
 pub struct VerifierState<'a, F: Field> {
     info: &'a IndexInfo<F>,
@@ -94,62 +97,67 @@ impl<F: Field> AHPForPLONK<F> {
 
         query_set.insert(("t".into(), ("zeta".into(), zeta)));
         query_set.insert(("r".into(), ("zeta".into(), zeta)));
-        query_set.insert(("pi".into(), ("zeta".into(), zeta)));
 
         query_set
     }
 
-    // pub fn check_equality(
-    //     &self,
-    //     evals: &Evaluations<T, F>,
-    // ) -> Result<bool, Error> {
-    //     let alpha = self.alpha.unwrap();
-    //     let beta = self.beta.unwrap();
-    //     let gamma = self.gamma.unwrap();
-    //     let zeta = self.zeta.unwrap();
+    pub fn verifier_equality_check(
+        vs: &VerifierState<'_, F>,
+        evaluations: &Evaluations<F, F>,
+        public_inputs: &[F],
+    ) -> Result<bool, Error> {
+        // let alpha = vs.alpha.unwrap();
+        let alpha = F::zero();
+        let beta = vs.beta.unwrap();
+        let gamma = vs.gamma.unwrap();
+        let zeta = vs.zeta.unwrap();
 
-    //     let domain_n = self.vk.domain_n();
-    //     let g = get_domain_generator(domain_n);
+        let domain_n = vs.info.domain_n;
+        let g = get_domain_generator(domain_n);
+        let v_zeta = domain_n.evaluate_vanishing_polynomial(zeta);
+        let pi_zeta = {
+            let pi_n = pad_to_size(public_inputs, domain_n.size());
+            let pi_poly =
+                EvaluationsOnDomain::from_vec_and_domain(pi_n, domain_n)
+                    .interpolate();
+            pi_poly.evaluate(&zeta)
+        };
 
-    //     let v = domain_n.evaluate_vanishing_polynomial(zeta);
+        let w_0_zeta = Self::get_eval(&evaluations, "w_0", &zeta)?;
+        let w_1_zeta = Self::get_eval(&evaluations, "w_1", &zeta)?;
+        let w_2_zeta = Self::get_eval(&evaluations, "w_2", &zeta)?;
+        let w_3_zeta = Self::get_eval(&evaluations, "w_3", &zeta)?;
 
-    //     let w_0 = Self::get_eval(&evals, "w_0", &zeta)?;
-    //     let w_1 = Self::get_eval(&evals, "w_1", &zeta)?;
-    //     let w_2 = Self::get_eval(&evals, "w_2", &zeta)?;
-    //     let w_3 = Self::get_eval(&evals, "w_3", &zeta)?;
+        let z_shifted_zeta = Self::get_eval(&evaluations, "z", &(zeta * g))?;
 
-    //     let z_shifted = Self::get_eval(&evals, "z_shifted", &(zeta * g))?;
+        let sigma_0_zeta = Self::get_eval(&evaluations, "sigma_0", &zeta)?;
+        let sigma_1_zeta = Self::get_eval(&evaluations, "sigma_1", &zeta)?;
+        let sigma_2_zeta = Self::get_eval(&evaluations, "sigma_2", &zeta)?;
+        let q_arith_zeta = Self::get_eval(&evaluations, "q_arith", &zeta)?;
 
-    //     let sigma_0 = Self::get_eval(&evals, "sigma_0", &zeta)?;
-    //     let sigma_1 = Self::get_eval(&evals, "sigma_1", &zeta)?;
-    //     let sigma_2 = Self::get_eval(&evals, "sigma_2", &zeta)?;
-    //     let q_airth = Self::get_eval(&evals, "q_arith", &zeta)?;
+        let t_zeta = Self::get_eval(&evaluations, "t", &zeta)?;
+        let r_zeta = Self::get_eval(&evaluations, "r", &zeta)?;
 
-    //     let t = Self::get_eval(&evals, "t", &zeta)?;
-    //     let r = Self::get_eval(&evals, "r", &zeta)?;
-    //     let pi = self.pi_poly.evaluate(&zeta);
+        let lhs = t_zeta * v_zeta;
+        let rhs = r_zeta + q_arith_zeta * pi_zeta
+            - z_shifted_zeta
+                * (w_0_zeta + beta * sigma_0_zeta + gamma)
+                * (w_1_zeta + beta * sigma_1_zeta + gamma)
+                * (w_2_zeta + beta * sigma_2_zeta + gamma)
+                * (w_3_zeta + gamma)
+                * alpha;
 
-    //     let lhs = t * v;
-    //     let rhs = r + q_airth * pi
-    //         - z_shifted
-    //             * (w_0 + beta * sigma_0 + gamma)
-    //             * (w_1 + beta * sigma_1 + gamma)
-    //             * (w_2 + beta * sigma_2 + gamma)
-    //             * (w_3 + gamma)
-    //             * alpha;
+        Ok(lhs == rhs)
+    }
 
-    //     Ok(lhs == rhs)
-    // }
-
-    // fn get_eval(
-    //     evals: &Evaluations<T, F>,
-    //     label: &str,
-    //     point: &F,
-    // ) -> Result<F, Error> {
-    //     let key = label.to_string();
-    //     evals
-    //         .get(&key)
-    //         .map(|v| *v)
-    //         .ok_or(Error::MissingEvaluation(key))
-    // }
+    fn get_eval(
+        evaluations: &Evaluations<F, F>,
+        label: &str,
+        point: &F,
+    ) -> Result<F, Error> {
+        let eval = evaluations
+            .get(&(label.to_string(), *point))
+            .ok_or_else(|| Error::MissingEvaluation(label.to_string()))?;
+        Ok(*eval)
+    }
 }

@@ -1,11 +1,14 @@
-use ark_ff::{FftField as Field, Zero};
-use ark_poly::{univariate::DensePolynomial, Polynomial, UVPolynomial};
-use ark_poly_commit::{LCTerm, LinearCombination};
-use ark_std::{borrow::Borrow, marker::PhantomData, vec};
+use ark_ff::FftField as Field;
+
+use ark_poly_commit::LinearCombination;
+use ark_std::{marker::PhantomData, vec};
 
 use crate::composer::Error as CSError;
-use crate::data_structures::LabeledPolynomial;
-use crate::utils::{get_domain_generator, scalar_mul};
+
+use crate::utils::get_domain_generator;
+
+mod evaluations;
+pub use evaluations::EvaluationsProvider;
 
 mod indexer;
 pub use indexer::{ArithmeticKey, Index, IndexInfo, PermutationKey};
@@ -35,32 +38,27 @@ impl<F: Field> AHPForPLONK<F> {
         let SecondMsg { alpha } = *second_msg;
         let ThirdMsg { zeta } = *third_msg;
 
-        let zeta_n = zeta.pow(&[info.n as u64]);
-        let zeta_2n = zeta_n.square();
-        let shifted_zeta = zeta * get_domain_generator(info.domain_n);
-
         let w_0 = LinearCombination::new("w_0", vec![(F::one(), "w_0")]);
         let w_1 = LinearCombination::new("w_1", vec![(F::one(), "w_1")]);
         let w_2 = LinearCombination::new("w_2", vec![(F::one(), "w_2")]);
         let w_3 = LinearCombination::new("w_3", vec![(F::one(), "w_3")]);
 
-        let w_0_zeta = evals.get_lc_eval(&w_0, zeta)?;
-        let w_1_zeta = evals.get_lc_eval(&w_1, zeta)?;
-        let w_2_zeta = evals.get_lc_eval(&w_2, zeta)?;
-        let w_3_zeta = evals.get_lc_eval(&w_3, zeta)?;
-
         let z = LinearCombination::new("z", vec![(F::one(), "z")]);
-        let z_shifted_zeta = evals.get_lc_eval(&z, shifted_zeta)?;
 
-        let t = LinearCombination::new(
-            "t",
-            vec![
-                (F::one(), "t_0"),
-                (zeta, "t_1"),
-                (zeta_n, "t_2"),
-                (zeta_n * zeta_2n, "t_3"),
-            ],
-        );
+        let t = {
+            let zeta_n = zeta.pow(&[info.n as u64]);
+            let zeta_2n = zeta_n.square();
+
+            LinearCombination::new(
+                "t",
+                vec![
+                    (F::one(), "t_0"),
+                    (zeta, "t_1"),
+                    (zeta_n, "t_2"),
+                    (zeta_n * zeta_2n, "t_3"),
+                ],
+            )
+        };
 
         let sigma_0 =
             LinearCombination::new("sigma_0", vec![(F::one(), "sigma_0")]);
@@ -71,18 +69,26 @@ impl<F: Field> AHPForPLONK<F> {
         let q_arith =
             LinearCombination::new("q_arith", vec![(F::one(), "q_arith")]);
 
-        let sigma_0_zeta = evals.get_lc_eval(&sigma_0, zeta)?;
-        let sigma_1_zeta = evals.get_lc_eval(&sigma_1, zeta)?;
-        let sigma_2_zeta = evals.get_lc_eval(&sigma_2, zeta)?;
-        let q_arith_zeta = evals.get_lc_eval(&q_arith, zeta)?;
+        let r = {
+            let w_0_zeta = evals.get_lc_eval(&w_0, zeta)?;
+            let w_1_zeta = evals.get_lc_eval(&w_1, zeta)?;
+            let w_2_zeta = evals.get_lc_eval(&w_2, zeta)?;
+            let w_3_zeta = evals.get_lc_eval(&w_3, zeta)?;
 
-        let mut r = ArithmeticKey::construct_linear_combination(
-            (w_0_zeta, w_1_zeta, w_2_zeta, w_3_zeta),
-            q_arith_zeta,
-        );
-        r += (
-            alpha,
-            &PermutationKey::construct_linear_combination(
+            let shifted_zeta = zeta * get_domain_generator(info.domain_n);
+            let z_shifted_zeta = evals.get_lc_eval(&z, shifted_zeta)?;
+
+            let sigma_0_zeta = evals.get_lc_eval(&sigma_0, zeta)?;
+            let sigma_1_zeta = evals.get_lc_eval(&sigma_1, zeta)?;
+            let sigma_2_zeta = evals.get_lc_eval(&sigma_2, zeta)?;
+            let q_arith_zeta = evals.get_lc_eval(&q_arith, zeta)?;
+
+            let arith_lc = ArithmeticKey::construct_linear_combination(
+                (w_0_zeta, w_1_zeta, w_2_zeta, w_3_zeta),
+                q_arith_zeta,
+            );
+
+            let perm_lc = PermutationKey::construct_linear_combination(
                 &info.ks,
                 (w_0_zeta, w_1_zeta, w_2_zeta, w_3_zeta),
                 z_shifted_zeta,
@@ -92,8 +98,14 @@ impl<F: Field> AHPForPLONK<F> {
                 beta,
                 gamma,
                 zeta,
-            ),
-        );
+            );
+
+            let mut r = LinearCombination::<F>::empty("r");
+            r += &arith_lc;
+            r += (alpha, &perm_lc);
+            println!("{:?}", r);
+            r
+        };
 
         let mut lcs = vec![
             w_0, w_1, w_2, w_3, z, sigma_0, sigma_1, sigma_2, q_arith, t, r,
@@ -117,61 +129,135 @@ impl From<CSError> for Error {
     }
 }
 
-pub trait EvaluationsProvider<F: Field> {
-    fn get_lc_eval(
-        &self,
-        lc: &LinearCombination<F>,
-        point: F,
-    ) -> Result<F, Error>;
-}
+#[cfg(test)]
+mod test {
+    use ark_bls12_381::Fr;
+    use ark_ff::{One, Zero};
+    use ark_poly_commit::Evaluations;
+    use ark_std::test_rng;
 
-impl<'a, F: Field> EvaluationsProvider<F>
-    for ark_poly_commit::Evaluations<F, F>
-{
-    fn get_lc_eval(
-        &self,
-        lc: &LinearCombination<F>,
-        point: F,
-    ) -> Result<F, Error> {
-        let key = (lc.label.clone(), point);
-        self.get(&key)
-            .copied()
-            .ok_or_else(|| Error::MissingEvaluation(lc.label.clone()))
+    use crate::composer::Composer;
+
+    use super::*;
+
+    fn circuit() -> Composer<Fr> {
+        let mut cs = Composer::new();
+        let one = Fr::one();
+        let two = one + one;
+        let three = two + one;
+        let four = two + two;
+        let var_one = cs.alloc_and_assign(one);
+        let var_two = cs.alloc_and_assign(two);
+        let var_three = cs.alloc_and_assign(three);
+        let var_four = cs.alloc_and_assign(four);
+        cs.create_add_gate(
+            (var_one, one),
+            (var_two, one),
+            var_three,
+            None,
+            Fr::zero(),
+            Fr::zero(),
+        );
+        cs.create_add_gate(
+            (var_one, one),
+            (var_three, one),
+            var_four,
+            None,
+            Fr::zero(),
+            Fr::zero(),
+        );
+        cs.create_mul_gate(
+            var_two,
+            var_two,
+            var_four,
+            None,
+            Fr::one(),
+            Fr::zero(),
+            Fr::zero(),
+        );
+
+        cs
     }
-}
 
-impl<F: Field, T: Borrow<LabeledPolynomial<F>>> EvaluationsProvider<F>
-    for Vec<T>
-{
-    fn get_lc_eval(
-        &self,
-        lc: &LinearCombination<F>,
-        point: F,
-    ) -> Result<F, Error> {
-        let mut acc = DensePolynomial::zero();
-        for (coeff, term) in lc.iter() {
-            acc = if let LCTerm::PolyLabel(label) = term {
-                let poly = self
-                    .iter()
-                    .find(|p| {
-                        let p: &LabeledPolynomial<F> = (*p).borrow();
-                        p.label() == label
-                    })
-                    .ok_or_else(|| {
-                        Error::MissingEvaluation(format!(
-                            "Missing {} for {}",
-                            label, lc.label
-                        ))
-                    })?
-                    .borrow();
-                acc + scalar_mul(poly, coeff)
-            } else {
-                assert!(term.is_one());
-                acc + DensePolynomial::from_coefficients_vec(vec![*coeff])
+    #[test]
+    fn ahp() -> Result<(), Error> {
+        let cs = circuit();
+        let ks = [
+            Fr::one(),
+            Fr::from(7_u64),
+            Fr::from(13_u64),
+            Fr::from(17_u64),
+        ];
+        let rng = &mut test_rng();
+
+        let index = AHPForPLONK::index(&cs, ks)?;
+        let ps = AHPForPLONK::prover_init(&cs, &index)?;
+        let vs = AHPForPLONK::verifier_init(&index.info)?;
+
+        let (ps, first_oracles) = AHPForPLONK::prover_first_round(ps, &cs)?;
+        let (vs, first_msg) = AHPForPLONK::verifier_first_round(vs, rng)?;
+
+        let (ps, second_oracles) =
+            AHPForPLONK::prover_second_round(ps, &first_msg, &ks)?;
+        let (vs, second_msg) = AHPForPLONK::verifier_second_round(vs, rng)?;
+
+        let third_oracles =
+            AHPForPLONK::prover_third_round(ps, &second_msg, &ks)?;
+        let (vs, third_msg) = AHPForPLONK::verifier_third_round(vs, rng)?;
+
+        let polynomials: Vec<_> = index
+            .iter()
+            .chain(first_oracles.iter())
+            .chain(second_oracles.iter())
+            .chain(third_oracles.iter())
+            .collect();
+
+        let lcs = AHPForPLONK::construct_linear_combinations(
+            &index.info,
+            &first_msg,
+            &second_msg,
+            &third_msg,
+            &polynomials,
+        )?;
+
+        let evaluations = {
+            let query_set = AHPForPLONK::verifier_query_set(&vs);
+
+            let evals: Vec<_> = {
+                let mut evals = Vec::new();
+                for (label, (_, point)) in &query_set {
+                    let lc =
+                        lcs.iter().find(|lc| &lc.label == label).ok_or_else(
+                            || Error::MissingEvaluation(label.to_string()),
+                        )?;
+                    let eval = polynomials.get_lc_eval(&lc, *point)?;
+                    evals.push((label.to_string(), eval));
+                }
+                evals.sort_by(|a, b| a.0.cmp(&b.0));
+                evals.into_iter().map(|x| x.1).collect()
             };
-        }
 
-        let eval = acc.evaluate(&point);
-        Ok(eval)
+            let mut evaluation_labels: Vec<_> = query_set
+                .iter()
+                .cloned()
+                .map(|(l, (_, p))| (l, p))
+                .collect();
+            evaluation_labels.sort_by(|a, b| a.0.cmp(&b.0));
+
+            let mut evaluations = Evaluations::new();
+            for (q, eval) in evaluation_labels.into_iter().zip(&evals) {
+                evaluations.insert(q, *eval);
+            }
+            evaluations
+        };
+
+        let is_equal = AHPForPLONK::verifier_equality_check(
+            &vs,
+            &evaluations,
+            cs.public_inputs(),
+        )?;
+
+        assert!(is_equal);
+        Ok(())
     }
 }
