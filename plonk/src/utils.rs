@@ -1,5 +1,8 @@
 use ark_ff::{FftField as Field, Zero};
-use ark_poly::{univariate::DensePolynomial, EvaluationDomain, UVPolynomial};
+use ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain,
+    Evaluations as EvaluationsOnDomain, UVPolynomial,
+};
 use ark_std::cfg_iter;
 
 #[cfg(feature = "parallel")]
@@ -20,6 +23,24 @@ pub fn scalar_mul<F: Field>(
 
 pub fn get_domain_generator<F: Field>(domain: impl EvaluationDomain<F>) -> F {
     domain.element(1)
+}
+
+pub fn first_lagrange_poly<F: Field>(
+    domain: impl EvaluationDomain<F>,
+) -> DensePolynomial<F> {
+    let mut l = vec![F::zero(); domain.size()];
+    l[0] = F::one();
+    EvaluationsOnDomain::from_vec_and_domain(l, domain).interpolate()
+}
+
+pub fn evaluate_first_lagrange_poly<F: Field>(
+    domain: impl EvaluationDomain<F>,
+    zeta: F,
+) -> F {
+    let n = domain.size() as u64;
+    let numerator = zeta.pow(&[n]) - F::one();
+    let denumerator = (F::from(n) * (zeta - F::one())).inverse().unwrap();
+    numerator * denumerator
 }
 
 pub fn pad_to_size<F: Field>(v: &[F], expected_size: usize) -> Vec<F> {

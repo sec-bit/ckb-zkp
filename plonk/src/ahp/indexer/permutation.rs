@@ -7,12 +7,14 @@ use ark_std::{cfg_into_iter, vec, vec::Vec};
 use rayon::prelude::*;
 
 use crate::data_structures::LabeledPolynomial;
+use crate::utils::evaluate_first_lagrange_poly;
 
 pub struct PermutationKey<F: Field> {
     pub sigma_0: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
     pub sigma_1: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
     pub sigma_2: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
     pub sigma_3: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
+    pub l1_4n: Vec<F>,
 }
 
 impl<F: Field> PermutationKey<F> {
@@ -28,31 +30,37 @@ impl<F: Field> PermutationKey<F> {
 
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn construct_linear_combination(
-        k: &[F; 4],
-        w_evals: (F, F, F, F),
-        z_shifted_eval: F,
-        sigma_0_eval: F,
-        sigma_1_eval: F,
-        sigma_2_eval: F,
+        domain_n: impl EvaluationDomain<F>,
+        ks: &[F; 4],
+        w_zeta: (F, F, F, F),
+        z_shifted_zeta: F,
+        sigma_0_zeta: F,
+        sigma_1_zeta: F,
+        sigma_2_zeta: F,
         beta: F,
         gamma: F,
-        point: F,
+        alpha: F,
+        zeta: F,
     ) -> LinearCombination<F> {
-        let (w_0, w_1, w_2, w_3) = w_evals;
-        let numerator = (w_0 + k[0] * beta * point + gamma)
-            * (w_1 + k[1] * beta * point + gamma)
-            * (w_2 + k[2] * beta * point + gamma)
-            * (w_3 + k[3] * beta * point + gamma);
+        let (w_0, w_1, w_2, w_3) = w_zeta;
+        let numerator = (w_0 + ks[0] * beta * zeta + gamma)
+            * (w_1 + ks[1] * beta * zeta + gamma)
+            * (w_2 + ks[2] * beta * zeta + gamma)
+            * (w_3 + ks[3] * beta * zeta + gamma);
 
-        let denumerator = (w_0 + beta * sigma_0_eval + gamma)
-            * (w_1 + beta * sigma_1_eval + gamma)
-            * (w_2 + beta * sigma_2_eval + gamma)
+        let denumerator = (w_0 + beta * sigma_0_zeta + gamma)
+            * (w_1 + beta * sigma_1_zeta + gamma)
+            * (w_2 + beta * sigma_2_zeta + gamma)
             * beta
-            * z_shifted_eval;
-
+            * z_shifted_zeta;
+        let l1_zeta = evaluate_first_lagrange_poly(domain_n, zeta);
+        let alpha_2 = alpha.square();
         LinearCombination::new(
             "permutation",
-            vec![(numerator, "z"), (-denumerator, "sigma_3")],
+            vec![
+                (numerator * alpha + l1_zeta * alpha_2, "z"),
+                (-denumerator * alpha, "sigma_3"),
+            ],
         )
     }
 
@@ -116,6 +124,7 @@ impl<F: Field> PermutationKey<F> {
         z_4n: &[F],
         beta: &F,
         gamma: &F,
+        alpha: &F,
     ) -> Vec<F> {
         let (w_0_4n, w_1_4n, w_2_4n, w_3_4n) = w_4n;
 
@@ -127,6 +136,7 @@ impl<F: Field> PermutationKey<F> {
         let numerator_factor =
             |w: &F, root: &F, k: &F| *w + *k * beta * root + gamma;
         let denumerator_factor = |w: &F, sigma: &F| *w + *beta * sigma + gamma;
+        let alpha_2 = alpha.square();
 
         cfg_into_iter!((0..size))
             .map(|i| {
@@ -135,7 +145,7 @@ impl<F: Field> PermutationKey<F> {
                 } else {
                     i + 4
                 };
-                numerator_factor(&w_0_4n[i], &linear_4n[i], &ks[0])
+                (numerator_factor(&w_0_4n[i], &linear_4n[i], &ks[0])
                     * numerator_factor(&w_1_4n[i], &linear_4n[i], &ks[1])
                     * numerator_factor(&w_2_4n[i], &linear_4n[i], &ks[2])
                     * numerator_factor(&w_3_4n[i], &linear_4n[i], &ks[3])
@@ -144,7 +154,9 @@ impl<F: Field> PermutationKey<F> {
                         * denumerator_factor(&w_1_4n[i], &self.sigma_1.2[i])
                         * denumerator_factor(&w_2_4n[i], &self.sigma_2.2[i])
                         * denumerator_factor(&w_3_4n[i], &self.sigma_3.2[i])
-                        * z_4n[next]
+                        * z_4n[next])
+                    * alpha
+                    + (z_4n[i] - F::one()) * self.l1_4n[i] * alpha_2
             })
             .collect()
     }

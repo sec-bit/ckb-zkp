@@ -222,12 +222,13 @@ impl<F: Field> AHPForPLONK<F> {
             z_4n,
             &ps.beta.unwrap(),
             &ps.gamma.unwrap(),
+            &alpha,
         );
 
         let t: Vec<_> = cfg_iter!(t_arith)
             .zip(&t_perm)
             .zip(ps.index.v_4n_inversed())
-            .map(|((t_arith, t_perm), vi)| (*t_arith + alpha * t_perm) * vi)
+            .map(|((t_arith, t_perm), vi)| (*t_arith + t_perm) * vi)
             .collect();
 
         let t_poly =

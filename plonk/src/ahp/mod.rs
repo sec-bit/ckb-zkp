@@ -90,6 +90,7 @@ impl<F: Field> AHPForPLONK<F> {
             );
 
             let perm_lc = PermutationKey::construct_linear_combination(
+                info.domain_n,
                 &info.ks,
                 (w_0_zeta, w_1_zeta, w_2_zeta, w_3_zeta),
                 z_shifted_zeta,
@@ -98,12 +99,13 @@ impl<F: Field> AHPForPLONK<F> {
                 sigma_2_zeta,
                 beta,
                 gamma,
+                alpha,
                 zeta,
             );
 
             let mut r = LinearCombination::<F>::empty("r");
             r += &arith_lc;
-            r += (alpha, &perm_lc);
+            r += &perm_lc;
             r
         };
 

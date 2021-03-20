@@ -8,7 +8,9 @@ use rand_core::RngCore;
 
 use crate::ahp::indexer::IndexInfo;
 use crate::ahp::{AHPForPLONK, Error};
-use crate::utils::{get_domain_generator, pad_to_size};
+use crate::utils::{
+    evaluate_first_lagrange_poly, get_domain_generator, pad_to_size,
+};
 
 pub struct VerifierState<'a, F: Field> {
     info: &'a IndexInfo<F>,
@@ -139,6 +141,9 @@ impl<F: Field> AHPForPLONK<F> {
         let t_zeta = get_eval(&evaluations, "t", &zeta)?;
         let r_zeta = get_eval(&evaluations, "r", &zeta)?;
 
+        let l1_zeta = evaluate_first_lagrange_poly(vs.info.domain_n, zeta);
+        let alpha_2 = alpha.square();
+
         let lhs = t_zeta * v_zeta;
         let rhs = r_zeta + q_arith_zeta * pi_zeta
             - z_shifted_zeta
@@ -146,7 +151,8 @@ impl<F: Field> AHPForPLONK<F> {
                 * (w_1_zeta + beta * sigma_1_zeta + gamma)
                 * (w_2_zeta + beta * sigma_2_zeta + gamma)
                 * (w_3_zeta + gamma)
-                * alpha;
+                * alpha
+            - l1_zeta * alpha_2;
 
         Ok(lhs == rhs)
     }

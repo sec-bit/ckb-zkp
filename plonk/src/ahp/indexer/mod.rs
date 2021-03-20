@@ -11,6 +11,7 @@ use rayon::prelude::*;
 use crate::ahp::{AHPForPLONK, Error};
 use crate::composer::{Composer, Error as CSError, Selectors};
 use crate::data_structures::LabeledPolynomial;
+use crate::utils::first_lagrange_poly;
 
 mod arithmetic;
 pub use arithmetic::ArithmeticKey;
@@ -157,10 +158,14 @@ impl<F: Field> AHPForPLONK<F> {
         let v_4n_inversed: Vec<_> =
             cfg_into_iter!(v_4n).map(|v| v.inverse().unwrap()).collect();
 
+        let l1_poly = first_lagrange_poly(domain_n);
+        let l1_4n = domain_4n.coset_fft(&l1_poly);
+
         Ok(Index {
             info: IndexInfo { n, ks, domain_n },
 
             domain_4n,
+
             v_4n_inversed,
 
             arithmetic: ArithmeticKey {
@@ -179,6 +184,7 @@ impl<F: Field> AHPForPLONK<F> {
                 sigma_1: (sigma_1_poly, sigma_1, sigma_1_4n),
                 sigma_2: (sigma_2_poly, sigma_2, sigma_2_4n),
                 sigma_3: (sigma_3_poly, sigma_3, sigma_3_4n),
+                l1_4n,
             },
         })
     }

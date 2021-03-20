@@ -20,19 +20,19 @@ pub struct ArithmeticKey<F: Field> {
 
 impl<F: Field> ArithmeticKey<F> {
     pub(crate) fn construct_linear_combination(
-        w_evals: (F, F, F, F),
-        q_arith_eval: F,
+        w_zeta: (F, F, F, F),
+        q_arith_zeta: F,
     ) -> LinearCombination<F> {
-        let (w_0_eval, w_1_eval, w_2_eval, w_3_eval) = w_evals;
+        let (w_0_eval, w_1_eval, w_2_eval, w_3_eval) = w_zeta;
         LinearCombination::new(
             "arithmetic",
             vec![
-                (q_arith_eval * w_0_eval, "q_0"),
-                (q_arith_eval * w_1_eval, "q_1"),
-                (q_arith_eval * w_2_eval, "q_2"),
-                (q_arith_eval * w_3_eval, "q_3"),
-                (q_arith_eval * w_1_eval * w_2_eval, "q_m"),
-                (q_arith_eval, "q_c"),
+                (q_arith_zeta * w_0_eval, "q_0"),
+                (q_arith_zeta * w_1_eval, "q_1"),
+                (q_arith_zeta * w_2_eval, "q_2"),
+                (q_arith_zeta * w_3_eval, "q_3"),
+                (q_arith_zeta * w_1_eval * w_2_eval, "q_m"),
+                (q_arith_zeta, "q_c"),
             ],
         )
     }
