@@ -25,4 +25,5 @@ ark-std = { git = "https://github.com/arkworks-rs/utils", default-features = fal
 ark-poly-commit = {git = "https://github.com/arkworks-rs/poly-commit", default-features = false }
 
 # [dev-dependencies]
+blake2 = { version = "0.9", default-features = false }
 ark-bls12-381 = { git = "https://github.com/arkworks-rs/curves", default-features = false, features = ["curve"] }

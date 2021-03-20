@@ -141,8 +141,10 @@ mod test {
         let cs = crate::tests::circuit();
         let ks = crate::tests::ks();
         let rng = &mut test_rng();
+        println!("circuit size: {}", cs.size());
 
         let index = AHPForPLONK::index(&cs, ks)?;
+        println!("index size: {}", index.size());
         let ps = AHPForPLONK::prover_init(&cs, &index)?;
         let vs = AHPForPLONK::verifier_init(&index.info)?;
 
