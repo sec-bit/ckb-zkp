@@ -1,7 +1,7 @@
 use ark_ff::FftField as Field;
 use ark_poly::{
-    univariate::DensePolynomial as Polynomial, EvaluationDomain, Evaluations,
-    GeneralEvaluationDomain, UVPolynomial,
+    univariate::DensePolynomial, EvaluationDomain,
+    Evaluations as EvaluationsOnDomain, GeneralEvaluationDomain, UVPolynomial,
 };
 use ark_std::cfg_into_iter;
 
@@ -39,7 +39,6 @@ impl<F: Field> AHPForPLONK<F> {
         let selectors = cs.compose(&ks)?;
         let n = selectors.size();
         selectors.iter().for_each(|s| assert_eq!(s.len(), n));
-        println!("selector size: {}", n);
 
         let Selectors {
             q_0,
@@ -63,49 +62,49 @@ impl<F: Field> AHPForPLONK<F> {
 
         let q_0_poly = LabeledPolynomial::new(
             "q_0".into(),
-            Evaluations::from_vec_and_domain(q_0.clone(), domain_n)
+            EvaluationsOnDomain::from_vec_and_domain(q_0.clone(), domain_n)
                 .interpolate(),
             None,
             None,
         );
         let q_1_poly = LabeledPolynomial::new(
             "q_1".into(),
-            Evaluations::from_vec_and_domain(q_1.clone(), domain_n)
+            EvaluationsOnDomain::from_vec_and_domain(q_1.clone(), domain_n)
                 .interpolate(),
             None,
             None,
         );
         let q_2_poly = LabeledPolynomial::new(
             "q_2".into(),
-            Evaluations::from_vec_and_domain(q_2.clone(), domain_n)
+            EvaluationsOnDomain::from_vec_and_domain(q_2.clone(), domain_n)
                 .interpolate(),
             None,
             None,
         );
         let q_3_poly = LabeledPolynomial::new(
             "q_3".into(),
-            Evaluations::from_vec_and_domain(q_3.clone(), domain_n)
+            EvaluationsOnDomain::from_vec_and_domain(q_3.clone(), domain_n)
                 .interpolate(),
             None,
             None,
         );
         let q_m_poly = LabeledPolynomial::new(
             "q_m".into(),
-            Evaluations::from_vec_and_domain(q_m.clone(), domain_n)
+            EvaluationsOnDomain::from_vec_and_domain(q_m.clone(), domain_n)
                 .interpolate(),
             None,
             None,
         );
         let q_c_poly = LabeledPolynomial::new(
             "q_c".into(),
-            Evaluations::from_vec_and_domain(q_c.clone(), domain_n)
+            EvaluationsOnDomain::from_vec_and_domain(q_c.clone(), domain_n)
                 .interpolate(),
             None,
             None,
         );
         let q_arith_poly = LabeledPolynomial::new(
             "q_arith".into(),
-            Evaluations::from_vec_and_domain(q_arith.clone(), domain_n)
+            EvaluationsOnDomain::from_vec_and_domain(q_arith.clone(), domain_n)
                 .interpolate(),
             None,
             None,
@@ -113,28 +112,28 @@ impl<F: Field> AHPForPLONK<F> {
 
         let sigma_0_poly = LabeledPolynomial::new(
             "sigma_0".into(),
-            Evaluations::from_vec_and_domain(sigma_0.clone(), domain_n)
+            EvaluationsOnDomain::from_vec_and_domain(sigma_0.clone(), domain_n)
                 .interpolate(),
             None,
             None,
         );
         let sigma_1_poly = LabeledPolynomial::new(
             "sigma_1".into(),
-            Evaluations::from_vec_and_domain(sigma_1.clone(), domain_n)
+            EvaluationsOnDomain::from_vec_and_domain(sigma_1.clone(), domain_n)
                 .interpolate(),
             None,
             None,
         );
         let sigma_2_poly = LabeledPolynomial::new(
             "sigma_2".into(),
-            Evaluations::from_vec_and_domain(sigma_2.clone(), domain_n)
+            EvaluationsOnDomain::from_vec_and_domain(sigma_2.clone(), domain_n)
                 .interpolate(),
             None,
             None,
         );
         let sigma_3_poly = LabeledPolynomial::new(
             "sigma_3".into(),
-            Evaluations::from_vec_and_domain(sigma_3.clone(), domain_n)
+            EvaluationsOnDomain::from_vec_and_domain(sigma_3.clone(), domain_n)
                 .interpolate(),
             None,
             None,
@@ -215,10 +214,12 @@ impl<F: Field> Index<F> {
     }
 }
 
-fn vanishing_poly<F: Field>(domain: impl EvaluationDomain<F>) -> Polynomial<F> {
+fn vanishing_poly<F: Field>(
+    domain: impl EvaluationDomain<F>,
+) -> DensePolynomial<F> {
     let size = domain.size();
     let mut coeffs = vec![F::zero(); size + 1];
     coeffs[0] = -F::one();
     coeffs[size] = F::one();
-    Polynomial::from_coefficients_vec(coeffs)
+    DensePolynomial::from_coefficients_vec(coeffs)
 }

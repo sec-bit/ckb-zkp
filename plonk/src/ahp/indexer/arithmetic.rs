@@ -53,17 +53,17 @@ impl<F: Field> ArithmeticKey<F> {
     pub(crate) fn compute_quotient(
         &self,
         domain_4n: impl EvaluationDomain<F>,
-        w: (&[F], &[F], &[F], &[F]),
-        pi: &[F],
+        w_4n: (&[F], &[F], &[F], &[F]),
+        pi_4n: &[F],
     ) -> Vec<F> {
-        let (w_0, w_1, w_2, w_3) = w;
+        let (w_0_4n, w_1_4n, w_2_4n, w_3_4n) = w_4n;
         cfg_into_iter!((0..domain_4n.size()))
             .map(|i| {
                 Self::evaluate(
-                    &w_0[i],
-                    &w_1[i],
-                    &w_2[i],
-                    &w_3[i],
+                    &w_0_4n[i],
+                    &w_1_4n[i],
+                    &w_2_4n[i],
+                    &w_3_4n[i],
                     &self.q_0.2[i],
                     &self.q_1.2[i],
                     &self.q_2.2[i],
@@ -71,7 +71,7 @@ impl<F: Field> ArithmeticKey<F> {
                     &self.q_m.2[i],
                     &self.q_c.2[i],
                     &self.q_arith.2[i],
-                    &pi[i],
+                    &pi_4n[i],
                 )
             })
             .collect()

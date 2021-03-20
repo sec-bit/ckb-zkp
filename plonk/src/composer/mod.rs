@@ -81,57 +81,19 @@ impl<F: Field> Composer<F> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use ark_bls12_381::Fr;
     use ark_ff::{One, UniformRand, Zero};
     use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
     use ark_std::test_rng;
 
-    use super::*;
     use crate::utils::pad_to_size;
 
-    pub fn circuit() -> Composer<Fr> {
-        let mut cs = Composer::new();
-        let one = Fr::one();
-        let two = one + one;
-        let three = two + one;
-        let four = two + two;
-        let var_one = cs.alloc_and_assign(one);
-        let var_two = cs.alloc_and_assign(two);
-        let var_three = cs.alloc_and_assign(three);
-        let var_four = cs.alloc_and_assign(four);
-        cs.create_add_gate(
-            (var_one, one),
-            (var_two, one),
-            var_three,
-            None,
-            Fr::zero(),
-            Fr::zero(),
-        );
-        cs.create_add_gate(
-            (var_two, one),
-            (var_two, one),
-            var_four,
-            None,
-            Fr::zero(),
-            Fr::zero(),
-        );
-        cs.create_mul_gate(
-            var_two,
-            var_two,
-            var_four,
-            None,
-            Fr::one(),
-            Fr::zero(),
-            Fr::zero(),
-        );
-
-        cs
-    }
+    use super::*;
 
     #[test]
     fn compose() {
-        let cs = circuit();
+        let cs = crate::tests::circuit();
         let ks = [
             Fr::one(),
             Fr::from(7_u64),

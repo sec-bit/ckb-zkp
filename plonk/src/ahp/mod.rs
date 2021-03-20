@@ -53,8 +53,8 @@ impl<F: Field> AHPForPLONK<F> {
                 "t",
                 vec![
                     (F::one(), "t_0"),
-                    (zeta, "t_1"),
-                    (zeta_n, "t_2"),
+                    (zeta_n, "t_1"),
+                    (zeta_2n, "t_2"),
                     (zeta_n * zeta_2n, "t_3"),
                 ],
             )
@@ -66,6 +66,7 @@ impl<F: Field> AHPForPLONK<F> {
             LinearCombination::new("sigma_1", vec![(F::one(), "sigma_1")]);
         let sigma_2 =
             LinearCombination::new("sigma_2", vec![(F::one(), "sigma_2")]);
+
         let q_arith =
             LinearCombination::new("q_arith", vec![(F::one(), "q_arith")]);
 
@@ -103,7 +104,6 @@ impl<F: Field> AHPForPLONK<F> {
             let mut r = LinearCombination::<F>::empty("r");
             r += &arith_lc;
             r += (alpha, &perm_lc);
-            println!("{:?}", r);
             r
         };
 
@@ -131,63 +131,15 @@ impl From<CSError> for Error {
 
 #[cfg(test)]
 mod test {
-    use ark_bls12_381::Fr;
-    use ark_ff::{One, Zero};
     use ark_poly_commit::Evaluations;
     use ark_std::test_rng;
 
-    use crate::composer::Composer;
-
     use super::*;
-
-    fn circuit() -> Composer<Fr> {
-        let mut cs = Composer::new();
-        let one = Fr::one();
-        let two = one + one;
-        let three = two + one;
-        let four = two + two;
-        let var_one = cs.alloc_and_assign(one);
-        let var_two = cs.alloc_and_assign(two);
-        let var_three = cs.alloc_and_assign(three);
-        let var_four = cs.alloc_and_assign(four);
-        cs.create_add_gate(
-            (var_one, one),
-            (var_two, one),
-            var_three,
-            None,
-            Fr::zero(),
-            Fr::zero(),
-        );
-        cs.create_add_gate(
-            (var_one, one),
-            (var_three, one),
-            var_four,
-            None,
-            Fr::zero(),
-            Fr::zero(),
-        );
-        cs.create_mul_gate(
-            var_two,
-            var_two,
-            var_four,
-            None,
-            Fr::one(),
-            Fr::zero(),
-            Fr::zero(),
-        );
-
-        cs
-    }
 
     #[test]
     fn ahp() -> Result<(), Error> {
-        let cs = circuit();
-        let ks = [
-            Fr::one(),
-            Fr::from(7_u64),
-            Fr::from(13_u64),
-            Fr::from(17_u64),
-        ];
+        let cs = crate::tests::circuit();
+        let ks = crate::tests::ks();
         let rng = &mut test_rng();
 
         let index = AHPForPLONK::index(&cs, ks)?;

@@ -114,18 +114,16 @@ impl<F: Field> Permutation<F> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use ark_bls12_381::Fr;
     use ark_ff::One;
     use ark_poly::GeneralEvaluationDomain;
 
     use super::*;
 
-    use crate::composer::test::circuit;
-
     #[test]
     fn permutation() {
-        let cs = circuit();
+        let cs = crate::tests::circuit();
         let ks = [
             Fr::one(),
             Fr::from(7_u64),

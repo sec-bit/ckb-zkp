@@ -318,6 +318,62 @@ impl<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>>
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use ark_bls12_381::Fr;
+    use ark_ff::{One, Zero};
+
+    use crate::composer::Composer;
+
+    pub fn ks() -> [Fr; 4] {
+        [
+            Fr::one(),
+            Fr::from(7_u64),
+            Fr::from(13_u64),
+            Fr::from(17_u64),
+        ]
+    }
+
+    pub fn circuit() -> Composer<Fr> {
+        let mut cs = Composer::new();
+        let one = Fr::one();
+        let two = one + one;
+        let three = two + one;
+        let four = two + two;
+        let var_one = cs.alloc_and_assign(one);
+        let var_two = cs.alloc_and_assign(two);
+        let var_three = cs.alloc_and_assign(three);
+        let var_four = cs.alloc_and_assign(four);
+        cs.create_add_gate(
+            (var_one, one),
+            (var_two, one),
+            var_three,
+            None,
+            Fr::zero(),
+            Fr::zero(),
+        );
+        cs.create_add_gate(
+            (var_one, one),
+            (var_three, one),
+            var_four,
+            None,
+            Fr::zero(),
+            Fr::zero(),
+        );
+        cs.create_mul_gate(
+            var_two,
+            var_two,
+            var_four,
+            None,
+            Fr::one(),
+            Fr::zero(),
+            Fr::zero(),
+        );
+
+        cs
+    }
+}
+
 // #[cfg(test)]
 // mod test {
 //     use ark_bls12_381::Fr;

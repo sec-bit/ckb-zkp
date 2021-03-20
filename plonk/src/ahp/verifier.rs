@@ -38,6 +38,7 @@ impl<F: Field> AHPForPLONK<F> {
     ) -> Result<VerifierState<'_, F>, Error> {
         Ok(VerifierState {
             info,
+
             alpha: None,
             beta: None,
             gamma: None,
@@ -107,7 +108,7 @@ impl<F: Field> AHPForPLONK<F> {
         public_inputs: &[F],
     ) -> Result<bool, Error> {
         // let alpha = vs.alpha.unwrap();
-        let alpha = F::zero();
+        let alpha = vs.alpha.unwrap();
         let beta = vs.beta.unwrap();
         let gamma = vs.gamma.unwrap();
         let zeta = vs.zeta.unwrap();
@@ -123,20 +124,20 @@ impl<F: Field> AHPForPLONK<F> {
             pi_poly.evaluate(&zeta)
         };
 
-        let w_0_zeta = Self::get_eval(&evaluations, "w_0", &zeta)?;
-        let w_1_zeta = Self::get_eval(&evaluations, "w_1", &zeta)?;
-        let w_2_zeta = Self::get_eval(&evaluations, "w_2", &zeta)?;
-        let w_3_zeta = Self::get_eval(&evaluations, "w_3", &zeta)?;
+        let w_0_zeta = get_eval(&evaluations, "w_0", &zeta)?;
+        let w_1_zeta = get_eval(&evaluations, "w_1", &zeta)?;
+        let w_2_zeta = get_eval(&evaluations, "w_2", &zeta)?;
+        let w_3_zeta = get_eval(&evaluations, "w_3", &zeta)?;
 
-        let z_shifted_zeta = Self::get_eval(&evaluations, "z", &(zeta * g))?;
+        let z_shifted_zeta = get_eval(&evaluations, "z", &(zeta * g))?;
 
-        let sigma_0_zeta = Self::get_eval(&evaluations, "sigma_0", &zeta)?;
-        let sigma_1_zeta = Self::get_eval(&evaluations, "sigma_1", &zeta)?;
-        let sigma_2_zeta = Self::get_eval(&evaluations, "sigma_2", &zeta)?;
-        let q_arith_zeta = Self::get_eval(&evaluations, "q_arith", &zeta)?;
+        let sigma_0_zeta = get_eval(&evaluations, "sigma_0", &zeta)?;
+        let sigma_1_zeta = get_eval(&evaluations, "sigma_1", &zeta)?;
+        let sigma_2_zeta = get_eval(&evaluations, "sigma_2", &zeta)?;
+        let q_arith_zeta = get_eval(&evaluations, "q_arith", &zeta)?;
 
-        let t_zeta = Self::get_eval(&evaluations, "t", &zeta)?;
-        let r_zeta = Self::get_eval(&evaluations, "r", &zeta)?;
+        let t_zeta = get_eval(&evaluations, "t", &zeta)?;
+        let r_zeta = get_eval(&evaluations, "r", &zeta)?;
 
         let lhs = t_zeta * v_zeta;
         let rhs = r_zeta + q_arith_zeta * pi_zeta
@@ -149,15 +150,15 @@ impl<F: Field> AHPForPLONK<F> {
 
         Ok(lhs == rhs)
     }
+}
 
-    fn get_eval(
-        evaluations: &Evaluations<F, F>,
-        label: &str,
-        point: &F,
-    ) -> Result<F, Error> {
-        let eval = evaluations
-            .get(&(label.to_string(), *point))
-            .ok_or_else(|| Error::MissingEvaluation(label.to_string()))?;
-        Ok(*eval)
-    }
+fn get_eval<F: Field>(
+    evaluations: &Evaluations<F, F>,
+    label: &str,
+    point: &F,
+) -> Result<F, Error> {
+    let eval = evaluations
+        .get(&(label.to_string(), *point))
+        .ok_or_else(|| Error::MissingEvaluation(label.to_string()))?;
+    Ok(*eval)
 }

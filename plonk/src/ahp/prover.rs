@@ -208,14 +208,14 @@ impl<F: Field> AHPForPLONK<F> {
         let SecondMsg { alpha } = *msg;
 
         let arithmetic_key = ps.index.arithmetic_key();
-        let p_arith = arithmetic_key.compute_quotient(
+        let t_arith = arithmetic_key.compute_quotient(
             domain_4n,
             (w_0_4n, w_1_4n, w_2_4n, w_3_4n),
             &ps.pi_4n,
         );
 
         let permutation_key = ps.index.permutation_key();
-        let p_perm = permutation_key.compute_quotient(
+        let t_perm = permutation_key.compute_quotient(
             domain_4n,
             ks,
             (w_0_4n, w_1_4n, w_2_4n, w_3_4n),
@@ -224,10 +224,10 @@ impl<F: Field> AHPForPLONK<F> {
             &ps.gamma.unwrap(),
         );
 
-        let t: Vec<_> = cfg_iter!(p_arith)
-            .zip(&p_perm)
+        let t: Vec<_> = cfg_iter!(t_arith)
+            .zip(&t_perm)
             .zip(ps.index.v_4n_inversed())
-            .map(|((p_arith, p_perm), vi)| (*p_arith + alpha * p_perm) * vi)
+            .map(|((t_arith, t_perm), vi)| (*t_arith + alpha * t_perm) * vi)
             .collect();
 
         let t_poly =
@@ -279,110 +279,183 @@ impl<F: Field> AHPForPLONK<F> {
 
         (poly_0, poly_1, poly_2, poly_3)
     }
-
-    //     let (q_arith_zeta, sigma_0_zeta, sigma_1_zeta, sigma_2_zeta, r_zeta) = {
-    //         let alpha = &self.alpha.unwrap();
-    //         let beta = &self.beta.unwrap();
-    //         let gamma = &self.gamma.unwrap();
-
-    //         let arithmetic_key = self.pk.arithmetic_key();
-    //         let (q_arith_zeta, arith_lin) = arithmetic_key
-    //             .compute_linearisation(
-    //                 &w_zeta[0], &w_zeta[1], &w_zeta[2], &w_zeta[3], zeta,
-    //             );
-
-    //         let permutation_key = self.pk.permutation_key();
-    //         let (sigma_0_zeta, sigma_1_zeta, sigma_2_zeta, perm_lin) =
-    //             permutation_key.compute_linearisation(
-    //                 (&w_zeta[0], &w_zeta[1], &w_zeta[2], &w_zeta[3]),
-    //                 &z_shifted_zeta,
-    //                 &second_oracles.z.polynomial(),
-    //                 beta,
-    //                 gamma,
-    //                 zeta,
-    //                 alpha,
-    //             );
-
-    //         (
-    //             q_arith_zeta,
-    //             sigma_0_zeta,
-    //             sigma_1_zeta,
-    //             sigma_2_zeta,
-    //             (arith_lin + perm_lin).evaluate(zeta),
-
-    // for redundant checks
-    // fn check_evaluation(
-    //     &self,
-    //     point: &F,
-    //     first_oracles: &FirstOracles<F>,
-    //     second_oracles: &SecondOracles<F>,
-    //     third_oracles: &ThirdOracles<F>,
-    // ) {
-    //     let gen = get_domain_generator(self.index.domain_n());
-    //     let alpha = self.alpha.unwrap();
-    //     let beta = self.beta.unwrap();
-    //     let gamma = self.gamma.unwrap();
-
-    //     let w_evals: Vec<_> =
-    //         first_oracles.iter().map(|w| w.evaluate(point)).collect();
-    //     let z_eval = second_oracles.z.evaluate(point);
-    //     let z_shifted_eval = second_oracles.z.evaluate(&(gen * point));
-
-    //     let t_eval: F = {
-    //         let point_n = point.pow(&[self.size() as u64]);
-    //         let point_2n = point_n.square();
-
-    //         third_oracles
-    //             .iter()
-    //             .zip(ark_std::vec![
-    //                 F::one(),
-    //                 point_n,
-    //                 point_2n,
-    //                 point_n * point_2n
-    //             ])
-    //             .map(|(p, z)| p.evaluate(point) * z)
-    //             .sum()
-    //     };
-    //     let v_eval =
-    //         self.index.domain_n().evaluate_vanishing_polynomial(*point);
-    //     let pi_eval = self.pi.0.evaluate(point);
-
-    //     let arithmetic_key = self.index.arithmetic_key();
-    //     let q_0_eval = arithmetic_key.q_0.0.evaluate(point);
-    //     let q_1_eval = arithmetic_key.q_1.0.evaluate(point);
-    //     let q_2_eval = arithmetic_key.q_2.0.evaluate(point);
-    //     let q_3_eval = arithmetic_key.q_3.0.evaluate(point);
-    //     let q_m_eval = arithmetic_key.q_m.0.evaluate(point);
-    //     let q_c_eval = arithmetic_key.q_c.0.evaluate(point);
-    //     let q_arith_eval = arithmetic_key.q_arith.0.evaluate(point);
-
-    //     let permutation_key = self.index.permutation_key();
-    //     let ks = permutation_key.ks;
-    //     let sigma_0_eval = permutation_key.sigma_0.0.evaluate(point);
-    //     let sigma_1_eval = permutation_key.sigma_1.0.evaluate(point);
-    //     let sigma_2_eval = permutation_key.sigma_2.0.evaluate(point);
-    //     let sigma_3_eval = permutation_key.sigma_3.0.evaluate(point);
-
-    //     let lhs = t_eval * v_eval;
-    //     let rhs = q_arith_eval
-    //         * (q_0_eval * w_evals[0]
-    //             + q_1_eval * w_evals[1]
-    //             + q_2_eval * w_evals[2]
-    //             + q_3_eval * w_evals[3]
-    //             + q_m_eval * w_evals[1] * w_evals[2]
-    //             + q_c_eval
-    //             + pi_eval)
-    //         + alpha
-    //             * (z_eval
-    //                 * (w_evals[0] + ks[0] * beta * point + gamma)
-    //                 * (w_evals[1] + ks[1] * beta * point + gamma)
-    //                 * (w_evals[2] + ks[2] * beta * point + gamma)
-    //                 * (w_evals[3] + ks[3] * beta * point + gamma)
-    //                 - z_shifted_eval
-    //                     * (w_evals[0] + beta * sigma_0_eval + gamma)
-    //                     * (w_evals[1] + beta * sigma_1_eval + gamma)
-    //                     * (w_evals[2] + beta * sigma_2_eval + gamma)
-    //                     * (w_evals[3] + beta * sigma_3_eval + gamma));
-    //     assert_eq!(lhs, rhs);
-    // }
 }
+
+#[cfg(test)]
+mod tests {
+    use ark_bls12_381::Fr;
+    use ark_ff::{Field, One, UniformRand};
+    use ark_poly::{univariate::DensePolynomial, Polynomial};
+    use ark_poly_commit::LinearCombination;
+    use ark_std::test_rng;
+
+    use super::*;
+    use crate::ahp::Error;
+    use crate::ahp::EvaluationsProvider;
+
+    fn compare(
+        n: usize,
+        t: DensePolynomial<Fr>,
+        zeta: Fr,
+    ) -> Result<bool, Error> {
+        let (t_0, t_1, t_2, t_3) = AHPForPLONK::quad_split(n, t.clone());
+
+        let labeled_poly = |label: String, poly: DensePolynomial<Fr>| {
+            LabeledPolynomial::new(label, poly, None, None)
+        };
+        let ts = vec![
+            labeled_poly("t_0".to_string(), t_0),
+            labeled_poly("t_1".to_string(), t_1),
+            labeled_poly("t_2".to_string(), t_2),
+            labeled_poly("t_3".to_string(), t_3),
+        ];
+
+        let t_lc = {
+            let zeta_n = zeta.pow(&[n as u64]);
+            let zeta_2n = zeta_n.square();
+
+            LinearCombination::new(
+                "t",
+                vec![
+                    (Fr::one(), "t_0"),
+                    (zeta_n, "t_1"),
+                    (zeta_2n, "t_2"),
+                    (zeta_n * zeta_2n, "t_3"),
+                ],
+            )
+        };
+        let t_lc_zeta = ts.get_lc_eval(&t_lc, zeta)?;
+        let t_zeta = t.evaluate(&zeta);
+        Ok(t_lc_zeta == t_zeta)
+    }
+
+    #[test]
+    fn test_quad_split_full() -> Result<(), Error> {
+        let rng = &mut test_rng();
+        let n = 7;
+
+        let t = DensePolynomial::<Fr>::rand(4 * n - 1, rng);
+        let zeta = Fr::rand(rng);
+        let is_equal = compare(n, t, zeta)?;
+        assert!(is_equal);
+        Ok(())
+    }
+
+    #[test]
+    fn test_quad_split_not_full() -> Result<(), Error> {
+        let rng = &mut test_rng();
+        let n = 7;
+
+        let t = DensePolynomial::<Fr>::rand(2 * n, rng);
+        let zeta = Fr::rand(rng);
+        let is_equal = compare(n, t, zeta)?;
+        assert!(is_equal);
+        Ok(())
+    }
+}
+
+//     let (q_arith_zeta, sigma_0_zeta, sigma_1_zeta, sigma_2_zeta, r_zeta) = {
+//         let alpha = &self.alpha.unwrap();
+//         let beta = &self.beta.unwrap();
+//         let gamma = &self.gamma.unwrap();
+
+//         let arithmetic_key = self.pk.arithmetic_key();
+//         let (q_arith_zeta, arith_lin) = arithmetic_key
+//             .compute_linearisation(
+//                 &w_zeta[0], &w_zeta[1], &w_zeta[2], &w_zeta[3], zeta,
+//             );
+
+//         let permutation_key = self.pk.permutation_key();
+//         let (sigma_0_zeta, sigma_1_zeta, sigma_2_zeta, perm_lin) =
+//             permutation_key.compute_linearisation(
+//                 (&w_zeta[0], &w_zeta[1], &w_zeta[2], &w_zeta[3]),
+//                 &z_shifted_zeta,
+//                 &second_oracles.z.polynomial(),
+//                 beta,
+//                 gamma,
+//                 zeta,
+//                 alpha,
+//             );
+
+//         (
+//             q_arith_zeta,
+//             sigma_0_zeta,
+//             sigma_1_zeta,
+//             sigma_2_zeta,
+//             (arith_lin + perm_lin).evaluate(zeta),
+
+// for redundant checks
+// fn check_evaluation(
+//     &self,
+//     point: &F,
+//     first_oracles: &FirstOracles<F>,
+//     second_oracles: &SecondOracles<F>,
+//     third_oracles: &ThirdOracles<F>,
+// ) {
+//     let gen = get_domain_generator(self.index.domain_n());
+//     let alpha = self.alpha.unwrap();
+//     let beta = self.beta.unwrap();
+//     let gamma = self.gamma.unwrap();
+
+//     let w_evals: Vec<_> =
+//         first_oracles.iter().map(|w| w.evaluate(point)).collect();
+//     let z_eval = second_oracles.z.evaluate(point);
+//     let z_shifted_eval = second_oracles.z.evaluate(&(gen * point));
+
+//     let t_eval: F = {
+//         let point_n = point.pow(&[self.size() as u64]);
+//         let point_2n = point_n.square();
+
+//         third_oracles
+//             .iter()
+//             .zip(ark_std::vec![
+//                 F::one(),
+//                 point_n,
+//                 point_2n,
+//                 point_n * point_2n
+//             ])
+//             .map(|(p, z)| p.evaluate(point) * z)
+//             .sum()
+//     };
+//     let v_eval =
+//         self.index.domain_n().evaluate_vanishing_polynomial(*point);
+//     let pi_eval = self.pi.0.evaluate(point);
+
+//     let arithmetic_key = self.index.arithmetic_key();
+//     let q_0_eval = arithmetic_key.q_0.0.evaluate(point);
+//     let q_1_eval = arithmetic_key.q_1.0.evaluate(point);
+//     let q_2_eval = arithmetic_key.q_2.0.evaluate(point);
+//     let q_3_eval = arithmetic_key.q_3.0.evaluate(point);
+//     let q_m_eval = arithmetic_key.q_m.0.evaluate(point);
+//     let q_c_eval = arithmetic_key.q_c.0.evaluate(point);
+//     let q_arith_eval = arithmetic_key.q_arith.0.evaluate(point);
+
+//     let permutation_key = self.index.permutation_key();
+//     let ks = permutation_key.ks;
+//     let sigma_0_eval = permutation_key.sigma_0.0.evaluate(point);
+//     let sigma_1_eval = permutation_key.sigma_1.0.evaluate(point);
+//     let sigma_2_eval = permutation_key.sigma_2.0.evaluate(point);
+//     let sigma_3_eval = permutation_key.sigma_3.0.evaluate(point);
+
+//     let lhs = t_eval * v_eval;
+//     let rhs = q_arith_eval
+//         * (q_0_eval * w_evals[0]
+//             + q_1_eval * w_evals[1]
+//             + q_2_eval * w_evals[2]
+//             + q_3_eval * w_evals[3]
+//             + q_m_eval * w_evals[1] * w_evals[2]
+//             + q_c_eval
+//             + pi_eval)
+//         + alpha
+//             * (z_eval
+//                 * (w_evals[0] + ks[0] * beta * point + gamma)
+//                 * (w_evals[1] + ks[1] * beta * point + gamma)
+//                 * (w_evals[2] + ks[2] * beta * point + gamma)
+//                 * (w_evals[3] + ks[3] * beta * point + gamma)
+//                 - z_shifted_eval
+//                     * (w_evals[0] + beta * sigma_0_eval + gamma)
+//                     * (w_evals[1] + beta * sigma_1_eval + gamma)
+//                     * (w_evals[2] + beta * sigma_2_eval + gamma)
+//                     * (w_evals[3] + beta * sigma_3_eval + gamma));
+//     assert_eq!(lhs, rhs);
+// }

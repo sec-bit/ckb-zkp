@@ -100,7 +100,7 @@ mod test {
     }
 
     #[test]
-    fn test_for_polynomial_vector() -> Result<(), Error> {
+    fn test_polynomial_vector() -> Result<(), Error> {
         let rng = &mut test_rng();
         let polys = make_polys(rng);
 

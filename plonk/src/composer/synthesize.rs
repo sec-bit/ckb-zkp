@@ -34,6 +34,12 @@ pub struct Witnesses<F: Field> {
     pub w_3: Vec<F>,
 }
 
+impl<F: Field> Witnesses<F> {
+    pub fn iter(&self) -> impl Iterator<Item = &Vec<F>> {
+        vec![&self.w_0, &self.w_1, &self.w_2, &self.w_3].into_iter()
+    }
+}
+
 impl<F: Field> Selectors<F> {
     pub fn size(&self) -> usize {
         self.n
