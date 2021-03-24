@@ -1,7 +1,7 @@
 use ark_ff::FftField as Field;
 use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain,
-    Evaluations as EvaluationsOnDomain, GeneralEvaluationDomain, UVPolynomial,
+    EvaluationDomain, Evaluations as EvaluationsOnDomain,
+    GeneralEvaluationDomain,
 };
 use ark_std::cfg_into_iter;
 
@@ -11,7 +11,7 @@ use rayon::prelude::*;
 use crate::ahp::{AHPForPLONK, Error};
 use crate::composer::{Composer, Error as CSError, Selectors};
 use crate::data_structures::LabeledPolynomial;
-use crate::utils::first_lagrange_poly;
+use crate::utils::{first_lagrange_poly, to_labeled, vanishing_poly};
 
 mod arithmetic;
 pub use arithmetic::ArithmeticKey;
@@ -61,83 +61,94 @@ impl<F: Field> AHPForPLONK<F> {
         let domain_4n = GeneralEvaluationDomain::<F>::new(4 * n)
             .ok_or(CSError::PolynomialDegreeTooLarge)?;
 
-        let q_0_poly = LabeledPolynomial::new(
-            "q_0".into(),
-            EvaluationsOnDomain::from_vec_and_domain(q_0.clone(), domain_n)
-                .interpolate(),
-            None,
-            None,
+        let q_0_poly = to_labeled(
+            "q_0",
+            EvaluationsOnDomain::from_vec_and_domain(
+                q_0.clone(),
+                domain_n,
+            )
+            .interpolate(),
         );
-        let q_1_poly = LabeledPolynomial::new(
-            "q_1".into(),
-            EvaluationsOnDomain::from_vec_and_domain(q_1.clone(), domain_n)
-                .interpolate(),
-            None,
-            None,
+        let q_1_poly = to_labeled(
+            "q_1",
+            EvaluationsOnDomain::from_vec_and_domain(
+                q_1.clone(),
+                domain_n,
+            )
+            .interpolate(),
         );
-        let q_2_poly = LabeledPolynomial::new(
-            "q_2".into(),
-            EvaluationsOnDomain::from_vec_and_domain(q_2.clone(), domain_n)
-                .interpolate(),
-            None,
-            None,
+        let q_2_poly = to_labeled(
+            "q_2",
+            EvaluationsOnDomain::from_vec_and_domain(
+                q_2.clone(),
+                domain_n,
+            )
+            .interpolate(),
         );
-        let q_3_poly = LabeledPolynomial::new(
-            "q_3".into(),
-            EvaluationsOnDomain::from_vec_and_domain(q_3.clone(), domain_n)
-                .interpolate(),
-            None,
-            None,
+        let q_3_poly = to_labeled(
+            "q_3",
+            EvaluationsOnDomain::from_vec_and_domain(
+                q_3.clone(),
+                domain_n,
+            )
+            .interpolate(),
         );
-        let q_m_poly = LabeledPolynomial::new(
-            "q_m".into(),
-            EvaluationsOnDomain::from_vec_and_domain(q_m.clone(), domain_n)
-                .interpolate(),
-            None,
-            None,
+        let q_m_poly = to_labeled(
+            "q_m",
+            EvaluationsOnDomain::from_vec_and_domain(
+                q_m.clone(),
+                domain_n,
+            )
+            .interpolate(),
         );
-        let q_c_poly = LabeledPolynomial::new(
-            "q_c".into(),
-            EvaluationsOnDomain::from_vec_and_domain(q_c.clone(), domain_n)
-                .interpolate(),
-            None,
-            None,
+        let q_c_poly = to_labeled(
+            "q_c",
+            EvaluationsOnDomain::from_vec_and_domain(
+                q_c.clone(),
+                domain_n,
+            )
+            .interpolate(),
         );
-        let q_arith_poly = LabeledPolynomial::new(
-            "q_arith".into(),
-            EvaluationsOnDomain::from_vec_and_domain(q_arith.clone(), domain_n)
-                .interpolate(),
-            None,
-            None,
+        let q_arith_poly = to_labeled(
+            "q_arith",
+            EvaluationsOnDomain::from_vec_and_domain(
+                q_arith.clone(),
+                domain_n,
+            )
+            .interpolate(),
         );
 
-        let sigma_0_poly = LabeledPolynomial::new(
-            "sigma_0".into(),
-            EvaluationsOnDomain::from_vec_and_domain(sigma_0.clone(), domain_n)
-                .interpolate(),
-            None,
-            None,
+        let sigma_0_poly = to_labeled(
+            "sigma_0",
+            EvaluationsOnDomain::from_vec_and_domain(
+                sigma_0.clone(),
+                domain_n,
+            )
+            .interpolate(),
         );
-        let sigma_1_poly = LabeledPolynomial::new(
-            "sigma_1".into(),
-            EvaluationsOnDomain::from_vec_and_domain(sigma_1.clone(), domain_n)
-                .interpolate(),
-            None,
-            None,
+        let sigma_1_poly = to_labeled(
+            "sigma_1",
+            EvaluationsOnDomain::from_vec_and_domain(
+                sigma_1.clone(),
+                domain_n,
+            )
+            .interpolate(),
         );
-        let sigma_2_poly = LabeledPolynomial::new(
-            "sigma_2".into(),
-            EvaluationsOnDomain::from_vec_and_domain(sigma_2.clone(), domain_n)
-                .interpolate(),
-            None,
-            None,
+        let sigma_2_poly = to_labeled(
+            "sigma_2",
+            EvaluationsOnDomain::from_vec_and_domain(
+                sigma_2.clone(),
+                domain_n,
+            )
+            .interpolate(),
         );
-        let sigma_3_poly = LabeledPolynomial::new(
-            "sigma_3".into(),
-            EvaluationsOnDomain::from_vec_and_domain(sigma_3.clone(), domain_n)
-                .interpolate(),
-            None,
-            None,
+        let sigma_3_poly = to_labeled(
+            "sigma_3",
+            EvaluationsOnDomain::from_vec_and_domain(
+                sigma_3.clone(),
+                domain_n,
+            )
+            .interpolate(),
         );
 
         let q_0_4n = domain_4n.coset_fft(&q_0_poly);
@@ -218,14 +229,4 @@ impl<F: Field> Index<F> {
     pub fn permutation_key(&self) -> &PermutationKey<F> {
         &self.permutation
     }
-}
-
-fn vanishing_poly<F: Field>(
-    domain: impl EvaluationDomain<F>,
-) -> DensePolynomial<F> {
-    let size = domain.size();
-    let mut coeffs = vec![F::zero(); size + 1];
-    coeffs[0] = -F::one();
-    coeffs[size] = F::one();
-    DensePolynomial::from_coefficients_vec(coeffs)
 }

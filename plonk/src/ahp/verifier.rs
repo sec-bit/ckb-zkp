@@ -9,7 +9,8 @@ use rand_core::RngCore;
 use crate::ahp::indexer::IndexInfo;
 use crate::ahp::{AHPForPLONK, Error};
 use crate::utils::{
-    evaluate_first_lagrange_poly, get_domain_generator, pad_to_size,
+    evaluate_first_lagrange_poly, evaluate_vanishing_poly, generator,
+    pad_to_size,
 };
 
 pub struct VerifierState<'a, F: Field> {
@@ -82,7 +83,7 @@ impl<F: Field> AHPForPLONK<F> {
 
     pub fn verifier_query_set(vs: &VerifierState<'_, F>) -> QuerySet<F> {
         let zeta = vs.zeta.unwrap();
-        let g = get_domain_generator(vs.info.domain_n);
+        let g = generator(vs.info.domain_n);
 
         let mut query_set = QuerySet::new();
 
@@ -116,8 +117,8 @@ impl<F: Field> AHPForPLONK<F> {
         let zeta = vs.zeta.unwrap();
 
         let domain_n = vs.info.domain_n;
-        let g = get_domain_generator(domain_n);
-        let v_zeta = domain_n.evaluate_vanishing_polynomial(zeta);
+        let g = generator(domain_n);
+        let v_zeta = evaluate_vanishing_poly(domain_n, zeta);
         let pi_zeta = {
             let pi_n = pad_to_size(public_inputs, domain_n.size());
             let pi_poly =

@@ -5,7 +5,7 @@ use ark_std::{marker::PhantomData, vec};
 
 use crate::composer::Error as CSError;
 
-use crate::utils::get_domain_generator;
+use crate::utils::generator;
 
 mod evaluations;
 pub use evaluations::EvaluationsProvider;
@@ -76,7 +76,7 @@ impl<F: Field> AHPForPLONK<F> {
             let w_2_zeta = evals.get_lc_eval(&w_2, zeta)?;
             let w_3_zeta = evals.get_lc_eval(&w_3, zeta)?;
 
-            let shifted_zeta = zeta * get_domain_generator(info.domain_n);
+            let shifted_zeta = zeta * generator(info.domain_n);
             let z_shifted_zeta = evals.get_lc_eval(&z, shifted_zeta)?;
 
             let sigma_0_zeta = evals.get_lc_eval(&sigma_0, zeta)?;
@@ -110,7 +110,8 @@ impl<F: Field> AHPForPLONK<F> {
         };
 
         let mut lcs = vec![
-            w_0, w_1, w_2, w_3, z, sigma_0, sigma_1, sigma_2, q_arith, t, r,
+            w_0, w_1, w_2, w_3, z, sigma_0, sigma_1, sigma_2, q_arith, t,
+            r,
         ];
         lcs.sort_by(|a, b| a.label.cmp(&b.label));
 
@@ -150,12 +151,14 @@ mod test {
         let ps = AHPForPLONK::prover_init(&cs, &index)?;
         let vs = AHPForPLONK::verifier_init(&index.info)?;
 
-        let (ps, first_oracles) = AHPForPLONK::prover_first_round(ps, &cs)?;
+        let (ps, first_oracles) =
+            AHPForPLONK::prover_first_round(ps, &cs)?;
         let (vs, first_msg) = AHPForPLONK::verifier_first_round(vs, rng)?;
 
         let (ps, second_oracles) =
             AHPForPLONK::prover_second_round(ps, &first_msg, &ks)?;
-        let (vs, second_msg) = AHPForPLONK::verifier_second_round(vs, rng)?;
+        let (vs, second_msg) =
+            AHPForPLONK::verifier_second_round(vs, rng)?;
 
         let third_oracles =
             AHPForPLONK::prover_third_round(ps, &second_msg, &ks)?;
@@ -182,10 +185,12 @@ mod test {
             let evals: Vec<_> = {
                 let mut evals = Vec::new();
                 for (label, (_, point)) in &query_set {
-                    let lc =
-                        lcs.iter().find(|lc| &lc.label == label).ok_or_else(
-                            || Error::MissingEvaluation(label.to_string()),
-                        )?;
+                    let lc = lcs
+                        .iter()
+                        .find(|lc| &lc.label == label)
+                        .ok_or_else(|| {
+                            Error::MissingEvaluation(label.to_string())
+                        })?;
                     let eval = polynomials.get_lc_eval(&lc, *point)?;
                     evals.push((label.to_string(), eval));
                 }
