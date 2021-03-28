@@ -17,15 +17,15 @@ parallel = ["std", "zkp-r1cs/parallel", "ark-ff/parallel"]
 rand = { version = "0.7", default-features = false }
 byteorder = { version = "1.4", default-features = false }
 zkp-r1cs = { version = "0.1", path = "../r1cs", default-features = false }
-ark-ff = { git = "https://github.com/arkworks-rs/algebra", default-features = false }
+ark-ff = { version = "0.2", default-features = false }
 
 [dev-dependencies]
 rand = "0.7"
 sha2 = "0.9"
 blake2s_simd = "0.5"
 hex-literal = "0.3"
-ark-std = { git = "https://github.com/arkworks-rs/utils", default-features = false }
-ark-bls12-381 = { git = "https://github.com/arkworks-rs/curves", default-features = false, features = ["curve"] }
+ark-std = { version = "0.2", default-features = false }
+ark-bls12-381 = { version = "0.2", default-features = false, features = [ "curve" ] }
 zkp-groth16 = { path = "../groth16" }
 zkp-spartan = { path = "../spartan" }
 zkp-clinkv2 = { path = "../clinkv2" }
