@@ -15,6 +15,6 @@ parallel = ["std", "ark-ff/parallel", "ark-std/parallel"]
 
 [dependencies]
 smallvec = "1.6"
-ark-ff = { git = "https://github.com/arkworks-rs/algebra", default-features = false }
-ark-serialize = { git = "https://github.com/arkworks-rs/algebra", default-features = false, features = ["derive"] }
-ark-std = { git = "https://github.com/arkworks-rs/utils", default-features = false }
+ark-ff = { version = "0.2", default-features = false }
+ark-std = { version = "0.2", default-features = false }
+ark-serialize = { version = "0.2", default-features = false, features = [ "derive" ] }

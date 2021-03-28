@@ -5,6 +5,8 @@ edition = "2018"
 
 [dependencies]
 ckb-std = "0.7.3"
+ark-bls12-381 = { version = "0.2", default-features = false, features = [ "curve" ] }
+ark-serialize = { version = "0.2", default-features = false }
 
 [dependencies.zkp-bulletproofs]
 git = "https://github.com/sec-bit/ckb-zkp"
@@ -14,13 +16,4 @@ default-features = false
 [dependencies.zkp-r1cs]
 git = "https://github.com/sec-bit/ckb-zkp"
 branch = "dev"
-default-features = false
-
-[dependencies.ark-bls12-381]
-git = "https://github.com/arkworks-rs/curves"
-default-features = false
-features = ["curve"]
-
-[dependencies.ark-serialize]
-git = "https://github.com/arkworks-rs/algebra"
 default-features = false
