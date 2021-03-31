@@ -150,7 +150,7 @@ pub fn create_random_proof<E: PairingEngine, R: Rng>(
         // on coset: n values of \sum{eta^i * ab} on coset
         cfg_iter_mut!(coset_ab_values)
             .zip(&mut sum_coset_ab)
-            .for_each(|(coset_abij, sum_coset_ab_j)| *sum_coset_ab_j += &(eta_i * coset_abij));
+            .for_each(|(coset_abij, sum_coset_ab_j)| *sum_coset_ab_j += &(eta_i * (*coset_abij)));
 
         let mut ci_values = vec![zero; domain_size];
         for (coeff, index) in (&circuit.ct[i]).into_iter() {
@@ -170,7 +170,7 @@ pub fn create_random_proof<E: PairingEngine, R: Rng>(
         // on original domain: n values of \sum{eta^i * c} on original domain
         cfg_iter_mut!(ci_values)
             .zip(&mut sum_c)
-            .for_each(|(cij, sum_c_j)| *sum_c_j += &(eta_i * cij));
+            .for_each(|(cij, sum_c_j)| *sum_c_j += &(eta_i * (*cij)));
 
         eta_i = eta_i * &eta;
     }
