@@ -203,11 +203,10 @@ impl<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>> Plonk
         Ok(proof)
     }
 
-    pub fn verify<R: RngCore>(
+    pub fn verify(
         vk: &VerifierKey<F, PC>,
         public_inputs: &[F],
         proof: Proof<F, PC>,
-        rng: &mut R,
     ) -> Result<bool, Error<PC::Error>> {
         let vs = AHPForPLONK::verifier_init(&vk.info)?;
         let mut fs_rng =
@@ -283,7 +282,7 @@ impl<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>> Plonk
                 &evaluations,
                 &proof.pc_proof,
                 epsilon,
-                rng,
+                &mut ark_std::test_rng(), // we now impl default rng (not use)
             )
             .map_err(Error::from_pc_err)?
         };
@@ -371,7 +370,7 @@ mod tests {
         let srs = PlonkInst::setup(8, rng)?;
         let (pk, vk) = PlonkInst::keygen(&srs, &cs, ks)?;
         let proof = PlonkInst::prove(&pk, &cs, rng)?;
-        let result = PlonkInst::verify(&vk, cs.public_inputs(), proof, rng)?;
+        let result = PlonkInst::verify(&vk, cs.public_inputs(), proof)?;
         assert!(result);
         Ok(())
     }

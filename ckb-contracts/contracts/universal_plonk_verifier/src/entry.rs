@@ -9,7 +9,6 @@ use ark_bls12_381::{Bls12_381 as E, Fr};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly_commit::marlin_pc::MarlinKZG10;
 use ark_serialize::*;
-use ark_std::test_rng;
 use blake2::Blake2s;
 use zkp_plonk::{Plonk, Proof, VerifierKey};
 
@@ -50,7 +49,7 @@ pub fn main() -> Result<(), Error> {
     let publics =
         Vec::<Fr>::deserialize_unchecked(&public_data[..]).map_err(|_e| Error::Encoding)?;
 
-    match PlonkInst::verify(&vk, &publics, proof, &mut test_rng()) {
+    match PlonkInst::verify(&vk, &publics, proof) {
         Ok(true) => Ok(()),
         _ => Err(Error::Verify),
     }

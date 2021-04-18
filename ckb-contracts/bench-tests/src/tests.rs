@@ -687,10 +687,7 @@ fn test_plonk() {
 
     println!("Plonk: proof length: {}", proof_bytes.len());
 
-    println!(
-        "{:?}",
-        PlonkInst::verify(&vk, cs.public_inputs(), proof, rng).unwrap()
-    );
+    println!("{:?}", PlonkInst::verify(&vk, cs.public_inputs(), proof));
 
     let mut public_bytes = Vec::new();
     cs.public_inputs()
@@ -702,10 +699,7 @@ fn test_plonk() {
     let new_publics = Vec::<Fr>::deserialize_unchecked(&public_bytes[..]).unwrap();
     assert_eq!(cs.public_inputs(), new_publics);
 
-    println!(
-        "{}",
-        PlonkInst::verify(&new_vk, &new_publics, new_proof, rng).unwrap()
-    );
+    println!("{:?}", PlonkInst::verify(&new_vk, &new_publics, new_proof));
 
     println!("Plonk: verifying on CKB...");
 

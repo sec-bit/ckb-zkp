@@ -9,7 +9,6 @@ ark-bls12-381 = { version = "0.2", default-features = false, features = [ "curve
 ark-serialize = { version = "0.2", default-features = false }
 ark-poly = {version = "0.2", default-features = false }
 ark-poly-commit = { version = "0.2", default-features = false }
-ark-std = { version = "0.2", default-features = false }
 blake2 = { version = "0.9", default-features = false }
 
 [dependencies.zkp-plonk]
