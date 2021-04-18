@@ -713,8 +713,8 @@ fn test_plonk() {
         vk_bytes.into(),
         proof_bytes.into(),
         public_bytes.into(),
-        "mini_plonk_verifier",
-        "mini_plonk_verifier verify",
+        "universal_plonk_verifier",
+        "universal_plonk_verifier verify",
     );
 }
 
