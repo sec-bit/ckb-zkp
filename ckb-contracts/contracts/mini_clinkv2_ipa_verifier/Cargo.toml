@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-ckb-std = "0.7.3"
+ckb-std = "0.7.4"
 blake2 = { version = "0.9", default-features = false }
 ark-ff = { version = "0.2", default-features = false }
 ark-bls12-381 = { version = "0.2", default-features = false, features = [ "curve" ] }
