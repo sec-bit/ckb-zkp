@@ -7,7 +7,6 @@ members = [
     "bulletproofs",
     "marlin",
     "plonk",
-    "poly-commit",
     "clinkv2",
     "asvc",
     "spartan",

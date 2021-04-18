@@ -19,9 +19,7 @@ use std::collections::HashMap as Map;
 
 use ark_ff::{to_bytes, FftField as Field};
 use ark_poly::univariate::DensePolynomial;
-use ark_poly_commit::{
-    Evaluations, LabeledCommitment, PCUniversalParams, PolynomialCommitment,
-};
+use ark_poly_commit::{Evaluations, LabeledCommitment, PCUniversalParams, PolynomialCommitment};
 
 use ark_std::{marker::PhantomData, vec, vec::Vec};
 use digest::Digest;
@@ -44,19 +42,13 @@ use crate::rng::FiatShamirRng;
 
 mod utils;
 
-pub struct Plonk<
-    F: Field,
-    D: Digest,
-    PC: PolynomialCommitment<F, DensePolynomial<F>>,
-> {
+pub struct Plonk<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>> {
     _field: PhantomData<F>,
     _digest: PhantomData<D>,
     _pc: PhantomData<PC>,
 }
 
-impl<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>>
-    Plonk<F, D, PC>
-{
+impl<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>> Plonk<F, D, PC> {
     pub const PROTOCOL_NAME: &'static [u8] = b"PLONK";
 
     pub fn setup<R: RngCore>(
@@ -77,10 +69,8 @@ impl<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>>
             return Err(Error::CircuitTooLarge);
         }
 
-        let (ck, vk) =
-            PC::trim(srs, index.size(), 0, None).map_err(Error::from_pc_err)?;
-        let (comms, rands) =
-            PC::commit(&ck, index.iter(), None).map_err(Error::from_pc_err)?;
+        let (ck, vk) = PC::trim(srs, index.size(), 0, None).map_err(Error::from_pc_err)?;
+        let (comms, rands) = PC::commit(&ck, index.iter(), None).map_err(Error::from_pc_err)?;
         let labels = comms.iter().map(|c| c.label().clone()).collect();
         let comms = comms.iter().map(|c| c.commitment().clone()).collect();
 
@@ -107,38 +97,30 @@ impl<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>>
     ) -> Result<Proof<F, PC>, Error<PC::Error>> {
         let public_inputs = cs.public_inputs();
 
-        let mut fs_rng = FiatShamirRng::<D>::from_seed(
-            &to_bytes![&Self::PROTOCOL_NAME, public_inputs].unwrap(),
-        );
+        let mut fs_rng =
+            FiatShamirRng::<D>::from_seed(&to_bytes![&Self::PROTOCOL_NAME, public_inputs].unwrap());
 
         let ps = AHPForPLONK::prover_init(cs, &pk.index)?;
         let vs = AHPForPLONK::verifier_init(&pk.vk.info)?;
 
         let (ps, first_oracles) = AHPForPLONK::prover_first_round(ps, &cs)?;
         let (first_comms, first_rands) =
-            PC::commit(&pk.ck, first_oracles.iter(), Some(zk_rng))
-                .map_err(Error::from_pc_err)?;
+            PC::commit(&pk.ck, first_oracles.iter(), Some(zk_rng)).map_err(Error::from_pc_err)?;
         fs_rng.absorb(&to_bytes![first_comms].unwrap());
-        let (vs, first_msg) =
-            AHPForPLONK::verifier_first_round(vs, &mut fs_rng)?;
+        let (vs, first_msg) = AHPForPLONK::verifier_first_round(vs, &mut fs_rng)?;
 
         let (ps, second_oracles) =
             AHPForPLONK::prover_second_round(ps, &first_msg, &pk.vk.info.ks)?;
         let (second_comms, second_rands) =
-            PC::commit(&pk.ck, second_oracles.iter(), Some(zk_rng))
-                .map_err(Error::from_pc_err)?;
+            PC::commit(&pk.ck, second_oracles.iter(), Some(zk_rng)).map_err(Error::from_pc_err)?;
         fs_rng.absorb(&to_bytes![second_comms].unwrap());
-        let (vs, second_msg) =
-            AHPForPLONK::verifier_second_round(vs, &mut fs_rng)?;
+        let (vs, second_msg) = AHPForPLONK::verifier_second_round(vs, &mut fs_rng)?;
 
-        let third_oracles =
-            AHPForPLONK::prover_third_round(ps, &second_msg, &pk.vk.info.ks)?;
+        let third_oracles = AHPForPLONK::prover_third_round(ps, &second_msg, &pk.vk.info.ks)?;
         let (third_comms, third_rands) =
-            PC::commit(&pk.ck, third_oracles.iter(), Some(zk_rng))
-                .map_err(Error::from_pc_err)?;
+            PC::commit(&pk.ck, third_oracles.iter(), Some(zk_rng)).map_err(Error::from_pc_err)?;
         fs_rng.absorb(&to_bytes![third_comms].unwrap());
-        let (vs, third_msg) =
-            AHPForPLONK::verifier_third_round(vs, &mut fs_rng)?;
+        let (vs, third_msg) = AHPForPLONK::verifier_third_round(vs, &mut fs_rng)?;
 
         let polynomials: Vec<_> = pk
             .index
@@ -189,9 +171,10 @@ impl<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>>
         let evaluations: Vec<_> = {
             let mut evals = Vec::new();
             for (label, (_, point)) in &qs {
-                let lc = lcs.iter().find(|lc| &lc.label == label).ok_or_else(
-                    || Error::MissingEvaluation(label.to_string()),
-                )?;
+                let lc = lcs
+                    .iter()
+                    .find(|lc| &lc.label == label)
+                    .ok_or_else(|| Error::MissingEvaluation(label.to_string()))?;
                 let eval = polynomials.get_lc_eval(&lc, *point)?;
                 evals.push((label.to_string(), eval));
             }
@@ -227,24 +210,20 @@ impl<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>>
         rng: &mut R,
     ) -> Result<bool, Error<PC::Error>> {
         let vs = AHPForPLONK::verifier_init(&vk.info)?;
-        let mut fs_rng = FiatShamirRng::<D>::from_seed(
-            &to_bytes![&Self::PROTOCOL_NAME, public_inputs].unwrap(),
-        );
+        let mut fs_rng =
+            FiatShamirRng::<D>::from_seed(&to_bytes![&Self::PROTOCOL_NAME, public_inputs].unwrap());
 
         let first_comms = &proof.commitments[0];
         fs_rng.absorb(&to_bytes![first_comms].unwrap());
-        let (vs, first_msg) =
-            AHPForPLONK::verifier_first_round(vs, &mut fs_rng)?;
+        let (vs, first_msg) = AHPForPLONK::verifier_first_round(vs, &mut fs_rng)?;
 
         let second_comms = &proof.commitments[1];
         fs_rng.absorb(&to_bytes![second_comms].unwrap());
-        let (vs, second_msg) =
-            AHPForPLONK::verifier_second_round(vs, &mut fs_rng)?;
+        let (vs, second_msg) = AHPForPLONK::verifier_second_round(vs, &mut fs_rng)?;
 
         let third_comms = &proof.commitments[2];
         fs_rng.absorb(&to_bytes![third_comms].unwrap());
-        let (vs, third_msg) =
-            AHPForPLONK::verifier_third_round(vs, &mut fs_rng)?;
+        let (vs, third_msg) = AHPForPLONK::verifier_third_round(vs, &mut fs_rng)?;
 
         let query_set = AHPForPLONK::verifier_query_set(&vs);
         fs_rng.absorb(&proof.evaluations);
@@ -259,19 +238,13 @@ impl<F: Field, D: Digest, PC: PolynomialCommitment<F, DensePolynomial<F>>>
             evaluation_labels.sort_by(|a, b| a.0.cmp(&b.0));
 
             let mut evaluations = Evaluations::new();
-            for (q, eval) in
-                evaluation_labels.into_iter().zip(&proof.evaluations)
-            {
+            for (q, eval) in evaluation_labels.into_iter().zip(&proof.evaluations) {
                 evaluations.insert(q, *eval);
             }
             evaluations
         };
 
-        if !AHPForPLONK::verifier_equality_check(
-            &vs,
-            &evaluations,
-            public_inputs,
-        )? {
+        if !AHPForPLONK::verifier_equality_check(&vs, &evaluations, public_inputs)? {
             return Ok(false);
         };
 
@@ -349,13 +322,11 @@ mod tests {
         let two = one + one;
         let three = two + one;
         let four = two + two;
-        let five = one + four;
         let six = two + four;
         let var_one = cs.alloc_and_assign(one);
         let var_two = cs.alloc_and_assign(two);
         let var_three = cs.alloc_and_assign(three);
         let var_four = cs.alloc_and_assign(four);
-        let var_five = cs.alloc_and_assign(five);
         let var_six = cs.alloc_and_assign(six);
         cs.create_add_gate(
             (var_one, one),
@@ -382,15 +353,7 @@ mod tests {
             Fr::zero(),
             Fr::zero(),
         );
-        cs.create_mul_gate(
-            var_one,
-            var_two,
-            var_six,
-            None,
-            two,
-            two,
-            Fr::zero(),
-        );
+        cs.create_mul_gate(var_one, var_two, var_six, None, two, two, Fr::zero());
         cs.constrain_to_constant(var_six, six, Fr::zero());
 
         cs
