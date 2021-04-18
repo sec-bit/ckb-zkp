@@ -1,17 +1,12 @@
 use ark_ff::FftField as Field;
-use ark_poly::{
-    EvaluationDomain, Evaluations as EvaluationsOnDomain, Polynomial,
-};
+use ark_poly::{EvaluationDomain, Evaluations as EvaluationsOnDomain, Polynomial};
 use ark_poly_commit::{Evaluations, QuerySet};
-
+use ark_std::string::ToString;
 use rand_core::RngCore;
 
 use crate::ahp::indexer::IndexInfo;
 use crate::ahp::{AHPForPLONK, Error};
-use crate::utils::{
-    evaluate_first_lagrange_poly, evaluate_vanishing_poly, generator,
-    pad_to_size,
-};
+use crate::utils::{evaluate_first_lagrange_poly, evaluate_vanishing_poly, generator, pad_to_size};
 
 pub struct VerifierState<'a, F: Field> {
     info: &'a IndexInfo<F>,
@@ -36,9 +31,7 @@ pub struct ThirdMsg<F: Field> {
 }
 
 impl<F: Field> AHPForPLONK<F> {
-    pub fn verifier_init(
-        info: &IndexInfo<F>,
-    ) -> Result<VerifierState<'_, F>, Error> {
+    pub fn verifier_init(info: &IndexInfo<F>) -> Result<VerifierState<'_, F>, Error> {
         Ok(VerifierState {
             info,
 
@@ -121,9 +114,7 @@ impl<F: Field> AHPForPLONK<F> {
         let v_zeta = evaluate_vanishing_poly(domain_n, zeta);
         let pi_zeta = {
             let pi_n = pad_to_size(public_inputs, domain_n.size());
-            let pi_poly =
-                EvaluationsOnDomain::from_vec_and_domain(pi_n, domain_n)
-                    .interpolate();
+            let pi_poly = EvaluationsOnDomain::from_vec_and_domain(pi_n, domain_n).interpolate();
             pi_poly.evaluate(&zeta)
         };
 
@@ -159,11 +150,7 @@ impl<F: Field> AHPForPLONK<F> {
     }
 }
 
-fn get_eval<F: Field>(
-    evaluations: &Evaluations<F, F>,
-    label: &str,
-    point: &F,
-) -> Result<F, Error> {
+fn get_eval<F: Field>(evaluations: &Evaluations<F, F>, label: &str, point: &F) -> Result<F, Error> {
     let eval = evaluations
         .get(&(label.to_string(), *point))
         .ok_or_else(|| Error::MissingEvaluation(label.to_string()))?;

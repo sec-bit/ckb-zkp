@@ -1,3 +1,5 @@
+use ark_std::string::String;
+
 use crate::ahp::Error as AHPError;
 
 #[derive(Debug)]

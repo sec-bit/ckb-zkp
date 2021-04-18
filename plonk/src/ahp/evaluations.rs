@@ -1,7 +1,7 @@
 use ark_ff::{FftField as Field, Zero};
 use ark_poly::{univariate::DensePolynomial, Polynomial, UVPolynomial};
 use ark_poly_commit::{LCTerm, LinearCombination};
-use ark_std::{borrow::Borrow, vec::Vec};
+use ark_std::{borrow::Borrow, format, vec, vec::Vec};
 
 use crate::data_structures::LabeledPolynomial;
 use crate::utils::scalar_mul;
@@ -9,21 +9,11 @@ use crate::utils::scalar_mul;
 use crate::ahp::Error;
 
 pub trait EvaluationsProvider<F: Field> {
-    fn get_lc_eval(
-        &self,
-        lc: &LinearCombination<F>,
-        point: F,
-    ) -> Result<F, Error>;
+    fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, Error>;
 }
 
-impl<'a, F: Field> EvaluationsProvider<F>
-    for ark_poly_commit::Evaluations<F, F>
-{
-    fn get_lc_eval(
-        &self,
-        lc: &LinearCombination<F>,
-        point: F,
-    ) -> Result<F, Error> {
+impl<'a, F: Field> EvaluationsProvider<F> for ark_poly_commit::Evaluations<F, F> {
+    fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, Error> {
         let key = (lc.label.clone(), point);
         self.get(&key)
             .copied()
@@ -31,14 +21,8 @@ impl<'a, F: Field> EvaluationsProvider<F>
     }
 }
 
-impl<F: Field, T: Borrow<LabeledPolynomial<F>>> EvaluationsProvider<F>
-    for Vec<T>
-{
-    fn get_lc_eval(
-        &self,
-        lc: &LinearCombination<F>,
-        point: F,
-    ) -> Result<F, Error> {
+impl<F: Field, T: Borrow<LabeledPolynomial<F>>> EvaluationsProvider<F> for Vec<T> {
+    fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, Error> {
         let mut acc = DensePolynomial::zero();
         for (coeff, term) in lc.iter() {
             acc = if let LCTerm::PolyLabel(label) = term {
@@ -49,10 +33,7 @@ impl<F: Field, T: Borrow<LabeledPolynomial<F>>> EvaluationsProvider<F>
                         p.label() == label
                     })
                     .ok_or_else(|| {
-                        Error::MissingEvaluation(format!(
-                            "Missing {} for {}",
-                            label, lc.label
-                        ))
+                        Error::MissingEvaluation(format!("Missing {} for {}", label, lc.label))
                     })?
                     .borrow();
                 acc + scalar_mul(poly, coeff)
@@ -78,24 +59,12 @@ mod test {
     use super::*;
 
     fn make_polys<R: RngCore>(rng: &mut R) -> Vec<LabeledPolynomial<Fr>> {
-        let a = LabeledPolynomial::<Fr>::new(
-            "a".into(),
-            DensePolynomial::rand(10, rng),
-            None,
-            None,
-        );
-        let b = LabeledPolynomial::<Fr>::new(
-            "b".into(),
-            DensePolynomial::rand(10, rng),
-            None,
-            None,
-        );
-        let c = LabeledPolynomial::<Fr>::new(
-            "c".into(),
-            DensePolynomial::rand(10, rng),
-            None,
-            None,
-        );
+        let a =
+            LabeledPolynomial::<Fr>::new("a".into(), DensePolynomial::rand(10, rng), None, None);
+        let b =
+            LabeledPolynomial::<Fr>::new("b".into(), DensePolynomial::rand(10, rng), None, None);
+        let c =
+            LabeledPolynomial::<Fr>::new("c".into(), DensePolynomial::rand(10, rng), None, None);
         vec![a, b, c]
     }
 

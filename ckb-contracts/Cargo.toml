@@ -9,6 +9,7 @@ members = [
     "contracts/universal_marlin_verifier",
     "contracts/mini_libra_zk_linear_gkr_verifier",
     "contracts/mini_hyrax_zk_linear_gkr_verifier",
+    "contracts/universal_plonk_verifier",
 ]
 exclude = [
     "bench-tests",

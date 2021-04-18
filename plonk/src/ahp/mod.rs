@@ -1,10 +1,9 @@
 use ark_ff::FftField as Field;
 
 use ark_poly_commit::LinearCombination;
-use ark_std::{marker::PhantomData, vec};
+use ark_std::{marker::PhantomData, string::String, vec, vec::Vec};
 
 use crate::composer::Error as CSError;
-
 use crate::utils::generator;
 
 mod evaluations;
@@ -60,15 +59,11 @@ impl<F: Field> AHPForPLONK<F> {
             )
         };
 
-        let sigma_0 =
-            LinearCombination::new("sigma_0", vec![(F::one(), "sigma_0")]);
-        let sigma_1 =
-            LinearCombination::new("sigma_1", vec![(F::one(), "sigma_1")]);
-        let sigma_2 =
-            LinearCombination::new("sigma_2", vec![(F::one(), "sigma_2")]);
+        let sigma_0 = LinearCombination::new("sigma_0", vec![(F::one(), "sigma_0")]);
+        let sigma_1 = LinearCombination::new("sigma_1", vec![(F::one(), "sigma_1")]);
+        let sigma_2 = LinearCombination::new("sigma_2", vec![(F::one(), "sigma_2")]);
 
-        let q_arith =
-            LinearCombination::new("q_arith", vec![(F::one(), "q_arith")]);
+        let q_arith = LinearCombination::new("q_arith", vec![(F::one(), "q_arith")]);
 
         let r = {
             let w_0_zeta = evals.get_lc_eval(&w_0, zeta)?;
@@ -110,8 +105,7 @@ impl<F: Field> AHPForPLONK<F> {
         };
 
         let mut lcs = vec![
-            w_0, w_1, w_2, w_3, z, sigma_0, sigma_1, sigma_2, q_arith, t,
-            r,
+            w_0, w_1, w_2, w_3, z, sigma_0, sigma_1, sigma_2, q_arith, t, r,
         ];
         lcs.sort_by(|a, b| a.label.cmp(&b.label));
 
@@ -151,17 +145,13 @@ mod test {
         let ps = AHPForPLONK::prover_init(&cs, &index)?;
         let vs = AHPForPLONK::verifier_init(&index.info)?;
 
-        let (ps, first_oracles) =
-            AHPForPLONK::prover_first_round(ps, &cs)?;
+        let (ps, first_oracles) = AHPForPLONK::prover_first_round(ps, &cs)?;
         let (vs, first_msg) = AHPForPLONK::verifier_first_round(vs, rng)?;
 
-        let (ps, second_oracles) =
-            AHPForPLONK::prover_second_round(ps, &first_msg, &ks)?;
-        let (vs, second_msg) =
-            AHPForPLONK::verifier_second_round(vs, rng)?;
+        let (ps, second_oracles) = AHPForPLONK::prover_second_round(ps, &first_msg, &ks)?;
+        let (vs, second_msg) = AHPForPLONK::verifier_second_round(vs, rng)?;
 
-        let third_oracles =
-            AHPForPLONK::prover_third_round(ps, &second_msg, &ks)?;
+        let third_oracles = AHPForPLONK::prover_third_round(ps, &second_msg, &ks)?;
         let (vs, third_msg) = AHPForPLONK::verifier_third_round(vs, rng)?;
 
         let polynomials: Vec<_> = index
@@ -188,9 +178,7 @@ mod test {
                     let lc = lcs
                         .iter()
                         .find(|lc| &lc.label == label)
-                        .ok_or_else(|| {
-                            Error::MissingEvaluation(label.to_string())
-                        })?;
+                        .ok_or_else(|| Error::MissingEvaluation(label.to_string()))?;
                     let eval = polynomials.get_lc_eval(&lc, *point)?;
                     evals.push((label.to_string(), eval));
                 }
@@ -212,11 +200,7 @@ mod test {
             evaluations
         };
 
-        let is_equal = AHPForPLONK::verifier_equality_check(
-            &vs,
-            &evaluations,
-            cs.public_inputs(),
-        )?;
+        let is_equal = AHPForPLONK::verifier_equality_check(&vs, &evaluations, cs.public_inputs())?;
 
         assert!(is_equal);
         Ok(())

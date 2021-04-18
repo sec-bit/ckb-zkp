@@ -13,6 +13,8 @@ ark-ff = { version = "0.2", default-features = false }
 ark-serialize = { version = "0.2", default-features = false }
 ark-std = { version = "0.2", default-features = false }
 ark-bls12-381 = { version = "0.2", default-features = false, features = [ "curve" ] }
+ark-poly = {version = "0.2", default-features = false }
+ark-poly-commit = { version = "0.2", default-features = false }
 
 zkp-r1cs = { version = "0.1", path = "../../r1cs"}
 zkp-groth16 = { version = "0.1", path = "../../groth16" }
@@ -22,4 +24,5 @@ zkp-spartan = { version = "0.1", path = "../../spartan" }
 zkp-marlin = { version = "0.1", path = "../../marlin" }
 zkp-libra = { version = "0.1", path = "../../libra" }
 zkp-hyrax = { version = "0.1", path = "../../hyrax" }
+zkp-plonk = { version = "0.1", path = "../../plonk" }
 

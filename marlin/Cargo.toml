@@ -19,8 +19,6 @@ rayon = { version = "1", optional = true }
 merlin = { version = "2.0", default-features = false }
 rand_chacha = { version = "0.2", default-features = false }
 zkp-r1cs = { version = "0.1", path = "../r1cs", default-features = false }
-
-
 ark-ff = { version = "0.2", default-features = false }
 ark-ec = { version = "0.2", default-features = false }
 ark-poly = {version = "0.2", default-features = false }

@@ -21,7 +21,7 @@ use ark_ff::{to_bytes, FftField as Field};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly_commit::{Evaluations, LabeledCommitment, PCUniversalParams, PolynomialCommitment};
 
-use ark_std::{marker::PhantomData, vec, vec::Vec};
+use ark_std::{marker::PhantomData, string::ToString, vec, vec::Vec};
 use digest::Digest;
 use rand_core::RngCore;
 
@@ -29,10 +29,10 @@ mod error;
 use error::Error;
 
 mod data_structures;
-use crate::data_structures::*;
+pub use crate::data_structures::*;
 
 mod composer;
-use crate::composer::Composer;
+pub use crate::composer::Composer;
 
 mod ahp;
 use ahp::{AHPForPLONK, EvaluationsProvider};

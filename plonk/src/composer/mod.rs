@@ -11,7 +11,7 @@ mod arithmetic;
 mod synthesize;
 pub use synthesize::{Error, Selectors, Witnesses};
 
-#[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
+#[derive(Debug, Eq, PartialEq, Clone, Copy, Hash, Ord, PartialOrd)]
 pub struct Variable(usize);
 
 #[derive(Debug)]

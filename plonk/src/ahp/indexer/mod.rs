@@ -1,9 +1,7 @@
 use ark_ff::FftField as Field;
-use ark_poly::{
-    EvaluationDomain, Evaluations as EvaluationsOnDomain,
-    GeneralEvaluationDomain,
-};
-use ark_std::cfg_into_iter;
+use ark_poly::{EvaluationDomain, Evaluations as EvaluationsOnDomain, GeneralEvaluationDomain};
+use ark_serialize::*;
+use ark_std::{cfg_into_iter, io, vec, vec::Vec};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -35,6 +33,108 @@ pub struct IndexInfo<F: Field> {
     pub domain_n: GeneralEvaluationDomain<F>,
 }
 
+impl<F: Field> CanonicalSerialize for IndexInfo<F> {
+    #[inline]
+    fn serialize<W: io::Write>(&self, mut writer: W) -> Result<(), SerializationError> {
+        self.n.serialize(&mut writer)?;
+        self.ks[0].serialize(&mut writer)?;
+        self.ks[1].serialize(&mut writer)?;
+        self.ks[2].serialize(&mut writer)?;
+        self.ks[3].serialize(&mut writer)?;
+        self.domain_n.serialize(&mut writer)
+    }
+
+    #[inline]
+    fn serialized_size(&self) -> usize {
+        self.n.serialized_size()
+            + self.ks[0].serialized_size() * 4
+            + self.domain_n.serialized_size()
+    }
+
+    #[inline]
+    fn serialize_uncompressed<W: io::Write>(
+        &self,
+        mut writer: W,
+    ) -> Result<(), SerializationError> {
+        self.n.serialize_uncompressed(&mut writer)?;
+        self.ks[0].serialize_uncompressed(&mut writer)?;
+        self.ks[1].serialize_uncompressed(&mut writer)?;
+        self.ks[2].serialize_uncompressed(&mut writer)?;
+        self.ks[3].serialize_uncompressed(&mut writer)?;
+        self.domain_n.serialize_uncompressed(&mut writer)
+    }
+
+    #[inline]
+    fn serialize_unchecked<W: io::Write>(&self, mut writer: W) -> Result<(), SerializationError> {
+        self.n.serialize_unchecked(&mut writer)?;
+        self.ks[0].serialize_unchecked(&mut writer)?;
+        self.ks[1].serialize_unchecked(&mut writer)?;
+        self.ks[2].serialize_unchecked(&mut writer)?;
+        self.ks[3].serialize_unchecked(&mut writer)?;
+        self.domain_n.serialize_unchecked(&mut writer)
+    }
+
+    #[inline]
+    fn uncompressed_size(&self) -> usize {
+        self.n.uncompressed_size()
+            + self.ks[0].uncompressed_size() * 4
+            + self.domain_n.uncompressed_size()
+    }
+}
+
+impl<F: Field> CanonicalDeserialize for IndexInfo<F> {
+    #[inline]
+    fn deserialize<R: io::Read>(mut reader: R) -> Result<Self, SerializationError> {
+        let n = usize::deserialize(&mut reader)?;
+
+        let mut ks = [F::zero(); 4];
+        let mut vks: Vec<F> = vec![];
+        vks.push(F::deserialize(&mut reader)?);
+        vks.push(F::deserialize(&mut reader)?);
+        vks.push(F::deserialize(&mut reader)?);
+        vks.push(F::deserialize(&mut reader)?);
+        ks.copy_from_slice(&vks[..]);
+
+        let domain_n = GeneralEvaluationDomain::<F>::deserialize(&mut reader)?;
+
+        Ok(IndexInfo { n, ks, domain_n })
+    }
+
+    #[inline]
+    fn deserialize_uncompressed<R: io::Read>(mut reader: R) -> Result<Self, SerializationError> {
+        let n = usize::deserialize_uncompressed(&mut reader)?;
+
+        let mut ks = [F::zero(); 4];
+        let mut vks: Vec<F> = vec![];
+        vks.push(F::deserialize_uncompressed(&mut reader)?);
+        vks.push(F::deserialize_uncompressed(&mut reader)?);
+        vks.push(F::deserialize_uncompressed(&mut reader)?);
+        vks.push(F::deserialize_uncompressed(&mut reader)?);
+        ks.copy_from_slice(&vks[..]);
+
+        let domain_n = GeneralEvaluationDomain::<F>::deserialize_uncompressed(&mut reader)?;
+
+        Ok(IndexInfo { n, ks, domain_n })
+    }
+
+    #[inline]
+    fn deserialize_unchecked<R: io::Read>(mut reader: R) -> Result<Self, SerializationError> {
+        let n = usize::deserialize_unchecked(&mut reader)?;
+
+        let mut ks = [F::zero(); 4];
+        let mut vks: Vec<F> = vec![];
+        vks.push(F::deserialize_unchecked(&mut reader)?);
+        vks.push(F::deserialize_unchecked(&mut reader)?);
+        vks.push(F::deserialize_unchecked(&mut reader)?);
+        vks.push(F::deserialize_unchecked(&mut reader)?);
+        ks.copy_from_slice(&vks[..]);
+
+        let domain_n = GeneralEvaluationDomain::<F>::deserialize_unchecked(&mut reader)?;
+
+        Ok(IndexInfo { n, ks, domain_n })
+    }
+}
+
 impl<F: Field> AHPForPLONK<F> {
     pub fn index(cs: &Composer<F>, ks: [F; 4]) -> Result<Index<F>, Error> {
         let selectors = cs.compose(&ks)?;
@@ -56,99 +156,55 @@ impl<F: Field> AHPForPLONK<F> {
             ..
         } = selectors;
 
-        let domain_n = GeneralEvaluationDomain::<F>::new(n)
-            .ok_or(CSError::PolynomialDegreeTooLarge)?;
-        let domain_4n = GeneralEvaluationDomain::<F>::new(4 * n)
-            .ok_or(CSError::PolynomialDegreeTooLarge)?;
+        let domain_n =
+            GeneralEvaluationDomain::<F>::new(n).ok_or(CSError::PolynomialDegreeTooLarge)?;
+        let domain_4n =
+            GeneralEvaluationDomain::<F>::new(4 * n).ok_or(CSError::PolynomialDegreeTooLarge)?;
 
         let q_0_poly = to_labeled(
             "q_0",
-            EvaluationsOnDomain::from_vec_and_domain(
-                q_0.clone(),
-                domain_n,
-            )
-            .interpolate(),
+            EvaluationsOnDomain::from_vec_and_domain(q_0.clone(), domain_n).interpolate(),
         );
         let q_1_poly = to_labeled(
             "q_1",
-            EvaluationsOnDomain::from_vec_and_domain(
-                q_1.clone(),
-                domain_n,
-            )
-            .interpolate(),
+            EvaluationsOnDomain::from_vec_and_domain(q_1.clone(), domain_n).interpolate(),
         );
         let q_2_poly = to_labeled(
             "q_2",
-            EvaluationsOnDomain::from_vec_and_domain(
-                q_2.clone(),
-                domain_n,
-            )
-            .interpolate(),
+            EvaluationsOnDomain::from_vec_and_domain(q_2.clone(), domain_n).interpolate(),
         );
         let q_3_poly = to_labeled(
             "q_3",
-            EvaluationsOnDomain::from_vec_and_domain(
-                q_3.clone(),
-                domain_n,
-            )
-            .interpolate(),
+            EvaluationsOnDomain::from_vec_and_domain(q_3.clone(), domain_n).interpolate(),
         );
         let q_m_poly = to_labeled(
             "q_m",
-            EvaluationsOnDomain::from_vec_and_domain(
-                q_m.clone(),
-                domain_n,
-            )
-            .interpolate(),
+            EvaluationsOnDomain::from_vec_and_domain(q_m.clone(), domain_n).interpolate(),
         );
         let q_c_poly = to_labeled(
             "q_c",
-            EvaluationsOnDomain::from_vec_and_domain(
-                q_c.clone(),
-                domain_n,
-            )
-            .interpolate(),
+            EvaluationsOnDomain::from_vec_and_domain(q_c.clone(), domain_n).interpolate(),
         );
         let q_arith_poly = to_labeled(
             "q_arith",
-            EvaluationsOnDomain::from_vec_and_domain(
-                q_arith.clone(),
-                domain_n,
-            )
-            .interpolate(),
+            EvaluationsOnDomain::from_vec_and_domain(q_arith.clone(), domain_n).interpolate(),
         );
 
         let sigma_0_poly = to_labeled(
             "sigma_0",
-            EvaluationsOnDomain::from_vec_and_domain(
-                sigma_0.clone(),
-                domain_n,
-            )
-            .interpolate(),
+            EvaluationsOnDomain::from_vec_and_domain(sigma_0.clone(), domain_n).interpolate(),
         );
         let sigma_1_poly = to_labeled(
             "sigma_1",
-            EvaluationsOnDomain::from_vec_and_domain(
-                sigma_1.clone(),
-                domain_n,
-            )
-            .interpolate(),
+            EvaluationsOnDomain::from_vec_and_domain(sigma_1.clone(), domain_n).interpolate(),
         );
         let sigma_2_poly = to_labeled(
             "sigma_2",
-            EvaluationsOnDomain::from_vec_and_domain(
-                sigma_2.clone(),
-                domain_n,
-            )
-            .interpolate(),
+            EvaluationsOnDomain::from_vec_and_domain(sigma_2.clone(), domain_n).interpolate(),
         );
         let sigma_3_poly = to_labeled(
             "sigma_3",
-            EvaluationsOnDomain::from_vec_and_domain(
-                sigma_3.clone(),
-                domain_n,
-            )
-            .interpolate(),
+            EvaluationsOnDomain::from_vec_and_domain(sigma_3.clone(), domain_n).interpolate(),
         );
 
         let q_0_4n = domain_4n.coset_fft(&q_0_poly);
@@ -166,8 +222,7 @@ impl<F: Field> AHPForPLONK<F> {
 
         let v_poly = vanishing_poly(domain_n);
         let v_4n = domain_4n.coset_fft(&v_poly);
-        let v_4n_inversed: Vec<_> =
-            cfg_into_iter!(v_4n).map(|v| v.inverse().unwrap()).collect();
+        let v_4n_inversed: Vec<_> = cfg_into_iter!(v_4n).map(|v| v.inverse().unwrap()).collect();
 
         let l1_poly = first_lagrange_poly(domain_n);
         let l1_4n = domain_4n.coset_fft(&l1_poly);

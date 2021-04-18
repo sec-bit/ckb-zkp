@@ -1,10 +1,8 @@
 use ark_ff::{FftField as Field, Zero};
 use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain,
-    Evaluations as EvaluationsOnDomain, UVPolynomial,
+    univariate::DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain, UVPolynomial,
 };
-
-use ark_std::{cfg_iter, vec, vec::Vec};
+use ark_std::{cfg_iter, string::ToString, vec, vec::Vec};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -77,9 +75,7 @@ impl<F: Field> AHPForPLONK<F> {
 
         let pi = cs.public_inputs();
         let pi_n = pad_to_size(pi, domain_n.size());
-        let pi_poly =
-            EvaluationsOnDomain::from_vec_and_domain(pi_n, domain_n)
-                .interpolate();
+        let pi_poly = EvaluationsOnDomain::from_vec_and_domain(pi_n, domain_n).interpolate();
         let pi_4n = domain_4n.coset_fft(&pi_poly);
 
         Ok(ProverState {
@@ -106,26 +102,14 @@ impl<F: Field> AHPForPLONK<F> {
         let Witnesses { w_0, w_1, w_2, w_3 } = witnesses;
 
         let domain_n = ps.index.domain_n();
-        let w_0_poly = EvaluationsOnDomain::from_vec_and_domain(
-            w_0.clone(),
-            domain_n,
-        )
-        .interpolate();
-        let w_1_poly = EvaluationsOnDomain::from_vec_and_domain(
-            w_1.clone(),
-            domain_n,
-        )
-        .interpolate();
-        let w_2_poly = EvaluationsOnDomain::from_vec_and_domain(
-            w_2.clone(),
-            domain_n,
-        )
-        .interpolate();
-        let w_3_poly = EvaluationsOnDomain::from_vec_and_domain(
-            w_3.clone(),
-            domain_n,
-        )
-        .interpolate();
+        let w_0_poly =
+            EvaluationsOnDomain::from_vec_and_domain(w_0.clone(), domain_n).interpolate();
+        let w_1_poly =
+            EvaluationsOnDomain::from_vec_and_domain(w_1.clone(), domain_n).interpolate();
+        let w_2_poly =
+            EvaluationsOnDomain::from_vec_and_domain(w_2.clone(), domain_n).interpolate();
+        let w_3_poly =
+            EvaluationsOnDomain::from_vec_and_domain(w_3.clone(), domain_n).interpolate();
 
         let domain_4n = ps.index.domain_4n();
         let w_0_4n = domain_4n.coset_fft(&w_0_poly);
@@ -197,11 +181,8 @@ impl<F: Field> AHPForPLONK<F> {
         let SecondMsg { alpha } = *msg;
 
         let arithmetic_key = ps.index.arithmetic_key();
-        let t_arith = arithmetic_key.compute_quotient(
-            domain_4n,
-            (w_0_4n, w_1_4n, w_2_4n, w_3_4n),
-            &ps.pi_4n,
-        );
+        let t_arith =
+            arithmetic_key.compute_quotient(domain_4n, (w_0_4n, w_1_4n, w_2_4n, w_3_4n), &ps.pi_4n);
 
         let permutation_key = ps.index.permutation_key();
         let t_perm = permutation_key.compute_quotient(
@@ -220,37 +201,15 @@ impl<F: Field> AHPForPLONK<F> {
             .map(|((t_arith, t_perm), vi)| (*t_arith + t_perm) * vi)
             .collect();
 
-        let t_poly = DensePolynomial::from_coefficients_vec(
-            domain_4n.coset_ifft(&t),
-        );
+        let t_poly = DensePolynomial::from_coefficients_vec(domain_4n.coset_ifft(&t));
 
         let t_polys = Self::quad_split(domain_n.size(), t_poly);
 
         let third_oracles = ThirdOracles {
-            t_0: LabeledPolynomial::new(
-                "t_0".into(),
-                t_polys.0,
-                None,
-                None,
-            ),
-            t_1: LabeledPolynomial::new(
-                "t_1".into(),
-                t_polys.1,
-                None,
-                None,
-            ),
-            t_2: LabeledPolynomial::new(
-                "t_2".into(),
-                t_polys.2,
-                None,
-                None,
-            ),
-            t_3: LabeledPolynomial::new(
-                "t_3".into(),
-                t_polys.3,
-                None,
-                None,
-            ),
+            t_0: LabeledPolynomial::new("t_0".into(), t_polys.0, None, None),
+            t_1: LabeledPolynomial::new("t_1".into(), t_polys.1, None, None),
+            t_2: LabeledPolynomial::new("t_2".into(), t_polys.2, None, None),
+            t_3: LabeledPolynomial::new("t_3".into(), t_polys.3, None, None),
         };
 
         Ok(third_oracles)
@@ -273,23 +232,19 @@ impl<F: Field> AHPForPLONK<F> {
         let mut coeffs = poly.coeffs.into_iter().peekable();
         if coeffs.peek().is_some() {
             let chunk: Vec<_> = coeffs.by_ref().take(n).collect();
-            poly_0 =
-                DensePolynomial::from_coefficients_vec(chunk.to_vec());
+            poly_0 = DensePolynomial::from_coefficients_vec(chunk.to_vec());
         }
         if coeffs.peek().is_some() {
             let chunk: Vec<_> = coeffs.by_ref().take(n).collect();
-            poly_1 =
-                DensePolynomial::from_coefficients_vec(chunk.to_vec());
+            poly_1 = DensePolynomial::from_coefficients_vec(chunk.to_vec());
         }
         if coeffs.peek().is_some() {
             let chunk: Vec<_> = coeffs.by_ref().take(n).collect();
-            poly_2 =
-                DensePolynomial::from_coefficients_vec(chunk.to_vec());
+            poly_2 = DensePolynomial::from_coefficients_vec(chunk.to_vec());
         }
         if coeffs.peek().is_some() {
             let chunk: Vec<_> = coeffs.by_ref().take(n).collect();
-            poly_3 =
-                DensePolynomial::from_coefficients_vec(chunk.to_vec());
+            poly_3 = DensePolynomial::from_coefficients_vec(chunk.to_vec());
         }
 
         (poly_0, poly_1, poly_2, poly_3)
@@ -308,11 +263,7 @@ mod tests {
     use crate::ahp::Error;
     use crate::ahp::EvaluationsProvider;
 
-    fn compare(
-        n: usize,
-        t: DensePolynomial<Fr>,
-        zeta: Fr,
-    ) -> Result<bool, Error> {
+    fn compare(n: usize, t: DensePolynomial<Fr>, zeta: Fr) -> Result<bool, Error> {
         let (t_0, t_1, t_2, t_3) = AHPForPLONK::quad_split(n, t.clone());
 
         let labeled_poly = |label: String, poly: DensePolynomial<Fr>| {
