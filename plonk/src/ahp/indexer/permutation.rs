@@ -77,9 +77,13 @@ impl<F: Field> PermutationKey<F> {
         let roots: Vec<_> = domain_n.elements().collect();
         let (w_0_n, w_1_n, w_2_n, w_3_n) = w_n;
 
-        let numerator_factor =
-            |w: &F, root: &F, k: &F| *w + *k * beta * root + gamma;
+        let numerator_factor = |w: &F, root: &F, k: &F| *w + *k * beta * root + gamma;
         let denumerator_factor = |w: &F, sigma: &F| *w + *beta * sigma + gamma;
+
+        let sigma_0_1 = &self.sigma_0.1;
+        let sigma_1_1 = &self.sigma_1.1;
+        let sigma_2_1 = &self.sigma_2.1;
+        let sigma_3_1 = &self.sigma_3.1;
 
         let perms: Vec<_> = cfg_into_iter!(0..n)
             .map(|i| {
@@ -88,11 +92,10 @@ impl<F: Field> PermutationKey<F> {
                     * numerator_factor(&w_2_n[i], &roots[i], &ks[2])
                     * numerator_factor(&w_3_n[i], &roots[i], &ks[3]);
 
-                let denumerator =
-                    denumerator_factor(&w_0_n[i], &self.sigma_0.1[i])
-                        * denumerator_factor(&w_1_n[i], &self.sigma_1.1[i])
-                        * denumerator_factor(&w_2_n[i], &self.sigma_2.1[i])
-                        * denumerator_factor(&w_3_n[i], &self.sigma_3.1[i]);
+                let denumerator = denumerator_factor(&w_0_n[i], &sigma_0_1[i])
+                    * denumerator_factor(&w_1_n[i], &sigma_1_1[i])
+                    * denumerator_factor(&w_2_n[i], &sigma_2_1[i])
+                    * denumerator_factor(&w_3_n[i], &sigma_3_1[i]);
                 let denumerator = denumerator.inverse().unwrap();
 
                 numerator * denumerator
@@ -108,8 +111,7 @@ impl<F: Field> PermutationKey<F> {
         });
         assert_eq!(z[n - 1] * perms[n - 1], F::one());
 
-        let z_poly =
-            Evaluations::from_vec_and_domain(z.clone(), domain_n).interpolate();
+        let z_poly = Evaluations::from_vec_and_domain(z.clone(), domain_n).interpolate();
         let z_4n = domain_4n.coset_fft(&z_poly);
 
         (z_poly, z, z_4n)
@@ -118,7 +120,7 @@ impl<F: Field> PermutationKey<F> {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn compute_quotient(
         &self,
-        domain_4n: impl EvaluationDomain<F>,
+        domain_4n: impl EvaluationDomain<F> + Sync,
         ks: &[F; 4],
         w_4n: (&[F], &[F], &[F], &[F]),
         z_4n: &[F],
@@ -133,10 +135,15 @@ impl<F: Field> PermutationKey<F> {
             domain_4n.coset_fft(&[F::zero(), F::one()]),
             domain_4n,
         );
-        let numerator_factor =
-            |w: &F, root: &F, k: &F| *w + *k * beta * root + gamma;
+        let numerator_factor = |w: &F, root: &F, k: &F| *w + *k * beta * root + gamma;
         let denumerator_factor = |w: &F, sigma: &F| *w + *beta * sigma + gamma;
         let alpha_2 = alpha.square();
+
+        let sigma_0_2 = &self.sigma_0.2;
+        let sigma_1_2 = &self.sigma_1.2;
+        let sigma_2_2 = &self.sigma_2.2;
+        let sigma_3_2 = &self.sigma_3.2;
+        let l1_4n = &self.l1_4n;
 
         cfg_into_iter!((0..size))
             .map(|i| {
@@ -150,13 +157,13 @@ impl<F: Field> PermutationKey<F> {
                     * numerator_factor(&w_2_4n[i], &linear_4n[i], &ks[2])
                     * numerator_factor(&w_3_4n[i], &linear_4n[i], &ks[3])
                     * z_4n[i]
-                    - denumerator_factor(&w_0_4n[i], &self.sigma_0.2[i])
-                        * denumerator_factor(&w_1_4n[i], &self.sigma_1.2[i])
-                        * denumerator_factor(&w_2_4n[i], &self.sigma_2.2[i])
-                        * denumerator_factor(&w_3_4n[i], &self.sigma_3.2[i])
+                    - denumerator_factor(&w_0_4n[i], &sigma_0_2[i])
+                        * denumerator_factor(&w_1_4n[i], &sigma_1_2[i])
+                        * denumerator_factor(&w_2_4n[i], &sigma_2_2[i])
+                        * denumerator_factor(&w_3_4n[i], &sigma_3_2[i])
                         * z_4n[next])
                     * alpha
-                    + (z_4n[i] - F::one()) * self.l1_4n[i] * alpha_2
+                    + (z_4n[i] - F::one()) * &l1_4n[i] * alpha_2
             })
             .collect()
     }

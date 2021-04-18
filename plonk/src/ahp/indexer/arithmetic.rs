@@ -52,25 +52,34 @@ impl<F: Field> ArithmeticKey<F> {
 
     pub(crate) fn compute_quotient(
         &self,
-        domain_4n: impl EvaluationDomain<F>,
+        domain_4n: impl EvaluationDomain<F> + Sync,
         w_4n: (&[F], &[F], &[F], &[F]),
         pi_4n: &[F],
     ) -> Vec<F> {
+        let size = domain_4n.size();
         let (w_0_4n, w_1_4n, w_2_4n, w_3_4n) = w_4n;
-        cfg_into_iter!((0..domain_4n.size()))
+        let q_0_2 = &self.q_0.2;
+        let q_1_2 = &self.q_1.2;
+        let q_2_2 = &self.q_2.2;
+        let q_3_2 = &self.q_3.2;
+        let q_m_2 = &self.q_m.2;
+        let q_c_2 = &self.q_c.2;
+        let q_arith_2 = &self.q_arith.2;
+
+        cfg_into_iter!((0..size))
             .map(|i| {
                 Self::evaluate(
                     &w_0_4n[i],
                     &w_1_4n[i],
                     &w_2_4n[i],
                     &w_3_4n[i],
-                    &self.q_0.2[i],
-                    &self.q_1.2[i],
-                    &self.q_2.2[i],
-                    &self.q_3.2[i],
-                    &self.q_m.2[i],
-                    &self.q_c.2[i],
-                    &self.q_arith.2[i],
+                    &q_0_2[i],
+                    &q_1_2[i],
+                    &q_2_2[i],
+                    &q_3_2[i],
+                    &q_m_2[i],
+                    &q_c_2[i],
+                    &q_arith_2[i],
                     &pi_4n[i],
                 )
             })
