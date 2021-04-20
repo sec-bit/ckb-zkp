@@ -6,11 +6,13 @@ members = [
     "groth16",
     "bulletproofs",
     "marlin",
+    "plonk",
     "clinkv2",
     "asvc",
     "spartan",
     "libra",
     "hyrax",
+    "plonk",
     "gadgets",
     "cli",
 ]

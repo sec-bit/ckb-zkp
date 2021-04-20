@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-ckb-std = "0.7.3"
+ckb-std = "0.7.4"
 ark-bls12-381 = { version = "0.2", default-features = false, features = [ "curve" ] }
 ark-serialize = { version = "0.2", default-features = false }
 
