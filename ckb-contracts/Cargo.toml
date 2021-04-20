@@ -1,12 +1,15 @@
 [workspace]
 members = [
     "contracts/universal_groth16_verifier",
-    "contracts/universal_marlin_verifier",
+    "contracts/mini_bulletproofs_verifier",
+    "contracts/mini_clinkv2_kzg10_verifier",
+    "contracts/mini_clinkv2_ipa_verifier",
     "contracts/universal_spartan_nizk_verifier",
     "contracts/universal_spartan_snark_verifier",
-    "contracts/mini_bulletproofs_verifier",
-    "contracts/mini_clinkv2_ipa_verifier",
-    "contracts/mini_clinkv2_kzg10_verifier",
+    "contracts/universal_marlin_verifier",
+    "contracts/mini_libra_zk_linear_gkr_verifier",
+    "contracts/mini_hyrax_zk_linear_gkr_verifier",
+    "contracts/universal_plonk_verifier",
 ]
 exclude = [
     "bench-tests",

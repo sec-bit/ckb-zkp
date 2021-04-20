@@ -1,0 +1,17 @@
+[package]
+name = "universal_plonk_verifier"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+ckb-std = "0.7.4"
+ark-bls12-381 = { version = "0.2", default-features = false, features = [ "curve" ] }
+ark-serialize = { version = "0.2", default-features = false }
+ark-poly = {version = "0.2", default-features = false }
+ark-poly-commit = { version = "0.2", default-features = false }
+blake2 = { version = "0.9", default-features = false }
+
+[dependencies.zkp-plonk]
+git = "https://github.com/sunhuachuang/ckb-zkp"
+branch = "dev"
+default-features = false
