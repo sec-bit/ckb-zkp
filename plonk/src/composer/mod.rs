@@ -8,6 +8,7 @@ use permutation::Permutation;
 
 mod arithmetic;
 mod boolean;
+mod range;
 
 mod synthesize;
 pub use synthesize::{Error, Selectors, Witnesses};
@@ -37,7 +38,7 @@ pub struct Composer<F: Field> {
 
     null_var: Variable,
     permutation: Permutation<F>,
-    assignment: Map<Variable, F>,
+    pub(crate) assignment: Map<Variable, F>,
 }
 
 impl<F: Field> Composer<F> {
