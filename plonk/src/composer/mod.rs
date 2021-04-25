@@ -7,6 +7,7 @@ mod permutation;
 use permutation::Permutation;
 
 mod arithmetic;
+mod boolean;
 
 mod synthesize;
 pub use synthesize::{Error, Selectors, Witnesses};

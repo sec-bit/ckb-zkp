@@ -355,6 +355,11 @@ mod tests {
         cs.create_mul_gate(var_one, var_two, var_six, None, two, two, Fr::zero());
         cs.constrain_to_constant(var_six, six, Fr::zero());
 
+        let var_zero = cs.alloc_and_assign(Fr::zero());
+        cs.boolean_gate(var_zero, Fr::zero());
+        cs.boolean_gate(var_one, Fr::zero());
+        // cs.boolean_gate(var_two, Fr::zero()); panic when not boolean.
+
         cs
     }
 
