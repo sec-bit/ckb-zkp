@@ -8,7 +8,11 @@ use permutation::Permutation;
 
 mod arithmetic;
 mod boolean;
+mod logic;
 mod range;
+
+pub mod abstract_hash;
+pub mod merkletree;
 
 mod synthesize;
 pub use synthesize::{Error, Selectors, Witnesses};
@@ -79,6 +83,10 @@ impl<F: Field> Composer<F> {
         self.assignment.insert(var, value);
 
         var
+    }
+
+    pub fn get_value(&self, v: &Variable) -> F {
+        self.assignment.get(v).cloned().unwrap_or(F::zero())
     }
 }
 

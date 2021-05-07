@@ -369,6 +369,17 @@ mod tests {
         // cs.range_gate(var_six, 3, Fr::zero()); //error: 3 is not even number.
         cs.range_gate(var_six, 4, Fr::zero()); // six in [0, 16)
 
+        // logic
+        let witness_a = cs.alloc_and_assign(Fr::from(500u64));
+        let witness_b = cs.alloc_and_assign(Fr::from(357u64));
+        let xor_res = cs.xor_gate(witness_a, witness_b, 10);
+        cs.constrain_to_constant(xor_res, Fr::from(500u64 ^ 357u64), Fr::zero());
+
+        let witness_a2 = cs.alloc_and_assign(Fr::from(469u64));
+        let witness_b2 = cs.alloc_and_assign(Fr::from(321u64));
+        let xor_res = cs.and_gate(witness_a2, witness_b2, 10);
+        cs.constrain_to_constant(xor_res, Fr::from(469u64 & 321u64), Fr::zero());
+
         cs
     }
 
