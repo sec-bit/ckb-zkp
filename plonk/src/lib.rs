@@ -32,7 +32,7 @@ mod data_structures;
 pub use crate::data_structures::*;
 
 mod composer;
-pub use crate::composer::Composer;
+pub use crate::composer::*;
 
 mod ahp;
 use ahp::{AHPForPLONK, EvaluationsProvider};
