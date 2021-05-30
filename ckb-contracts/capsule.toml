@@ -2,7 +2,7 @@ version = "0.4.5 cdad051"
 deployment = "deployment.toml"
 
 [rust]
-docker_image = "secbit/ckb-zkp-capsule:2021-02-17"
+docker_image = "secbit/ckb-zkp-capsule:2021-05-30"
 
 [[contracts]]
 name = "universal_plonk_verifier"

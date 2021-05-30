@@ -11,9 +11,13 @@ use crate::Map;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub(crate) enum Wire {
+    /// Left wire of n'th gate.
     W0(usize),
+    /// Right wire of n'th gate.
     W1(usize),
+    /// Output wire of n'th gate.
     W2(usize),
+    /// Fourth wire of n'th gate.
     W3(usize),
 }
 
@@ -52,7 +56,7 @@ impl<F: Field> Permutation<F> {
         self.add_to_map(w_3, Wire::W3(index));
     }
 
-    fn add_to_map(&mut self, var: Variable, wire: Wire) {
+    pub fn add_to_map(&mut self, var: Variable, wire: Wire) {
         let wires = self.variable_map.get_mut(&var).unwrap();
         wires.push(wire);
     }
@@ -133,8 +137,7 @@ mod tests {
         let domain_n = GeneralEvaluationDomain::<Fr>::new(cs.size()).unwrap();
         let roots: Vec<_> = domain_n.elements().collect();
 
-        let (sigma_0, sigma_1, sigma_2, sigma_3) =
-            cs.permutation.compute_sigmas(domain_n, &ks);
+        let (sigma_0, sigma_1, sigma_2, sigma_3) = cs.permutation.compute_sigmas(domain_n, &ks);
 
         let (id_0, id_1, id_2, id_3) = {
             let id_0: Vec<_> = cfg_iter!(roots).map(|r| ks[0] * r).collect();

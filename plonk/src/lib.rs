@@ -32,7 +32,7 @@ mod data_structures;
 pub use crate::data_structures::*;
 
 mod composer;
-pub use crate::composer::Composer;
+pub use crate::composer::*;
 
 mod ahp;
 use ahp::{AHPForPLONK, EvaluationsProvider};
@@ -355,6 +355,31 @@ mod tests {
         cs.create_mul_gate(var_one, var_two, var_six, None, two, two, Fr::zero());
         cs.constrain_to_constant(var_six, six, Fr::zero());
 
+        let var_zero = cs.alloc_and_assign(Fr::zero());
+        cs.boolean_gate(var_zero, Fr::zero());
+        cs.boolean_gate(var_one, Fr::zero());
+        // cs.boolean_gate(var_two, Fr::zero()); // error: when not boolean.
+
+        cs.range_gate(var_zero, 2, Fr::zero()); // 0 in [0, 4)
+        cs.range_gate(var_one, 2, Fr::zero()); // 1 in [0, 4)
+        cs.range_gate(var_two, 2, Fr::zero()); // 2 in [0, 4)
+        cs.range_gate(var_three, 2, Fr::zero()); // 3 in [0, 4)
+
+        // cs.range_gate(var_four, 2, Fr::zero()); // error: four not in [0, 4)
+        // cs.range_gate(var_six, 3, Fr::zero()); //error: 3 is not even number.
+        cs.range_gate(var_six, 4, Fr::zero()); // six in [0, 16)
+
+        // logic
+        let witness_a = cs.alloc_and_assign(Fr::from(500u64));
+        let witness_b = cs.alloc_and_assign(Fr::from(357u64));
+        let xor_res = cs.xor_gate(witness_a, witness_b, 10);
+        cs.constrain_to_constant(xor_res, Fr::from(500u64 ^ 357u64), Fr::zero());
+
+        let witness_a2 = cs.alloc_and_assign(Fr::from(469u64));
+        let witness_b2 = cs.alloc_and_assign(Fr::from(321u64));
+        let xor_res = cs.and_gate(witness_a2, witness_b2, 10);
+        cs.constrain_to_constant(xor_res, Fr::from(469u64 & 321u64), Fr::zero());
+
         cs
     }
 
@@ -367,7 +392,7 @@ mod tests {
         let ks = ks();
         println!("size of the circuit: {}", cs.size());
 
-        let srs = PlonkInst::setup(8, rng)?;
+        let srs = PlonkInst::setup(64, rng)?;
         let (pk, vk) = PlonkInst::keygen(&srs, &cs, ks)?;
         let proof = PlonkInst::prove(&pk, &cs, rng)?;
         let result = PlonkInst::verify(&vk, cs.public_inputs(), proof)?;
