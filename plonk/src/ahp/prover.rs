@@ -102,6 +102,7 @@ impl<F: Field> AHPForPLONK<F> {
         let Witnesses { w_0, w_1, w_2, w_3 } = witnesses;
 
         let domain_n = ps.index.domain_n();
+        //返回 系数表示的多项式
         let w_0_poly =
             EvaluationsOnDomain::from_vec_and_domain(w_0.clone(), domain_n).interpolate();
         let w_1_poly =
@@ -112,6 +113,7 @@ impl<F: Field> AHPForPLONK<F> {
             EvaluationsOnDomain::from_vec_and_domain(w_3.clone(), domain_n).interpolate();
 
         let domain_4n = ps.index.domain_4n();
+        //4n的fft ？
         let w_0_4n = domain_4n.coset_fft(&w_0_poly);
         let w_1_4n = domain_4n.coset_fft(&w_1_poly);
         let w_2_4n = domain_4n.coset_fft(&w_2_poly);
@@ -164,6 +166,7 @@ impl<F: Field> AHPForPLONK<F> {
         Ok((ps, second_oracles))
     }
 
+    //改造t（pdf里的η就是这里的α
     pub fn prover_third_round<'a>(
         ps: ProverState<'a, F>,
         msg: &SecondMsg<F>,
@@ -195,10 +198,32 @@ impl<F: Field> AHPForPLONK<F> {
             &alpha,
         );
 
+        //range gate
+        let t_range = ps.index.compute_quotient_q_range(
+            domain_4n,
+            (w_0_4n, w_1_4n, w_2_4n, w_3_4n),
+            &alpha,
+        );
+
+        //mimc
+        let mimc_key = ps.index.mimc_key();
+        // let t_mimc = mimc_key.compute_quotient(
+        //     domain_4n,
+        //     (w_0_4n, w_1_4n, w_2_4n, w_3_4n),
+        //     &alpha,
+        // );
+        let t_mimc = mimc_key.compute_quotient_nosponge(
+            domain_4n,
+            (w_0_4n, w_1_4n, w_2_4n, w_3_4n),
+            &alpha,
+        );
+
         let t: Vec<_> = cfg_iter!(t_arith)
             .zip(&t_perm)
+            .zip(&t_range)
+            .zip(&t_mimc)
             .zip(ps.index.v_4n_inversed())
-            .map(|((t_arith, t_perm), vi)| (*t_arith + t_perm) * vi)
+            .map(|((((t_arith, t_perm), t_range), t_mimc), vi)| (*t_arith + t_perm + t_range + t_mimc) * vi)
             .collect();
 
         let t_poly = DensePolynomial::from_coefficients_vec(domain_4n.coset_ifft(&t));
@@ -215,6 +240,7 @@ impl<F: Field> AHPForPLONK<F> {
         Ok(third_oracles)
     }
 
+    //平均分成四段
     fn quad_split(
         n: usize,
         poly: DensePolynomial<F>,

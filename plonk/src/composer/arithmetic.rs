@@ -35,6 +35,9 @@ impl<F: Field> Composer<F> {
         self.q_m.push(q_m);
         self.q_c.push(q_c);
         self.q_arith.push(F::one());
+        self.q_range.push(F::zero());
+        self.q_mimc.push(F::zero());
+        //self.q_mimc_c.push(F::zero());
 
         self.n += 1;
     }
@@ -100,4 +103,5 @@ impl<F: Field> Composer<F> {
             pi,
         )
     }
+
 }

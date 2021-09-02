@@ -14,7 +14,12 @@ use crate::utils::{first_lagrange_poly, to_labeled, vanishing_poly};
 mod arithmetic;
 pub use arithmetic::ArithmeticKey;
 mod permutation;
+mod mimc;
+pub use mimc::MimcKey;
+
 pub use permutation::PermutationKey;
+use ark_poly_commit::LinearCombination;
+//use crate::ahp::indexer::mimc::MimcKey;
 
 pub struct Index<F: Field> {
     pub info: IndexInfo<F>,
@@ -24,6 +29,9 @@ pub struct Index<F: Field> {
 
     domain_4n: GeneralEvaluationDomain<F>,
     v_4n_inversed: Vec<F>,
+
+    q_range_key: (LabeledPolynomial<F>, Vec<F>, Vec<F>),
+    mimc: MimcKey<F>,
 }
 
 #[derive(Debug, Clone)]
@@ -153,6 +161,9 @@ impl<F: Field> AHPForPLONK<F> {
             sigma_1,
             sigma_2,
             sigma_3,
+            q_range,
+            q_mimc,
+            //q_mimc_c,
             ..
         } = selectors;
 
@@ -206,6 +217,18 @@ impl<F: Field> AHPForPLONK<F> {
             "sigma_3",
             EvaluationsOnDomain::from_vec_and_domain(sigma_3.clone(), domain_n).interpolate(),
         );
+        let q_range_poly = to_labeled(
+            "q_range",
+            EvaluationsOnDomain::from_vec_and_domain(q_range.clone(), domain_n).interpolate(),
+        );
+        let q_mimc_poly = to_labeled(
+            "q_mimc",
+            EvaluationsOnDomain::from_vec_and_domain(q_mimc.clone(), domain_n).interpolate(),
+        );
+        // let q_mimc_c_poly = to_labeled(
+        //     "q_mimc_c",
+        //     EvaluationsOnDomain::from_vec_and_domain(q_mimc_c.clone(), domain_n).interpolate(),
+        // );
 
         let q_0_4n = domain_4n.coset_fft(&q_0_poly);
         let q_1_4n = domain_4n.coset_fft(&q_1_poly);
@@ -219,6 +242,10 @@ impl<F: Field> AHPForPLONK<F> {
         let sigma_1_4n = domain_4n.coset_fft(&sigma_1_poly);
         let sigma_2_4n = domain_4n.coset_fft(&sigma_2_poly);
         let sigma_3_4n = domain_4n.coset_fft(&sigma_3_poly);
+
+        let q_range_4n = domain_4n.coset_fft(&q_range_poly);
+        let q_mimc_4n = domain_4n.coset_fft(&q_mimc_poly);
+        //let q_mimc_c_4n = domain_4n.coset_fft(&q_mimc_c_poly);
 
         let v_poly = vanishing_poly(domain_n);
         let v_4n = domain_4n.coset_fft(&v_poly);
@@ -252,13 +279,22 @@ impl<F: Field> AHPForPLONK<F> {
                 sigma_3: (sigma_3_poly, sigma_3, sigma_3_4n),
                 l1_4n,
             },
+            q_range_key: (q_range_poly, q_range, q_range_4n),
+            mimc: MimcKey {
+                q_mimc: (q_mimc_poly, q_mimc, q_mimc_4n),
+                //q_mimc_c: (q_mimc_c_poly, q_mimc_c, q_mimc_c_4n),
+            },
         })
     }
 }
 
 impl<F: Field> Index<F> {
+    //加上range,mimc到末尾
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        self.arithmetic.iter().chain(self.permutation.iter())
+        self.arithmetic.iter()
+            .chain(self.permutation.iter())
+            .chain(vec![&self.q_range_key.0].into_iter())
+            .chain(self.mimc.iter())
     }
 
     pub fn size(&self) -> usize {
@@ -284,4 +320,94 @@ impl<F: Field> Index<F> {
     pub fn permutation_key(&self) -> &PermutationKey<F> {
         &self.permutation
     }
+
+    pub fn mimc_key(&self) -> &MimcKey<F> {
+        &self.mimc
+    }
+
+    pub fn q_range_key(&self) -> &(LabeledPolynomial<F>, Vec<F>, Vec<F>) {
+        &self.q_range_key
+    }
+
+    //range放后面，也就是alpha从 3次方开始，到6次方
+    //t的一部分
+    pub fn compute_quotient_q_range(
+        &self,
+        domain_4n: impl EvaluationDomain<F> + Sync,
+        w_4n: (&[F], &[F], &[F], &[F]),
+        alpha: &F,
+    ) -> Vec<F> {
+        let alpha_2 = alpha.square();
+        let alpha_3: F = alpha_2 * alpha;
+        let alpha_4 = alpha_2.square();
+
+        let (w_0_4n, w_1_4n, w_2_4n, w_3_4n) = w_4n;
+        let size = domain_4n.size();
+        let q_range_2 = &self.q_range_key.2;
+        let two: F = F::one() + F::one();
+        let three: F = two + F::one();
+        let four: F = two + two;
+
+        cfg_into_iter!((0..size))
+            .map(|i| {
+                let next = if i / 4 == (size / 4 - 1) {
+                    i % 4
+                } else {
+                    i + 4
+                };
+                if q_range_2[i].is_zero() {
+                    F::zero()
+                } else {
+                    q_range_2[i] * alpha_2 * (
+                        *alpha * (w_0_4n[next] - four * w_3_4n[i]) * (w_0_4n[next] - four * w_3_4n[i] - F::one()) * (w_0_4n[next] - four * w_3_4n[i] - two) * (w_0_4n[next] - four * w_3_4n[i] - three)
+                      + alpha_2 * (w_3_4n[i] - four * w_2_4n[i]) * (w_3_4n[i] - four * w_2_4n[i] - F::one()) * (w_3_4n[i] - four * w_2_4n[i] - two) * (w_3_4n[i] - four * w_2_4n[i] - three)
+                      + alpha_3 * (w_2_4n[i] - four * w_1_4n[i]) * (w_2_4n[i] - four * w_1_4n[i] - F::one()) * (w_2_4n[i] - four * w_1_4n[i] - two) * (w_2_4n[i] - four * w_1_4n[i] - three)
+                      + alpha_4 * (w_1_4n[i] - four * w_0_4n[i]) * (w_1_4n[i] - four * w_0_4n[i] - F::one()) * (w_1_4n[i] - four * w_0_4n[i] - two) * (w_1_4n[i] - four * w_0_4n[i] - three)
+                    )
+                }
+            })
+            .collect()
+    }
+
+    pub(crate) fn construct_linear_combination_q_range(
+        w_zeta: (F, F, F, F),
+        w_0_shifted_zeta: F,
+        alpha: F,
+    ) -> LinearCombination<F> {
+        let (w_0, w_1, w_2, w_3) = w_zeta;
+
+        let two: F = F::one() + F::one();
+        let three: F = two + F::one();
+        let four: F = two + two;
+
+        let D_1: F = (w_0_shifted_zeta - four * w_3)
+            * (w_0_shifted_zeta - four * w_3 - F::one())
+            * (w_0_shifted_zeta - four * w_3 - two)
+            * (w_0_shifted_zeta - four * w_3 - three);
+        let D_2: F = (w_3 - four * w_2)
+            * (w_3 - four * w_2 - F::one())
+            * (w_3 - four * w_2 - two)
+            * (w_3 - four * w_2 - three);
+        let D_3: F = (w_2 - four * w_1)
+            * (w_2 - four * w_1 - F::one())
+            * (w_2 - four * w_1 - two)
+            * (w_2 - four * w_1 - three);
+        let D_4: F = (w_1 - four * w_0)
+            * (w_1 - four * w_0 - F::one())
+            * (w_1 - four * w_0 - two)
+            * (w_1 - four * w_0 - three);
+
+
+        let alpha_2 = alpha.square();
+        let alpha_3: F = alpha_2 * alpha;
+        let alpha_4 = alpha_2.square();
+        LinearCombination::new(
+            "range",
+            vec![
+                ((alpha * D_1 + alpha_2 * D_2 + alpha_3 * D_3 + alpha_4 * D_4) * alpha_2,
+                 "q_range"),
+            ],
+        )
+    }
+
 }

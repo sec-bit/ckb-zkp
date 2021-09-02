@@ -10,7 +10,7 @@ mod evaluations;
 pub use evaluations::EvaluationsProvider;
 
 mod indexer;
-pub use indexer::{ArithmeticKey, Index, IndexInfo, PermutationKey};
+pub use indexer::{ArithmeticKey, Index, IndexInfo, PermutationKey, MimcKey};
 
 mod prover;
 pub use prover::ProverState;
@@ -65,7 +65,10 @@ impl<F: Field> AHPForPLONK<F> {
 
         let q_arith = LinearCombination::new("q_arith", vec![(F::one(), "q_arith")]);
 
+        //let q_mimc_c = LinearCombination::new("q_mimc_c", vec![(F::one(), "q_mimc_c")]);
+
         let r = {
+            //按标签找到多项式，并得到点zeta（w zeta）处的值
             let w_0_zeta = evals.get_lc_eval(&w_0, zeta)?;
             let w_1_zeta = evals.get_lc_eval(&w_1, zeta)?;
             let w_2_zeta = evals.get_lc_eval(&w_2, zeta)?;
@@ -74,10 +77,14 @@ impl<F: Field> AHPForPLONK<F> {
             let shifted_zeta = zeta * generator(info.domain_n);
             let z_shifted_zeta = evals.get_lc_eval(&z, shifted_zeta)?;
 
+            let w_0_shifted_zeta = evals.get_lc_eval(&w_0, shifted_zeta)?;
+
             let sigma_0_zeta = evals.get_lc_eval(&sigma_0, zeta)?;
             let sigma_1_zeta = evals.get_lc_eval(&sigma_1, zeta)?;
             let sigma_2_zeta = evals.get_lc_eval(&sigma_2, zeta)?;
             let q_arith_zeta = evals.get_lc_eval(&q_arith, zeta)?;
+
+            //let q_mimc_c_zeta = evals.get_lc_eval(&q_mimc_c, zeta)?;
 
             let arith_lc = ArithmeticKey::construct_linear_combination(
                 (w_0_zeta, w_1_zeta, w_2_zeta, w_3_zeta),
@@ -98,9 +105,29 @@ impl<F: Field> AHPForPLONK<F> {
                 zeta,
             );
 
+            let range_lc = Index::construct_linear_combination_q_range(
+                (w_0_zeta, w_1_zeta, w_2_zeta, w_3_zeta),
+                w_0_shifted_zeta,
+                alpha,
+            );
+
+            // let mimc_lc = MimcKey::construct_linear_combination (
+            //     (w_0_zeta, w_1_zeta, w_2_zeta, w_3_zeta),
+            //     w_0_shifted_zeta,
+            //     alpha,
+            // );
+            let mimc_lc = MimcKey::construct_linear_combination_nosponge (
+                (w_0_zeta, w_1_zeta, w_2_zeta, w_3_zeta),
+                w_0_shifted_zeta,
+                alpha,
+            );
+
+            //todo 这里不用排序
             let mut r = LinearCombination::<F>::empty("r");
             r += &arith_lc;
             r += &perm_lc;
+            r += &range_lc;
+            r += &mimc_lc;
             r
         };
 
@@ -135,6 +162,7 @@ mod test {
 
     #[test]
     fn ahp() -> Result<(), Error> {
+        //let cs = crate::tests::circuit();
         let cs = crate::tests::circuit();
         let ks = crate::tests::ks();
         let rng = &mut test_rng();

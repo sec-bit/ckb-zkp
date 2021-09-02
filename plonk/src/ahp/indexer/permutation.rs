@@ -74,6 +74,7 @@ impl<F: Field> PermutationKey<F> {
         gamma: &F,
     ) -> (DensePolynomial<F>, Vec<F>, Vec<F>) {
         let n = domain_n.size();
+        //
         let roots: Vec<_> = domain_n.elements().collect();
         let (w_0_n, w_1_n, w_2_n, w_3_n) = w_n;
 

@@ -76,10 +76,16 @@ impl<F: Field> AHPForPLONK<F> {
 
     pub fn verifier_query_set(vs: &VerifierState<'_, F>) -> QuerySet<F> {
         let zeta = vs.zeta.unwrap();
+        //domain.element(1)
         let g = generator(vs.info.domain_n);
 
+        //查询集（用标签label
         let mut query_set = QuerySet::new();
 
+        //(label, (point_label, point))
+        // where label is the label of a polynomial in p
+        // point_label is the label for the point (e.g., “beta”)
+        // point is the location that p[label] is to be queried at.
         query_set.insert(("w_0".into(), ("zeta".into(), zeta)));
         query_set.insert(("w_1".into(), ("zeta".into(), zeta)));
         query_set.insert(("w_2".into(), ("zeta".into(), zeta)));
@@ -95,6 +101,10 @@ impl<F: Field> AHPForPLONK<F> {
         query_set.insert(("t".into(), ("zeta".into(), zeta)));
         query_set.insert(("r".into(), ("zeta".into(), zeta)));
 
+        //todo 找很久
+        query_set.insert(("w_0".into(), ("shifted_zeta".into(), zeta * g)));
+        //query_set.insert(("q_mimc".into(), ("zeta".into(), zeta)));
+
         query_set
     }
 
@@ -103,7 +113,6 @@ impl<F: Field> AHPForPLONK<F> {
         evaluations: &Evaluations<F, F>,
         public_inputs: &[F],
     ) -> Result<bool, Error> {
-        // let alpha = vs.alpha.unwrap();
         let alpha = vs.alpha.unwrap();
         let beta = vs.beta.unwrap();
         let gamma = vs.gamma.unwrap();
@@ -129,6 +138,7 @@ impl<F: Field> AHPForPLONK<F> {
         let sigma_1_zeta = get_eval(&evaluations, "sigma_1", &zeta)?;
         let sigma_2_zeta = get_eval(&evaluations, "sigma_2", &zeta)?;
         let q_arith_zeta = get_eval(&evaluations, "q_arith", &zeta)?;
+        //let q_mimc_c_zeta = get_eval(&evaluations, "q_mimc_c", &zeta)?;
 
         let t_zeta = get_eval(&evaluations, "t", &zeta)?;
         let r_zeta = get_eval(&evaluations, "r", &zeta)?;
@@ -136,7 +146,8 @@ impl<F: Field> AHPForPLONK<F> {
         let l1_zeta = evaluate_first_lagrange_poly(vs.info.domain_n, zeta);
         let alpha_2 = alpha.square();
 
-        let lhs = t_zeta * v_zeta;
+        let lhs :F = t_zeta * v_zeta;
+        //不需要改，因为range,mimc 在r里了
         let rhs = r_zeta + q_arith_zeta * pi_zeta
             - z_shifted_zeta
                 * (w_0_zeta + beta * sigma_0_zeta + gamma)
@@ -145,6 +156,8 @@ impl<F: Field> AHPForPLONK<F> {
                 * (w_3_zeta + gamma)
                 * alpha
             - l1_zeta * alpha_2;
+
+        //println!("{} {}", lhs, rhs);
 
         Ok(lhs == rhs)
     }
