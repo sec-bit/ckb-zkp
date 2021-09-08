@@ -34,7 +34,7 @@ pub struct Composer<F: Field> {
     w_2: Vec<Variable>,
     w_3: Vec<Variable>,
 
-    null_var: Variable,
+    zero_var: Variable,
     permutation: Permutation<F>,
     assignment: Map<Variable, F>,
 }
@@ -59,11 +59,11 @@ impl<F: Field> Composer<F> {
             w_2: Vec::new(),
             w_3: Vec::new(),
 
-            null_var: Variable(0),
+            zero_var: Variable(0),
             permutation: Permutation::new(),
             assignment: Map::new(),
         };
-        cs.null_var = cs.alloc_and_assign(F::zero());
+        cs.zero_var = cs.alloc_and_assign(F::zero());
 
         cs
     }
