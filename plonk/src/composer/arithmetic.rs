@@ -17,7 +17,7 @@ impl<F: Field> Composer<F> {
 
         let aux = match aux {
             Some(aux) => aux,
-            None => (self.null_var, F::zero()),
+            None => (self.zero_var, F::zero()),
         };
 
         self.permutation.insert_gate(aux.0, l.0, r.0, o.0, index);
@@ -57,7 +57,7 @@ impl<F: Field> Composer<F> {
         self.create_poly_gate(
             (l, F::one()),
             (r, -F::one()),
-            (self.null_var, F::zero()),
+            (self.zero_var, F::zero()),
             None,
             F::zero(),
             F::zero(),
