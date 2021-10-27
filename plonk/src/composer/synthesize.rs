@@ -25,6 +25,10 @@ pub struct Selectors<F: Field> {
     pub sigma_1: Vec<F>,
     pub sigma_2: Vec<F>,
     pub sigma_3: Vec<F>,
+
+    pub q_range: Vec<F>,
+    pub q_mimc: Vec<F>,
+    //pub q_mimc_c: Vec<F>,
 }
 
 pub struct Witnesses<F: Field> {
@@ -44,7 +48,7 @@ impl<F: Field> Selectors<F> {
     pub fn size(&self) -> usize {
         self.n
     }
-
+    //
     pub fn iter(&self) -> impl Iterator<Item = &Vec<F>> {
         vec![
             &self.q_0,
@@ -58,6 +62,9 @@ impl<F: Field> Selectors<F> {
             &self.sigma_1,
             &self.sigma_2,
             &self.sigma_3,
+            &self.q_range,
+            &self.q_mimc,
+            //&self.q_mimc_c,
         ]
         .into_iter()
     }
@@ -94,6 +101,11 @@ impl<F: Field> Composer<F> {
             q_m: pad(self.q_m.clone()),
             q_c: pad(self.q_c.clone()),
             q_arith: pad(self.q_arith.clone()),
+
+            q_range: pad(self.q_range.clone()),
+            //todo 找了很久。。
+            q_mimc: pad(self.q_mimc.clone()),
+            //q_mimc_c: pad(self.q_range.clone()),
 
             sigma_0,
             sigma_1,

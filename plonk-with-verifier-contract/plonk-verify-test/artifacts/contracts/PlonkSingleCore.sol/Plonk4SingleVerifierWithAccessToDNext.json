@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "Plonk4SingleVerifierWithAccessToDNext",
+  "sourceName": "contracts/PlonkSingleCore.sol",
+  "abi": [],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea264697066735822122079d56483e179b31662662ca3b6358b48dacf3bcdc5d9c92bbd4198fbaa29dd0864736f6c634300060c0033",
+  "deployedBytecode": "0x6080604052600080fdfea264697066735822122079d56483e179b31662662ca3b6358b48dacf3bcdc5d9c92bbd4198fbaa29dd0864736f6c634300060c0033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

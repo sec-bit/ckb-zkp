@@ -9,7 +9,11 @@ use permutation::Permutation;
 mod arithmetic;
 
 mod synthesize;
+pub(crate) mod range;
+mod mimc;
+
 pub use synthesize::{Error, Selectors, Witnesses};
+use crate::composer::mimc::MimcC;
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy, Hash, Ord, PartialOrd)]
 pub struct Variable(usize);
@@ -37,6 +41,12 @@ pub struct Composer<F: Field> {
     zero_var: Variable,
     permutation: Permutation<F>,
     assignment: Map<Variable, F>,
+
+    q_range: Vec<F>,
+
+    q_mimc: Vec<F>,
+    //q_mimc_c: Vec<F>,
+    mimc_c_container: MimcC<F>,
 }
 
 impl<F: Field> Composer<F> {
@@ -62,6 +72,11 @@ impl<F: Field> Composer<F> {
             zero_var: Variable(0),
             permutation: Permutation::new(),
             assignment: Map::new(),
+
+            q_range: Vec::new(),
+            q_mimc: Vec::new(),
+            //q_mimc_c: Vec::new(),
+            mimc_c_container: MimcC::new(),
         };
         cs.zero_var = cs.alloc_and_assign(F::zero());
 
@@ -77,6 +92,10 @@ impl<F: Field> Composer<F> {
         self.assignment.insert(var, value);
 
         var
+    }
+
+    pub fn init_mimc(&mut self, n_rounds: usize, mimc_c: Vec<F>) {
+        self.mimc_c_container.init_mimc_c(n_rounds,mimc_c);
     }
 }
 

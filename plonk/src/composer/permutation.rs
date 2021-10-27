@@ -32,6 +32,7 @@ impl<F: Field> Permutation<F> {
     }
 
     pub fn alloc(&mut self) -> Variable {
+        //加个新var（给一个新编号
         let var = Variable(self.variable_map.len());
         self.variable_map.insert(var, Vec::new());
 
@@ -52,10 +53,13 @@ impl<F: Field> Permutation<F> {
         self.add_to_map(w_3, Wire::W3(index));
     }
 
+    //todo 加个检查删除重复的，或者改compute_wire_permutation的实现
+    //否则：假设 A-B-A，处理后B连接A，A也连接A
     fn add_to_map(&mut self, var: Variable, wire: Wire) {
         let wires = self.variable_map.get_mut(&var).unwrap();
         wires.push(wire);
     }
+
 }
 
 impl<F: Field> Permutation<F> {
@@ -87,15 +91,15 @@ impl<F: Field> Permutation<F> {
         let mut perm_1: Vec<_> = (0..n).map(|i| Wire::W1(i)).collect();
         let mut perm_2: Vec<_> = (0..n).map(|i| Wire::W2(i)).collect();
         let mut perm_3: Vec<_> = (0..n).map(|i| Wire::W3(i)).collect();
-
+        //一个variable（信号signal）对应多条wire
         for (_, wires) in self.variable_map.iter() {
-            if wires.len() <= 1 {
+            if wires.len() <= 1 {//跳过没有复制约束的
                 continue;
             }
-
+            //
             for (curr, curr_wire) in wires.iter().enumerate() {
                 let next = match curr {
-                    0 => wires.len() - 1,
+                    0 => wires.len() - 1,//0的下一个是 最后一个
                     _ => curr - 1,
                 };
                 let next_wire = &wires[next];

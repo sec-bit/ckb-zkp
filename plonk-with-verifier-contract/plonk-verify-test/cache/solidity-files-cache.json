@@ -1,0 +1,114 @@
+{
+  "_format": "hh-sol-cache-2",
+  "files": {
+    "/mnt/c/Users/SECBITCLONG/Desktop/to upload/plonk-with-verifier-contract/plonk-verify-test/contracts/PlonkCoreLib.sol": {
+      "lastModificationDate": 1634547767705,
+      "contentHash": "586484da0d71e062c28e88c518858cc9",
+      "sourceName": "contracts/PlonkCoreLib.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "hardhat/console.sol"
+      ],
+      "versionPragmas": [
+        ">=0.5.0 <0.7.0"
+      ],
+      "artifacts": [
+        "PairingsBn254",
+        "TranscriptLibrary"
+      ]
+    },
+    "/mnt/c/Users/SECBITCLONG/node_modules/hardhat/console.sol": {
+      "lastModificationDate": 1632145144102,
+      "contentHash": "cc4777addd464ea56fa35b1c45df0591",
+      "sourceName": "hardhat/console.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        ">=0.4.22 <0.9.0"
+      ],
+      "artifacts": [
+        "console"
+      ]
+    },
+    "/mnt/c/Users/SECBITCLONG/Desktop/to upload/plonk-with-verifier-contract/plonk-verify-test/contracts/PlonkSingleCore.sol": {
+      "lastModificationDate": 1634550835324,
+      "contentHash": "0990a81573443825efbb825a19a02de2",
+      "sourceName": "contracts/PlonkSingleCore.sol",
+      "solcConfig": {
+        "version": "0.6.12",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./PlonkCoreLib.sol",
+        "hardhat/console.sol"
+      ],
+      "versionPragmas": [
+        ">=0.5.0 <0.7.0"
+      ],
+      "artifacts": [
+        "Plonk4SingleVerifierWithAccessToDNext",
+        "SingleVerifierWithDeserialize"
+      ]
+    }
+  }
+}
