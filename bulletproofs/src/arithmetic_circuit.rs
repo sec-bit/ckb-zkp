@@ -296,15 +296,13 @@ where
         n_w,
     };
 
-    let mut prover = Transcript::new(b"protocol3");
-    let proof = prove(&mut prover, &generators, &r1cs_circuit, &input, rng);
+    let proof = prove(&generators, &r1cs_circuit, &input, rng);
 
     Ok((generators, r1cs_circuit.matrix_to_map(), proof))
 }
 
 // bulletproofs arithmetic circuit proof with R1CS format
 pub fn prove<G, R>(
-    transcript: &mut Transcript,
     gens: &Generators<G>,
     r1cs_circuit: &R1csCircuit<G>,
     input: &Assignment<G>,
@@ -314,6 +312,7 @@ where
     G: Curve,
     R: Rng,
 {
+    let mut transcript = Transcript::new(b"protocol3");
     let n = input.aL.len();
     assert_eq!(n, input.aR.len());
     assert_eq!(n, input.aO.len());
@@ -567,7 +566,7 @@ where
         .into_affine();
 
     let IPP = inner_product_proof::prove(
-        transcript,
+        &mut transcript,
         gens.g_vec_N.clone(),
         gens.h_vec_N.clone(),
         ux,
@@ -613,12 +612,12 @@ where
 }
 
 pub fn verify_proof<G: Curve>(
-    transcript: &mut Transcript,
     gens: &Generators<G>,
     proof: &Proof<G>,
     r1cs_circuit: &R1csCircuit<G>,
     public_inputs: &[G::Fr],
 ) -> Result<bool, SynthesisError> {
+    let mut transcript = Transcript::new(b"protocol3");
     let zero = G::Fr::zero();
     let one = G::Fr::one();
     let mut r1_public_inputs = vec![one];
@@ -801,7 +800,7 @@ pub fn verify_proof<G: Curve>(
     // USE IPP here
     // assert_eq!(proof.t_x, inner_product::<G::Fr>(&proof.l_x, &proof.r_x));
     if !inner_product_proof::verify(
-        transcript,
+        &mut transcript,
         gens.g_vec_N.clone(),
         gens.h_vec_N.clone(),
         ux,
@@ -923,10 +922,8 @@ mod tests {
             n_w,
         };
 
-        let mut prover = Transcript::new(b"protocol3");
-        let proof = prove(&mut prover, &generators, &r1cs_circuit, &input, rng);
-        let mut verifier = Transcript::new(b"protocol3");
-        assert!(verify_proof(&mut verifier, &generators, &proof, &r1cs_circuit, &statement).unwrap());
+        let proof = prove(&generators, &r1cs_circuit, &input, rng);
+        assert!(verify_proof(&generators, &proof, &r1cs_circuit, &statement).unwrap());
     }
 
     // #[test]
