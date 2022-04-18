@@ -7,6 +7,7 @@ use zkp_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 use ark_bls12_381::{Bls12_381 as E, Fr};
 use ark_serialize::*;
 use std::time::Instant;
+use merlin::Transcript;
 
 struct Mini<F: PrimeField> {
     pub x: Option<F>,
@@ -72,10 +73,12 @@ fn mini_bulletproofs() {
     };
 
     let v_start = Instant::now();
-    assert!(verify_proof(&gens, &proof, &r1cs, &[Fr::from(10u32)]).unwrap());
+    let mut verifier = Transcript::new(b"protocol3");
+    assert!(verify_proof(&mut verifier, &gens, &proof, &r1cs, &[Fr::from(10u32)]).unwrap());
     let v_time = v_start.elapsed();
     println!("[Bulletproofs] Verify time  : {:?}", v_time);
 
+    let mut verifier = Transcript::new(b"protocol3");
     let proof2 = Proof::<E>::deserialize(&proof_bytes[..]).unwrap();
-    assert!(verify_proof(&gens, &proof2, &r1cs, &[Fr::from(10u32)]).unwrap());
+    assert!(verify_proof(&mut verifier, &gens, &proof2, &r1cs, &[Fr::from(10u32)]).unwrap());
 }
