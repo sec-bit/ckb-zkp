@@ -1,0 +1,14 @@
+[package]
+name = "mini_hyrax_zk_linear_gkr_verifier"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+ckb-std = "0.7.4"
+ark-bls12-381 = { version = "0.2", default-features = false, features = [ "curve" ] }
+ark-serialize = { version = "0.2", default-features = false }
+
+[dependencies.zkp-hyrax]
+git = "https://github.com/sec-bit/ckb-zkp"
+branch = "dev"
+default-features = false
