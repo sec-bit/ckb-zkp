@@ -183,7 +183,7 @@ fn test_snark_spartan_bls12_381() {
 
     // let mut transcript = Transcript::new(b"spartan snark");
     println!("[snark_spartan]Creating proof...");
-    let proof = create_snark_proof(&params, &r1cs, c1, &encode, rng).unwrap();
+    let proof = create_snark_proof(&params, &r1cs, c1, &encode, &encode_commit, rng).unwrap();
     println!("[snark_spartan]Creating proof...ok");
 
     println!("[snark_spartan]Verify proof...");

@@ -52,6 +52,7 @@ pub mod snark {
         params: SnarkParameters<G>,
         r1cs: R1CSInstance<G>,
         encode: EncodeMemory<G>,
+        encode_comm: EncodeCommit<G>,
     }
 
     #[derive(CanonicalSerialize, CanonicalDeserialize)]
@@ -68,6 +69,7 @@ pub mod snark {
                     params: self.params.clone(),
                     r1cs: self.r1cs.clone(),
                     encode: self.encode,
+                    encode_comm: self.encode_comm.clone(),
                 },
                 VerifyKey {
                     params: self.params,
@@ -106,7 +108,7 @@ pub mod snark {
         c: C,
         rng: &mut R,
     ) -> Result<Proof<G>, SynthesisError> {
-        super::prover::create_snark_proof(&pk.params, &pk.r1cs, c, &pk.encode, rng)
+        super::prover::create_snark_proof(&pk.params, &pk.r1cs, c, &pk.encode, &pk.encode_comm, rng)
     }
 
     pub fn verify_proof<G: Curve>(

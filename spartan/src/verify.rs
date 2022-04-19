@@ -73,6 +73,11 @@ pub fn verify_snark_proof<G: Curve>(
     transcript.append_message(b"Br_claim", &to_bytes!(eval_b_r)?);
     transcript.append_message(b"Cr_claim", &to_bytes!(eval_c_r)?);
 
+    transcript.append_u64(b"n", encode_commit.n as u64);
+    transcript.append_u64(b"m", encode_commit.m as u64);
+    transcript.append_message(b"encode_mem_commit", &to_bytes!(encode_commit.mem_commit)?);
+    transcript.append_message(b"encode_ops_commit", &to_bytes!(encode_commit.ops_commit)?);
+
     Ok(sparse_poly_eval_verify::<G>(
         &params.r1cs_eval_params,
         &proof.r1cs_evals_proof,
@@ -94,10 +99,14 @@ pub fn r1cs_satisfied_verify<G: Curve>(
 ) -> Result<(bool, Vec<G::Fr>, Vec<G::Fr>), SynthesisError> {
     let (eval_a_r, eval_b_r, eval_c_r) = matrix_evals;
 
-    transcript.append_message(b"poly_commitment", &to_bytes!(proof.commit_witness)?);
-
     let t = cmp::max(r1cs.num_aux, r1cs.num_inputs).next_power_of_two();
     let (num_rounds_x, num_rounds_y) = (log2(r1cs.num_constraints) as usize, log2(t) as usize + 1);
+    let mut public_inputs = vec![G::Fr::one()];
+    public_inputs.extend(inputs.clone());
+    public_inputs.extend(&vec![G::Fr::zero(); t - inputs.len() - 1]);
+    transcript.append_message(b"r1cs_input", &to_bytes!(public_inputs)?);
+    transcript.append_message(b"poly_commitment", &to_bytes!(proof.commit_witness)?);
+
     // calculate τ
     let tau: Vec<G::Fr> = (0..num_rounds_x)
         .map(|_i| {

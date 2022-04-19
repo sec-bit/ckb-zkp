@@ -15,13 +15,13 @@ use zkp_r1cs::{
 use crate::{
     commitments::{packing_poly_commit, poly_commit_vec},
     data_structure::{
-        random_bytes_to_fr, AddrTimestamps, DotProductProof, EncodeMemory, EqProof, HashLayerProof,
-        KnowledgeProductCommit, KnowledgeProductProof, KnowledgeProof, LayerProductCircuitProof,
-        MultiCommitmentParameters, NIZKProof, NizkParameters, PolyCommitmentParameters,
-        ProdForMemoryChecking, ProductCircuit, ProductCircuitEvalProof, ProductLayerProof,
-        ProductProof, R1CSEvalsParameters, R1CSEvalsProof, R1CSSatProof, R1CSSatisfiedParameters,
-        SNARKProof, SnarkParameters, SumCheckCommitmentParameters, SumCheckEvalProof,
-        SumCheckProof,
+        random_bytes_to_fr, AddrTimestamps, DotProductProof, EncodeCommit, EncodeMemory, EqProof,
+        HashLayerProof, KnowledgeProductCommit, KnowledgeProductProof, KnowledgeProof,
+        LayerProductCircuitProof, MultiCommitmentParameters, NIZKProof, NizkParameters,
+        PolyCommitmentParameters, ProdForMemoryChecking, ProductCircuit, ProductCircuitEvalProof,
+        ProductLayerProof, ProductProof, R1CSEvalsParameters, R1CSEvalsProof, R1CSSatProof,
+        R1CSSatisfiedParameters, SNARKProof, SnarkParameters, SumCheckCommitmentParameters,
+        SumCheckEvalProof, SumCheckProof,
     },
     inner_product::bullet_inner_product_proof,
     polynomial::{
@@ -134,6 +134,7 @@ pub fn create_snark_proof<G, C, R>(
     r1cs: &R1CSInstance<G>,
     circuit: C,
     encode: &EncodeMemory<G>,
+    encode_commit: &EncodeCommit<G>,
     rng: &mut R,
 ) -> Result<SNARKProof<G>, SynthesisError>
 where
@@ -158,6 +159,12 @@ where
     transcript.append_message(b"Ar_claim", &to_bytes!(eval_a_r).unwrap());
     transcript.append_message(b"Br_claim", &to_bytes!(eval_b_r).unwrap());
     transcript.append_message(b"Cr_claim", &to_bytes!(eval_c_r).unwrap());
+
+    transcript.append_u64(b"n", encode_commit.n as u64);
+    transcript.append_u64(b"m", encode_commit.m as u64);
+    transcript.append_message(b"encode_mem_commit", &to_bytes!(encode_commit.mem_commit)?);
+    transcript.append_message(b"encode_ops_commit", &to_bytes!(encode_commit.ops_commit)?);
+
     let evals = (eval_a_r, eval_b_r, eval_c_r);
     let r1cs_evals_proof = sparse_poly_eval_proof::<G, R>(
         &params.r1cs_eval_params,
@@ -215,6 +222,8 @@ where
     // combine z
     let mut z = prover.aux_assignment.clone();
     z.extend(prover.input_assignment.clone());
+
+    transcript.append_message(b"r1cs_input", &to_bytes!(prover.input_assignment)?);
 
     //1. PC.Commit(pp, ~w)
     let (commit_witness, witness_blinds) = packing_poly_commit::<G, R>(
