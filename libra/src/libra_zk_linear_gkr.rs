@@ -47,6 +47,11 @@ impl<G: Curve> ZKLinearGKRProof<G> {
     ) -> (Self, Vec<G::Fr>) {
         let mut transcript = Transcript::new(b"libra - zk linear gkr");
         let circuit_evals = circuit.evaluate::<G>(inputs, witnesses).unwrap();
+        transcript.append_message(b"input", &to_bytes!(inputs).unwrap());
+        transcript.append_message(
+            b"output",
+            &to_bytes!(circuit_evals[circuit_evals.len() - 1]).unwrap(),
+        );
 
         let (comm_witness, witness_blind) = packing_poly_commit::<G, R>(
             &params.pc_params.gen_n.generators,
@@ -262,16 +267,18 @@ impl<G: Curve> ZKLinearGKRProof<G> {
         &self,
         params: &Parameters<G>,
         circuit: &Circuit,
-        output: &Vec<G::Fr>,
+        outputs: &Vec<G::Fr>,
         inputs: &Vec<G::Fr>,
     ) -> bool {
         let mut transcript = Transcript::new(b"libra - zk linear gkr");
+        transcript.append_message(b"input", &to_bytes!(inputs).unwrap());
+        transcript.append_message(b"output", &to_bytes!(outputs).unwrap());
         transcript.append_message(b"comm_witness", &to_bytes!(self.comm_witness).unwrap());
 
         let mut alpha = G::Fr::one();
         let mut beta = G::Fr::zero();
         let (result_u, gu) = eval_output::<G>(
-            &output,
+            &outputs,
             circuit.layers[circuit.depth - 1].bit_size,
             &mut transcript,
         );
