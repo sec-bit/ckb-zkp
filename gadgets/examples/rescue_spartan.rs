@@ -341,7 +341,8 @@ fn rescue_snark_spartan() {
                 constants: &constants,
             };
 
-            let proof = create_snark_proof(&params, &r1cs, c, &encode, rng).unwrap();
+            let proof =
+                create_snark_proof(&params, &r1cs, c, &encode, &encode_commit, rng).unwrap();
             println!("[snark_spartan]Creating proof...ok");
             total_proving += start.elapsed();
 

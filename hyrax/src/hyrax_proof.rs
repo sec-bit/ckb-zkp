@@ -38,9 +38,11 @@ impl<G: Curve> HyraxProof<G> {
         let mut circuit_evals = Vec::new();
         let mut outputs = Vec::new();
         for i in 0..n {
+            transcript.append_message(b"input_i", &to_bytes!(inputs[i]).unwrap());
             let circuit_eval = circuit.evaluate::<G>(&inputs[i], &witnesses[i]).unwrap();
             outputs.push(circuit_eval[0].clone());
-            circuit_evals.push(circuit_eval);
+            circuit_evals.push(circuit_eval.clone());
+            transcript.append_message(b"output_i", &to_bytes!(circuit_eval[0]).unwrap());
         }
 
         assert_eq!(n.next_power_of_two(), n);
@@ -216,6 +218,11 @@ impl<G: Curve> HyraxProof<G> {
         let n = outputs.len();
         assert_eq!(n.next_power_of_two(), n);
         assert!(n > 0);
+
+        for i in 0..n {
+            transcript.append_message(b"input_i", &to_bytes!(inputs[i]).unwrap());
+            transcript.append_message(b"output_i", &to_bytes!(outputs[i]).unwrap());
+        }
 
         transcript.append_message(b"comm_witness", &to_bytes!(self.comm_witness).unwrap());
 

@@ -26,6 +26,12 @@ impl<G: Curve> LinearGKRProof<G> {
     ) -> (Self, Vec<G::Fr>) {
         let mut transcript = Transcript::new(b"libra - linear gkr");
         let circuit_evals = circuit.evaluate::<G>(inputs, witnesses).unwrap();
+        transcript.append_message(b"input", &to_bytes!(circuit_evals[0]).unwrap());
+        transcript.append_message(
+            b"output",
+            &to_bytes!(circuit_evals[circuit_evals.len() - 1]).unwrap(),
+        );
+
         let mut alpha = G::Fr::one();
         let mut beta = G::Fr::zero();
         // V_0(g^(0)), g^(0)
@@ -34,6 +40,7 @@ impl<G: Curve> LinearGKRProof<G> {
             circuit.layers[circuit.depth - 1].bit_size,
             &mut transcript,
         );
+
         let mut gv = vec![G::Fr::zero(); gu.len()];
         let mut result_v = G::Fr::zero();
         let mut proofs = Vec::new();
@@ -103,12 +110,14 @@ impl<G: Curve> LinearGKRProof<G> {
         (proof, output)
     }
 
-    pub fn verify(&self, circuit: &Circuit, output: &Vec<G::Fr>, input: &Vec<G::Fr>) -> bool {
+    pub fn verify(&self, circuit: &Circuit, outputs: &Vec<G::Fr>, inputs: &Vec<G::Fr>) -> bool {
         let mut transcript = Transcript::new(b"libra - linear gkr");
+        transcript.append_message(b"input", &to_bytes!(inputs).unwrap());
+        transcript.append_message(b"output", &to_bytes!(outputs).unwrap());
         let mut alpha = G::Fr::one();
         let mut beta = G::Fr::zero();
         let (mut result_u, _) = eval_output::<G>(
-            &output,
+            &outputs,
             circuit.layers[circuit.depth - 1].bit_size,
             &mut transcript,
         );
@@ -177,8 +186,8 @@ impl<G: Curve> LinearGKRProof<G> {
                 eval_rv_y = eval_rv_final[0];
             }
         }
-        let eval_ru_input = eval_value::<G>(&input, &ru_vec);
-        let eval_rv_input = eval_value::<G>(&input, &rv_vec);
+        let eval_ru_input = eval_value::<G>(&inputs, &ru_vec);
+        let eval_rv_input = eval_value::<G>(&inputs, &rv_vec);
         (eval_ru_x == eval_ru_input) && (eval_rv_y == eval_rv_input)
     }
 }
