@@ -313,7 +313,6 @@ where
     R: Rng,
 {
     let mut transcript = Transcript::new(b"protocol3");
-
     let n = input.aL.len();
     assert_eq!(n, input.aR.len());
     assert_eq!(n, input.aO.len());
@@ -334,8 +333,24 @@ where
     // choose blinding vectors sL, sR
     let n_max = cmp::max(n, n_w);
     let N = n_max.next_power_of_two(); // N must be greater than or equal to n & n_w
+
     transcript.append_u64(b"n", n as u64);
     transcript.append_u64(b"N", N as u64);
+    transcript.append_u64(b"k", gens.k as u64);
+    transcript.append_u64(b"n_w", gens.n_w as u64);
+
+    transcript.append_message(b"g", &to_bytes!(gens.g).unwrap());
+    transcript.append_message(b"h", &to_bytes!(gens.h).unwrap());
+    transcript.append_message(b"u", &to_bytes!(gens.u).unwrap());
+    transcript.append_message(b"g_vec_N", &to_bytes!(gens.g_vec_N).unwrap());
+    transcript.append_message(b"h_vec_N", &to_bytes!(gens.h_vec_N).unwrap());
+
+    transcript.append_message(b"cL", &to_bytes!(r1cs_circuit.CL).unwrap());
+    transcript.append_message(b"cR", &to_bytes!(r1cs_circuit.CR).unwrap());
+    transcript.append_message(b"cO", &to_bytes!(r1cs_circuit.CO).unwrap());
+
+    transcript.append_message(b"s", &to_bytes!(input.s).unwrap());
+
     let mut sL: Vec<G::Fr> = (0..n_max).map(|_| G::Fr::rand(rng)).collect();
     let mut sR: Vec<G::Fr> = (0..n_max).map(|_| G::Fr::rand(rng)).collect();
 
@@ -537,6 +552,8 @@ where
     transcript.append_message(b"t_x", &to_bytes!(t_x).unwrap());
     transcript.append_message(b"tau_x", &to_bytes!(tau_x).unwrap());
     transcript.append_message(b"mu", &to_bytes!(mu).unwrap());
+    transcript.append_message(b"l_x", &to_bytes!(l_x).unwrap());
+    transcript.append_message(b"r_x", &to_bytes!(r_x).unwrap());
 
     let mut buf_x_1 = [0u8; 31];
     transcript.challenge_bytes(b"x_1", &mut buf_x_1); // notice: challenge x in protocol1 to avoid cheating from prover
@@ -549,9 +566,11 @@ where
         .into_affine();
 
     let IPP = inner_product_proof::prove(
+        &mut transcript,
         gens.g_vec_N.clone(),
         gens.h_vec_N.clone(),
         ux,
+        &IPP_P.into_projective(),
         l_x.clone(),
         r_x.clone(),
     );
@@ -601,6 +620,8 @@ pub fn verify_proof<G: Curve>(
     let mut transcript = Transcript::new(b"protocol3");
     let zero = G::Fr::zero();
     let one = G::Fr::one();
+    let mut r1_public_inputs = vec![one];
+    r1_public_inputs.extend(public_inputs);
 
     // generators
     let g_vec: Vec<G::Affine> = gens.g_vec_N.clone();
@@ -610,6 +631,20 @@ pub fn verify_proof<G: Curve>(
 
     transcript.append_u64(b"n", gens.n as u64);
     transcript.append_u64(b"N", gens.N as u64);
+    transcript.append_u64(b"k", gens.k as u64);
+    transcript.append_u64(b"n_w", gens.n_w as u64);
+
+    transcript.append_message(b"g", &to_bytes!(gens.g).unwrap());
+    transcript.append_message(b"h", &to_bytes!(gens.h).unwrap());
+    transcript.append_message(b"u", &to_bytes!(gens.u).unwrap());
+    transcript.append_message(b"g_vec_N", &to_bytes!(gens.g_vec_N).unwrap());
+    transcript.append_message(b"h_vec_N", &to_bytes!(gens.h_vec_N).unwrap());
+
+    transcript.append_message(b"cL", &to_bytes!(r1cs_circuit.CL).unwrap());
+    transcript.append_message(b"cR", &to_bytes!(r1cs_circuit.CR).unwrap());
+    transcript.append_message(b"cO", &to_bytes!(r1cs_circuit.CO).unwrap());
+
+    transcript.append_message(b"s", &to_bytes!(r1_public_inputs).unwrap());
 
     transcript.append_message(b"A_I", &to_bytes!(proof.A_I).unwrap());
     transcript.append_message(b"A_O", &to_bytes!(proof.A_O).unwrap());
@@ -713,8 +748,7 @@ pub fn verify_proof<G: Curve>(
             }
         }
     }
-    let mut r1_public_inputs = vec![G::Fr::one()];
-    r1_public_inputs.extend(public_inputs);
+
     let c = vector_matrix_product_t::<G::Fr>(&r1_public_inputs, &C1);
 
     // zQ * WL, zQ * WR
@@ -754,6 +788,9 @@ pub fn verify_proof<G: Curve>(
     transcript.append_message(b"t_x", &to_bytes!(proof.t_x).unwrap());
     transcript.append_message(b"tau_x", &to_bytes!(proof.tau_x).unwrap());
     transcript.append_message(b"mu", &to_bytes!(proof.mu).unwrap());
+    transcript.append_message(b"l_x", &to_bytes!(proof.l_x).unwrap());
+    transcript.append_message(b"r_x", &to_bytes!(proof.r_x).unwrap());
+
     let mut buf_x_1 = [0u8; 31];
     transcript.challenge_bytes(b"x_1", &mut buf_x_1); // notice: challenge x in protocol1 to avoid cheating from prover
     let x_1 = random_bytes_to_fr::<G::Fr>(&buf_x_1);
@@ -763,6 +800,7 @@ pub fn verify_proof<G: Curve>(
     // USE IPP here
     // assert_eq!(proof.t_x, inner_product::<G::Fr>(&proof.l_x, &proof.r_x));
     if !inner_product_proof::verify(
+        &mut transcript,
         gens.g_vec_N.clone(),
         gens.h_vec_N.clone(),
         ux,

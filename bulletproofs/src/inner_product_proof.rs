@@ -20,16 +20,24 @@ pub struct Proof<G: Curve> {
 
 // protocol2 should not be used independently
 pub fn prove<G: Curve>(
+    transcript: &mut Transcript,
     mut g_vec: Vec<G::Affine>,
     mut h_vec: Vec<G::Affine>,
     u: G::Affine,
+    P: &G::Projective,
     mut a_vec: Vec<G::Fr>,
     mut b_vec: Vec<G::Fr>,
 ) -> Proof<G> {
-    let mut transcript = Transcript::new(b"protocol2");
     let mut n = a_vec.len();
     assert!(n.is_power_of_two());
     assert_eq!(n, b_vec.len());
+
+    transcript.append_u64(b"n", n as u64);
+    transcript.append_message(b"u", &to_bytes!(u).unwrap());
+    transcript.append_message(b"P", &to_bytes!(P).unwrap());
+
+    transcript.append_message(b"g_vec", &to_bytes![g_vec].unwrap());
+    transcript.append_message(b"h_vec", &to_bytes![h_vec].unwrap());
 
     let lg_n = n.trailing_zeros() as usize;
     let mut L_vec: Vec<G::Affine> = Vec::with_capacity(lg_n);
@@ -103,16 +111,22 @@ pub fn prove<G: Curve>(
 }
 
 pub fn verify<G: Curve>(
+    transcript: &mut Transcript,
     g_vec: Vec<G::Affine>,
     h_vec: Vec<G::Affine>,
     u: G::Affine,
     P: &G::Projective,
     proof: &Proof<G>,
 ) -> bool {
-    let mut transcript = Transcript::new(b"protocol2");
     let lg_n = proof.L_vec.len();
     let n = 1 << lg_n;
     assert_eq!(lg_n, proof.R_vec.len());
+    transcript.append_u64(b"n", n as u64);
+    transcript.append_message(b"u", &to_bytes!(u).unwrap());
+    transcript.append_message(b"P", &to_bytes!(P).unwrap());
+
+    transcript.append_message(b"g_vec", &to_bytes![g_vec].unwrap());
+    transcript.append_message(b"h_vec", &to_bytes![h_vec].unwrap());
 
     let mut x_sq_vec = Vec::with_capacity(lg_n);
     let mut x_inv_sq_vec = Vec::with_capacity(lg_n);
@@ -204,18 +218,22 @@ mod tests {
         println!("Time elapsed in a_vec b_vec is: {:?}", duration);
 
         let t3 = Instant::now();
+        let mut prover = Transcript::new(b"ipptest");
         let proof = prove::<G>(
+            &mut prover,
             g_vec.clone(),
             h_vec.clone(),
             u,
+            &P,
             a_vec.clone(),
             b_vec.clone(),
         );
         let duration = t3.elapsed();
         println!("Time elapsed in prove is: {:?}", duration);
 
+        let mut verifier = Transcript::new(b"ipptest");
         let t4 = Instant::now();
-        assert!(verify::<G>(g_vec.clone(), h_vec.clone(), u, &P, &proof));
+        assert!(verify::<G>(&mut verifier, g_vec.clone(), h_vec.clone(), u, &P, &proof));
         let duration = t4.elapsed();
         println!(
             "Time elapsed in verify is: {:?} \n >>>>>>>>>>>>>>>>>>>",
