@@ -4,7 +4,7 @@ use core::cmp;
 use zkp_curve::Curve;
 use merlin::Transcript;
 
-use crate::evaluate::eval_eq;
+use crate::evaluate::{eval_eq, random_bytes_to_fr};
 use crate::Vec;
 
 ///operation
@@ -184,7 +184,9 @@ impl Circuit {
         Ok(evals)
     }
 
-    pub fn insert_transcript(&self,transcript: &mut Transcript){
+    pub fn circuit_to_hash<G: Curve>(&self) -> G::Fr{
+
+        let mut transcript = Transcript::new(b"libra - circuit_to_hash");
 
         transcript.append_u64(b"circuit_depth", self.depth as u64);
         for i in 0..self.layers.len(){
@@ -197,6 +199,10 @@ impl Circuit {
                 transcript.append_u64(b"circuit_gate_right_node", self.layers[i].gates[j].right_node as u64);
             }
         }
+
+        let mut buf = [0u8; 31];
+        transcript.challenge_bytes(b"challenge_nextround", &mut buf);
+        random_bytes_to_fr::<G>(&buf)
     }
 }
 

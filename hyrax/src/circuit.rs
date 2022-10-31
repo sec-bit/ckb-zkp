@@ -3,6 +3,7 @@ use ark_std::log2;
 use core::cmp;
 use zkp_curve::Curve;
 use merlin::Transcript;
+use crate::evaluate::random_bytes_to_fr;
 
 use crate::Vec;
 
@@ -161,8 +162,8 @@ impl Circuit {
         Ok(evals)
     }
 
-    pub fn insert_transcript(&self,transcript: &mut Transcript){
-
+    pub fn circuit_to_hash<G: Curve>(&self) -> G::Fr{
+        let mut transcript = Transcript::new(b"hyrax - circuit_to_hash");
         transcript.append_u64(b"circuit_depth", self.depth as u64);
         for i in 0..self.layers.len(){
             transcript.append_u64(b"circuit_gate_count", self.layers[i].gates_count as u64);
@@ -174,6 +175,10 @@ impl Circuit {
                 transcript.append_u64(b"circuit_gate_right_node", self.layers[i].gates[j].right_node as u64);
             }
         }
+
+        let mut buf = [0u8; 31];
+        transcript.challenge_bytes(b"challenge_nextround", &mut buf);
+        random_bytes_to_fr::<G>(&buf)
     }
 }
 

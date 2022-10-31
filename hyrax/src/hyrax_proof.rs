@@ -31,11 +31,14 @@ impl<G: Curve> HyraxProof<G> {
         witnesses: &Vec<Vec<G::Fr>>,
         inputs: &Vec<Vec<G::Fr>>,
         circuit: &Circuit,
+        circuit_to_hash: G::Fr,
+        param_to_hash: G::Fr,
         n: usize,
         rng: &mut R,
     ) -> (Self, Vec<Vec<G::Fr>>) {
         let mut transcript = Transcript::new(b"hyrax - linear gkr");
-        circuit.insert_transcript(&mut transcript);
+        transcript.append_message(b"circuit_to_hash", &to_bytes!(circuit_to_hash).unwrap());
+        transcript.append_message(b"param_to_hash", &to_bytes!(param_to_hash).unwrap());   
 
         let mut circuit_evals = Vec::new();
         let mut outputs = Vec::new();
@@ -214,10 +217,13 @@ impl<G: Curve> HyraxProof<G> {
         outputs: &Vec<Vec<G::Fr>>,
         inputs: &Vec<Vec<G::Fr>>,
         circuit: &Circuit,
+        circuit_to_hash: G::Fr,
+        param_to_hash: G::Fr,
     ) -> bool {
         let mut transcript = Transcript::new(b"hyrax - linear gkr");
-        circuit.insert_transcript(&mut transcript);
-        
+        transcript.append_message(b"circuit_to_hash", &to_bytes!(circuit_to_hash).unwrap());
+        transcript.append_message(b"param_to_hash", &to_bytes!(param_to_hash).unwrap());   
+
         let n = outputs.len();
         assert_eq!(n.next_power_of_two(), n);
         assert!(n > 0);

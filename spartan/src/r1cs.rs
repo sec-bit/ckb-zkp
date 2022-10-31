@@ -8,7 +8,8 @@ use zkp_r1cs::{
 use merlin::Transcript;
 // use rand::Rng;
 
-use crate::{BTreeMap, String, Vec};
+use crate::{BTreeMap, String, Vec, data_structure::random_bytes_to_fr};
+
 
 #[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct R1CSInstance<G: Curve> {
@@ -20,43 +21,50 @@ pub struct R1CSInstance<G: Curve> {
     pub c_matrix: Vec<Vec<(G::Fr, Index)>>,
 }
 
-pub fn insert_r1cs_transcript<G: Curve>(r1cs: &R1CSInstance<G>,transcript: &mut Transcript){
-
-    transcript.append_u64(b"num_inputs", r1cs.num_inputs as u64);
-    transcript.append_u64(b"num_aux", r1cs.num_aux as u64);
-    transcript.append_u64(b"num_constraints", r1cs.num_constraints as u64);
-
-    for matrix in r1cs.a_matrix.iter(){
-        
-        for i in 0..matrix.len(){
-            transcript.append_message(b"a_matrix", &to_bytes!(matrix[i].0).unwrap());
-            match matrix[i].1 {
-                Index::Aux(index) => transcript.append_u64(b"a_matrix_index_aux", index as u64),
-                Index::Input(index) => transcript.append_u64(b"a_matrix_index_input", index as u64),
+impl <G: Curve> R1CSInstance<G> {
+    pub fn r1cs_to_hash(&self)->G::Fr{
+        let mut transcript = Transcript::new(b"Spartan r1cs");
+            
+        transcript.append_u64(b"num_inputs", self.num_inputs as u64);
+        transcript.append_u64(b"num_aux", self.num_aux as u64);
+        transcript.append_u64(b"num_constraints", self.num_constraints as u64);
+    
+        for matrix in self.a_matrix.iter(){
+            
+            for i in 0..matrix.len(){
+                transcript.append_message(b"a_matrix", &to_bytes!(matrix[i].0).unwrap());
+                match matrix[i].1 {
+                    Index::Aux(index) => transcript.append_u64(b"a_matrix_index_aux", index as u64),
+                    Index::Input(index) => transcript.append_u64(b"a_matrix_index_input", index as u64),
+                }
             }
         }
-    }
-    for matrix in r1cs.b_matrix.iter(){
-        
-        for i in 0..matrix.len(){
-            transcript.append_message(b"b_matrix", &to_bytes!(matrix[i].0).unwrap());
-            match matrix[i].1 {
-                Index::Aux(index) => transcript.append_u64(b"b_matrix_index_aux", index as u64),
-                Index::Input(index) => transcript.append_u64(b"b_matrix_index_input", index as u64),
+        for matrix in self.b_matrix.iter(){
+            
+            for i in 0..matrix.len(){
+                transcript.append_message(b"b_matrix", &to_bytes!(matrix[i].0).unwrap());
+                match matrix[i].1 {
+                    Index::Aux(index) => transcript.append_u64(b"b_matrix_index_aux", index as u64),
+                    Index::Input(index) => transcript.append_u64(b"b_matrix_index_input", index as u64),
+                }
             }
         }
-    }
-    for matrix in r1cs.c_matrix.iter(){
-        
-        for i in 0..matrix.len(){
-            transcript.append_message(b"c_matrix", &to_bytes!(matrix[i].0).unwrap());
-            match matrix[i].1 {
-                Index::Aux(index) => transcript.append_u64(b"c_matrix_index_aux", index as u64),
-                Index::Input(index) => transcript.append_u64(b"c_matrix_index_input", index as u64),
+        for matrix in self.c_matrix.iter(){
+            
+            for i in 0..matrix.len(){
+                transcript.append_message(b"c_matrix", &to_bytes!(matrix[i].0).unwrap());
+                match matrix[i].1 {
+                    Index::Aux(index) => transcript.append_u64(b"c_matrix_index_aux", index as u64),
+                    Index::Input(index) => transcript.append_u64(b"c_matrix_index_input", index as u64),
+                }
             }
         }
+    
+        let mut buf = [0u8; 31];
+        transcript.challenge_bytes(b"challenge_nextround", &mut buf);
+        random_bytes_to_fr::<G>(&buf)
     }
-
+    
 }
 
 

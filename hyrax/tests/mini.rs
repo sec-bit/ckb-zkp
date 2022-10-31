@@ -34,6 +34,8 @@ fn mini_hyrax() {
     let rng = &mut test_rng();
 
     let params = Parameters::<E>::new(rng, 8);
+    let param_to_hash = params.param_to_hash();
+
     let mut vk_bytes = Vec::new();
     params.serialize(&mut vk_bytes).unwrap();
     println!("[Hyrax] VerifyKey length : {}", vk_bytes.len());
@@ -52,8 +54,10 @@ fn mini_hyrax() {
     let layers = layers();
 
     let circuit = Circuit::new(4, 4, &layers); // input & witness length is 4.
+    let circuit_to_hash = circuit.circuit_to_hash::<E>();
+
     let (proof, output) =
-        HyraxProof::prover::<_>(&params, &witnesses, &inputs, &circuit, witnesses.len(), rng);
+        HyraxProof::prover::<_>(&params, &witnesses, &inputs, &circuit,  circuit_to_hash, param_to_hash, witnesses.len(), rng);
     let p_time = p_start.elapsed();
     println!("[Hyrax] Prove time       : {:?}", p_time);
 
@@ -62,11 +66,11 @@ fn mini_hyrax() {
     println!("[Hyrax] Proof length     : {}", proof_bytes.len());
 
     let v_start = Instant::now();
-    assert!(proof.verify(&params, &output, &inputs, &circuit));
+    assert!(proof.verify(&params, &output, &inputs, &circuit, circuit_to_hash, param_to_hash));
     let v_time = v_start.elapsed();
     println!("[Hyrax] Verify time      : {:?}", v_time);
 
     let params2 = Parameters::<E>::deserialize(&vk_bytes[..]).unwrap();
     let proof2 = HyraxProof::<E>::deserialize(&proof_bytes[..]).unwrap();
-    assert!(proof2.verify(&params2, &output, &inputs, &circuit));
+    assert!(proof2.verify(&params2, &output, &inputs, &circuit, circuit_to_hash, param_to_hash));
 }

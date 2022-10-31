@@ -45,14 +45,15 @@ fn test_libra_linear_gkr_2() {
     println!("prepare for constructing circuit...ok");
 
     let circuit = Circuit::new(inputs.len(), witnesses.len(), &layers);
+    let circuit_to_hash = circuit.circuit_to_hash::<E>();
     println!("construct circuit...ok");
 
-    let (proof, output) = LinearGKRProof::<E>::prover(&circuit, &inputs, &witnesses);
+    let (proof, output) = LinearGKRProof::<E>::prover(&circuit, &inputs, &witnesses, circuit_to_hash);
     println!("generate proof...ok");
 
     let mut inputs2 = witnesses.clone();
     inputs2.extend(&inputs);
-    let result = proof.verify(&circuit, &output, &inputs2);
+    let result = proof.verify(&circuit, &output, &inputs2, circuit_to_hash);
     println!("verifier...{}", result);
 }
 
@@ -65,15 +66,17 @@ fn test_libra_zk_linear_gkr_2() {
     println!("prepare for constructing circuit...ok");
 
     let params = Parameters::<E>::new(rng, 8);
+    let param_to_hash = params.param_to_hash();
     println!("prepare for constructing circuit...ok");
 
     let circuit = Circuit::new(inputs.len(), witnesses.len(), &layers);
+    let circuit_to_hash = circuit.circuit_to_hash::<E>();
     println!("construct circuit...ok");
 
     let (proof, output) =
-        ZKLinearGKRProof::prover::<_>(&params, &circuit, &inputs, &witnesses, rng);
+        ZKLinearGKRProof::prover::<_>(&params, &circuit, &inputs, &witnesses, circuit_to_hash, param_to_hash, rng);
     println!("generate proof...ok");
 
-    let result = proof.verify(&params, &circuit, &output, &inputs);
+    let result = proof.verify(&params, &circuit, &output, &inputs, circuit_to_hash, param_to_hash);
     println!("verifier...{}", result);
 }

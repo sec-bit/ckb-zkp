@@ -55,6 +55,9 @@ fn mini_spartan_snark() {
         num: 10, // 10-times constraints
     };
     let params = generate_random_parameters::<E, _, _>(c, rng).unwrap();
+    let r1cs_hash = params.r1cs.r1cs_to_hash();
+    let params_hash = params.params.param_to_hash();
+    let encode_hash = params.encode_comm.encode_to_hash();
 
     let (pk, vk) = params.keypair();
 
@@ -71,7 +74,7 @@ fn mini_spartan_snark() {
     };
 
     let p_start = Instant::now();
-    let proof = create_random_proof(&pk, c1, rng).unwrap();
+    let proof = create_random_proof(&pk, c1,r1cs_hash, params_hash,encode_hash, rng).unwrap();
     let p_time = p_start.elapsed();
     println!("[Spartan Snark] Prove time       : {:?}", p_time);
 
@@ -80,13 +83,13 @@ fn mini_spartan_snark() {
     println!("[Spartan Snark] Proof length     : {}", proof_bytes.len());
 
     let v_start = Instant::now();
-    assert!(verify_proof(&vk, &proof, &[Fr::from(10u32)]).unwrap());
+    assert!(verify_proof(&vk, &proof, &[Fr::from(10u32)],r1cs_hash, params_hash, encode_hash).unwrap());
     let v_time = v_start.elapsed();
     println!("[Spartan Snark] Verify time      : {:?}", v_time);
 
     let vk2 = VerifyKey::<E>::deserialize(&vk_bytes[..]).unwrap();
     let proof2 = Proof::<E>::deserialize(&proof_bytes[..]).unwrap();
-    assert!(verify_proof(&vk2, &proof2, &[Fr::from(10u32)]).unwrap());
+    assert!(verify_proof(&vk2, &proof2, &[Fr::from(10u32)],r1cs_hash, params_hash, encode_hash).unwrap());
 }
 
 #[test]
@@ -105,6 +108,8 @@ fn mini_spartan_nizk() {
         num: 10, // 10-times constraints
     };
     let params = generate_random_parameters::<E, _, _>(c, rng).unwrap();
+    let r1cs_hash = params.r1cs.r1cs_to_hash();
+    let params_hash = params.params.param_to_hash();
 
     let (pk, vk) = params.keypair();
 
@@ -121,7 +126,7 @@ fn mini_spartan_nizk() {
     };
 
     let p_start = Instant::now();
-    let proof = create_random_proof(&pk, c1, rng).unwrap();
+    let proof = create_random_proof(&pk, c1, r1cs_hash, params_hash, rng).unwrap();
     let p_time = p_start.elapsed();
     println!("[Spartan Nizk] Prove time        : {:?}", p_time);
 
@@ -130,11 +135,11 @@ fn mini_spartan_nizk() {
     println!("[Spartan Nizk] Proof length      : {}", proof_bytes.len());
 
     let v_start = Instant::now();
-    assert!(verify_proof(&vk, &proof, &[Fr::from(10u32)]).unwrap());
+    assert!(verify_proof(&vk, &proof, &[Fr::from(10u32)],r1cs_hash, params_hash,).unwrap());
     let v_time = v_start.elapsed();
     println!("[Spartan Nizk] Verify time       : {:?}", v_time);
 
     let vk2 = VerifyKey::<E>::deserialize(&vk_bytes[..]).unwrap();
     let proof2 = Proof::<E>::deserialize(&proof_bytes[..]).unwrap();
-    assert!(verify_proof(&vk2, &proof2, &[Fr::from(10u32)]).unwrap());
+    assert!(verify_proof(&vk2, &proof2, &[Fr::from(10u32)],r1cs_hash, params_hash,).unwrap());
 }

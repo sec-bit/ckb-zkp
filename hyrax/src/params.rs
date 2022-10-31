@@ -1,7 +1,9 @@
-use ark_ff::UniformRand;
+use ark_ff::{UniformRand, to_bytes};
 use ark_serialize::*;
 use rand::Rng;
 use zkp_curve::{Curve, ProjectiveCurve};
+use crate::evaluate::random_bytes_to_fr;
+use merlin::Transcript;
 
 use crate::Vec;
 
@@ -20,6 +22,22 @@ impl<G: Curve> Parameters<G> {
             pc_params,
             sc_params,
         }
+    }
+
+    pub fn param_to_hash(&self)-> G::Fr {
+        let mut transcript = Transcript::new(b"hyrax - param_to_hash");
+        
+        transcript.append_u64(b"r1cs_satisfied_params_pc_params_n", self.pc_params.n as u64);
+        self.pc_params.gen_n.param_to_hash(&mut transcript);
+        self.pc_params.gen_1.param_to_hash(&mut transcript);
+        
+        self.sc_params.gen_1.param_to_hash(&mut transcript);
+        self.sc_params.gen_3.param_to_hash(&mut transcript);
+        self.sc_params.gen_4.param_to_hash(&mut transcript);
+
+        let mut buf = [0u8; 31];
+        transcript.challenge_bytes(b"challenge_nextround", &mut buf);
+        random_bytes_to_fr::<G>(&buf)
     }
 }
 
@@ -84,5 +102,13 @@ impl<G: Curve> MultiCommitmentSetupParameters<G> {
             .collect::<Vec<G::Affine>>();
         let h = G::Projective::rand(rng).into_affine();
         Self { n, generators, h }
+    }
+
+    pub fn param_to_hash(&self,transcript: &mut Transcript,) {
+        transcript.append_u64(b"MultiCommitmentParameters_n", self.n as u64);
+        transcript.append_message(b"MultiCommitmentParameters_h", &to_bytes!(self.h).unwrap());
+        for i in 0..self.generators.len(){
+            transcript.append_message(b"MultiCommitmentParameters_generators", &to_bytes!(self.generators[i]).unwrap());
+        }
     }
 }
