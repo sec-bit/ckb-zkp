@@ -28,7 +28,7 @@ use crate::{
         bound_poly_var_bot, combine_with_n, combine_with_r, eval_eq, evaluate_matrix_vec,
         evaluate_matrix_vec_col, evaluate_mle,
     },
-    r1cs::R1CSInstance,
+    r1cs::{R1CSInstance, insert_r1cs_transcript},
     spark::{
         circuit_eval_opt, equalize_length, evaluate_dot_product_circuit, evaluate_product_circuit,
     },
@@ -114,6 +114,8 @@ where
 {
     let mut transcript = Transcript::new(b"Spartan NIZK proof");
 
+    insert_r1cs_transcript(&r1cs, &mut transcript);
+
     let (r1cs_sat_proof, (rx, ry)) = r1cs_satisfied_prover::<G, C, R>(
         &params.r1cs_satisfied_params,
         r1cs,
@@ -143,6 +145,7 @@ where
     R: Rng,
 {
     let mut transcript = Transcript::new(b"Spartan SNARK proof");
+    insert_r1cs_transcript(&r1cs, &mut transcript);
 
     let (r1cs_sat_proof, (rx, ry)) = r1cs_satisfied_prover::<G, C, R>(
         &params.r1cs_satisfied_params,

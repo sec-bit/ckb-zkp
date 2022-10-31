@@ -46,6 +46,8 @@ impl<G: Curve> ZKLinearGKRProof<G> {
         rng: &mut R,
     ) -> (Self, Vec<G::Fr>) {
         let mut transcript = Transcript::new(b"libra - zk linear gkr");
+        circuit.insert_transcript(&mut transcript);
+
         let circuit_evals = circuit.evaluate::<G>(inputs, witnesses).unwrap();
         transcript.append_message(b"input", &to_bytes!(inputs).unwrap());
         transcript.append_message(
@@ -271,6 +273,8 @@ impl<G: Curve> ZKLinearGKRProof<G> {
         inputs: &Vec<G::Fr>,
     ) -> bool {
         let mut transcript = Transcript::new(b"libra - zk linear gkr");
+        circuit.insert_transcript(&mut transcript);
+        
         transcript.append_message(b"input", &to_bytes!(inputs).unwrap());
         transcript.append_message(b"output", &to_bytes!(outputs).unwrap());
         transcript.append_message(b"comm_witness", &to_bytes!(self.comm_witness).unwrap());

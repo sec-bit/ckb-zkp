@@ -17,7 +17,7 @@ use crate::{
     },
     inner_product::bullet_inner_product_verify,
     polynomial::{bound_poly_var_bot, eval_eq, eval_eq_x_y, evaluate_mle, sparse_evaluate_value},
-    r1cs::R1CSInstance,
+    r1cs::{R1CSInstance, insert_r1cs_transcript},
     spark::equalize_length,
     Vec,
 };
@@ -29,6 +29,7 @@ pub fn verify_nizk_proof<G: Curve>(
     proof: &NIZKProof<G>,
 ) -> Result<bool, SynthesisError> {
     let mut transcript = Transcript::new(b"Spartan NIZK proof");
+    insert_r1cs_transcript(&r1cs, &mut transcript);
 
     let (rx, ry) = &proof.r;
     let eval_a_r = evaluate_mle::<G>(&r1cs.a_matrix, rx, ry);
@@ -54,6 +55,7 @@ pub fn verify_snark_proof<G: Curve>(
     encode_commit: &EncodeCommit<G>,
 ) -> Result<bool, SynthesisError> {
     let mut transcript = Transcript::new(b"Spartan SNARK proof");
+    insert_r1cs_transcript(&r1cs, &mut transcript);
 
     let (result, rx, ry) = r1cs_satisfied_verify::<G>(
         &params.r1cs_satisfied_params,

@@ -35,6 +35,8 @@ impl<G: Curve> HyraxProof<G> {
         rng: &mut R,
     ) -> (Self, Vec<Vec<G::Fr>>) {
         let mut transcript = Transcript::new(b"hyrax - linear gkr");
+        circuit.insert_transcript(&mut transcript);
+
         let mut circuit_evals = Vec::new();
         let mut outputs = Vec::new();
         for i in 0..n {
@@ -214,7 +216,8 @@ impl<G: Curve> HyraxProof<G> {
         circuit: &Circuit,
     ) -> bool {
         let mut transcript = Transcript::new(b"hyrax - linear gkr");
-
+        circuit.insert_transcript(&mut transcript);
+        
         let n = outputs.len();
         assert_eq!(n.next_power_of_two(), n);
         assert!(n > 0);

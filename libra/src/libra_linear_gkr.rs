@@ -25,6 +25,8 @@ impl<G: Curve> LinearGKRProof<G> {
         witnesses: &Vec<G::Fr>,
     ) -> (Self, Vec<G::Fr>) {
         let mut transcript = Transcript::new(b"libra - linear gkr");
+        circuit.insert_transcript(&mut transcript);
+
         let circuit_evals = circuit.evaluate::<G>(inputs, witnesses).unwrap();
         transcript.append_message(b"input", &to_bytes!(circuit_evals[0]).unwrap());
         transcript.append_message(
@@ -112,6 +114,8 @@ impl<G: Curve> LinearGKRProof<G> {
 
     pub fn verify(&self, circuit: &Circuit, outputs: &Vec<G::Fr>, inputs: &Vec<G::Fr>) -> bool {
         let mut transcript = Transcript::new(b"libra - linear gkr");
+        circuit.insert_transcript(&mut transcript);
+        
         transcript.append_message(b"input", &to_bytes!(inputs).unwrap());
         transcript.append_message(b"output", &to_bytes!(outputs).unwrap());
         let mut alpha = G::Fr::one();

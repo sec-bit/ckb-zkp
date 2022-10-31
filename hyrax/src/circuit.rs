@@ -2,6 +2,7 @@ use ark_ff::Zero;
 use ark_std::log2;
 use core::cmp;
 use zkp_curve::Curve;
+use merlin::Transcript;
 
 use crate::Vec;
 
@@ -158,6 +159,21 @@ impl Circuit {
         }
         assert_eq!(evals.len(), self.depth);
         Ok(evals)
+    }
+
+    pub fn insert_transcript(&self,transcript: &mut Transcript){
+
+        transcript.append_u64(b"circuit_depth", self.depth as u64);
+        for i in 0..self.layers.len(){
+            transcript.append_u64(b"circuit_gate_count", self.layers[i].gates_count as u64);
+            transcript.append_u64(b"circuit_bit_size", self.layers[i].bit_size as u64);
+            for j in 0..self.layers[i].gates.len(){
+                transcript.append_u64(b"circuit_gate_g", self.layers[i].gates[j].g as u64);
+                transcript.append_u64(b"circuit_gate_op", self.layers[i].gates[j].op as u64);
+                transcript.append_u64(b"circuit_gate_left_node", self.layers[i].gates[j].left_node as u64);
+                transcript.append_u64(b"circuit_gate_right_node", self.layers[i].gates[j].right_node as u64);
+            }
+        }
     }
 }
 

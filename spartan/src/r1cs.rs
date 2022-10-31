@@ -1,10 +1,12 @@
-use ark_ff::{Field, One, Zero};
+use ark_ff::{Field, One, Zero,to_bytes};
 use ark_serialize::*;
 use ark_std::log2;
 use zkp_curve::Curve;
 use zkp_r1cs::{
     ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable,
 };
+use merlin::Transcript;
+// use rand::Rng;
 
 use crate::{BTreeMap, String, Vec};
 
@@ -17,6 +19,46 @@ pub struct R1CSInstance<G: Curve> {
     pub b_matrix: Vec<Vec<(G::Fr, Index)>>,
     pub c_matrix: Vec<Vec<(G::Fr, Index)>>,
 }
+
+pub fn insert_r1cs_transcript<G: Curve>(r1cs: &R1CSInstance<G>,transcript: &mut Transcript){
+
+    transcript.append_u64(b"num_inputs", r1cs.num_inputs as u64);
+    transcript.append_u64(b"num_aux", r1cs.num_aux as u64);
+    transcript.append_u64(b"num_constraints", r1cs.num_constraints as u64);
+
+    for matrix in r1cs.a_matrix.iter(){
+        
+        for i in 0..matrix.len(){
+            transcript.append_message(b"a_matrix", &to_bytes!(matrix[i].0).unwrap());
+            match matrix[i].1 {
+                Index::Aux(index) => transcript.append_u64(b"a_matrix_index_aux", index as u64),
+                Index::Input(index) => transcript.append_u64(b"a_matrix_index_input", index as u64),
+            }
+        }
+    }
+    for matrix in r1cs.b_matrix.iter(){
+        
+        for i in 0..matrix.len(){
+            transcript.append_message(b"b_matrix", &to_bytes!(matrix[i].0).unwrap());
+            match matrix[i].1 {
+                Index::Aux(index) => transcript.append_u64(b"b_matrix_index_aux", index as u64),
+                Index::Input(index) => transcript.append_u64(b"b_matrix_index_input", index as u64),
+            }
+        }
+    }
+    for matrix in r1cs.c_matrix.iter(){
+        
+        for i in 0..matrix.len(){
+            transcript.append_message(b"c_matrix", &to_bytes!(matrix[i].0).unwrap());
+            match matrix[i].1 {
+                Index::Aux(index) => transcript.append_u64(b"c_matrix_index_aux", index as u64),
+                Index::Input(index) => transcript.append_u64(b"c_matrix_index_input", index as u64),
+            }
+        }
+    }
+
+}
+
 
 impl<G: Curve> ConstraintSystem<G::Fr> for R1CSInstance<G> {
     type Root = Self;
