@@ -37,7 +37,7 @@ zkp-curve = { version = "0.1", path = "../curve"}
 zkp-curve25519 = { version = "0.1", path = "../curve25519"}
 zkp-groth16 = { version = "0.1", path = "../groth16" }
 zkp-bulletproofs = { version = "0.1", path = "../bulletproofs" }
-zkp-clinkv2 = { version = "0.1", path = "../clinkv2" }
+# zkp-clinkv2 = { version = "0.1", path = "../clinkv2" }
 zkp-spartan = { version = "0.1", path = "../spartan" }
 zkp-marlin = { version = "0.1", path = "../marlin" }
 zkp-asvc = { version = "0.1", path = "../asvc" }

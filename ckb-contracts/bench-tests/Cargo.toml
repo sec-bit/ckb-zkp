@@ -19,7 +19,7 @@ ark-poly-commit = { version = "0.2", default-features = false }
 zkp-r1cs = { version = "0.1", path = "../../r1cs"}
 zkp-groth16 = { version = "0.1", path = "../../groth16" }
 zkp-bulletproofs = { version = "0.1", path = "../../bulletproofs" }
-zkp-clinkv2 = { version = "0.1", path = "../../clinkv2" }
+# zkp-clinkv2 = { version = "0.1", path = "../../clinkv2" }
 zkp-spartan = { version = "0.1", path = "../../spartan" }
 zkp-marlin = { version = "0.1", path = "../../marlin" }
 zkp-libra = { version = "0.1", path = "../../libra" }

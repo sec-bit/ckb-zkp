@@ -7,7 +7,7 @@ members = [
     "bulletproofs",
     "marlin",
     "plonk",
-    "clinkv2",
+    # "clinkv2",
     "asvc",
     "spartan",
     "libra",
