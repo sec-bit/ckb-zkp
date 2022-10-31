@@ -66,7 +66,12 @@ macro_rules! handle_scheme {
                 let srs_bytes = std::fs::read(&srs_path).unwrap_or(vec![]);
                 let srs = Parameters::<$curve>::deserialize(&srs_bytes[..]).unwrap();
                 let (pk, _vk) = srs.keypair();
-                let proof = create_random_proof(&pk, $c, rng).unwrap();
+
+                let r1cs_to_hash = pk.r1cs.r1cs_to_hash();
+                let param_to_hash = pk.params.param_to_hash();
+                let encode_to_hash = pk.encode_comm.encode_to_hash();
+
+                let proof = create_random_proof(&pk, $c, r1cs_to_hash,param_to_hash, encode_to_hash, rng).unwrap();
                 let mut proof_bytes = Vec::new();
                 proof.serialize(&mut proof_bytes).unwrap();
                 proof_bytes
@@ -79,7 +84,11 @@ macro_rules! handle_scheme {
                 let srs_bytes = std::fs::read(&srs_path).unwrap_or(vec![]);
                 let srs = Parameters::<$curve>::deserialize(&srs_bytes[..]).unwrap();
                 let (pk, _vk) = srs.keypair();
-                let proof = create_random_proof(&pk, $c, rng).unwrap();
+                
+                let r1cs_to_hash = pk.r1cs.r1cs_to_hash();
+                let param_to_hash = pk.params.param_to_hash();
+
+                let proof = create_random_proof(&pk, $c, r1cs_to_hash, param_to_hash, rng).unwrap();
                 let mut proof_bytes = Vec::new();
                 proof.serialize(&mut proof_bytes).unwrap();
                 proof_bytes

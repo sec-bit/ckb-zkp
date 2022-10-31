@@ -84,7 +84,11 @@ macro_rules! handle_scheme {
                 let srs = Parameters::<$curve>::deserialize(&srs_bytes[..]).unwrap();
                 let (_pk, vk) = srs.keypair();
                 let proof = Proof::<$curve>::deserialize(&$proof_bytes[..]).unwrap();
-                verify_proof(&vk, &proof, $publics).unwrap()
+
+                let r1cs_to_hash = vk.r1cs.r1cs_to_hash();
+                let param_to_hash = vk.params.param_to_hash();
+                let encode_to_hash = vk.encode_comm.encode_to_hash();
+                verify_proof(&vk, &proof, $publics, r1cs_to_hash, param_to_hash, encode_to_hash).unwrap()
             }
             "spartan_nizk" => {
                 use zkp_spartan::nizk::{verify_proof, Parameters, Proof};
@@ -98,7 +102,10 @@ macro_rules! handle_scheme {
                 let srs = Parameters::<$curve>::deserialize(&srs_bytes[..]).unwrap();
                 let (_pk, vk) = srs.keypair();
                 let proof = Proof::<$curve>::deserialize(&$proof_bytes[..]).unwrap();
-                verify_proof(&vk, &proof, $publics).unwrap()
+                let r1cs_to_hash = vk.r1cs.r1cs_to_hash();
+                let param_to_hash = vk.params.param_to_hash();
+                verify_proof(&vk, &proof, $publics, r1cs_to_hash
+                    , param_to_hash).unwrap()
             }
             _ => return Err(format!("SCHEME: {} not implement.", $scheme)),
         };

@@ -57,9 +57,9 @@ pub mod snark {
 
     #[derive(CanonicalSerialize, CanonicalDeserialize)]
     pub struct VerifyKey<G: Curve> {
-        params: SnarkParameters<G>,
-        r1cs: R1CSInstance<G>,
-        encode_comm: EncodeCommit<G>,
+        pub params: SnarkParameters<G>,
+        pub r1cs: R1CSInstance<G>,
+        pub encode_comm: EncodeCommit<G>,
     }
 
     impl<G: Curve> Parameters<G> {
@@ -133,7 +133,7 @@ pub mod snark {
             encode_hash,
         )
     }
-    
+
 }
 
 pub mod nizk {
@@ -155,14 +155,14 @@ pub mod nizk {
 
     #[derive(CanonicalSerialize, CanonicalDeserialize)]
     pub struct ProveKey<G: Curve> {
-        params: NizkParameters<G>,
-        r1cs: R1CSInstance<G>,
+        pub params: NizkParameters<G>,
+        pub r1cs: R1CSInstance<G>,
     }
 
     #[derive(CanonicalSerialize, CanonicalDeserialize)]
     pub struct VerifyKey<G: Curve> {
-        params: NizkParameters<G>,
-        r1cs: R1CSInstance<G>,
+        pub params: NizkParameters<G>,
+        pub r1cs: R1CSInstance<G>,
     }
 
     impl<G: Curve> Parameters<G> {
