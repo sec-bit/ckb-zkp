@@ -307,6 +307,7 @@ fn rescue_snark_spartan() {
 
     println!("[snark_spartan]Generate parameters...");
     let r1cs = generate_r1cs::<E, _>(c).unwrap();
+    let r1cs_to_hash = r1cs.r1cs_to_hash();
 
     let params = generate_setup_snark_parameters::<E, _>(
         rng,
@@ -315,10 +316,12 @@ fn rescue_snark_spartan() {
         r1cs.num_constraints,
     )
     .unwrap();
+    let param_to_hash = params.param_to_hash();
     println!("[snark_spartan]Generate parameters...ok");
 
     println!("[snark_spartan]Encode...");
     let (encode, encode_commit) = encode::<E, _>(&params, &r1cs, rng).unwrap();
+    let encode_to_hash = encode_commit.encode_to_hash();
     println!("[snark_spartan]Encode...ok");
 
     println!("Creating proofs...");
@@ -342,7 +345,7 @@ fn rescue_snark_spartan() {
             };
 
             let proof =
-                create_snark_proof(&params, &r1cs, c, &encode, &encode_commit, rng).unwrap();
+                create_snark_proof(&params, &r1cs, c, &encode, &encode_commit, r1cs_to_hash, param_to_hash, encode_to_hash, rng).unwrap();
             println!("[snark_spartan]Creating proof...ok");
             total_proving += start.elapsed();
 
@@ -353,7 +356,10 @@ fn rescue_snark_spartan() {
                 &r1cs,
                 &vec![image].to_vec(),
                 &proof,
-                &encode_commit,
+                &encode_commit, 
+                r1cs_to_hash, 
+                param_to_hash,
+                encode_to_hash
             )
             .is_ok();
             assert!(result);
@@ -391,10 +397,12 @@ fn rescue_nizk_spartan() {
     };
 
     let r1cs = generate_r1cs::<E, _>(c).unwrap();
+    let r1cs_to_hash = r1cs.r1cs_to_hash();
 
     let params =
         generate_setup_nizk_parameters::<E, _>(rng, r1cs.num_aux, r1cs.num_inputs).unwrap();
-    println!("[nizk_spartan]Generate parameters...ok");
+    let param_to_hash = params.param_to_hash();
+        println!("[nizk_spartan]Generate parameters...ok");
 
     println!("Creating proofs...");
 
@@ -416,14 +424,14 @@ fn rescue_nizk_spartan() {
                 constants: &constants,
             };
 
-            let proof = create_nizk_proof(&params, &r1cs, c, rng).unwrap();
+            let proof = create_nizk_proof(&params, &r1cs, c, r1cs_to_hash, param_to_hash, rng).unwrap();
             println!("[nizk_spartan]Creating proof...ok");
             total_proving += start.elapsed();
 
             let start = Instant::now();
             println!("[nizk_spartan]Verify proof...");
             let result =
-                verify_nizk_proof::<E>(&params, &r1cs, &vec![image].to_vec(), &proof).is_ok();
+                verify_nizk_proof::<E>(&params, &r1cs, &vec![image].to_vec(), &proof, r1cs_to_hash, param_to_hash).is_ok();
             assert!(result);
             total_verifying += start.elapsed();
         }

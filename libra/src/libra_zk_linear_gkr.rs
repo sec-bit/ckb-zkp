@@ -43,9 +43,14 @@ impl<G: Curve> ZKLinearGKRProof<G> {
         circuit: &Circuit,
         inputs: &Vec<G::Fr>,
         witnesses: &Vec<G::Fr>,
+        circuit_to_hash: G::Fr,
+        params_to_hash: G::Fr,
         rng: &mut R,
     ) -> (Self, Vec<G::Fr>) {
         let mut transcript = Transcript::new(b"libra - zk linear gkr");
+        transcript.append_message(b"circuit_to_hash", &to_bytes!(circuit_to_hash).unwrap());
+        transcript.append_message(b"params_to_hash", &to_bytes!(params_to_hash).unwrap());
+        
         let circuit_evals = circuit.evaluate::<G>(inputs, witnesses).unwrap();
         transcript.append_message(b"input", &to_bytes!(inputs).unwrap());
         transcript.append_message(
@@ -269,8 +274,13 @@ impl<G: Curve> ZKLinearGKRProof<G> {
         circuit: &Circuit,
         outputs: &Vec<G::Fr>,
         inputs: &Vec<G::Fr>,
+        circuit_to_hash: G::Fr,
+        params_to_hash: G::Fr,
     ) -> bool {
         let mut transcript = Transcript::new(b"libra - zk linear gkr");
+        transcript.append_message(b"circuit_to_hash", &to_bytes!(circuit_to_hash).unwrap());
+        transcript.append_message(b"params_to_hash", &to_bytes!(params_to_hash).unwrap());
+        
         transcript.append_message(b"input", &to_bytes!(inputs).unwrap());
         transcript.append_message(b"output", &to_bytes!(outputs).unwrap());
         transcript.append_message(b"comm_witness", &to_bytes!(self.comm_witness).unwrap());

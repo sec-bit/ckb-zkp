@@ -60,10 +60,13 @@ fn hyrax_zk_gkr<R: Rng>(
     rng: &mut R,
 ) -> bool {
     assert_eq!(witnesses.len(), inputs.len());
+    let circuit_to_hash = circuit.circuit_to_hash::<E>();
+    let param_to_hash= params.param_to_hash();
+
     let (proof, outputs) =
-        HyraxProof::prover(params, witnesses, inputs, circuit, witnesses.len(), rng);
+        HyraxProof::prover(params, witnesses, inputs, circuit,  circuit_to_hash, param_to_hash, witnesses.len(), rng);
     println!("hyrax_zk_gkr -- generate proof...ok");
-    let result = proof.verify(params, &outputs, inputs, circuit);
+    let result = proof.verify(params, &outputs, inputs, circuit, circuit_to_hash, param_to_hash);
     println!("hyrax_zk_gkr -- verify...{}", result);
     result
 }

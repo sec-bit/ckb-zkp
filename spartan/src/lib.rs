@@ -41,25 +41,25 @@ pub mod snark {
 
     #[derive(CanonicalSerialize, CanonicalDeserialize)]
     pub struct Parameters<G: Curve> {
-        params: SnarkParameters<G>,
-        r1cs: R1CSInstance<G>,
-        encode: EncodeMemory<G>,
-        encode_comm: EncodeCommit<G>,
+        pub params: SnarkParameters<G>,
+        pub r1cs: R1CSInstance<G>,
+        pub encode: EncodeMemory<G>,
+        pub encode_comm: EncodeCommit<G>,
     }
 
     #[derive(CanonicalSerialize, CanonicalDeserialize)]
     pub struct ProveKey<G: Curve> {
-        params: SnarkParameters<G>,
-        r1cs: R1CSInstance<G>,
-        encode: EncodeMemory<G>,
-        encode_comm: EncodeCommit<G>,
+        pub params: SnarkParameters<G>,
+        pub r1cs: R1CSInstance<G>,
+        pub encode: EncodeMemory<G>,
+        pub encode_comm: EncodeCommit<G>,
     }
 
     #[derive(CanonicalSerialize, CanonicalDeserialize)]
     pub struct VerifyKey<G: Curve> {
-        params: SnarkParameters<G>,
-        r1cs: R1CSInstance<G>,
-        encode_comm: EncodeCommit<G>,
+        pub params: SnarkParameters<G>,
+        pub r1cs: R1CSInstance<G>,
+        pub encode_comm: EncodeCommit<G>,
     }
 
     impl<G: Curve> Parameters<G> {
@@ -106,15 +106,21 @@ pub mod snark {
     pub fn create_random_proof<G: Curve, C: ConstraintSynthesizer<G::Fr>, R: Rng>(
         pk: &ProveKey<G>,
         c: C,
+        r1cs_hash: G::Fr, 
+        params_hash: G::Fr, 
+        encode_hash: G::Fr,
         rng: &mut R,
     ) -> Result<Proof<G>, SynthesisError> {
-        super::prover::create_snark_proof(&pk.params, &pk.r1cs, c, &pk.encode, &pk.encode_comm, rng)
+        super::prover::create_snark_proof(&pk.params, &pk.r1cs, c, &pk.encode, &pk.encode_comm,r1cs_hash, params_hash, encode_hash, rng)
     }
 
     pub fn verify_proof<G: Curve>(
         vk: &VerifyKey<G>,
         proof: &Proof<G>,
         publics: &[G::Fr],
+        r1cs_hash: G::Fr, 
+        params_hash: G::Fr, 
+        encode_hash: G::Fr,
     ) -> Result<bool, SynthesisError> {
         super::verify::verify_snark_proof::<G>(
             &vk.params,
@@ -122,8 +128,12 @@ pub mod snark {
             publics,
             proof,
             &vk.encode_comm,
+            r1cs_hash, 
+            params_hash, 
+            encode_hash,
         )
     }
+
 }
 
 pub mod nizk {
@@ -139,20 +149,20 @@ pub mod nizk {
 
     #[derive(CanonicalSerialize, CanonicalDeserialize)]
     pub struct Parameters<G: Curve> {
-        params: NizkParameters<G>,
-        r1cs: R1CSInstance<G>,
+        pub params: NizkParameters<G>,
+        pub r1cs: R1CSInstance<G>,
     }
 
     #[derive(CanonicalSerialize, CanonicalDeserialize)]
     pub struct ProveKey<G: Curve> {
-        params: NizkParameters<G>,
-        r1cs: R1CSInstance<G>,
+        pub params: NizkParameters<G>,
+        pub r1cs: R1CSInstance<G>,
     }
 
     #[derive(CanonicalSerialize, CanonicalDeserialize)]
     pub struct VerifyKey<G: Curve> {
-        params: NizkParameters<G>,
-        r1cs: R1CSInstance<G>,
+        pub params: NizkParameters<G>,
+        pub r1cs: R1CSInstance<G>,
     }
 
     impl<G: Curve> Parameters<G> {
@@ -188,16 +198,22 @@ pub mod nizk {
     pub fn create_random_proof<G: Curve, C: ConstraintSynthesizer<G::Fr>, R: Rng>(
         pk: &ProveKey<G>,
         c: C,
+        r1cs_hash: G::Fr, 
+        params_hash: G::Fr,
         rng: &mut R,
     ) -> Result<Proof<G>, SynthesisError> {
-        super::prover::create_nizk_proof(&pk.params, &pk.r1cs, c, rng)
+
+        super::prover::create_nizk_proof(&pk.params, &pk.r1cs, c,r1cs_hash, params_hash, rng)
     }
 
     pub fn verify_proof<G: Curve>(
         vk: &VerifyKey<G>,
         proof: &Proof<G>,
         publics: &[G::Fr],
+        r1cs_hash: G::Fr, 
+        params_hash: G::Fr,
+
     ) -> Result<bool, SynthesisError> {
-        super::verify::verify_nizk_proof::<G>(&vk.params, &vk.r1cs, publics, proof)
+        super::verify::verify_nizk_proof::<G>(&vk.params, &vk.r1cs, publics, proof,r1cs_hash, params_hash)
     }
 }

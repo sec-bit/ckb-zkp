@@ -1,9 +1,11 @@
-use ark_ff::Field;
+use ark_ff::{Field,to_bytes};
 use ark_poly::polynomial::univariate::DensePolynomial;
 use ark_serialize::*;
 use zkp_curve::Curve;
+use merlin::Transcript;
 
 use crate::Vec;
+
 
 #[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct PolyCommitmentParameters<G: Curve> {
@@ -17,6 +19,16 @@ pub struct MultiCommitmentParameters<G: Curve> {
     pub n: usize,
     pub generators: Vec<G::Affine>,
     pub h: G::Affine,
+}
+
+impl <G: Curve> MultiCommitmentParameters<G>{
+    fn param_to_hash(&self,transcript: &mut Transcript,) {
+        transcript.append_u64(b"MultiCommitmentParameters_n", self.n as u64);
+        transcript.append_message(b"MultiCommitmentParameters_h", &to_bytes!(self.h).unwrap());
+        for i in 0..self.generators.len(){
+            transcript.append_message(b"MultiCommitmentParameters_generators", &to_bytes!(self.generators[i]).unwrap());
+        }
+    }
 }
 
 #[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
@@ -45,10 +57,62 @@ pub struct NizkParameters<G: Curve> {
     pub r1cs_satisfied_params: R1CSSatisfiedParameters<G>,
 }
 
+impl <G: Curve> NizkParameters<G>{
+    pub fn param_to_hash(&self)-> G::Fr {
+        let mut transcript = Transcript::new(b"Spartan nizk params");
+        transcript.append_u64(b"r1cs_satisfied_params_n", self.r1cs_satisfied_params.n as u64);
+
+        transcript.append_u64(b"r1cs_satisfied_params_pc_params_n", self.r1cs_satisfied_params.pc_params.n as u64);
+        self.r1cs_satisfied_params.pc_params.gen_n.param_to_hash(&mut transcript);
+        self.r1cs_satisfied_params.pc_params.gen_1.param_to_hash(&mut transcript);
+        
+        self.r1cs_satisfied_params.sc_params.gen_1.param_to_hash(&mut transcript);
+        self.r1cs_satisfied_params.sc_params.gen_3.param_to_hash(&mut transcript);
+        self.r1cs_satisfied_params.sc_params.gen_4.param_to_hash(&mut transcript);
+
+        let mut buf = [0u8; 31];
+        transcript.challenge_bytes(b"challenge_nextround", &mut buf);
+        random_bytes_to_fr::<G>(&buf)
+        
+    }
+}
+
 #[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct SnarkParameters<G: Curve> {
     pub r1cs_eval_params: R1CSEvalsParameters<G>,
     pub r1cs_satisfied_params: R1CSSatisfiedParameters<G>,
+}
+
+impl <G: Curve> SnarkParameters<G>{
+    pub fn param_to_hash(&self)-> G::Fr {
+        let mut transcript = Transcript::new(b"Spartan snark params");
+        transcript.append_u64(b"r1cs_satisfied_params_n", self.r1cs_satisfied_params.n as u64);
+
+        transcript.append_u64(b"r1cs_satisfied_params_pc_params", self.r1cs_satisfied_params.pc_params.n as u64);
+        self.r1cs_satisfied_params.pc_params.gen_n.param_to_hash(&mut transcript);
+        self.r1cs_satisfied_params.pc_params.gen_1.param_to_hash(&mut transcript);
+        
+        self.r1cs_satisfied_params.sc_params.gen_1.param_to_hash(&mut transcript);
+        self.r1cs_satisfied_params.sc_params.gen_3.param_to_hash(&mut transcript);
+        self.r1cs_satisfied_params.sc_params.gen_4.param_to_hash(&mut transcript);
+
+        transcript.append_u64(b"r1cs_eval_params_ops_params_n", self.r1cs_eval_params.ops_params.n as u64);
+        self.r1cs_eval_params.ops_params.gen_n.param_to_hash(&mut transcript);
+        self.r1cs_eval_params.ops_params.gen_1.param_to_hash(&mut transcript);
+
+        transcript.append_u64(b"r1cs_eval_params_mem_params_n", self.r1cs_eval_params.mem_params.n as u64);
+        self.r1cs_eval_params.mem_params.gen_n.param_to_hash(&mut transcript);
+        self.r1cs_eval_params.mem_params.gen_1.param_to_hash(&mut transcript);
+        
+        transcript.append_u64(b"r1cs_eval_params_derefs_params_n", self.r1cs_eval_params.derefs_params.n as u64);
+        self.r1cs_eval_params.derefs_params.gen_n.param_to_hash(&mut transcript);
+        self.r1cs_eval_params.derefs_params.gen_1.param_to_hash(&mut transcript);
+        
+        let mut buf = [0u8; 31];
+        transcript.challenge_bytes(b"challenge_nextround", &mut buf);
+        random_bytes_to_fr::<G>(&buf)
+        
+    }
 }
 
 #[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
@@ -66,6 +130,30 @@ pub struct EncodeCommit<G: Curve> {
     pub ops_commit: Vec<G::Affine>,
     pub mem_commit: Vec<G::Affine>,
 }
+
+impl <G: Curve> EncodeCommit<G> {
+    pub fn encode_to_hash(&self)->G::Fr{
+        let mut transcript = Transcript::new(b"Spartan EncodeCommit");
+        
+        transcript.append_u64(b"EncodeCommit_n", self.n as u64);
+        transcript.append_u64(b"EncodeCommit_m", self.m as u64);
+
+        for commit in self.ops_commit.iter(){ 
+            transcript.append_message(b"EncodeCommit_ops_commit", &to_bytes!(commit).unwrap());
+        }
+
+        for commit in self.mem_commit.iter(){
+            transcript.append_message(b"EncodeCommit_mem_commit", &to_bytes!(commit).unwrap());
+        }
+
+ 
+        let mut buf = [0u8; 31];
+        transcript.challenge_bytes(b"challenge_nextround", &mut buf);
+        random_bytes_to_fr::<G>(&buf)
+    }
+    
+}
+
 
 #[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct EncodeMemory<G: Curve> {

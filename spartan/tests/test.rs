@@ -127,8 +127,12 @@ fn test_nizk_spartan_bls12_381() {
 
     println!("Generate parameters...");
     let r1cs = generate_r1cs::<E, _>(c).unwrap();
+    let r1cs_hash = r1cs.r1cs_to_hash();
+
     let params =
         generate_setup_nizk_parameters::<E, _>(rng, r1cs.num_aux, r1cs.num_inputs).unwrap();
+    let params_hash = params.param_to_hash();
+
     let c1 = TestDemo::<Fr> {
         lhs: Some(Fr::one()),
         rhs: Some(Fr::one() + &Fr::one()),
@@ -138,11 +142,11 @@ fn test_nizk_spartan_bls12_381() {
 
     // let mut transcript = Transcript::new(b"spartan nizk");
     println!("Creating proof...");
-    let proof = create_nizk_proof(&params, &r1cs, c1, rng).unwrap();
+    let proof = create_nizk_proof(&params, &r1cs, c1, r1cs_hash,params_hash, rng).unwrap();
 
     println!("Verify proof...");
     // let mut transcript = Transcript::new(b"spartan nizk");
-    let result = verify_nizk_proof::<E>(&params, &r1cs, &vec![Fr::one()], &proof).unwrap();
+    let result = verify_nizk_proof::<E>(&params, &r1cs, &vec![Fr::one()], &proof,r1cs_hash,params_hash).unwrap();
 
     assert!(result);
 }
@@ -160,6 +164,7 @@ fn test_snark_spartan_bls12_381() {
 
     println!("[snark_spartan]Generate parameters...");
     let r1cs = generate_r1cs::<E, _>(c).unwrap();
+    let r1cs_hash = r1cs.r1cs_to_hash();
 
     let params = generate_setup_snark_parameters::<E, _>(
         rng,
@@ -168,6 +173,8 @@ fn test_snark_spartan_bls12_381() {
         r1cs.num_constraints,
     )
     .unwrap();
+    let params_hash = params.param_to_hash();
+
 
     let c1 = TestDemo::<Fr> {
         lhs: Some(Fr::one()),
@@ -179,17 +186,18 @@ fn test_snark_spartan_bls12_381() {
 
     println!("[snark_spartan]Encode...");
     let (encode, encode_commit) = encode::<E, _>(&params, &r1cs, rng).unwrap();
+    let encode_hash = encode_commit.encode_to_hash();
     println!("[snark_spartan]Encode...ok");
 
     // let mut transcript = Transcript::new(b"spartan snark");
     println!("[snark_spartan]Creating proof...");
-    let proof = create_snark_proof(&params, &r1cs, c1, &encode, &encode_commit, rng).unwrap();
+    let proof = create_snark_proof(&params, &r1cs, c1, &encode, &encode_commit,r1cs_hash,params_hash, encode_hash, rng).unwrap();
     println!("[snark_spartan]Creating proof...ok");
 
     println!("[snark_spartan]Verify proof...");
     // let mut transcript = Transcript::new(b"spartan snark");
     let result =
-        verify_snark_proof::<E>(&params, &r1cs, &vec![Fr::one()], &proof, &encode_commit).is_ok();
+        verify_snark_proof::<E>(&params, &r1cs, &vec![Fr::one()], &proof, &encode_commit,r1cs_hash,params_hash, encode_hash).is_ok();
     println!("[snark_spartan]Verify proof...ok");
 
     assert!(result);

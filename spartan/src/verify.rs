@@ -27,8 +27,13 @@ pub fn verify_nizk_proof<G: Curve>(
     r1cs: &R1CSInstance<G>,
     inputs: &[G::Fr],
     proof: &NIZKProof<G>,
+    r1cs_hash: G::Fr,
+    params_hash: G::Fr,
 ) -> Result<bool, SynthesisError> {
     let mut transcript = Transcript::new(b"Spartan NIZK proof");
+    transcript.append_message(b"r1cs_hash", &to_bytes!(r1cs_hash).unwrap());
+    transcript.append_message(b"params_hash", &to_bytes!(params_hash).unwrap());
+
 
     let (rx, ry) = &proof.r;
     let eval_a_r = evaluate_mle::<G>(&r1cs.a_matrix, rx, ry);
@@ -52,8 +57,14 @@ pub fn verify_snark_proof<G: Curve>(
     inputs: &[G::Fr],
     proof: &SNARKProof<G>,
     encode_commit: &EncodeCommit<G>,
+    r1cs_hash: G::Fr,
+    params_hash: G::Fr,
+    encode_hash: G::Fr
 ) -> Result<bool, SynthesisError> {
     let mut transcript = Transcript::new(b"Spartan SNARK proof");
+    transcript.append_message(b"r1cs_hash", &to_bytes!(r1cs_hash).unwrap());
+    transcript.append_message(b"params_hash", &to_bytes!(params_hash).unwrap());
+    transcript.append_message(b"encode_hash", &to_bytes!(encode_hash).unwrap());
 
     let (result, rx, ry) = r1cs_satisfied_verify::<G>(
         &params.r1cs_satisfied_params,

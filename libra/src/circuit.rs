@@ -2,8 +2,9 @@ use ark_ff::Zero;
 use ark_std::log2;
 use core::cmp;
 use zkp_curve::Curve;
+use merlin::Transcript;
 
-use crate::evaluate::eval_eq;
+use crate::evaluate::{eval_eq, random_bytes_to_fr};
 use crate::Vec;
 
 ///operation
@@ -181,6 +182,27 @@ impl Circuit {
         }
         assert_eq!(evals.len(), self.depth);
         Ok(evals)
+    }
+
+    pub fn circuit_to_hash<G: Curve>(&self) -> G::Fr{
+
+        let mut transcript = Transcript::new(b"libra - circuit_to_hash");
+
+        transcript.append_u64(b"circuit_depth", self.depth as u64);
+        for i in 0..self.layers.len(){
+            transcript.append_u64(b"circuit_gate_count", self.layers[i].gates_count as u64);
+            transcript.append_u64(b"circuit_bit_size", self.layers[i].bit_size as u64);
+            for j in 0..self.layers[i].gates.len(){
+                transcript.append_u64(b"circuit_gate_g", self.layers[i].gates[j].g as u64);
+                transcript.append_u64(b"circuit_gate_op", self.layers[i].gates[j].op as u64);
+                transcript.append_u64(b"circuit_gate_left_node", self.layers[i].gates[j].left_node as u64);
+                transcript.append_u64(b"circuit_gate_right_node", self.layers[i].gates[j].right_node as u64);
+            }
+        }
+
+        let mut buf = [0u8; 31];
+        transcript.challenge_bytes(b"challenge_nextround", &mut buf);
+        random_bytes_to_fr::<G>(&buf)
     }
 }
 

@@ -105,6 +105,8 @@ pub fn create_nizk_proof<G, C, R>(
     params: &NizkParameters<G>,
     r1cs: &R1CSInstance<G>,
     circuit: C,
+    r1cs_hash: G::Fr,
+    params_hash: G::Fr,
     rng: &mut R,
 ) -> Result<NIZKProof<G>, SynthesisError>
 where
@@ -113,6 +115,9 @@ where
     R: Rng,
 {
     let mut transcript = Transcript::new(b"Spartan NIZK proof");
+
+    transcript.append_message(b"r1cs_hash", &to_bytes!(r1cs_hash).unwrap());
+    transcript.append_message(b"params_hash", &to_bytes!(params_hash).unwrap());
 
     let (r1cs_sat_proof, (rx, ry)) = r1cs_satisfied_prover::<G, C, R>(
         &params.r1cs_satisfied_params,
@@ -135,6 +140,9 @@ pub fn create_snark_proof<G, C, R>(
     circuit: C,
     encode: &EncodeMemory<G>,
     encode_commit: &EncodeCommit<G>,
+    r1cs_hash: G::Fr,
+    params_hash: G::Fr,
+    encode_hash: G::Fr,
     rng: &mut R,
 ) -> Result<SNARKProof<G>, SynthesisError>
 where
@@ -143,6 +151,11 @@ where
     R: Rng,
 {
     let mut transcript = Transcript::new(b"Spartan SNARK proof");
+
+    transcript.append_message(b"r1cs_hash", &to_bytes!(r1cs_hash).unwrap());
+    transcript.append_message(b"params_hash", &to_bytes!(params_hash).unwrap());
+    transcript.append_message(b"encode_hash", &to_bytes!(encode_hash).unwrap());
+
 
     let (r1cs_sat_proof, (rx, ry)) = r1cs_satisfied_prover::<G, C, R>(
         &params.r1cs_satisfied_params,

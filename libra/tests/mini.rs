@@ -34,6 +34,8 @@ fn mini_libra() {
     let rng = &mut test_rng();
 
     let params = Parameters::<E>::new(rng, 8);
+    let param_to_hash = params.param_to_hash();
+
     let mut vk_bytes = Vec::new();
     params.serialize(&mut vk_bytes).unwrap();
     println!("[Libra] VerifyKey length : {}", vk_bytes.len());
@@ -44,8 +46,10 @@ fn mini_libra() {
     let witnesses = vec![Fr::from(2u32), Fr::from(3u32), Fr::zero(), Fr::zero()];
     let layers = layers();
     let circuit = Circuit::new(inputs.len(), witnesses.len(), &layers);
+    let circuit_to_hash = circuit.circuit_to_hash::<E>();
+    
     let (proof, output) =
-        ZKLinearGKRProof::prover::<_>(&params, &circuit, &inputs, &witnesses, rng);
+        ZKLinearGKRProof::prover::<_>(&params, &circuit, &inputs, &witnesses, circuit_to_hash, param_to_hash, rng);
     let p_time = p_start.elapsed();
     println!("[Libra] Prove time       : {:?}", p_time);
 
@@ -54,11 +58,11 @@ fn mini_libra() {
     println!("[Libra] Proof length     : {}", proof_bytes.len());
 
     let v_start = Instant::now();
-    assert!(proof.verify(&params, &circuit, &output, &inputs));
+    assert!(proof.verify(&params, &circuit, &output, &inputs, circuit_to_hash, param_to_hash));
     let v_time = v_start.elapsed();
     println!("[Libra] Verify time      : {:?}", v_time);
 
     let params2 = Parameters::<E>::deserialize(&vk_bytes[..]).unwrap();
     let proof2 = ZKLinearGKRProof::<E>::deserialize(&proof_bytes[..]).unwrap();
-    assert!(proof2.verify(&params2, &circuit, &output, &inputs));
+    assert!(proof2.verify(&params2, &circuit, &output, &inputs, circuit_to_hash, param_to_hash));
 }
