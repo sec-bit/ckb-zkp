@@ -7,6 +7,12 @@ mod permutation;
 use permutation::Permutation;
 
 mod arithmetic;
+mod boolean;
+mod logic;
+mod range;
+
+pub mod abstract_hash;
+pub mod merkletree;
 
 mod synthesize;
 pub use synthesize::{Error, Selectors, Witnesses};
@@ -36,7 +42,7 @@ pub struct Composer<F: Field> {
 
     null_var: Variable,
     permutation: Permutation<F>,
-    assignment: Map<Variable, F>,
+    pub(crate) assignment: Map<Variable, F>,
 }
 
 impl<F: Field> Composer<F> {
@@ -78,6 +84,10 @@ impl<F: Field> Composer<F> {
 
         var
     }
+
+    pub fn get_value(&self, v: &Variable) -> F {
+        self.assignment.get(v).cloned().unwrap_or(F::zero())
+    }
 }
 
 #[cfg(test)]
@@ -91,9 +101,66 @@ mod tests {
 
     use super::*;
 
+    fn circuit() -> Composer<Fr> {
+        let mut cs = Composer::new();
+        let one = Fr::one();
+        let two = one + one;
+        let three = two + one;
+        let four = two + two;
+        let six = two + four;
+        let var_one = cs.alloc_and_assign(one);
+        let var_two = cs.alloc_and_assign(two);
+        let var_three = cs.alloc_and_assign(three);
+        let var_four = cs.alloc_and_assign(four);
+        let var_six = cs.alloc_and_assign(six);
+        cs.create_add_gate(
+            (var_one, one),
+            (var_two, one),
+            var_three,
+            None,
+            Fr::zero(),
+            Fr::zero(),
+        );
+        cs.create_add_gate(
+            (var_one, one),
+            (var_three, one),
+            var_four,
+            None,
+            Fr::zero(),
+            Fr::zero(),
+        );
+        cs.create_mul_gate(
+            var_two,
+            var_two,
+            var_four,
+            None,
+            Fr::one(),
+            Fr::zero(),
+            Fr::zero(),
+        );
+        cs.create_mul_gate(var_one, var_two, var_six, None, two, two, Fr::zero());
+        cs.constrain_to_constant(var_six, six, Fr::zero());
+
+        let var_zero = cs.alloc_and_assign(Fr::zero());
+        cs.boolean_gate(var_zero, Fr::zero());
+        cs.boolean_gate(var_one, Fr::zero());
+        // cs.boolean_gate(var_two, Fr::zero()); // error: when not boolean.
+
+        cs.range_gate(var_zero, 2, Fr::zero()); // 0 in [0, 4)
+        cs.range_gate(var_one, 2, Fr::zero()); // 1 in [0, 4)
+        cs.range_gate(var_two, 2, Fr::zero()); // 2 in [0, 4)
+        cs.range_gate(var_three, 2, Fr::zero()); // 3 in [0, 4)
+
+        // cs.range_gate(var_four, 2, Fr::zero()); // error: four not in [0, 4)
+        // cs.range_gate(var_six, 3, Fr::zero()); //error: 3 is not even number.
+        cs.range_gate(var_six, 4, Fr::zero()); // six in [0, 16)
+
+        cs
+    }
+
     #[test]
     fn compose() {
-        let cs = crate::tests::circuit();
+        let cs = circuit();
         let ks = [
             Fr::one(),
             Fr::from(7_u64),
